@@ -1,0 +1,22 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: '72', '72full', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #32363a;
+  background: #f7f7f7;
+}
+
+a {
+  color: #0854a0;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}

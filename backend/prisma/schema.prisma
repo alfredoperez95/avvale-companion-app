@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ActivationStatus {
+  DRAFT
+  READY_TO_SEND
+  SENT
+  ERROR
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String?
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  activations Activation[]
+
+  @@map("users")
+}
+
+model Activation {
+  id               String           @id @default(uuid())
+  createdAt        DateTime         @default(now()) @map("created_at")
+  createdBy        String           @map("created_by")
+  createdByUserId  String           @map("created_by_user_id")
+  status           ActivationStatus @default(DRAFT)
+  recipientTo      String           @map("recipient_to")
+  recipientCc      String?          @map("recipient_cc")
+  subject          String
+  templateCode     String           @map("template_code")
+  projectName      String           @map("project_name")
+  offerCode        String           @map("offer_code")
+  hubspotUrl       String?          @map("hubspot_url")
+  makeSentAt       DateTime?        @map("make_sent_at")
+  makeRunId        String?          @map("make_run_id")
+  errorMessage     String?          @map("error_message")
+  lastStatusAt     DateTime?        @map("last_status_at")
+
+  createdByUser User @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@map("activations")
+}
