@@ -24,9 +24,24 @@ cp .env.example .env
 # Edita .env y define al menos JWT_SECRET en producción
 ```
 
-### 2. Base de datos
+### 2. Base de datos y tablas
 
-Puedes usar MariaDB local o un contenedor:
+**Si ya tienes MariaDB en producción** (ej. Coolify/host con DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS):
+
+1. Crea `backend/.env` con la URL de conexión (usa tus variables reales):
+   ```env
+   DATABASE_URL="mysql://DB_USER:DB_PASS@DB_HOST:DB_PORT/DB_NAME"
+   ```
+2. Desde la carpeta `backend`, aplica las migraciones para crear las tablas:
+   ```bash
+   cd backend
+   npm install
+   npx prisma migrate deploy
+   ```
+   O con la URL en línea:  
+   `DATABASE_URL="mysql://user:pass@host:3306/db" npx prisma migrate deploy`
+
+**MariaDB local** (contenedor):
 
 ```bash
 docker run -d --name mariadb \
