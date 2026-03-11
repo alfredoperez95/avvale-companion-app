@@ -4,18 +4,18 @@ Aplicación web para gestionar activaciones por email, con backend NestJS, front
 
 ## Estructura del repositorio
 
-- `backend/` — API NestJS (Prisma, MariaDB, JWT)
-- `frontend/` — Next.js (App Router)
-- `docker-compose.yml` — Orquestación local (MariaDB + backend + frontend)
+- `backend/` — API NestJS (Prisma, MariaDB, JWT). Incluye `Dockerfile`.
+- `frontend/` — Next.js (App Router). Incluye `Dockerfile`.
 - `.env.example` — Variables de entorno de ejemplo
+
+Cada servicio se construye y ejecuta con su propio Dockerfile (sin docker-compose).
 
 ## Requisitos
 
-- Node.js 22+
-- Docker y Docker Compose (para ejecución con contenedores)
-- Cuenta en MariaDB o uso del contenedor del compose
+- Node.js 22+ (desarrollo local)
+- Docker (para construir y ejecutar contenedores)
 
-## Desarrollo local
+## Desarrollo local (sin contenedores)
 
 ### 1. Variables de entorno
 
@@ -24,35 +24,35 @@ cp .env.example .env
 # Edita .env y define al menos JWT_SECRET en producción
 ```
 
-### 2. Base de datos y backend
+### 2. Base de datos
 
-Con Docker:
+Puedes usar MariaDB local o un contenedor:
 
 ```bash
-docker compose up -d mariadb
-# Espera a que MariaDB esté healthy, luego:
+docker run -d --name mariadb \
+  -e MARIADB_ROOT_PASSWORD=root \
+  -e MARIADB_DATABASE=activation \
+  -e MARIADB_USER=app \
+  -e MARIADB_PASSWORD=app \
+  -p 3306:3306 \
+  mariadb:11
+```
+
+Define `DATABASE_URL` en `.env` (o en `backend/.env`), por ejemplo:
+`DATABASE_URL="mysql://app:app@localhost:3306/activation"`
+
+### 3. Backend
+
+```bash
 cd backend
 npm install
-npx prisma migrate dev --name init
+npx prisma migrate deploy
 npm run start:dev
 ```
 
-Sin Docker (MariaDB local):
+API en `http://localhost:4000` (prefijo `/api`).
 
-```bash
-# Crea la base de datos y usuario en MariaDB
-# En .env (o backend/.env) define DATABASE_URL, por ejemplo:
-# DATABASE_URL="mysql://app:app@localhost:3306/activation"
-
-cd backend
-npm install
-npx prisma migrate dev --name init
-npm run start:dev
-```
-
-Backend quedará en `http://localhost:4000`. API bajo prefijo `/api`.
-
-### 3. Frontend
+### 4. Frontend
 
 ```bash
 cd frontend
@@ -60,11 +60,9 @@ npm install
 npm run dev
 ```
 
-Frontend en `http://localhost:3000`. Ajusta `NEXT_PUBLIC_API_URL` en `.env` si la API no está en `http://localhost:4000`.
+Frontend en `http://localhost:3000`. Ajusta `NEXT_PUBLIC_API_URL` si la API no está en `http://localhost:4000`.
 
-### 4. Primer usuario
-
-Registro vía API:
+### 5. Primer usuario
 
 ```bash
 curl -X POST http://localhost:4000/api/auth/register \
@@ -72,21 +70,59 @@ curl -X POST http://localhost:4000/api/auth/register \
   -d '{"email":"tu@email.com","password":"minimo6","name":"Tu Nombre"}'
 ```
 
-Luego inicia sesión en la app con ese email y contraseña.
+## Ejecución con Docker (solo Dockerfiles)
 
-## Despliegue con Docker Compose
+Cada servicio se construye y ejecuta por separado.
+
+### 1. MariaDB
 
 ```bash
-cp .env.example .env
-# Configura JWT_SECRET, contraseñas de DB y NEXT_PUBLIC_API_URL (URL pública del backend)
-docker compose up -d
+docker run -d --name mariadb \
+  -e MARIADB_ROOT_PASSWORD=root \
+  -e MARIADB_DATABASE=activation \
+  -e MARIADB_USER=app \
+  -e MARIADB_PASSWORD=app \
+  -p 3306:3306 \
+  mariadb:11
 ```
 
-- Frontend: puerto 3000  
-- Backend: puerto 4000  
-- MariaDB: puerto 3306 (solo accesible desde host si lo expones)
+Espera unos segundos a que la base esté lista.
 
-Para Coolify, despliega cada servicio por separado (frontend, backend, MariaDB) usando los Dockerfiles de `backend/` y `frontend/`, y configura variables de entorno según `.env.example`.
+### 2. Backend
+
+```bash
+cd backend
+docker build -t activation-backend .
+docker run -d --name backend --link mariadb:mariadb \
+  -e DATABASE_URL="mysql://app:app@mariadb:3306/activation" \
+  -e JWT_SECRET=change-me-in-production \
+  -p 4000:4000 \
+  activation-backend
+```
+
+### 3. Frontend
+
+```bash
+cd frontend
+docker build -t activation-frontend .
+docker run -d --name frontend \
+  -e NEXT_PUBLIC_API_URL=http://localhost:4000 \
+  -p 3000:3000 \
+  activation-frontend
+```
+
+Desde el navegador, la API debe ser accesible en la URL que uses (por ejemplo `http://localhost:4000`). Si el frontend corre en otro host, ajusta `NEXT_PUBLIC_API_URL` en el build:  
+`docker build --build-arg NEXT_PUBLIC_API_URL=https://api.ejemplo.com -t activation-frontend .`
+
+## Despliegue en Coolify
+
+En Coolify puedes desplegar cada servicio por separado usando:
+
+- **MariaDB**: imagen `mariadb:11` y variables de entorno como arriba.
+- **Backend**: build desde `backend/Dockerfile`, variables `DATABASE_URL`, `JWT_SECRET`, etc.
+- **Frontend**: build desde `frontend/Dockerfile`, variable `NEXT_PUBLIC_API_URL` apuntando a la URL pública del backend.
+
+No es necesario docker-compose; cada Dockerfile es independiente.
 
 ## API (resumen)
 
