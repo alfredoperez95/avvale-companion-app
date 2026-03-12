@@ -17,7 +17,9 @@ async function bootstrap() {
     credentials: true,
   });
   const port = process.env.PORT ?? 4000;
+  const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
   await app.listen(port);
   console.log(`Backend running at http://localhost:${port}/api`);
+  console.log(`CORS allowed origin: ${corsOrigin}`);
 }
 bootstrap();

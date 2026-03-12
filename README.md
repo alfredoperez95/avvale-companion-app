@@ -57,6 +57,7 @@ Siguiente: **Paso 1 — MariaDB** (si aún no tienes la base de datos) o **Paso 
 
 - `backend/` — API NestJS (Prisma, MariaDB, JWT). Incluye `Dockerfile`.
 - `frontend/` — Next.js (App Router). Incluye `Dockerfile`.
+- `docs/VERIFICACION.md` — Comprobación paso a paso (health, auth, frontend).
 - `.env.example` — Variables de entorno de ejemplo
 
 Cada servicio se construye y ejecuta con su propio Dockerfile (sin docker-compose).
