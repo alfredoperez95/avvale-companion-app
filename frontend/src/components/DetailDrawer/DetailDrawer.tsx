@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
-import { StatusTag } from '@/components/StatusTag';
+import { StatusTag } from '@/components/StatusTag/StatusTag';
 import styles from './DetailDrawer.module.css';
 
 interface DetailDrawerProps {
