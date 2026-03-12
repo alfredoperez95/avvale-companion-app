@@ -21,11 +21,12 @@ export default function EditActivationPage() {
     hubspotUrl: '',
     recipientTo: '',
     recipientCc: '',
-    subject: '',
     templateCode: '',
     body: '',
     attachmentUrlsText: '',
   });
+
+  const computedSubject = `Activación AEP - "${(form.client || '').trim().toUpperCase()}" - "${(form.projectName || '').trim()}"`;
 
   useEffect(() => {
     if (!id) return;
@@ -63,7 +64,6 @@ export default function EditActivationPage() {
           hubspotUrl: data.hubspotUrl ?? '',
           recipientTo: data.recipientTo ?? '',
           recipientCc: data.recipientCc ?? '',
-          subject: data.subject ?? '',
           templateCode: data.templateCode ?? '',
           body: data.body ?? '',
           attachmentUrlsText: urlsText,
@@ -94,7 +94,6 @@ export default function EditActivationPage() {
         hubspotUrl: form.hubspotUrl.trim() || undefined,
         recipientTo: form.recipientTo.trim(),
         recipientCc: form.recipientCc.trim() || undefined,
-        subject: form.subject.trim(),
         templateCode: form.templateCode.trim(),
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
@@ -154,8 +153,8 @@ export default function EditActivationPage() {
           <input id="recipientCc" name="recipientCc" type="text" value={form.recipientCc} onChange={handleChange} className={styles.input} />
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="subject">Asunto *</label>
-          <input id="subject" name="subject" type="text" value={form.subject} onChange={handleChange} required className={styles.input} />
+          <label className={styles.label} htmlFor="subject">Asunto</label>
+          <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="templateCode">Código de plantilla *</label>

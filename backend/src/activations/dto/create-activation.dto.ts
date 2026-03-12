@@ -25,9 +25,9 @@ export class CreateActivationDto {
   @IsString()
   recipientCc?: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1, { message: 'El asunto es obligatorio' })
-  subject: string;
+  subject?: string;
 
   @IsString()
   @MinLength(1, { message: 'El código de plantilla es obligatorio' })

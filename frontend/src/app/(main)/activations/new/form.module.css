@@ -61,6 +61,18 @@
   border-color: var(--fiori-shell-bg);
 }
 
+.inputReadOnly {
+  width: 100%;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.25rem;
+  background: var(--fiori-nav-bg);
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--fiori-text-secondary);
+  cursor: default;
+}
+
 .error {
   color: var(--fiori-error);
   font-size: 0.875rem;

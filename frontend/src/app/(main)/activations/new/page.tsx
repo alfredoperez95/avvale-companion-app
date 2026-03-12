@@ -17,11 +17,12 @@ export default function NewActivationPage() {
     hubspotUrl: '',
     recipientTo: '',
     recipientCc: '',
-    subject: '',
     templateCode: '',
     body: '',
     attachmentUrlsText: '',
   });
+
+  const computedSubject = `Activación AEP - "${(form.client || '').trim().toUpperCase()}" - "${(form.projectName || '').trim()}"`;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -44,7 +45,6 @@ export default function NewActivationPage() {
         hubspotUrl: form.hubspotUrl.trim() || undefined,
         recipientTo: form.recipientTo.trim(),
         recipientCc: form.recipientCc.trim() || undefined,
-        subject: form.subject.trim(),
         templateCode: form.templateCode.trim(),
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
@@ -101,8 +101,8 @@ export default function NewActivationPage() {
           <input id="recipientCc" name="recipientCc" type="text" value={form.recipientCc} onChange={handleChange} className={styles.input} placeholder="opcional" />
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="subject">Asunto *</label>
-          <input id="subject" name="subject" type="text" value={form.subject} onChange={handleChange} required className={styles.input} placeholder="Asunto del correo" />
+          <label className={styles.label} htmlFor="subject">Asunto</label>
+          <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="templateCode">Código de plantilla *</label>
