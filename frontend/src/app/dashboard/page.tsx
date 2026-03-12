@@ -49,17 +49,19 @@ export default function DashboardPage() {
           <strong>Mis activaciones</strong>
           <p style={{ marginTop: 8, fontSize: 14, color: '#6a6d70' }}>Ver listado</p>
         </Link>
-        <div
+        <Link
+          href="/activations/new"
           style={{
             padding: '1.5rem',
             background: '#fff',
             borderRadius: 8,
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            color: '#32363a',
           }}
         >
           <strong>Nueva activación</strong>
-          <p style={{ marginTop: 8, fontSize: 14, color: '#6a6d70' }}>Próximamente</p>
-        </div>
+          <p style={{ marginTop: 8, fontSize: 14, color: '#6a6d70' }}>Crear borrador</p>
+        </Link>
       </div>
     </main>
   );

@@ -1,14 +1,21 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { ActivationsService } from './activations.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
 import { ActivationStatus } from '@prisma/client';
+import { CreateActivationDto } from './dto/create-activation.dto';
 
 @Controller('activations')
 @UseGuards(JwtAuthGuard)
 export class ActivationsController {
   constructor(private readonly activationsService: ActivationsService) {}
+
+  @Post()
+  async create(@CurrentUser() user: UserPayload, @Body() dto: CreateActivationDto) {
+    const createdByLabel = user.email;
+    return this.activationsService.create(user.userId, createdByLabel, dto);
+  }
 
   @Get()
   async list(@CurrentUser() user: UserPayload, @Query('status') status?: ActivationStatus) {
