@@ -11,6 +11,8 @@ type Activation = {
   projectName: string;
   offerCode: string;
   hubspotUrl: string | null;
+  body: string | null;
+  attachmentUrls: string | null;
   recipientTo: string;
   recipientCc: string | null;
   subject: string;
@@ -128,6 +130,24 @@ export default function ActivationDetailPage() {
           <p><strong>Plantilla:</strong> {activation.templateCode}</p>
         </>
       ))}
+      {activation.body && section('Cuerpo del correo', (
+        <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{activation.body}</pre>
+      ))}
+      {activation.attachmentUrls && (() => {
+        let urls: string[] = [];
+        try {
+          urls = JSON.parse(activation.attachmentUrls);
+        } catch {
+          urls = activation.attachmentUrls.split(/[\n,]/).map((u) => u.trim()).filter(Boolean);
+        }
+        return urls.length > 0 ? section('Adjuntos', (
+          <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+            {urls.map((url, i) => (
+              <li key={i}><a href={url} target="_blank" rel="noopener noreferrer">{url}</a></li>
+            ))}
+          </ul>
+        )) : null;
+      })()}
       {section('Metadatos', (
         <>
           <p><strong>Creado:</strong> {new Date(activation.createdAt).toLocaleString('es')}</p>
@@ -139,24 +159,43 @@ export default function ActivationDetailPage() {
       ))}
 
       {error && <p style={{ color: '#b00', marginBottom: '1rem' }}>{error}</p>}
-      {canSend && (
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={sending}
-          style={{
-            padding: '0.6rem 1.2rem',
-            background: '#0854a0',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            cursor: sending ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-          }}
-        >
-          {sending ? 'Enviando…' : 'Enviar activación'}
-        </button>
-      )}
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {activation.status === 'DRAFT' && (
+          <Link
+            href={`/activations/${id}/edit`}
+            style={{
+              padding: '0.6rem 1.2rem',
+              background: '#6a6d70',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              textDecoration: 'none',
+              fontWeight: 500,
+              display: 'inline-block',
+            }}
+          >
+            Editar borrador
+          </Link>
+        )}
+        {canSend && (
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={sending}
+            style={{
+              padding: '0.6rem 1.2rem',
+              background: '#0854a0',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              cursor: sending ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            {sending ? 'Enviando…' : 'Enviar activación'}
+          </button>
+        )}
+      </div>
     </main>
   );
 }

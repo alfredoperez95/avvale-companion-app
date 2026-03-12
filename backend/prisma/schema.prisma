@@ -45,6 +45,8 @@ model Activation {
   projectName      String           @map("project_name")
   offerCode        String           @map("offer_code")
   hubspotUrl       String?          @map("hubspot_url")
+  body             String?          @map("body")
+  attachmentUrls   String?          @map("attachment_urls")
   makeSentAt       DateTime?        @map("make_sent_at")
   makeRunId        String?          @map("make_run_id")
   errorMessage     String?          @map("error_message")

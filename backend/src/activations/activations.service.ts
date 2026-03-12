@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivationStatus } from '@prisma/client';
 import { CreateActivationDto } from './dto/create-activation.dto';
+import { UpdateActivationDto } from './dto/update-activation.dto';
 
 @Injectable()
 export class ActivationsService {
@@ -21,6 +22,8 @@ export class ActivationsService {
         recipientCc: dto.recipientCc ?? null,
         subject: dto.subject,
         templateCode: dto.templateCode,
+        body: dto.body ?? null,
+        attachmentUrls: dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null,
       },
     });
   }
@@ -34,6 +37,28 @@ export class ActivationsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /** Actualiza una activación solo si es DRAFT y pertenece al usuario. */
+  async update(activationId: string, userId: string, dto: UpdateActivationDto) {
+    const activation = await this.findOneByIdAndUser(activationId, userId);
+    if (activation.status !== ActivationStatus.DRAFT) {
+      throw new BadRequestException('Solo se pueden editar activaciones en estado DRAFT');
+    }
+    const data: Record<string, unknown> = {};
+    if (dto.projectName !== undefined) data.projectName = dto.projectName;
+    if (dto.offerCode !== undefined) data.offerCode = dto.offerCode;
+    if (dto.hubspotUrl !== undefined) data.hubspotUrl = dto.hubspotUrl || null;
+    if (dto.recipientTo !== undefined) data.recipientTo = dto.recipientTo;
+    if (dto.recipientCc !== undefined) data.recipientCc = dto.recipientCc || null;
+    if (dto.subject !== undefined) data.subject = dto.subject;
+    if (dto.templateCode !== undefined) data.templateCode = dto.templateCode;
+    if (dto.body !== undefined) data.body = dto.body || null;
+    if (dto.attachmentUrls !== undefined) {
+      data.attachmentUrls = dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null;
+    }
+    await this.prisma.activation.update({ where: { id: activationId }, data });
+    return this.findOneByIdAndUser(activationId, userId);
   }
 
   /** Obtiene una activación solo si pertenece al usuario. */

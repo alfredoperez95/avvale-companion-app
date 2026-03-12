@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { ActivationsService } from './activations.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
 import { ActivationStatus } from '@prisma/client';
 import { CreateActivationDto } from './dto/create-activation.dto';
+import { UpdateActivationDto } from './dto/update-activation.dto';
 
 @Controller('activations')
 @UseGuards(JwtAuthGuard)
@@ -30,5 +31,14 @@ export class ActivationsController {
   @Post(':id/send')
   async send(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.activationsService.requestSend(id, user.userId);
+  }
+
+  @Patch(':id')
+  async update(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @Body() dto: UpdateActivationDto,
+  ) {
+    return this.activationsService.update(id, user.userId, dto);
   }
 }

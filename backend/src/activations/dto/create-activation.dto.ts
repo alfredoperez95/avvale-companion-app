@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEmail, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsArray, MinLength } from 'class-validator';
 
 export class CreateActivationDto {
   @IsString()
@@ -28,4 +28,13 @@ export class CreateActivationDto {
   @IsString()
   @MinLength(1, { message: 'El código de plantilla es obligatorio' })
   templateCode: string;
+
+  @IsOptional()
+  @IsString()
+  body?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  attachmentUrls?: string[];
 }
