@@ -55,7 +55,11 @@ export default function ActivationsPage() {
             <tbody>
               {list.map((a) => (
                 <tr key={a.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                  <td style={{ padding: '0.75rem' }}>{a.projectName}</td>
+                  <td style={{ padding: '0.75rem' }}>
+                    <Link href={`/activations/${a.id}`} style={{ color: '#0854a0', fontWeight: 500 }}>
+                      {a.projectName}
+                    </Link>
+                  </td>
                   <td style={{ padding: '0.75rem' }}>{a.offerCode}</td>
                   <td style={{ padding: '0.75rem' }}>{a.recipientTo}</td>
                   <td style={{ padding: '0.75rem' }}>{a.status}</td>

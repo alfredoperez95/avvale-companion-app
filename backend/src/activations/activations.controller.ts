@@ -26,4 +26,9 @@ export class ActivationsController {
   async getOne(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.activationsService.findOneByIdAndUser(id, user.userId);
   }
+
+  @Post(':id/send')
+  async send(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.activationsService.requestSend(id, user.userId);
+  }
 }

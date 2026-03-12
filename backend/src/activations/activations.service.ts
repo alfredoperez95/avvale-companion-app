@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivationStatus } from '@prisma/client';
 import { CreateActivationDto } from './dto/create-activation.dto';
@@ -43,5 +43,23 @@ export class ActivationsService {
     });
     if (!activation) throw new NotFoundException('Activation no encontrada');
     return activation;
+  }
+
+  /** Marca como READY_TO_SEND y opcionalmente llama al webhook de Make. Solo DRAFT o ERROR. */
+  async requestSend(activationId: string, userId: string) {
+    const activation = await this.findOneByIdAndUser(activationId, userId);
+    if (activation.status !== ActivationStatus.DRAFT && activation.status !== ActivationStatus.ERROR) {
+      throw new BadRequestException(
+        `No se puede enviar: estado actual es ${activation.status}. Solo DRAFT o ERROR.`,
+      );
+    }
+    await this.prisma.activation.update({
+      where: { id: activationId },
+      data: {
+        status: ActivationStatus.READY_TO_SEND,
+        lastStatusAt: new Date(),
+      },
+    });
+    return this.findOneByIdAndUser(activationId, userId);
   }
 }
