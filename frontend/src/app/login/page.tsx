@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './login.module.css';
 
+const getApiBase = () =>
+  typeof window !== 'undefined'
+    ? (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000')
+    : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -16,8 +21,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const base = process.env.NEXT_PUBLIC_API_URL ?? '';
-      const res = await fetch(`${base}/api/auth/login`, {
+      const res = await fetch(`${getApiBase()}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -32,6 +36,8 @@ export default function LoginPage() {
         router.push('/dashboard');
         router.refresh();
       }
+    } catch (err) {
+      setError('No se pudo conectar con el servidor. Comprueba que el backend esté en marcha y que NEXT_PUBLIC_API_URL sea correcto.');
     } finally {
       setLoading(false);
     }
