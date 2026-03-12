@@ -2,6 +2,26 @@
 
 Aplicación web para gestionar activaciones por email, con backend NestJS, frontend Next.js y orquestación de envíos vía Make.
 
+**En Mac:** Todos los comandos están pensados para Terminal (zsh o bash). Usa la misma terminal para todo el flujo.
+
+---
+
+## Requisitos en Mac
+
+- **Node.js 22+**  
+  Con Homebrew: `brew install node`  
+  O con nvm: `nvm install 22 && nvm use 22`
+- **npm** (viene con Node)
+- **Docker Desktop** (opcional, para MariaDB o para levantar todo en contenedores): [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
+
+Funciona en Mac Intel y Apple Silicon (M1/M2/M3).
+
+Comprueba en la terminal:
+```bash
+node -v   # v22.x o superior
+npm -v
+```
+
 ---
 
 ## Paso 0 — Preparar entorno
@@ -11,18 +31,21 @@ Hazlo una sola vez antes de arrancar backend, frontend o base de datos.
 1. **Copia el ejemplo de variables y edítalo con tus valores:**
    ```bash
    cp .env.example .env
+   open -e .env
    ```
-   Edita `.env` y rellena al menos:
+   (En Mac, `open -e .env` abre `.env` en TextEdit. Si prefieres otro editor: `code .env`, `nano .env`, etc.)
+
+   Rellena en `.env` al menos:
    - **DATABASE_URL**: `mysql://USER:PASSWORD@HOST:3306/DATABASE` (con tu MariaDB).
    - **JWT_SECRET**: una cadena secreta larga y aleatoria (en producción no uses `change-me-in-production`).
    - **NEXT_PUBLIC_API_URL**: en local suele ser `http://localhost:4000`; en producción, la URL pública del backend.
 
-2. **Propaga `.env` a backend y frontend:**
+2. **Propaga `.env` a backend y frontend** (desde la raíz del repo):
    ```bash
    chmod +x scripts/prepare-env.sh
    ./scripts/prepare-env.sh
    ```
-   Así `backend/` y `frontend/` tendrán su copia de `.env` y leerán las mismas variables.
+   Así `backend/` y `frontend/` tendrán su copia de `.env` y leerán las mismas variables. En Mac no hace falta `bash` delante: el shebang del script usa `sh`.
 
 3. **Comprueba:** Debe existir `backend/.env` y `frontend/.env` (no los subas a Git).
 
@@ -38,10 +61,10 @@ Siguiente: **Paso 1 — MariaDB** (si aún no tienes la base de datos) o **Paso 
 
 Cada servicio se construye y ejecuta con su propio Dockerfile (sin docker-compose).
 
-## Requisitos
+## Requisitos (resumen)
 
-- Node.js 22+ (desarrollo local)
-- Docker (para construir y ejecutar contenedores)
+- Node.js 22+ y npm (ver **Requisitos en Mac** arriba)
+- Docker (opcional; para MariaDB en contenedor o despliegue)
 
 ## Desarrollo local (sin contenedores)
 
@@ -63,8 +86,10 @@ Ya hecho en **Paso 0** (`.env` en la raíz y `./scripts/prepare-env.sh`). Si no,
    npm install
    npx prisma migrate deploy
    ```
-   O con la URL en línea:  
-   `DATABASE_URL="mysql://user:pass@host:3306/db" npx prisma migrate deploy`
+   En Mac, si prefieres no usar `backend/.env`, puedes pasar la URL en la misma línea:
+   ```bash
+   DATABASE_URL="mysql://user:pass@host:3306/db" npx prisma migrate deploy
+   ```
 
 **MariaDB local** (contenedor):
 
@@ -104,6 +129,7 @@ Frontend en `http://localhost:3000`. Ajusta `NEXT_PUBLIC_API_URL` si la API no e
 
 ### 5. Primer usuario
 
+En la terminal (Mac viene con `curl`):
 ```bash
 curl -X POST http://localhost:4000/api/auth/register \
   -H "Content-Type: application/json" \
@@ -173,3 +199,30 @@ No es necesario docker-compose; cada Dockerfile es independiente.
 - `GET /api/activations/:id` — Detalle (solo si es del usuario)
 
 Todos los datos de activaciones están filtrados por usuario autenticado en el backend.
+
+---
+
+## Resumen rápido (Mac)
+
+Orden sugerido en una sola terminal (o una por servicio):
+
+```bash
+# Paso 0
+cp .env.example .env && open -e .env
+# (edita .env, guarda y cierra)
+chmod +x scripts/prepare-env.sh && ./scripts/prepare-env.sh
+
+# Paso 1 — Solo si usas MariaDB local en Docker
+docker run -d --name mariadb -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=activation -e MARIADB_USER=app -e MARIADB_PASSWORD=app -p 3306:3306 mariadb:11
+
+# Paso 2 — Backend (deja esta terminal abierta)
+cd backend && npm install && npx prisma migrate deploy && npm run start:dev
+
+# En otra terminal: Paso 3 — Frontend
+cd frontend && npm install && npm run dev
+
+# En otra terminal: Paso 4 — Primer usuario
+curl -X POST http://localhost:4000/api/auth/register -H "Content-Type: application/json" -d '{"email":"tu@email.com","password":"minimo6","name":"Tu Nombre"}'
+```
+
+Luego abre en el navegador: `http://localhost:3000`
