@@ -5,7 +5,6 @@ import { apiFetch } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
