@@ -22,7 +22,7 @@ export default function NewActivationPage() {
     attachmentUrlsText: '',
   });
 
-  const computedSubject = `Activación AEP - "${(form.client || '').trim().toUpperCase()}" - "${(form.projectName || '').trim()}"`;
+  const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));

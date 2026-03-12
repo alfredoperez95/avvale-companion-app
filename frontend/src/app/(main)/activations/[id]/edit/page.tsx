@@ -26,7 +26,7 @@ export default function EditActivationPage() {
     attachmentUrlsText: '',
   });
 
-  const computedSubject = `Activación AEP - "${(form.client || '').trim().toUpperCase()}" - "${(form.projectName || '').trim()}"`;
+  const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
   useEffect(() => {
     if (!id) return;

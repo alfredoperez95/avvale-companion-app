@@ -4,11 +4,11 @@ import { ActivationStatus } from '@prisma/client';
 import { CreateActivationDto } from './dto/create-activation.dto';
 import { UpdateActivationDto } from './dto/update-activation.dto';
 
-/** Genera el asunto en formato: Activación AEP - "CLIENTE" - "Proyecto" */
+/** Genera el asunto en formato: Activación AEP - CLIENTE - Proyecto */
 function buildSubject(projectName: string, client: string | null): string {
   const clientPart = (client ?? '').trim().toUpperCase();
   const projectPart = (projectName ?? '').trim();
-  return `Activación AEP - "${clientPart}" - "${projectPart}"`;
+  return `Activación AEP - ${clientPart} - ${projectPart}`;
 }
 
 @Injectable()
