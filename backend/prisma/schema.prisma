@@ -43,6 +43,7 @@ model Activation {
   subject          String
   templateCode     String           @map("template_code")
   projectName      String           @map("project_name")
+  client           String?          @map("client")
   offerCode        String           @map("offer_code")
   hubspotUrl       String?          @map("hubspot_url")
   body             String?          @map("body")

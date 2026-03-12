@@ -123,6 +123,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated }: DetailDrawerP
                 'Proyecto y oferta',
                 <>
                   <p><strong>Proyecto:</strong> {activation.projectName}</p>
+                  {activation.client && <p><strong>Cliente:</strong> {activation.client}</p>}
                   <p><strong>Código oferta:</strong> {activation.offerCode}</p>
                   {activation.hubspotUrl && (
                     <p>

@@ -8,6 +8,10 @@ export class UpdateActivationDto {
 
   @IsOptional()
   @IsString()
+  client?: string;
+
+  @IsOptional()
+  @IsString()
   @MinLength(1)
   offerCode?: string;
 

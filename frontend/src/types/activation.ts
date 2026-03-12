@@ -4,6 +4,7 @@ export interface Activation {
   id: string;
   status: ActivationStatus;
   projectName: string;
+  client: string | null;
   offerCode: string;
   hubspotUrl: string | null;
   body: string | null;

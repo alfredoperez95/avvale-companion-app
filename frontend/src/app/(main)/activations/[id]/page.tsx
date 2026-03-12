@@ -90,6 +90,7 @@ export default function ActivationDetailPage() {
         'Proyecto y oferta',
         <>
           <p><strong>Proyecto:</strong> {activation.projectName}</p>
+          {activation.client && <p><strong>Cliente:</strong> {activation.client}</p>}
           <p><strong>Código oferta:</strong> {activation.offerCode}</p>
           {activation.hubspotUrl && (
             <p><strong>HubSpot:</strong> <a href={activation.hubspotUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>{activation.hubspotUrl}</a></p>

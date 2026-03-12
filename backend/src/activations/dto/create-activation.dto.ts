@@ -5,6 +5,10 @@ export class CreateActivationDto {
   @MinLength(1, { message: 'El nombre del proyecto es obligatorio' })
   projectName: string;
 
+  @IsOptional()
+  @IsString()
+  client?: string;
+
   @IsString()
   @MinLength(1, { message: 'El código de oferta es obligatorio' })
   offerCode: string;

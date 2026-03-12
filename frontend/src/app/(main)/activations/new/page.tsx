@@ -12,6 +12,7 @@ export default function NewActivationPage() {
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     projectName: '',
+    client: '',
     offerCode: '',
     hubspotUrl: '',
     recipientTo: '',
@@ -38,6 +39,7 @@ export default function NewActivationPage() {
         .filter(Boolean);
       const body = {
         projectName: form.projectName.trim(),
+        client: form.client.trim() || undefined,
         offerCode: form.offerCode.trim(),
         hubspotUrl: form.hubspotUrl.trim() || undefined,
         recipientTo: form.recipientTo.trim(),
@@ -77,6 +79,10 @@ export default function NewActivationPage() {
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>
           <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} required className={styles.input} placeholder="Ej. Transformación digital" />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label} htmlFor="client">Cliente</label>
+          <input id="client" name="client" type="text" value={form.client} onChange={handleChange} className={styles.input} placeholder="Nombre del cliente" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="offerCode">Código de oferta *</label>

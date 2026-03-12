@@ -16,6 +16,7 @@ export class ActivationsService {
         createdBy: createdByLabel,
         status: ActivationStatus.DRAFT,
         projectName: dto.projectName,
+        client: dto.client ?? null,
         offerCode: dto.offerCode,
         hubspotUrl: dto.hubspotUrl ?? null,
         recipientTo: dto.recipientTo,
@@ -47,6 +48,7 @@ export class ActivationsService {
     }
     const data: Record<string, unknown> = {};
     if (dto.projectName !== undefined) data.projectName = dto.projectName;
+    if (dto.client !== undefined) data.client = dto.client || null;
     if (dto.offerCode !== undefined) data.offerCode = dto.offerCode;
     if (dto.hubspotUrl !== undefined) data.hubspotUrl = dto.hubspotUrl || null;
     if (dto.recipientTo !== undefined) data.recipientTo = dto.recipientTo;
