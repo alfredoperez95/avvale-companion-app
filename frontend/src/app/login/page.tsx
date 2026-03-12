@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import styles from './login.module.css';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,79 +38,34 @@ export default function LoginPage() {
   };
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 400,
-          padding: '2rem',
-          background: '#fff',
-          borderRadius: 8,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        }}
-      >
-        <h1 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>Iniciar sesión</h1>
+    <main className={styles.main}>
+      <div className={styles.card}>
+        <h1 className={styles.title}>Iniciar sesión</h1>
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="email" style={{ display: 'block', marginBottom: 4 }}>
-              Email
-            </label>
+          <div className={styles.formGroup}>
+            <label htmlFor="email" className={styles.label}>Email</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                border: '1px solid #ccc',
-                borderRadius: 4,
-              }}
+              className={styles.input}
             />
           </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="password" style={{ display: 'block', marginBottom: 4 }}>
-              Contraseña
-            </label>
+          <div className={styles.formGroup}>
+            <label htmlFor="password" className={styles.label}>Contraseña</label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                border: '1px solid #ccc',
-                borderRadius: 4,
-              }}
+              className={styles.input}
             />
           </div>
-          {error && (
-            <p style={{ color: '#b00', marginBottom: '1rem', fontSize: 14 }}>{error}</p>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.6rem',
-              background: '#0854a0',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
-          >
+          {error && <p className={styles.error}>{error}</p>}
+          <button type="submit" disabled={loading} className={styles.submit}>
             {loading ? 'Entrando…' : 'Entrar'}
           </button>
         </form>

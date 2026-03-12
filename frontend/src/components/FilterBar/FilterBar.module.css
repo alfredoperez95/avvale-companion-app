@@ -1,0 +1,33 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fiori-space-3);
+  padding: var(--fiori-space-3) 0;
+  margin-bottom: var(--fiori-space-4);
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.select {
+  min-width: 10rem;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  font-size: 0.875rem;
+}
+
+.input {
+  min-width: 12rem;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  font-size: 0.875rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+  margin-right: var(--fiori-space-1);
+}

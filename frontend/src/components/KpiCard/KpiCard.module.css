@@ -1,0 +1,27 @@
+.card {
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.25rem;
+  padding: var(--fiori-space-4);
+  box-shadow: var(--fiori-shadow-1);
+}
+
+.title {
+  font-size: 0.75rem;
+  color: var(--fiori-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: var(--fiori-space-2);
+}
+
+.value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+}
+
+.subtitle {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  margin-top: var(--fiori-space-1);
+}

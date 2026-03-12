@@ -1,0 +1,35 @@
+.main {
+  padding: var(--fiori-space-8);
+  max-width: 75rem;
+  margin: 0 auto;
+}
+
+.title {
+  margin-bottom: var(--fiori-space-4);
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+}
+
+.lead {
+  margin-bottom: var(--fiori-space-6);
+  color: var(--fiori-text-secondary);
+  font-size: 0.875rem;
+}
+
+.link {
+  display: inline-block;
+  padding: var(--fiori-space-2) var(--fiori-space-4);
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-text-inverse);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.link:hover {
+  background: #0854a0;
+  color: var(--fiori-text-inverse);
+  text-decoration: none;
+}

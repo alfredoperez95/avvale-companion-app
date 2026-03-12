@@ -1,0 +1,77 @@
+.main {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--fiori-space-8);
+}
+
+.card {
+  width: 100%;
+  max-width: 25rem;
+  padding: var(--fiori-space-8);
+  background: var(--fiori-surface);
+  border-radius: 0.25rem;
+  box-shadow: var(--fiori-shadow-2);
+  border: 1px solid var(--fiori-border-light);
+}
+
+.title {
+  margin-bottom: var(--fiori-space-6);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+}
+
+.formGroup {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--fiori-space-1);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fiori-text);
+}
+
+.input {
+  width: 100%;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  font-size: 0.875rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--fiori-shell-bg);
+}
+
+.error {
+  color: var(--fiori-error);
+  font-size: 0.875rem;
+  margin-bottom: var(--fiori-space-3);
+}
+
+.submit {
+  width: 100%;
+  padding: var(--fiori-space-2) var(--fiori-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: none;
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-text-inverse);
+  cursor: pointer;
+}
+
+.submit:hover:not(:disabled) {
+  background: #0854a0;
+}
+
+.submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}

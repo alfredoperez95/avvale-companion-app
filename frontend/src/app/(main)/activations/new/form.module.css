@@ -1,0 +1,113 @@
+.page {
+  max-width: 38rem;
+  margin: 0 auto;
+}
+
+.back {
+  display: block;
+  margin-bottom: var(--fiori-space-4);
+  color: var(--fiori-link);
+  font-size: 0.875rem;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--fiori-space-6);
+  color: var(--fiori-text);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.formGroup {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--fiori-space-1);
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--fiori-text);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--fiori-shell-bg);
+}
+
+.error {
+  color: var(--fiori-error);
+  font-size: 0.875rem;
+  margin-bottom: var(--fiori-space-3);
+}
+
+.actions {
+  display: flex;
+  gap: var(--fiori-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--fiori-space-4);
+}
+
+.btnPrimary {
+  padding: var(--fiori-space-2) var(--fiori-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: none;
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-text-inverse);
+  cursor: pointer;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #0854a0;
+}
+
+.btnPrimary:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.btnSecondary {
+  display: inline-block;
+  padding: var(--fiori-space-2) var(--fiori-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: 1px solid var(--fiori-border);
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  text-decoration: none;
+}
+
+.btnSecondary:hover {
+  background: var(--fiori-nav-item-hover);
+  color: var(--fiori-text);
+  text-decoration: none;
+}
