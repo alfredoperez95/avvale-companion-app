@@ -2,6 +2,34 @@
 
 Aplicación web para gestionar activaciones por email, con backend NestJS, frontend Next.js y orquestación de envíos vía Make.
 
+---
+
+## Paso 0 — Preparar entorno
+
+Hazlo una sola vez antes de arrancar backend, frontend o base de datos.
+
+1. **Copia el ejemplo de variables y edítalo con tus valores:**
+   ```bash
+   cp .env.example .env
+   ```
+   Edita `.env` y rellena al menos:
+   - **DATABASE_URL**: `mysql://USER:PASSWORD@HOST:3306/DATABASE` (con tu MariaDB).
+   - **JWT_SECRET**: una cadena secreta larga y aleatoria (en producción no uses `change-me-in-production`).
+   - **NEXT_PUBLIC_API_URL**: en local suele ser `http://localhost:4000`; en producción, la URL pública del backend.
+
+2. **Propaga `.env` a backend y frontend:**
+   ```bash
+   chmod +x scripts/prepare-env.sh
+   ./scripts/prepare-env.sh
+   ```
+   Así `backend/` y `frontend/` tendrán su copia de `.env` y leerán las mismas variables.
+
+3. **Comprueba:** Debe existir `backend/.env` y `frontend/.env` (no los subas a Git).
+
+Siguiente: **Paso 1 — MariaDB** (si aún no tienes la base de datos) o **Paso 2 — Backend** (si ya tienes MariaDB).
+
+---
+
 ## Estructura del repositorio
 
 - `backend/` — API NestJS (Prisma, MariaDB, JWT). Incluye `Dockerfile`.
@@ -19,10 +47,7 @@ Cada servicio se construye y ejecuta con su propio Dockerfile (sin docker-compos
 
 ### 1. Variables de entorno
 
-```bash
-cp .env.example .env
-# Edita .env y define al menos JWT_SECRET en producción
-```
+Ya hecho en **Paso 0** (`.env` en la raíz y `./scripts/prepare-env.sh`). Si no, hazlo ahora.
 
 ### 2. Base de datos y tablas
 
