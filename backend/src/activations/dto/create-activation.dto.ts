@@ -1,10 +1,11 @@
-import { IsString, IsOptional, IsArray, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsArray, MinLength, Allow } from 'class-validator';
 
 export class CreateActivationDto {
   @IsString()
   @MinLength(1, { message: 'El nombre del proyecto es obligatorio' })
   projectName: string;
 
+  @Allow()
   @IsOptional()
   @IsString()
   client?: string;
@@ -25,6 +26,7 @@ export class CreateActivationDto {
   @IsString()
   recipientCc?: string;
 
+  @Allow()
   @IsOptional()
   @IsString()
   subject?: string;
