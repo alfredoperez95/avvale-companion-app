@@ -1,57 +1,136 @@
 .card {
   background: var(--fiori-surface);
   border: 1px solid var(--fiori-border-light);
-  border-radius: 0.25rem;
-  padding: var(--fiori-space-4);
-  box-shadow: var(--fiori-shadow-1);
+  border-radius: 0.5rem;
+  padding: var(--fiori-space-5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.15s ease, border-color 0.15s ease;
+  overflow: visible;
 }
+
+/* Tema Microsoft: cajas cuadradas y contenido visible */
+:global([data-theme="microsoft"]) .card {
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: var(--fiori-space-4);
+  box-sizing: border-box;
+}
+
+:global([data-theme="microsoft"]) .card .header {
+  margin-bottom: var(--fiori-space-2);
+}
+
+:global([data-theme="microsoft"]) .card .value {
+  font-size: 1.5rem;
+}
+
+:global([data-theme="microsoft"]) .card .subtitle {
+  margin-top: var(--fiori-space-1);
+  padding-top: var(--fiori-space-1);
+  font-size: 0.75rem;
+}
+
+:global([data-theme="microsoft"]) .card .title {
+  min-width: 0;
+  word-break: break-word;
+}
+
+:global([data-theme="microsoft"]) .card .header {
+  min-width: 0;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--fiori-border);
+}
+
+.cardWithIcon {
+  border-left: 3px solid var(--fiori-shell-bg);
+}
+
+.card[data-variant="total"] { border-left-color: #0854a0; }
+.card[data-variant="draft"] { border-left-color: #6b4c9a; }
+.card[data-variant="sent"] { border-left-color: #107c10; }
+.card[data-variant="error"] { border-left-color: #a4262c; }
 
 .header {
   display: flex;
   align-items: center;
-  gap: var(--fiori-space-2);
-  margin-bottom: var(--fiori-space-2);
+  gap: var(--fiori-space-3);
+  margin-bottom: var(--fiori-space-3);
 }
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  background: var(--fiori-background);
+  border: 1px solid var(--fiori-border-light);
+  flex-shrink: 0;
+}
+
+.card[data-variant="total"] .iconWrap { background: rgba(8, 84, 160, 0.08); color: #0854a0; }
+.card[data-variant="draft"] .iconWrap { background: rgba(107, 76, 154, 0.08); color: #6b4c9a; }
+.card[data-variant="sent"] .iconWrap { background: rgba(16, 124, 16, 0.08); color: #107c10; }
+.card[data-variant="error"] .iconWrap { background: rgba(164, 38, 44, 0.08); color: #a4262c; }
 
 .icon {
   flex-shrink: 0;
-  color: var(--fiori-text-secondary);
+  color: inherit;
 }
 
 .title {
   font-size: 0.75rem;
   color: var(--fiori-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  font-weight: 600;
 }
 
 .value {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.75rem;
+  font-weight: 700;
   color: var(--fiori-text);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .subtitle {
   font-size: 0.8125rem;
   color: var(--fiori-text-secondary);
-  margin-top: var(--fiori-space-1);
+  margin-top: var(--fiori-space-2);
+  padding-top: var(--fiori-space-1);
+  border-top: 1px solid var(--fiori-border-light);
 }
 
-/* Tema Fiori: tiles tipo Launchpad */
+/* Tema Fiori: tiles tipo Launchpad con más relieve */
 :global([data-theme="fiori"]) .card {
   border-radius: 0.5rem;
-  border: 0.0625rem solid var(--fiori-border-light);
-  box-shadow: 0 0 0 0.0625rem rgba(0, 0, 0, 0.08);
-  min-height: 5.5rem;
+  border: 1px solid var(--fiori-border-light);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.04);
+  min-height: 6rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  padding: var(--fiori-space-5) var(--fiori-space-6);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 :global([data-theme="fiori"]) .card:hover {
-  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.06);
-  transform: translateY(-0.0625rem);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 6px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+:global([data-theme="fiori"]) .iconWrap {
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 :global([data-theme="fiori"]) .title {
@@ -62,7 +141,11 @@
 }
 
 :global([data-theme="fiori"]) .value {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
   font-weight: 700;
   color: var(--fiori-text);
+}
+
+:global([data-theme="fiori"]) .subtitle {
+  border-top-color: rgba(0, 0, 0, 0.06);
 }

@@ -20,6 +20,17 @@
   margin-bottom: var(--fiori-space-6);
 }
 
+/* Microsoft: filas al contenido para que las tarjetas cuadradas (aspect-ratio 1) definan el alto */
+:global([data-theme="microsoft"]) .kpiSection {
+  grid-auto-rows: auto;
+  align-items: start;
+}
+
+:global([data-theme="microsoft"]) .kpiSection > * {
+  min-height: 0;
+  width: 100%;
+}
+
 /* Tema Fiori: disposición tipo Launchpad */
 :global([data-theme="fiori"]) .kpiSection {
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));

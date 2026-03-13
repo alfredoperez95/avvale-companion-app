@@ -16,7 +16,11 @@ export function KpiCard({ title, value, subtitle, href, icon }: KpiCardProps) {
   const content = (
     <>
       <div className={styles.header}>
-        {icon && <Icon name={icon} size={28} className={styles.icon} />}
+        {icon && (
+          <span className={styles.iconWrap}>
+            <Icon name={icon} size={24} className={styles.icon} />
+          </span>
+        )}
         <div className={styles.title}>{title}</div>
       </div>
       <div className={styles.value}>{value}</div>
@@ -24,13 +28,16 @@ export function KpiCard({ title, value, subtitle, href, icon }: KpiCardProps) {
     </>
   );
 
+  const cardClass = icon ? `${styles.card} ${styles.cardWithIcon}` : styles.card;
+  const cardProps = { className: cardClass, 'data-variant': icon ?? undefined };
+
   if (href) {
     return (
-      <Link href={href} className={styles.card} style={{ textDecoration: 'none', color: 'inherit' }}>
+      <Link href={href} {...cardProps} style={{ textDecoration: 'none', color: 'inherit' }}>
         {content}
       </Link>
     );
   }
 
-  return <div className={styles.card}>{content}</div>;
+  return <div {...cardProps}>{content}</div>;
 }

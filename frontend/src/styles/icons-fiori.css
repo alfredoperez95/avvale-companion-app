@@ -27,12 +27,15 @@
   font-weight: normal;
 }
 
-/* Icon name to unicode (SAP-icons PUA). Ver Icon Explorer para más: https://ui5.sap.com/test-resources/sap/m/demokit/iconExplorer */
+/* Icon name to unicode (SAP-icons PUA). Ver Icon Explorer: https://ui5.sap.com/test-resources/sap/m/demokit/iconExplorer */
 [data-theme="fiori"] .sap-icon--activities::before { content: "\e001"; }
 [data-theme="fiori"] .sap-icon--document::before { content: "\e026"; }
+[data-theme="fiori"] .sap-icon--accept::before { content: "\e05b"; } /* tick / check */
 [data-theme="fiori"] .sap-icon--email::before { content: "\e065"; }
 [data-theme="fiori"] .sap-icon--message-error::before { content: "\e0b1"; }
 [data-theme="fiori"] .sap-icon--home::before { content: "\e021"; }
 [data-theme="fiori"] .sap-icon--document-text::before { content: "\e030"; }
 [data-theme="fiori"] .sap-icon--add-document::before { content: "\e0ad"; }
 [data-theme="fiori"] .sap-icon--action-settings::before { content: "\e0c6"; }
+/* Borrador: lápiz/editar (write-2) en lugar de document */
+[data-theme="fiori"] .sap-icon--write-2::before { content: "\e034"; }
