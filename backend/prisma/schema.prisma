@@ -25,6 +25,7 @@ model User {
   name         String?
   lastName     String?  @map("last_name")
   position     String?  @map("position")
+  appearance   String?  @map("appearance")
   passwordHash String   @map("password_hash")
   role         UserRole @default(USER)
   createdAt    DateTime @default(now()) @map("created_at")

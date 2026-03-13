@@ -20,7 +20,7 @@ export class UsersService {
 
   async updateProfile(
     userId: string,
-    data: { name?: string; lastName?: string; position?: string },
+    data: { name?: string; lastName?: string; position?: string; appearance?: string | null },
   ) {
     await this.prisma.user.update({
       where: { id: userId },
@@ -28,6 +28,7 @@ export class UsersService {
         ...(data.name !== undefined && { name: data.name || null }),
         ...(data.lastName !== undefined && { lastName: data.lastName || null }),
         ...(data.position !== undefined && { position: data.position || null }),
+        ...(data.appearance !== undefined && { appearance: data.appearance || null }),
       },
     });
     return this.findById(userId);

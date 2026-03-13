@@ -1,4 +1,7 @@
-import { IsString, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsOptional, MaxLength, IsIn } from 'class-validator';
+
+export const APPEARANCE_VALUES = ['microsoft', 'fiori'] as const;
+export type AppearanceValue = (typeof APPEARANCE_VALUES)[number];
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -15,4 +18,9 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(120)
   position?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(APPEARANCE_VALUES, { message: 'Apariencia debe ser "microsoft" o "fiori"' })
+  appearance?: AppearanceValue;
 }

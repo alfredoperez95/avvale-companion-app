@@ -10,14 +10,19 @@ type Profile = {
   name: string | null;
   lastName: string | null;
   position: string | null;
+  appearance: string | null;
   role?: string;
   createdAt?: string;
 };
+
+const APPEARANCE_MICROSOFT = 'microsoft';
+const APPEARANCE_FIORI = 'fiori';
 
 export default function PerfilPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingAppearance, setSavingAppearance] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     name: '',
@@ -80,6 +85,34 @@ export default function PerfilPage() {
       setProfile(data);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const currentAppearance = profile?.appearance ?? APPEARANCE_MICROSOFT;
+
+  const handleAppearanceSelect = async (value: string) => {
+    if (value === currentAppearance || savingAppearance) return;
+    setSavingAppearance(true);
+    setError('');
+    try {
+      const res = await apiFetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appearance: value }),
+      });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.message ?? 'Error al guardar apariencia');
+        return;
+      }
+      setProfile(data);
+    } finally {
+      setSavingAppearance(false);
     }
   };
 
@@ -157,6 +190,35 @@ export default function PerfilPage() {
             </button>
           </div>
         </form>
+      </section>
+
+      <section className={styles.section} aria-labelledby="perfil-apariencia">
+        <h2 id="perfil-apariencia" className={styles.sectionTitle}>
+          Apariencia
+        </h2>
+        <div className={styles.appearanceGrid} role="group" aria-label="Seleccionar apariencia">
+          <button
+            type="button"
+            className={currentAppearance === APPEARANCE_MICROSOFT ? `${styles.appearanceCard} ${styles.appearanceCardSelected}` : styles.appearanceCard}
+            onClick={() => handleAppearanceSelect(APPEARANCE_MICROSOFT)}
+            disabled={savingAppearance}
+            aria-pressed={currentAppearance === APPEARANCE_MICROSOFT}
+          >
+            <span className={styles.appearanceCardTitle}>Microsoft Like</span>
+            <span className={styles.appearanceCardDesc}>Estilo tipo Microsoft Portal (actual)</span>
+          </button>
+          <button
+            type="button"
+            className={currentAppearance === APPEARANCE_FIORI ? `${styles.appearanceCard} ${styles.appearanceCardSelected}` : styles.appearanceCard}
+            onClick={() => handleAppearanceSelect(APPEARANCE_FIORI)}
+            disabled={savingAppearance}
+            aria-pressed={currentAppearance === APPEARANCE_FIORI}
+          >
+            <span className={styles.appearanceCardTitle}>Fiori Like</span>
+            <span className={styles.appearanceCardDesc}>Estilo SAP Fiori</span>
+          </button>
+        </div>
+        {error && <p className={styles.error}>{error}</p>}
       </section>
     </div>
   );

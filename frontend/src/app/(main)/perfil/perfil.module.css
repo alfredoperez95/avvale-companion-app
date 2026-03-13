@@ -108,3 +108,51 @@
   cursor: not-allowed;
   opacity: 0.8;
 }
+
+/* Apariencia */
+.appearanceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--fiori-space-4);
+}
+
+.appearanceCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: var(--fiori-space-4);
+  border: 2px solid var(--fiori-border-light);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.appearanceCard:hover:not(:disabled) {
+  border-color: var(--fiori-border);
+  background: var(--fiori-nav-bg);
+}
+
+.appearanceCardSelected {
+  border-color: var(--fiori-shell-bg);
+  background: var(--fiori-information-bg);
+}
+
+.appearanceCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.appearanceCardTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+  margin-bottom: var(--fiori-space-1);
+}
+
+.appearanceCardDesc {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+}
