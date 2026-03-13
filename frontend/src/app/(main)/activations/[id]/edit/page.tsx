@@ -271,21 +271,22 @@ export default function EditActivationPage() {
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="cc">CC (opcional)</label>
-          <select
+          <input
             id="cc"
+            type="text"
             value={selectedCcEmail}
             onChange={(e) => setSelectedCcEmail(e.target.value)}
+            list="cc-contacts-datalist-edit"
             className={styles.input}
-            aria-label="Seleccionar contacto en copia"
-          >
-            <option value="">Ninguno</option>
-            {selectedCcEmail && !ccContacts.some((c) => c.email === selectedCcEmail) && (
-              <option value={selectedCcEmail}>{selectedCcEmail}</option>
-            )}
+            placeholder="Escribe o elige un email en copia"
+            aria-label="Email en copia (autocompletado desde contactos)"
+            autoComplete="off"
+          />
+          <datalist id="cc-contacts-datalist-edit">
             {ccContacts.map((c) => (
               <option key={c.id} value={c.email}>{c.name} ({c.email})</option>
             ))}
-          </select>
+          </datalist>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="body">Cuerpo del correo</label>
