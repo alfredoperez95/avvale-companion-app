@@ -158,7 +158,7 @@ export default function ActivationDetailPage() {
       {activation.body && section('Cuerpo del correo', <pre className={styles.pre}>{activation.body}</pre>)}
       {urls.length > 0 &&
         section(
-          'Adjuntos',
+          'URLs recopiladas',
           <ul className={styles.list}>
             {urls.map((url, i) => (
               <li key={i}>

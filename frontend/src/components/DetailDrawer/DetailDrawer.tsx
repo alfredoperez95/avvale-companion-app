@@ -201,7 +201,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
                 const urls = parseAttachmentUrls(activation.attachmentUrls);
                 return urls.length > 0
                   ? section(
-                      'Adjuntos',
+                      'URLs recopiladas',
                       <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
                         {urls.map((url, i) => (
                           <li key={i}>

@@ -295,8 +295,8 @@ export default function NewActivationPage() {
           <textarea id="body" name="body" value={form.body} onChange={handleChange} className={styles.textarea} style={{ minHeight: 120 }} placeholder="Contenido del email (opcional)" />
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="attachmentUrlsText">URLs de adjuntos</label>
-          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs de adjuntos: una por línea o separadas por comas" aria-label="URLs de adjuntos" />
+          <label className={styles.label} htmlFor="attachmentUrlsText">URLs recopiladas</label>
+          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs recopiladas: una por línea o separadas por comas" aria-label="URLs recopiladas" />
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>
