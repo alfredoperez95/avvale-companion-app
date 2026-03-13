@@ -7,6 +7,8 @@ export interface ActivationPayloadFromExtension {
   hubspotUrl?: string;
   client?: string;
   amount?: string;
+  /** "Consulting" | "Software" (desde HubSpot) → se mapea a CONSULTORIA | SW */
+  serviceType?: string;
   attachmentUrls?: string[];
 }
 

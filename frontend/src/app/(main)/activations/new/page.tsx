@@ -58,12 +58,15 @@ export default function NewActivationPage() {
   useEffect(() => {
     const p = getActivationPayloadFromHash();
     if (!p) return;
+    const projectTypeFromServiceType =
+      p.serviceType === 'Consulting' ? 'CONSULTORIA' : p.serviceType === 'Software' ? 'SW' : '';
     setForm((prev) => ({
       ...prev,
       projectName: p.projectName ?? prev.projectName,
       client: p.client ?? prev.client,
       offerCode: p.offerCode ?? prev.offerCode,
       projectAmount: p.amount ?? prev.projectAmount,
+      projectType: projectTypeFromServiceType || prev.projectType,
       hubspotUrl: p.hubspotUrl ?? prev.hubspotUrl,
       attachmentUrlsText: p.attachmentUrls?.length ? p.attachmentUrls.join('\n') : prev.attachmentUrlsText,
     }));
