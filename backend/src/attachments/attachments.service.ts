@@ -52,6 +52,29 @@ export class AttachmentsService {
     return '.bin';
   }
 
+  /** Infiere extensión desde Content-Type cuando la URL no la trae. */
+  private getExtensionFromContentType(contentType: string | undefined): string {
+    if (!contentType) return '.bin';
+    const mime = contentType.split(';')[0].trim().toLowerCase();
+    const map: Record<string, string> = {
+      'application/pdf': '.pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+      'application/msword': '.doc',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+      'application/vnd.ms-excel': '.xls',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+      'application/vnd.ms-powerpoint': '.ppt',
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/gif': '.gif',
+      'image/webp': '.webp',
+      'text/plain': '.txt',
+      'text/csv': '.csv',
+      'application/zip': '.zip',
+    };
+    return map[mime] ?? '.bin';
+  }
+
   private getFileNameFromContentDisposition(header: string | null): string | null {
     if (!header) return null;
     const match = header.match(/filename\*?=(?:UTF-8'')?["']?([^"'\s;]+)["']?/i) ?? header.match(/filename=["']?([^"'\s;]+)["']?/i);
@@ -104,10 +127,17 @@ export class AttachmentsService {
       if (!trimmed) continue;
       try {
         const { buffer, contentType, suggestedName } = await this.downloadFromUrl(trimmed);
-        const ext = this.getExtensionFromUrl(trimmed);
+        let ext = this.getExtensionFromUrl(trimmed);
+        if (ext === '.bin' && contentType) ext = this.getExtensionFromContentType(contentType);
         const fileId = randomUUID();
-        const fileName = suggestedName && path.extname(suggestedName) ? suggestedName : `attachment_${fileId}${ext}`;
-        const safeFileName = path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, '_') || `file_${fileId}${ext}`;
+        const hasSuggestedExt = suggestedName && path.extname(suggestedName);
+        const baseFromSuggested = suggestedName ? path.basename(suggestedName).replace(/[^a-zA-Z0-9._-]/g, '_') : '';
+        const safeFileName =
+          hasSuggestedExt
+            ? baseFromSuggested
+            : baseFromSuggested
+              ? `${baseFromSuggested}${ext}`
+              : `documento_${fileId}${ext}`;
         const storedFileName = `${fileId}_${safeFileName}`;
         const storedPath = path.join('activations', activationId, storedFileName);
         const fullPath = path.join(this.baseDir, storedPath);
