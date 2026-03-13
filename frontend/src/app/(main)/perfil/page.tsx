@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import styles from './perfil.module.css';
 
@@ -227,6 +228,20 @@ export default function PerfilPage() {
         </div>
         {error && <p className={styles.error}>{error}</p>}
       </section>
+
+      {profile?.role === 'ADMIN' && (
+        <section className={`${styles.section} ${styles.adminSection}`} aria-labelledby="perfil-admin">
+          <h2 id="perfil-admin" className={styles.sectionTitle}>
+            Administración
+          </h2>
+          <Link href="/admin" className={styles.adminCard}>
+            <span className={styles.adminCardTitle}>Configuración</span>
+            <span className={styles.adminCardDesc}>
+              Gestionar áreas, director, subáreas y contactos para las activaciones.
+            </span>
+          </Link>
+        </section>
+      )}
     </div>
   );
 }
