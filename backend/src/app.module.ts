@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { ActivationsModule } from './activations/activations.module';
 import { AreasModule } from './areas/areas.module';
 import { CcContactsModule } from './cc-contacts/cc-contacts.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CcContactsModule } from './cc-contacts/cc-contacts.module';
     ActivationsModule,
     AreasModule,
     CcContactsModule,
+    UploadsModule,
   ],
 })
 export class AppModule {}

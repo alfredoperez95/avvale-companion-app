@@ -69,21 +69,90 @@ export async function downloadUrlsAndUploadAttachments(
   const errors: string[] = [];
   let uploaded = 0;
 
+  // #region agent log
+  fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' },
+    body: JSON.stringify({
+      sessionId: '62b368',
+      location: 'download-urls-and-upload.ts:start',
+      message: 'downloadUrlsAndUploadAttachments called',
+      data: { activationId, urlCount: trimmed.length },
+      timestamp: Date.now(),
+      hypothesisId: 'H2',
+    }),
+  }).catch(() => {});
+  // #endregion
+
   for (let i = 0; i < trimmed.length; i++) {
     const url = trimmed[i];
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' },
+        body: JSON.stringify({
+          sessionId: '62b368',
+          location: 'download-urls-and-upload.ts:beforeFetch',
+          message: 'fetching URL',
+          data: { index: i + 1, urlLen: url.length },
+          timestamp: Date.now(),
+          hypothesisId: 'H1',
+        }),
+      }).catch(() => {});
+      // #endregion
+
       const res = await fetch(url, {
         method: 'GET',
         credentials: 'include',
         redirect: 'follow',
       });
+
+      const contentType = res.headers.get('content-type');
+      const contentDisposition = res.headers.get('content-disposition');
+
+      // #region agent log
+      fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' },
+        body: JSON.stringify({
+          sessionId: '62b368',
+          location: 'download-urls-and-upload.ts:afterFetch',
+          message: 'fetch response',
+          data: {
+            ok: res.ok,
+            status: res.status,
+            contentType: contentType ?? null,
+            contentDisposition: contentDisposition ?? null,
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'H1,H4',
+        }),
+      }).catch(() => {});
+      // #endregion
+
       if (!res.ok) {
         errors.push(`URL ${i + 1}: HTTP ${res.status}`);
         continue;
       }
+
       const blob = await res.blob();
-      const contentType = res.headers.get('content-type');
-      const contentDisposition = res.headers.get('content-disposition');
+
+      // #region agent log
+      fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' },
+        body: JSON.stringify({
+          sessionId: '62b368',
+          location: 'download-urls-and-upload.ts:blob',
+          message: 'blob read',
+          data: { blobSize: blob.size, blobType: blob.type },
+          timestamp: Date.now(),
+          hypothesisId: 'H4',
+        }),
+      }).catch(() => {});
+      // #endregion
+
       const fileName = suggestFileName(contentDisposition, contentType, i);
 
       const formData = new FormData();
@@ -94,6 +163,26 @@ export async function downloadUrlsAndUploadAttachments(
         method: 'POST',
         body: formData,
       });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' },
+        body: JSON.stringify({
+          sessionId: '62b368',
+          location: 'download-urls-and-upload.ts:afterUpload',
+          message: 'upload response',
+          data: {
+            uploadOk: uploadRes.ok,
+            uploadStatus: uploadRes.status,
+            fileName,
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'H3',
+        }),
+      }).catch(() => {});
+      // #endregion
+
       if (!uploadRes.ok) {
         const data = await uploadRes.json().catch(() => ({}));
         errors.push(`URL ${i + 1}: ${(data as { message?: string }).message ?? 'Error al subir'}`);
@@ -102,6 +191,20 @@ export async function downloadUrlsAndUploadAttachments(
       uploaded++;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error desconocido';
+      // #region agent log
+      fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' },
+        body: JSON.stringify({
+          sessionId: '62b368',
+          location: 'download-urls-and-upload.ts:catch',
+          message: 'fetch or upload threw',
+          data: { index: i + 1, error: msg },
+          timestamp: Date.now(),
+          hypothesisId: 'H1,H4',
+        }),
+      }).catch(() => {});
+      // #endregion
       errors.push(`URL ${i + 1}: ${msg}`);
     }
   }

@@ -399,18 +399,23 @@ export default function EditActivationPage() {
           <label className={styles.label} htmlFor="attachmentUrlsText">URLs recopiladas</label>
           <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs recopiladas: una por línea o separadas por comas" aria-label="URLs recopiladas" />
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Los enlaces de HubSpot solo funcionan con tu sesión. Usa &quot;Descargar desde enlaces y adjuntar&quot; para descargarlos con tu sesión y guardarlos aquí, o ábrelos y súbelos con &quot;Añadir archivos&quot;.
+            Los enlaces de HubSpot no se pueden descargar automáticamente desde la app. Usa &quot;Abrir enlaces en nuevas pestañas&quot;, descarga los archivos con tu sesión y súbelos con &quot;Añadir archivos&quot;.
           </p>
           {form.attachmentUrlsText.trim().length > 0 && (
-            <button type="button" className={styles.btnSecondary} onClick={handleDownloadFromUrls} disabled={downloadingFromUrls} style={{ marginTop: 'var(--fiori-space-1)' }}>
-              {downloadingFromUrls ? 'Descargando y adjuntando…' : 'Descargar desde enlaces y adjuntar'}
-            </button>
+            <div style={{ marginTop: 'var(--fiori-space-1)', display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
+              <button type="button" className={styles.btnSecondary} onClick={() => form.attachmentUrlsText.split(/[\n,]/).map((u) => u.trim()).filter(Boolean).forEach((u) => window.open(u, '_blank', 'noopener'))}>
+                Abrir enlaces en nuevas pestañas
+              </button>
+              <button type="button" className={styles.btnSecondary} onClick={handleDownloadFromUrls} disabled={downloadingFromUrls}>
+                {downloadingFromUrls ? 'Descargando y adjuntando…' : 'Intentar descargar desde enlaces'}
+              </button>
+            </div>
           )}
           {downloadResult != null && (
             <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-              {downloadResult.uploaded} de {downloadResult.total} adjuntos descargados y guardados.
+              {downloadResult.uploaded > 0 ? `${downloadResult.uploaded} de ${downloadResult.total} adjuntos descargados.` : 'No se pudieron descargar automáticamente.'}
               {downloadResult.errors.length > 0 && (
-                <> Para los que no se pudieron descargar, ábrelos en otra pestaña y súbelos con &quot;Añadir archivos&quot;.</>
+                <> Usa &quot;Abrir enlaces en nuevas pestañas&quot; y luego &quot;Añadir archivos&quot;.</>
               )}
             </p>
           )}

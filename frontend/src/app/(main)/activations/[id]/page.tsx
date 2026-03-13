@@ -127,11 +127,17 @@ export default function ActivationDetailPage() {
             }
           })()
         : [];
+    // #region agent log
+    fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' }, body: JSON.stringify({ sessionId: '62b368', location: 'activations/[id]/page.tsx:handleDownloadFromUrls', message: 'handler entry', data: { id, hasActivation: !!activation, urlListLength: urlList.length, attachmentUrlsType: typeof activation?.attachmentUrls }, timestamp: Date.now(), hypothesisId: 'H2,H5' }) }).catch(() => {});
+    // #endregion
     if (urlList.length === 0) return;
     setDownloadResult(null);
     setDownloadingFromUrls(true);
     try {
       const result = await downloadUrlsAndUploadAttachments(id, urlList, apiFetch);
+      // #region agent log
+      fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' }, body: JSON.stringify({ sessionId: '62b368', location: 'activations/[id]/page.tsx:afterDownload', message: 'result', data: { uploaded: result.uploaded, total: urlList.length, errorsLen: result.errors.length, errors: result.errors }, timestamp: Date.now(), hypothesisId: 'H3' }) }).catch(() => {});
+      // #endregion
       setDownloadResult({
         uploaded: result.uploaded,
         total: urlList.length,
@@ -250,9 +256,17 @@ export default function ActivationDetailPage() {
                 </li>
               ))}
             </ul>
-            <button type="button" className={styles.linkButton} onClick={handleDownloadFromUrls} disabled={downloadingFromUrls} style={{ marginTop: 'var(--fiori-space-1)' }}>
-              {downloadingFromUrls ? 'Descargando y adjuntando…' : 'Descargar desde enlaces y adjuntar'}
-            </button>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', margin: 'var(--fiori-space-1) 0 0' }}>
+              Los enlaces de HubSpot no se pueden descargar automáticamente desde esta app (restricción del navegador). Abre los enlaces en nuevas pestañas para descargar con tu sesión y luego súbelos abajo.
+            </p>
+            <div style={{ marginTop: 'var(--fiori-space-1)', display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
+              <button type="button" className={styles.linkButton} onClick={() => urls.forEach((u) => window.open(u, '_blank', 'noopener'))}>
+                Abrir enlaces en nuevas pestañas
+              </button>
+              <button type="button" className={styles.linkButton} onClick={handleDownloadFromUrls} disabled={downloadingFromUrls}>
+                {downloadingFromUrls ? 'Descargando y adjuntando…' : 'Intentar descargar desde enlaces'}
+              </button>
+            </div>
           </>
         )}
       {activation.attachments && activation.attachments.length > 0 &&
@@ -286,9 +300,11 @@ export default function ActivationDetailPage() {
         <div className={styles.section}>
           <div className={styles.sectionContent}>
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--fiori-text-secondary)' }}>
-              {downloadResult.uploaded} de {downloadResult.total} adjuntos descargados y guardados.
+              {downloadResult.uploaded > 0
+                ? `${downloadResult.uploaded} de ${downloadResult.total} adjuntos descargados y guardados.`
+                : 'No se pudieron descargar los adjuntos automáticamente (los enlaces de HubSpot suelen bloquearlo).'}
               {downloadResult.errors.length > 0 && (
-                <> Para los enlaces que no se pudieron descargar, ábrelos en otra pestaña y súbelos con &quot;Seleccionar archivos&quot;.</>
+                <> Usa &quot;Abrir enlaces en nuevas pestañas&quot; arriba, descarga los archivos con tu sesión y súbelos con &quot;Seleccionar archivos&quot;.</>
               )}
             </p>
           </div>
@@ -298,7 +314,7 @@ export default function ActivationDetailPage() {
         'Añadir archivos',
         <>
           <p style={{ margin: '0 0 var(--fiori-space-2)', fontSize: '0.875rem', color: 'var(--fiori-text-secondary)' }}>
-            Si los enlaces son de HubSpot, usa &quot;Descargar desde enlaces y adjuntar&quot; arriba (con tu sesión). O descarga los archivos en tu ordenador y súbelos aquí.
+            Para enlaces de HubSpot: usa &quot;Abrir enlaces en nuevas pestañas&quot; arriba, descarga los archivos en tu ordenador (con tu sesión) y súbelos aquí.
           </p>
           <label className={styles.linkButton} style={{ display: 'inline-block', cursor: uploading ? 'not-allowed' : 'pointer' }}>
             <input type="file" multiple disabled={uploading} onChange={handleFileUpload} style={{ display: 'none' }} />
