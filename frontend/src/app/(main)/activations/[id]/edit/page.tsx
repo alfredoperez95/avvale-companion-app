@@ -43,6 +43,9 @@ export default function EditActivationPage() {
     body: '',
     attachmentUrlsText: '',
   });
+  const [attachments, setAttachments] = useState<{ id: string; fileName: string; originalUrl: string; contentType: string | null; createdAt: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
@@ -114,6 +117,7 @@ export default function EditActivationPage() {
           });
         });
         setSelected(items);
+        setAttachments(data.attachments ?? []);
       })
       .catch(() => setLoadError('Error al cargar'))
       .finally(() => setFetchLoading(false));
@@ -124,6 +128,37 @@ export default function EditActivationPage() {
     const value = e.target.value;
     setForm((prev) => ({ ...prev, [name]: value }));
     setError('');
+  };
+
+  const handleFileUploadEdit = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!id || !files?.length) return;
+    setUploadError('');
+    setUploading(true);
+    let failed = false;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const formData = new FormData();
+        formData.append('file', files[i]);
+        const res = await apiFetch(`/api/activations/${id}/attachments/upload`, { method: 'POST', body: formData });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setUploadError(data.message ?? 'Error al subir archivo');
+          failed = true;
+          break;
+        }
+      }
+      if (!failed) {
+        const r = await apiFetch(`/api/activations/${id}`);
+        if (r.ok) {
+          const data = await r.json();
+          setAttachments(data.attachments ?? []);
+        }
+      }
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleProjectNameBlur = () => {
@@ -335,8 +370,26 @@ export default function EditActivationPage() {
           <label className={styles.label} htmlFor="attachmentUrlsText">URLs recopiladas</label>
           <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs recopiladas: una por línea o separadas por comas" aria-label="URLs recopiladas" />
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Al guardar, los documentos se descargarán y se adjuntarán como archivos. Si cambias las URLs, se reemplazarán los adjuntos anteriores.
+            Los enlaces de HubSpot solo funcionan con tu sesión. Abre los enlaces, descarga los archivos en tu ordenador y añádelos más abajo con &quot;Añadir archivos&quot;.
           </p>
+        </div>
+        <div className={styles.formGroup}>
+          <span className={styles.label}>Archivos adjuntos</span>
+          {attachments.length > 0 && (
+            <ul style={{ margin: 'var(--fiori-space-1) 0 0', paddingLeft: '1.2rem' }}>
+              {attachments.map((att) => (
+                <li key={att.id}>{att.fileName}</li>
+              ))}
+            </ul>
+          )}
+          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
+            Añade archivos descargados desde HubSpot (o desde tu ordenador).
+          </p>
+          <label className={styles.btnSecondary} style={{ display: 'inline-block', marginTop: 'var(--fiori-space-1)', cursor: uploading ? 'not-allowed' : 'pointer' }}>
+            <input type="file" multiple disabled={uploading} onChange={handleFileUploadEdit} style={{ display: 'none' }} />
+            {uploading ? 'Subiendo…' : 'Añadir archivos'}
+          </label>
+          {uploadError && <p className={styles.error} style={{ marginTop: 'var(--fiori-space-1)' }}>{uploadError}</p>}
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>

@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards, Res } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ActivationsService } from './activations.service';
 import { AttachmentsService } from '../attachments/attachments.service';
@@ -32,6 +33,24 @@ export class ActivationsController {
   async listAttachments(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     await this.activationsService.findOneByIdAndUser(id, user.userId);
     return this.attachmentsService.getAttachmentsByActivationId(id);
+  }
+
+  @Post(':id/attachments/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAttachment(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body('originalUrl') originalUrl?: string,
+  ) {
+    await this.activationsService.findOneByIdAndUser(id, user.userId);
+    if (!file?.buffer) throw new BadRequestException('Falta el archivo');
+    const attachment = await this.attachmentsService.saveUploadedFile(
+      id,
+      { buffer: file.buffer, originalname: file.originalname, mimetype: file.mimetype },
+      originalUrl,
+    );
+    return attachment;
   }
 
   @Get(':id/attachments/:attachmentId')

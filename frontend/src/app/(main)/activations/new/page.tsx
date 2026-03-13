@@ -298,7 +298,7 @@ export default function NewActivationPage() {
           <label className={styles.label} htmlFor="attachmentUrlsText">URLs recopiladas</label>
           <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs recopiladas: una por línea o separadas por comas" aria-label="URLs recopiladas" />
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Al guardar, los documentos se descargarán y se adjuntarán como archivos a la activación.
+            Los enlaces de HubSpot solo funcionan con tu sesión. Después de crear la activación, abre los enlaces, descarga los archivos en tu ordenador y añádelos en la vista de detalle con &quot;Añadir archivos&quot;.
           </p>
         </div>
         {error && <p className={styles.error}>{error}</p>}

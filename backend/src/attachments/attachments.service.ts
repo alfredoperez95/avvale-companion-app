@@ -162,6 +162,33 @@ export class AttachmentsService {
     return { saved, failed };
   }
 
+  /** Guarda un archivo subido desde el navegador (p. ej. descargado por el usuario desde HubSpot). */
+  async saveUploadedFile(
+    activationId: string,
+    file: { buffer: Buffer; originalname: string; mimetype?: string },
+    originalUrl?: string,
+  ) {
+    const ext = path.extname(file.originalname) || this.getExtensionFromContentType(file.mimetype);
+    const fileId = randomUUID();
+    const baseName = path.basename(file.originalname, path.extname(file.originalname)).replace(/[^a-zA-Z0-9._-]/g, '_') || 'documento';
+    const safeFileName = `${baseName}${ext}`;
+    const storedFileName = `${fileId}_${safeFileName}`;
+    const storedPath = path.join('activations', activationId, storedFileName);
+    const activationDir = path.join(this.baseDir, 'activations', activationId);
+    await this.ensureDir(activationDir);
+    const fullPath = path.join(this.baseDir, storedPath);
+    await fs.writeFile(fullPath, file.buffer);
+    return this.prisma.activationAttachment.create({
+      data: {
+        activationId,
+        originalUrl: originalUrl?.trim() || '',
+        storedPath,
+        fileName: safeFileName,
+        contentType: file.mimetype?.split(';')[0].trim() || null,
+      },
+    });
+  }
+
   /** Lista los adjuntos descargados de una activación. */
   async getAttachmentsByActivationId(activationId: string) {
     return this.prisma.activationAttachment.findMany({

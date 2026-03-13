@@ -19,6 +19,8 @@ export default function ActivationDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -59,6 +61,39 @@ export default function ActivationDetailPage() {
   };
 
   const canSend = activation && (activation.status === 'DRAFT' || activation.status === 'ERROR');
+
+  const refetchActivation = () => {
+    if (!id) return;
+    apiFetch(`/api/activations/${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setActivation);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!id || !files?.length) return;
+    setUploadError('');
+    setUploading(true);
+    let failed = false;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await apiFetch(`/api/activations/${id}/attachments/upload`, { method: 'POST', body: formData });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setUploadError(data.message ?? 'Error al subir archivo');
+          failed = true;
+          break;
+        }
+      }
+      if (!failed) refetchActivation();
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const handleDeleteClick = () => setShowDeleteConfirm(true);
 
@@ -194,6 +229,19 @@ export default function ActivationDetailPage() {
             ))}
           </ul>
         )}
+      {section(
+        'Añadir archivos',
+        <>
+          <p style={{ margin: '0 0 var(--fiori-space-2)', fontSize: '0.875rem', color: 'var(--fiori-text-secondary)' }}>
+            Si los enlaces son de HubSpot, ábrelos con tu sesión, descarga los archivos en tu ordenador y súbelos aquí.
+          </p>
+          <label className={styles.linkButton} style={{ display: 'inline-block', cursor: uploading ? 'not-allowed' : 'pointer' }}>
+            <input type="file" multiple disabled={uploading} onChange={handleFileUpload} style={{ display: 'none' }} />
+            {uploading ? 'Subiendo…' : 'Seleccionar archivos'}
+          </label>
+          {uploadError && <p className={styles.errorMsg} style={{ marginTop: 'var(--fiori-space-1)' }}>{uploadError}</p>}
+        </>
+      )}
       {section(
         'Metadatos',
         <>
