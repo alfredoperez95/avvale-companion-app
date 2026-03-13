@@ -132,7 +132,7 @@ export default function NewActivationPage() {
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>
-          <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} required className={styles.input} placeholder="Ej. Transformación digital" />
+          <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} required className={styles.input} placeholder="Implementación S/4HANA Public" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="client">Cliente</label>
@@ -140,11 +140,11 @@ export default function NewActivationPage() {
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="offerCode">Código de oferta *</label>
-          <input id="offerCode" name="offerCode" type="text" value={form.offerCode} onChange={handleChange} required className={styles.input} placeholder="Ej. OF-2026-01" />
+          <input id="offerCode" name="offerCode" type="text" value={form.offerCode} onChange={handleChange} required className={styles.input} placeholder="ESP_XX_XXXX" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="hubspotUrl">URL HubSpot</label>
-          <input id="hubspotUrl" name="hubspotUrl" type="url" value={form.hubspotUrl} onChange={handleChange} className={styles.input} placeholder="https://..." />
+          <input id="hubspotUrl" name="hubspotUrl" type="url" value={form.hubspotUrl} onChange={handleChange} className={styles.input} placeholder="https://app.hubspot.com/contacts/..../" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label}>Áreas *</label>
