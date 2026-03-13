@@ -17,11 +17,12 @@ export class UpdateActivationDto {
 
   @IsOptional()
   @IsString()
+  @MinLength(1, { message: 'El importe del proyecto es obligatorio' })
   projectAmount?: string;
 
   @IsOptional()
   @IsString()
-  @IsIn(['CONSULTORIA', 'SW'])
+  @IsIn(['CONSULTORIA', 'SW'], { message: 'El tipo de oportunidad es obligatorio' })
   projectType?: 'CONSULTORIA' | 'SW';
 
   @IsOptional()

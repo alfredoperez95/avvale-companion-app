@@ -162,6 +162,14 @@ export default function EditActivationPage() {
       setError('Selecciona al menos un área o subárea.');
       return;
     }
+    if (!form.projectAmount.trim()) {
+      setError('El importe del proyecto es obligatorio.');
+      return;
+    }
+    if (!form.projectType) {
+      setError('El tipo de oportunidad es obligatorio.');
+      return;
+    }
     setSaving(true);
     try {
       const attachmentUrls = form.attachmentUrlsText
@@ -174,8 +182,8 @@ export default function EditActivationPage() {
         projectName: form.projectName.trim(),
         client: form.client.trim() || undefined,
         offerCode: form.offerCode.trim(),
-        projectAmount: form.projectAmount.trim() || undefined,
-        projectType: form.projectType || undefined,
+        projectAmount: form.projectAmount.trim(),
+        projectType: form.projectType,
         hubspotUrl: form.hubspotUrl.trim() || undefined,
         areaIds,
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
@@ -224,6 +232,18 @@ export default function EditActivationPage() {
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="offerCode">Código de oferta *</label>
           <input id="offerCode" name="offerCode" type="text" value={form.offerCode} onChange={handleChange} required className={styles.input} placeholder="ESP_XX_XXXX" />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label} htmlFor="projectAmount">Importe del proyecto *</label>
+          <input id="projectAmount" name="projectAmount" type="text" value={form.projectAmount} onChange={handleChange} required className={styles.input} placeholder="Ej. 150000" />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label} htmlFor="projectType">Tipo de oportunidad *</label>
+          <select id="projectType" name="projectType" value={form.projectType} onChange={handleChange} required className={styles.input} aria-label="Tipo de oportunidad">
+            <option value="">— Seleccionar —</option>
+            <option value="CONSULTORIA">Consultoría</option>
+            <option value="SW">SW</option>
+          </select>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="hubspotUrl">URL HubSpot</label>
@@ -306,7 +326,7 @@ export default function EditActivationPage() {
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>
-          <button type="submit" disabled={saving || selected.length === 0} className={styles.btnPrimary}>
+          <button type="submit" disabled={saving || selected.length === 0 || !form.projectAmount.trim() || !form.projectType} className={styles.btnPrimary}>
             {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>
           <Link href={`/activations/${id}`} className={styles.btnSecondary}>Cancelar</Link>

@@ -14,14 +14,13 @@ export class CreateActivationDto {
   @MinLength(1, { message: 'El código de oferta es obligatorio' })
   offerCode: string;
 
-  @IsOptional()
   @IsString()
-  projectAmount?: string;
+  @MinLength(1, { message: 'El importe del proyecto es obligatorio' })
+  projectAmount: string;
 
-  @IsOptional()
   @IsString()
-  @IsIn(['CONSULTORIA', 'SW'])
-  projectType?: 'CONSULTORIA' | 'SW';
+  @IsIn(['CONSULTORIA', 'SW'], { message: 'El tipo de oportunidad es obligatorio' })
+  projectType: 'CONSULTORIA' | 'SW';
 
   @IsOptional()
   @IsString()

@@ -91,8 +91,8 @@ export class ActivationsService {
         projectName: dto.projectName,
         client: dto.client ?? null,
         offerCode: dto.offerCode,
-        projectAmount: dto.projectAmount?.trim() || null,
-        projectType: dto.projectType ?? null,
+        projectAmount: dto.projectAmount.trim() || null,
+        projectType: dto.projectType,
         hubspotUrl: dto.hubspotUrl ?? null,
         recipientTo,
         recipientCc: dto.recipientCc?.trim() || null,
@@ -135,8 +135,8 @@ export class ActivationsService {
     if (dto.projectName !== undefined) data.projectName = dto.projectName;
     if (dto.client !== undefined) data.client = dto.client || null;
     if (dto.offerCode !== undefined) data.offerCode = dto.offerCode;
-    if (dto.projectAmount !== undefined) data.projectAmount = dto.projectAmount?.trim() || null;
-    if (dto.projectType !== undefined) data.projectType = dto.projectType ?? null;
+    if (dto.projectAmount !== undefined) data.projectAmount = dto.projectAmount.trim() || null;
+    if (dto.projectType !== undefined) data.projectType = dto.projectType;
     if (dto.hubspotUrl !== undefined) data.hubspotUrl = dto.hubspotUrl || null;
     const projectName = (dto.projectName !== undefined ? dto.projectName : activation.projectName) ?? '';
     const client = dto.client !== undefined ? dto.client : activation.client;
