@@ -17,31 +17,58 @@ const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
 export class ActivationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Obtiene emails: Director de cada área + contactos de todas sus subáreas; devuelve { recipientTo, recipientCc }. */
-  private async getRecipientsFromAreaIds(areaIds: string[]): Promise<{ recipientTo: string; recipientCc: string | null }> {
-    if (areaIds.length === 0) {
-      return { recipientTo: PLACEHOLDER_RECIPIENT, recipientCc: null };
-    }
-    const areas = await this.prisma.area.findMany({
-      where: { id: { in: areaIds } },
-      select: {
-        directorEmail: true,
-        subAreas: {
-          select: {
-            contacts: { select: { email: true } },
+  /** Obtiene emails: areaIds = área completa (director + todos contactos subáreas); subAreaIds = solo director del área + contactos de esas subáreas. */
+  private async getRecipientsFromAreasAndSubAreas(
+    areaIds: string[],
+    subAreaIds: string[] = [],
+  ): Promise<{ recipientTo: string; recipientCc: string | null }> {
+    const emails = new Set<string>();
+
+    if (areaIds.length > 0) {
+      const areas = await this.prisma.area.findMany({
+        where: { id: { in: areaIds } },
+        select: {
+          directorEmail: true,
+          subAreas: {
+            select: {
+              contacts: { select: { email: true } },
+            },
           },
         },
-      },
-    });
-    const emails = new Set<string>();
-    for (const area of areas) {
-      if (area.directorEmail?.trim()) emails.add(area.directorEmail.trim().toLowerCase());
-      for (const sub of area.subAreas) {
+      });
+      for (const area of areas) {
+        if (area.directorEmail?.trim()) emails.add(area.directorEmail.trim().toLowerCase());
+        for (const sub of area.subAreas) {
+          for (const c of sub.contacts) {
+            if (c.email?.trim()) emails.add(c.email.trim().toLowerCase());
+          }
+        }
+      }
+    }
+
+    if (subAreaIds.length > 0) {
+      const subAreas = await this.prisma.subArea.findMany({
+        where: { id: { in: subAreaIds } },
+        select: {
+          areaId: true,
+          area: { select: { directorEmail: true } },
+          contacts: { select: { email: true } },
+        },
+      });
+      const areaIdsFromSubAreas = new Set(subAreas.map((s) => s.areaId));
+      for (const areaId of areaIdsFromSubAreas) {
+        const areaRow = subAreas.find((s) => s.areaId === areaId);
+        if (areaRow?.area.directorEmail?.trim()) {
+          emails.add(areaRow.area.directorEmail.trim().toLowerCase());
+        }
+      }
+      for (const sub of subAreas) {
         for (const c of sub.contacts) {
           if (c.email?.trim()) emails.add(c.email.trim().toLowerCase());
         }
       }
     }
+
     const list = [...emails].filter(Boolean);
     const recipientTo = list.length > 0 ? list.join(', ') : PLACEHOLDER_RECIPIENT;
     return { recipientTo, recipientCc: null };
@@ -49,8 +76,13 @@ export class ActivationsService {
 
   /** Crea una activación en estado DRAFT para el usuario. */
   async create(userId: string, createdByLabel: string, dto: CreateActivationDto) {
+    const areaIds = dto.areaIds ?? [];
+    const subAreaIds = dto.subAreaIds ?? [];
+    if (areaIds.length === 0 && subAreaIds.length === 0) {
+      throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
+    }
     const subject = buildSubject(dto.projectName, dto.client ?? null);
-    const { recipientTo, recipientCc } = await this.getRecipientsFromAreaIds(dto.areaIds);
+    const { recipientTo, recipientCc } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
     const activation = await this.prisma.activation.create({
       data: {
         createdByUserId: userId,
@@ -67,9 +99,16 @@ export class ActivationsService {
         attachmentUrls: dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null,
       },
     });
-    await this.prisma.activationArea.createMany({
-      data: dto.areaIds.map((areaId) => ({ activationId: activation.id, areaId })),
-    });
+    if (areaIds.length > 0) {
+      await this.prisma.activationArea.createMany({
+        data: areaIds.map((areaId) => ({ activationId: activation.id, areaId })),
+      });
+    }
+    if (subAreaIds.length > 0) {
+      await this.prisma.activationSubArea.createMany({
+        data: subAreaIds.map((subAreaId) => ({ activationId: activation.id, subAreaId })),
+      });
+    }
     return this.findOneByIdAndUser(activation.id, userId);
   }
 
@@ -102,14 +141,25 @@ export class ActivationsService {
     if (dto.attachmentUrls !== undefined) {
       data.attachmentUrls = dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null;
     }
-    if (dto.areaIds !== undefined) {
+    if (dto.areaIds !== undefined || dto.subAreaIds !== undefined) {
+      const areaIds = dto.areaIds ?? activation.activationAreas?.map((a) => a.areaId) ?? [];
+      const subAreaIds = dto.subAreaIds ?? activation.activationSubAreas?.map((a) => a.subAreaId) ?? [];
+      if (areaIds.length === 0 && subAreaIds.length === 0) {
+        throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
+      }
       await this.prisma.activationArea.deleteMany({ where: { activationId } });
-      if (dto.areaIds.length > 0) {
+      await this.prisma.activationSubArea.deleteMany({ where: { activationId } });
+      if (areaIds.length > 0) {
         await this.prisma.activationArea.createMany({
-          data: dto.areaIds.map((areaId) => ({ activationId, areaId })),
+          data: areaIds.map((areaId) => ({ activationId, areaId })),
         });
       }
-      const { recipientTo, recipientCc } = await this.getRecipientsFromAreaIds(dto.areaIds);
+      if (subAreaIds.length > 0) {
+        await this.prisma.activationSubArea.createMany({
+          data: subAreaIds.map((subAreaId) => ({ activationId, subAreaId })),
+        });
+      }
+      const { recipientTo, recipientCc } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
       data.recipientTo = recipientTo;
       data.recipientCc = recipientCc;
     }
@@ -117,12 +167,19 @@ export class ActivationsService {
     return this.findOneByIdAndUser(activationId, userId);
   }
 
-  /** Obtiene una activación solo si pertenece al usuario, con áreas. */
+  /** Obtiene una activación solo si pertenece al usuario, con áreas y subáreas. */
   async findOneByIdAndUser(activationId: string, userId: string) {
     const activation = await this.prisma.activation.findFirst({
       where: { id: activationId, createdByUserId: userId },
       include: {
         activationAreas: { include: { area: { select: { id: true, name: true } } } },
+        activationSubAreas: {
+          include: {
+            subArea: {
+              include: { area: { select: { id: true, name: true } } },
+            },
+          },
+        },
       },
     });
     if (!activation) throw new NotFoundException('Activation no encontrada');

@@ -177,10 +177,13 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
               {section('Asunto', <p style={{ margin: 0 }}><strong>{activation.subject}</strong></p>)}
               {section(
                 'Áreas involucradas',
-                activation.activationAreas?.length ? (
+                (activation.activationAreas?.length || activation.activationSubAreas?.length) ? (
                   <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                    {activation.activationAreas.map((aa) => (
-                      <li key={aa.area.id}>{aa.area.name}</li>
+                    {activation.activationAreas?.map((aa) => (
+                      <li key={`area-${aa.area.id}`}>{aa.area.name}</li>
+                    ))}
+                    {activation.activationSubAreas?.map((asa) => (
+                      <li key={`sub-${asa.subArea.id}`}>{asa.subArea.area.name} › {asa.subArea.name}</li>
                     ))}
                   </ul>
                 ) : (

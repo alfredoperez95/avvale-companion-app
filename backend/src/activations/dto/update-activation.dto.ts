@@ -25,6 +25,11 @@ export class UpdateActivationDto {
   areaIds?: string[];
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  subAreaIds?: string[];
+
+  @IsOptional()
   @IsString()
   body?: string;
 

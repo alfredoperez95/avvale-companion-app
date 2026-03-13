@@ -26,14 +26,16 @@ import { UpdateSubAreaContactDto } from './dto/update-sub-area-contact.dto';
 export class AreasController {
   constructor(private readonly areasService: AreasService) {}
 
-  /** Lista áreas. Si ?admin=true y el usuario es ADMIN, incluye director, subáreas y contactos. */
+  /** Lista áreas. ?admin=true (ADMIN): director, subáreas y contactos. ?withSubareas=true: áreas con subAreas id+name (formulario activaciones). */
   @Get()
   async list(
     @CurrentUser() user: UserPayload,
     @Query('admin') admin?: string,
+    @Query('withSubareas') withSubareas?: string,
   ) {
     const withDetails = admin === 'true' && user.role === 'ADMIN';
-    return this.areasService.findAll(withDetails);
+    const withSubareasList = withSubareas === 'true';
+    return this.areasService.findAll(withDetails, withSubareasList);
   }
 
   @Post()

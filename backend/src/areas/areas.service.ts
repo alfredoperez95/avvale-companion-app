@@ -11,20 +11,28 @@ import { UpdateSubAreaContactDto } from './dto/update-sub-area-contact.dto';
 export class AreasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Lista todas las áreas. Con withDetails=true devuelve áreas con director, subáreas y contactos (para admin). */
-  async findAll(withDetails: boolean) {
+  /** Lista todas las áreas. Con withDetails=true devuelve áreas con director, subáreas y contactos (admin). Con withSubareas=true solo id+name de áreas y subáreas (para formulario activaciones). */
+  async findAll(withDetails: boolean, withSubareas = false) {
     return this.prisma.area.findMany({
       orderBy: { name: 'asc' },
-      include: withDetails
-        ? {
-            subAreas: {
-              orderBy: { name: 'asc' },
-              include: {
-                contacts: { orderBy: { name: 'asc' } },
+      include:
+        withDetails
+          ? {
+              subAreas: {
+                orderBy: { name: 'asc' },
+                include: {
+                  contacts: { orderBy: { name: 'asc' } },
+                },
               },
-            },
-          }
-        : undefined,
+            }
+          : withSubareas
+            ? {
+                subAreas: {
+                  orderBy: { name: 'asc' },
+                  select: { id: true, name: true },
+                },
+              }
+            : undefined,
     });
   }
 

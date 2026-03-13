@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, MinLength, Allow, ArrayMinSize } from 'class-validator';
+import { IsString, IsOptional, IsArray, MinLength, Allow } from 'class-validator';
 
 export class CreateActivationDto {
   @IsString()
@@ -20,8 +20,12 @@ export class CreateActivationDto {
 
   @IsArray()
   @IsString({ each: true })
-  @ArrayMinSize(1, { message: 'Selecciona al menos un área involucrada' })
   areaIds: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  subAreaIds?: string[];
 
   @Allow()
   @IsOptional()

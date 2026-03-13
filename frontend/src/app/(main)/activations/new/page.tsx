@@ -6,14 +6,25 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import styles from './form.module.css';
 
-type AreaOption = { id: string; name: string };
+type SubAreaOption = { id: string; name: string };
+type AreaWithSubareas = { id: string; name: string; subAreas?: SubAreaOption[] };
+type SelectedArea = { type: 'area'; areaId: string; areaName: string };
+type SelectedSubarea = { type: 'subarea'; subAreaId: string; subAreaName: string; areaId: string; areaName: string };
+type SelectedItem = SelectedArea | SelectedSubarea;
+
+function selectedKey(item: SelectedItem): string {
+  return item.type === 'area' ? `area:${item.areaId}` : `subarea:${item.subAreaId}`;
+}
+function selectedLabel(item: SelectedItem): string {
+  return item.type === 'area' ? item.areaName : `${item.areaName} › ${item.subAreaName}`;
+}
 
 export default function NewActivationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [areas, setAreas] = useState<AreaOption[]>([]);
-  const [selectedAreas, setSelectedAreas] = useState<AreaOption[]>([]);
+  const [areas, setAreas] = useState<AreaWithSubareas[]>([]);
+  const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [form, setForm] = useState({
     projectName: '',
     client: '',
@@ -26,7 +37,7 @@ export default function NewActivationPage() {
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
   useEffect(() => {
-    apiFetch('/api/areas')
+    apiFetch('/api/areas?withSubareas=true')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setAreas(Array.isArray(data) ? data : []))
       .catch(() => setAreas([]));
@@ -37,20 +48,41 @@ export default function NewActivationPage() {
     setError('');
   };
 
-  const addArea = (area: AreaOption) => {
-    if (selectedAreas.some((a) => a.id === area.id)) return;
-    setSelectedAreas((prev) => [...prev, area]);
+  const isAreaSelected = (areaId: string) => selected.some((s) => s.type === 'area' && s.areaId === areaId);
+  const isSubareaSelected = (subAreaId: string) => selected.some((s) => s.type === 'subarea' && s.subAreaId === subAreaId);
+
+  const addSelection = (value: string) => {
+    if (value.startsWith('area:')) {
+      const areaId = value.slice(5);
+      const area = areas.find((a) => a.id === areaId);
+      if (!area || isAreaSelected(areaId)) return;
+      setSelected((prev) => [...prev, { type: 'area', areaId: area.id, areaName: area.name }]);
+    } else if (value.startsWith('subarea:')) {
+      const subAreaId = value.slice(8);
+      for (const area of areas) {
+        const sub = area.subAreas?.find((s) => s.id === subAreaId);
+        if (sub) {
+          if (isSubareaSelected(subAreaId) || isAreaSelected(area.id)) return;
+          setSelected((prev) => [...prev, { type: 'subarea', subAreaId: sub.id, subAreaName: sub.name, areaId: area.id, areaName: area.name }]);
+          return;
+        }
+      }
+    }
   };
 
-  const removeArea = (id: string) => {
-    setSelectedAreas((prev) => prev.filter((a) => a.id !== id));
+  const removeSelection = (key: string) => {
+    if (key.startsWith('area:')) {
+      setSelected((prev) => prev.filter((s) => s.type !== 'area' || s.areaId !== key.slice(5)));
+    } else if (key.startsWith('subarea:')) {
+      setSelected((prev) => prev.filter((s) => s.type !== 'subarea' || s.subAreaId !== key.slice(8)));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (selectedAreas.length === 0) {
-      setError('Selecciona al menos un área involucrada.');
+    if (selected.length === 0) {
+      setError('Selecciona al menos un área o subárea.');
       return;
     }
     setLoading(true);
@@ -59,12 +91,15 @@ export default function NewActivationPage() {
         .split(/[\n,]/)
         .map((u) => u.trim())
         .filter(Boolean);
+      const areaIds = selected.filter((s): s is SelectedArea => s.type === 'area').map((s) => s.areaId);
+      const subAreaIds = selected.filter((s): s is SelectedSubarea => s.type === 'subarea').map((s) => s.subAreaId);
       const body = {
         projectName: form.projectName.trim(),
         client: form.client.trim() || undefined,
         offerCode: form.offerCode.trim(),
         hubspotUrl: form.hubspotUrl.trim() || undefined,
-        areaIds: selectedAreas.map((a) => a.id),
+        areaIds,
+        subAreaIds: subAreaIds.length ? subAreaIds : undefined,
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
       };
@@ -90,8 +125,6 @@ export default function NewActivationPage() {
     }
   };
 
-  const availableToSelect = areas.filter((a) => !selectedAreas.some((s) => s.id === a.id));
-
   return (
     <main className={styles.page}>
       <Link href="/dashboard" className={styles.back}>← Inicio</Link>
@@ -114,36 +147,51 @@ export default function NewActivationPage() {
           <input id="hubspotUrl" name="hubspotUrl" type="url" value={form.hubspotUrl} onChange={handleChange} className={styles.input} placeholder="https://..." />
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label}>Áreas involucradas en la activación *</label>
+          <label className={styles.label}>Áreas *</label>
           <div className={styles.areaTagsRow}>
             <select
               className={styles.areaSelect}
               value=""
               onChange={(e) => {
-                const id = e.target.value;
-                if (id) {
-                  const area = areas.find((a) => a.id === id);
-                  if (area) addArea(area);
+                const v = e.target.value;
+                if (v) {
+                  addSelection(v);
                   e.target.value = '';
                 }
               }}
-              aria-label="Añadir área"
+              aria-label="Añadir área o subárea"
             >
-              <option value="">Seleccionar área…</option>
-              {availableToSelect.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
+              <option value="">Seleccionar área o subárea…</option>
+              {areas.map((area) => {
+                const wholeSelected = isAreaSelected(area.id);
+                const hasSubareas = area.subAreas && area.subAreas.length > 0;
+                return (
+                  <optgroup key={area.id} label={area.name}>
+                    {!wholeSelected && (
+                      <option value={`area:${area.id}`}>
+                        {area.name} (toda el área)
+                      </option>
+                    )}
+                    {hasSubareas && !wholeSelected &&
+                      area.subAreas!.filter((sub) => !isSubareaSelected(sub.id)).map((sub) => (
+                        <option key={sub.id} value={`subarea:${sub.id}`}>
+                          {area.name} › {sub.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                );
+              })}
             </select>
-            {selectedAreas.map((a) => (
-              <span key={a.id} className={styles.areaTag}>
-                {a.name}
-                <button type="button" className={styles.areaTagRemove} onClick={() => removeArea(a.id)} aria-label={`Quitar ${a.name}`}>×</button>
+            {selected.map((item) => (
+              <span key={selectedKey(item)} className={styles.areaTag}>
+                {selectedLabel(item)}
+                <button type="button" className={styles.areaTagRemove} onClick={() => removeSelection(selectedKey(item))} aria-label={`Quitar ${selectedLabel(item)}`}>×</button>
               </span>
             ))}
           </div>
-          {selectedAreas.length === 0 && (
+          {selected.length === 0 && (
             <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-              Añade al menos un área. Los destinatarios se asignarán según los contactos configurados en cada área.
+              Añade al menos un área (o subárea si aplica). Los destinatarios se asignarán según los contactos configurados.
             </p>
           )}
         </div>
@@ -161,7 +209,7 @@ export default function NewActivationPage() {
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>
-          <button type="submit" disabled={loading || selectedAreas.length === 0} className={styles.btnPrimary}>
+          <button type="submit" disabled={loading || selected.length === 0} className={styles.btnPrimary}>
             {loading ? 'Guardando…' : 'Guardar borrador'}
           </button>
           <Link href="/activations" className={styles.btnSecondary}>Cancelar</Link>

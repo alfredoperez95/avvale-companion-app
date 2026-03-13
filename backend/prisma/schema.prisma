@@ -54,8 +54,9 @@ model SubArea {
   name      String
   createdAt DateTime         @default(now()) @map("created_at")
 
-  area     Area              @relation(fields: [areaId], references: [id], onDelete: Cascade)
-  contacts SubAreaContact[]
+  area                Area                 @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  contacts            SubAreaContact[]
+  activationSubAreas  ActivationSubArea[]
 
   @@map("sub_areas")
 }
@@ -91,8 +92,9 @@ model Activation {
   errorMessage     String?          @map("error_message")
   lastStatusAt     DateTime?        @map("last_status_at")
 
-  createdByUser User             @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  activationAreas ActivationArea[]
+  createdByUser        User                 @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  activationAreas      ActivationArea[]
+  activationSubAreas   ActivationSubArea[]
 
   @@map("activations")
 }
@@ -106,4 +108,15 @@ model ActivationArea {
 
   @@id([activationId, areaId])
   @@map("activation_areas")
+}
+
+model ActivationSubArea {
+  activationId String  @map("activation_id")
+  subAreaId    String  @map("sub_area_id")
+
+  activation Activation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+  subArea     SubArea   @relation(fields: [subAreaId], references: [id], onDelete: Cascade)
+
+  @@id([activationId, subAreaId])
+  @@map("activation_sub_areas")
 }
