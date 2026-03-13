@@ -36,6 +36,8 @@ export default function EditActivationPage() {
     projectName: '',
     client: '',
     offerCode: '',
+    projectAmount: '',
+    projectType: '' as '' | 'CONSULTORIA' | 'SW',
     hubspotUrl: '',
     body: '',
     attachmentUrlsText: '',
@@ -89,6 +91,8 @@ export default function EditActivationPage() {
           projectName: data.projectName ?? '',
           client: data.client ?? '',
           offerCode: data.offerCode ?? '',
+          projectAmount: data.projectAmount ?? '',
+          projectType: (data.projectType === 'CONSULTORIA' || data.projectType === 'SW' ? data.projectType : '') as '' | 'CONSULTORIA' | 'SW',
           hubspotUrl: data.hubspotUrl ?? '',
           body: data.body ?? '',
           attachmentUrlsText: urlsText,
@@ -114,8 +118,10 @@ export default function EditActivationPage() {
       .finally(() => setFetchLoading(false));
   }, [id, router]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const name = e.target.name;
+    const value = e.target.value;
+    setForm((prev) => ({ ...prev, [name]: value }));
     setError('');
   };
 
@@ -168,6 +174,8 @@ export default function EditActivationPage() {
         projectName: form.projectName.trim(),
         client: form.client.trim() || undefined,
         offerCode: form.offerCode.trim(),
+        projectAmount: form.projectAmount.trim() || undefined,
+        projectType: form.projectType || undefined,
         hubspotUrl: form.hubspotUrl.trim() || undefined,
         areaIds,
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,

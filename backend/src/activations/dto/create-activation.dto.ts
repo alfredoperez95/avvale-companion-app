@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, MinLength, Allow } from 'class-validator';
+import { IsString, IsOptional, IsArray, MinLength, Allow, IsIn } from 'class-validator';
 
 export class CreateActivationDto {
   @IsString()
@@ -13,6 +13,15 @@ export class CreateActivationDto {
   @IsString()
   @MinLength(1, { message: 'El código de oferta es obligatorio' })
   offerCode: string;
+
+  @IsOptional()
+  @IsString()
+  projectAmount?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['CONSULTORIA', 'SW'])
+  projectType?: 'CONSULTORIA' | 'SW';
 
   @IsOptional()
   @IsString()

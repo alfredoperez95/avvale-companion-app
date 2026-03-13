@@ -19,6 +19,11 @@ enum ActivationStatus {
   ERROR
 }
 
+enum ProjectType {
+  CONSULTORIA
+  SW
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -84,6 +89,8 @@ model Activation {
   projectName      String           @map("project_name")
   client           String?          @map("client")
   offerCode        String           @map("offer_code")
+  projectAmount    String?          @map("project_amount")
+  projectType      ProjectType?     @map("project_type")
   hubspotUrl       String?          @map("hubspot_url")
   body             String?          @map("body")
   attachmentUrls   String?          @map("attachment_urls")

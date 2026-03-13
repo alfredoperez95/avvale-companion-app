@@ -32,6 +32,8 @@ export default function NewActivationPage() {
     projectName: '',
     client: '',
     offerCode: '',
+    projectAmount: '',
+    projectType: '' as '' | 'CONSULTORIA' | 'SW',
     hubspotUrl: '',
     body: '',
     attachmentUrlsText: '',
@@ -52,8 +54,10 @@ export default function NewActivationPage() {
       .catch(() => setCcContacts([]));
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const name = e.target.name;
+    const value = e.target.value;
+    setForm((prev) => ({ ...prev, [name]: value }));
     setError('');
   };
 
@@ -106,6 +110,8 @@ export default function NewActivationPage() {
         projectName: form.projectName.trim(),
         client: form.client.trim() || undefined,
         offerCode: form.offerCode.trim(),
+        projectAmount: form.projectAmount.trim() || undefined,
+        projectType: form.projectType || undefined,
         hubspotUrl: form.hubspotUrl.trim() || undefined,
         areaIds,
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
@@ -151,6 +157,18 @@ export default function NewActivationPage() {
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="offerCode">Código de oferta *</label>
           <input id="offerCode" name="offerCode" type="text" value={form.offerCode} onChange={handleChange} required className={styles.input} placeholder="ESP_XX_XXXX" />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label} htmlFor="projectAmount">Importe del proyecto</label>
+          <input id="projectAmount" name="projectAmount" type="text" value={form.projectAmount} onChange={handleChange} className={styles.input} placeholder="Ej. 150000" />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label} htmlFor="projectType">Consultoría / SW</label>
+          <select id="projectType" name="projectType" value={form.projectType} onChange={handleChange} className={styles.input} aria-label="Tipo de proyecto">
+            <option value="">— Seleccionar —</option>
+            <option value="CONSULTORIA">Consultoría</option>
+            <option value="SW">SW</option>
+          </select>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="hubspotUrl">URL HubSpot</label>

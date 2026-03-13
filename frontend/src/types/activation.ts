@@ -6,6 +6,8 @@ export interface Activation {
   projectName: string;
   client: string | null;
   offerCode: string;
+  projectAmount: string | null;
+  projectType: 'CONSULTORIA' | 'SW' | null;
   hubspotUrl: string | null;
   body: string | null;
   attachmentUrls: string | null;
