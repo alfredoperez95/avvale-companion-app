@@ -113,10 +113,11 @@ Define `DATABASE_URL` en `.env` (o en `backend/.env`), por ejemplo:
 cd backend
 npm install
 npx prisma migrate deploy
+npx prisma generate   # regenera el cliente si cambias el schema (evita errores de tipos TS)
 npm run start:dev
 ```
 
-API en `http://localhost:4000` (prefijo `/api`).
+API en `http://localhost:4000` (prefijo `/api`). Si tras modificar `prisma/schema.prisma` el backend no compila (p. ej. "property X does not exist"), ejecuta `npx prisma generate` en `backend/`.
 
 ### 4. Frontend
 

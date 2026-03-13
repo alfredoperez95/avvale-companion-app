@@ -61,12 +61,12 @@ export default function ActivationsPage() {
         </button>
       ),
     },
+    { key: 'client', header: 'Cliente', render: (row) => row.client ?? '—' },
     { key: 'offerCode', header: 'Oferta', render: (row) => row.offerCode },
-    { key: 'recipientTo', header: 'Destinatario', render: (row) => row.recipientTo },
     { key: 'status', header: 'Estado', render: (row) => <StatusTag status={row.status} /> },
     {
       key: 'createdAt',
-      header: 'Creado',
+      header: 'Fecha',
       render: (row) => new Date(row.createdAt).toLocaleDateString('es'),
     },
   ];
