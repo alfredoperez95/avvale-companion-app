@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { getActivationPayloadFromHash } from '@/lib/activation-payload';
 import styles from './form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -52,6 +53,23 @@ export default function NewActivationPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setCcContacts(Array.isArray(data) ? data : []))
       .catch(() => setCcContacts([]));
+  }, []);
+
+  useEffect(() => {
+    const p = getActivationPayloadFromHash();
+    if (!p) return;
+    setForm((prev) => ({
+      ...prev,
+      projectName: p.projectName ?? prev.projectName,
+      client: p.client ?? prev.client,
+      offerCode: p.offerCode ?? prev.offerCode,
+      projectAmount: p.amount ?? prev.projectAmount,
+      hubspotUrl: p.hubspotUrl ?? prev.hubspotUrl,
+      attachmentUrlsText: p.attachmentUrls?.length ? p.attachmentUrls.join('\n') : prev.attachmentUrlsText,
+    }));
+    if (typeof history !== 'undefined' && typeof location !== 'undefined') {
+      history.replaceState(null, '', location.pathname + location.search);
+    }
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
