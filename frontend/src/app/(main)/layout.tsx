@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<{ id: string; email: string; name?: string | null; lastName?: string | null } | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string; name?: string | null; lastName?: string | null; appearance?: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,6 +26,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || !user) return;
+    const value = user.appearance === 'fiori' ? 'fiori' : 'microsoft';
+    document.documentElement.setAttribute('data-appearance', value);
+  }, [user]);
 
   if (loading) {
     return (

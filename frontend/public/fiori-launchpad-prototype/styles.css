@@ -1,0 +1,179 @@
+/**
+ * SAP Fiori Launchpad – prototipo base (Horizon / Quartz Light)
+ * Variables y estilos para verificación visual. Paleta completa reutilizable.
+ */
+:root {
+  /* Horizon Primary */
+  --fiori-h-primary-1: #ebf8ff;
+  --fiori-h-primary-2: #0070f2;
+  --fiori-h-primary-3: #ffffff;
+  --fiori-h-primary-4: #f5f6f7;
+  --fiori-h-primary-5: #758ca4;
+  --fiori-h-primary-6: #1d2d3e;
+
+  /* Shell */
+  --fiori-h-shell-bg: #1d2d3e;
+  --fiori-h-shell-text: #fff;
+  --fiori-h-shell-hover: rgba(255, 255, 255, 0.1);
+
+  /* Content */
+  --fiori-h-content-bg: #f5f6f7;
+  --fiori-h-surface: #fff;
+  --fiori-h-border: #758ca4;
+  --fiori-h-border-light: #e8eaed;
+
+  /* Typography */
+  --fiori-h-font: '72', '72full', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --fiori-h-text: #1d2d3e;
+  --fiori-h-text-secondary: #556b82;
+  --fiori-h-link: #0070f2;
+
+  /* Tile */
+  --fiori-h-tile-bg: #fff;
+  --fiori-h-tile-shadow: 0 0 0 0.0625rem rgba(0, 0, 0, 0.08);
+  --fiori-h-tile-shadow-hover: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.06);
+  --fiori-h-tile-radius: 0.5rem;
+
+  /* Spacing */
+  --fiori-h-space-2: 0.5rem;
+  --fiori-h-space-4: 1rem;
+  --fiori-h-space-6: 1.5rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+}
+
+body {
+  font-family: var(--fiori-h-font);
+  line-height: 1.5;
+  color: var(--fiori-h-text);
+  background: var(--fiori-h-content-bg);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ----- Shell Header ----- */
+.shell-header {
+  height: 3rem;
+  background: var(--fiori-h-shell-bg);
+  color: var(--fiori-h-shell-text);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--fiori-h-space-4);
+  box-shadow: 0 0 0.0625rem rgba(0, 0, 0, 0.12);
+}
+
+.shell-header .logo {
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin-right: var(--fiori-h-space-6);
+}
+
+.shell-header .search {
+  flex: 1;
+  max-width: 20rem;
+  margin: 0 var(--fiori-h-space-4);
+  padding: var(--fiori-h-space-2) var(--fiori-h-space-4);
+  border: none;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
+  font-size: 0.875rem;
+}
+
+.shell-header .search::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.shell-header .user-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ----- Launchpad Content ----- */
+.launchpad-content {
+  padding: var(--fiori-h-space-6);
+  max-width: 75rem;
+  margin: 0 auto;
+}
+
+.tile-group-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fiori-h-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: var(--fiori-h-space-4);
+}
+
+.tile-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--fiori-h-space-4);
+  margin-bottom: var(--fiori-h-space-6);
+}
+
+/* ----- Tile ----- */
+.tile {
+  background: var(--fiori-h-tile-bg);
+  border: 0.0625rem solid var(--fiori-h-border-light);
+  border-radius: var(--fiori-h-tile-radius);
+  box-shadow: var(--fiori-h-tile-shadow);
+  padding: var(--fiori-h-space-4);
+  min-height: 6rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--fiori-h-text);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.tile:hover {
+  box-shadow: var(--fiori-h-tile-shadow-hover);
+  transform: translateY(-0.0625rem);
+}
+
+.tile:active {
+  transform: translateY(0);
+}
+
+.tile-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: var(--fiori-h-space-2);
+  background: var(--fiori-h-primary-1);
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--fiori-h-link);
+}
+
+.tile-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: 0.125rem;
+}
+
+.tile-subtitle {
+  font-size: 0.8125rem;
+  color: var(--fiori-h-text-secondary);
+}
