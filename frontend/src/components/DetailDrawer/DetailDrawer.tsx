@@ -214,6 +214,33 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
                     )
                   : null;
               })()}
+              {activation.attachments && activation.attachments.length > 0 &&
+                section(
+                  'Archivos adjuntos',
+                  <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                    {activation.attachments.map((att) => (
+                      <li key={att.id}>
+                        <button
+                          type="button"
+                          className={styles.linkButton}
+                          onClick={async () => {
+                            const res = await apiFetch(`/api/activations/${activation.id}/attachments/${att.id}`);
+                            if (!res.ok) return;
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = att.fileName;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          {att.fileName} (descargar)
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               {section(
                 'Metadatos',
                 <>

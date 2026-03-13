@@ -102,8 +102,23 @@ model Activation {
   createdByUser        User                 @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   activationAreas      ActivationArea[]
   activationSubAreas   ActivationSubArea[]
+  attachments          ActivationAttachment[]
 
   @@map("activations")
+}
+
+model ActivationAttachment {
+  id           String   @id @default(uuid())
+  activationId String   @map("activation_id")
+  originalUrl  String   @map("original_url") @db.Text
+  storedPath   String   @map("stored_path")
+  fileName     String   @map("file_name")
+  contentType  String?  @map("content_type")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  activation Activation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+
+  @@map("activation_attachments")
 }
 
 model ActivationArea {

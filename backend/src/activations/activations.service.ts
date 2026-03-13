@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AttachmentsService } from '../attachments/attachments.service';
 import { ActivationStatus } from '@prisma/client';
 import { CreateActivationDto } from './dto/create-activation.dto';
 import { UpdateActivationDto } from './dto/update-activation.dto';
@@ -15,7 +16,10 @@ const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
 
 @Injectable()
 export class ActivationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly attachmentsService: AttachmentsService,
+  ) {}
 
   /** Obtiene emails: areaIds = área completa (director + todos contactos subáreas); subAreaIds = solo director del área + contactos de esas subáreas. */
   private async getRecipientsFromAreasAndSubAreas(
@@ -111,6 +115,9 @@ export class ActivationsService {
         data: subAreaIds.map((subAreaId) => ({ activationId: activation.id, subAreaId })),
       });
     }
+    if (dto.attachmentUrls?.length) {
+      await this.attachmentsService.saveActivationAttachments(activation.id, dto.attachmentUrls);
+    }
     return this.findOneByIdAndUser(activation.id, userId);
   }
 
@@ -145,6 +152,10 @@ export class ActivationsService {
     if (dto.body !== undefined) data.body = dto.body || null;
     if (dto.attachmentUrls !== undefined) {
       data.attachmentUrls = dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null;
+      await this.attachmentsService.deleteAttachmentsForActivation(activationId);
+      if (dto.attachmentUrls.length > 0) {
+        await this.attachmentsService.saveActivationAttachments(activationId, dto.attachmentUrls);
+      }
     }
     if (dto.areaIds !== undefined || dto.subAreaIds !== undefined) {
       const areaIds = dto.areaIds ?? activation.activationAreas?.map((a) => a.areaId) ?? [];
@@ -171,7 +182,7 @@ export class ActivationsService {
     return this.findOneByIdAndUser(activationId, userId);
   }
 
-  /** Obtiene una activación solo si pertenece al usuario, con áreas y subáreas. */
+  /** Obtiene una activación solo si pertenece al usuario, con áreas, subáreas y adjuntos. */
   async findOneByIdAndUser(activationId: string, userId: string) {
     const activation = await this.prisma.activation.findFirst({
       where: { id: activationId, createdByUserId: userId },
@@ -184,6 +195,7 @@ export class ActivationsService {
             },
           },
         },
+        attachments: { orderBy: { createdAt: 'asc' }, select: { id: true, fileName: true, originalUrl: true, contentType: true, createdAt: true } },
       },
     });
     if (!activation) throw new NotFoundException('Activation no encontrada');
@@ -211,6 +223,7 @@ export class ActivationsService {
   /** Elimina una activación solo si pertenece al usuario. */
   async remove(activationId: string, userId: string): Promise<void> {
     await this.findOneByIdAndUser(activationId, userId);
+    await this.attachmentsService.deleteAttachmentsForActivation(activationId);
     await this.prisma.activation.delete({ where: { id: activationId } });
   }
 }

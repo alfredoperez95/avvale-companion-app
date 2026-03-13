@@ -20,4 +20,6 @@ export interface Activation {
   makeRunId: string | null;
   errorMessage: string | null;
   activationAreas?: { area: { id: string; name: string } }[];
+  activationSubAreas?: { subArea: { id: string; name: string; area: { id: string; name: string } } }[];
+  attachments?: { id: string; fileName: string; originalUrl: string; contentType: string | null; createdAt: string }[];
 }

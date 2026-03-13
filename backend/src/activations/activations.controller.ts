@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ActivationsService } from './activations.service';
+import { AttachmentsService } from '../attachments/attachments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
@@ -10,7 +12,10 @@ import { UpdateActivationDto } from './dto/update-activation.dto';
 @Controller('activations')
 @UseGuards(JwtAuthGuard)
 export class ActivationsController {
-  constructor(private readonly activationsService: ActivationsService) {}
+  constructor(
+    private readonly activationsService: ActivationsService,
+    private readonly attachmentsService: AttachmentsService,
+  ) {}
 
   @Post()
   async create(@CurrentUser() user: UserPayload, @Body() dto: CreateActivationDto) {
@@ -21,6 +26,26 @@ export class ActivationsController {
   @Get()
   async list(@CurrentUser() user: UserPayload, @Query('status') status?: ActivationStatus) {
     return this.activationsService.findAllByUser(user.userId, { status });
+  }
+
+  @Get(':id/attachments')
+  async listAttachments(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    await this.activationsService.findOneByIdAndUser(id, user.userId);
+    return this.attachmentsService.getAttachmentsByActivationId(id);
+  }
+
+  @Get(':id/attachments/:attachmentId')
+  async getAttachmentFile(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @Param('attachmentId') attachmentId: string,
+    @Res() res: Response,
+  ) {
+    await this.activationsService.findOneByIdAndUser(id, user.userId);
+    const { buffer, fileName, contentType } = await this.attachmentsService.getAttachmentFile(id, attachmentId);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"`);
+    if (contentType) res.setHeader('Content-Type', contentType);
+    res.send(buffer);
   }
 
   @Get(':id')
