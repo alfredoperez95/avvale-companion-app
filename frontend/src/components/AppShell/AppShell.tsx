@@ -3,14 +3,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { Icon, type IconName } from '@/components/Icon/Icon';
 import styles from './AppShell.module.css';
 
-const navItems = [
-  { href: '/dashboard', label: 'Inicio' },
-  { href: '/activations', label: 'Activaciones' },
-  { href: '/activations/new', label: 'Nueva activación' },
+const navItems: { href: string; label: string; icon: IconName }[] = [
+  { href: '/dashboard', label: 'Inicio', icon: 'home' },
+  { href: '/activations', label: 'Activaciones', icon: 'activations' },
+  { href: '/activations/new', label: 'Nueva activación', icon: 'new' },
 ];
-const adminNavItem = { href: '/admin', label: 'Configuración' };
+const adminNavItem = { href: '/admin', label: 'Configuración', icon: 'settings' as IconName };
 
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
   const n = (name ?? '').trim();
@@ -62,12 +63,13 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
       </header>
       <div className={styles.body}>
         <aside className={styles.nav} aria-label="Navegación lateral">
-          {navItems.map(({ href, label }) => (
+          {navItems.map(({ href, label, icon }) => (
             <Link
               key={href}
               href={href}
               className={pathname === href || (href !== '/dashboard' && pathname?.startsWith(href)) ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
             >
+              <Icon name={icon} size={20} className={styles.navIcon} />
               {label}
             </Link>
           ))}
@@ -76,6 +78,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
               href={adminNavItem.href}
               className={pathname === adminNavItem.href || pathname?.startsWith(adminNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
             >
+              <Icon name={adminNavItem.icon} size={20} className={styles.navIcon} />
               {adminNavItem.label}
             </Link>
           )}

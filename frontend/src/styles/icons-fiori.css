@@ -1,0 +1,38 @@
+/* SAP Fiori icon font – Icon Explorer style (https://ui5.sap.com/test-resources/sap/m/demokit/iconExplorer) */
+/* Font from OpenUI5 SDK; load only when Fiori theme is used */
+@font-face {
+  font-family: "SAP-icons";
+  src:
+    url("https://sdk.openui5.org/resources/sap/ui/core/themes/base/fonts/SAP-icons.woff2") format("woff2"),
+    url("https://ui5.sap.com/resources/sap/ui/core/themes/base/fonts/SAP-icons.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+[data-theme="fiori"] .sap-icon {
+  font-family: "SAP-icons";
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  vertical-align: middle;
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-theme="fiori"] .sap-icon::before {
+  font-family: "SAP-icons";
+  font-style: normal;
+  font-weight: normal;
+}
+
+/* Icon name to unicode (SAP-icons PUA). Ver Icon Explorer para más: https://ui5.sap.com/test-resources/sap/m/demokit/iconExplorer */
+[data-theme="fiori"] .sap-icon--activities::before { content: "\e001"; }
+[data-theme="fiori"] .sap-icon--document::before { content: "\e026"; }
+[data-theme="fiori"] .sap-icon--email::before { content: "\e065"; }
+[data-theme="fiori"] .sap-icon--message-error::before { content: "\e0b1"; }
+[data-theme="fiori"] .sap-icon--home::before { content: "\e021"; }
+[data-theme="fiori"] .sap-icon--document-text::before { content: "\e030"; }
+[data-theme="fiori"] .sap-icon--add-document::before { content: "\e0ad"; }
+[data-theme="fiori"] .sap-icon--action-settings::before { content: "\e0c6"; }

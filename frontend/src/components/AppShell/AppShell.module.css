@@ -106,7 +106,9 @@
 }
 
 .navLink {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
   padding: var(--fiori-space-3) var(--fiori-space-4);
   color: var(--fiori-nav-text);
   text-decoration: none;
@@ -114,6 +116,10 @@
   border-left: var(--fiori-nav-item-active-border);
   border-left-color: transparent;
   transition: background 0.15s ease;
+}
+
+.navIcon {
+  flex-shrink: 0;
 }
 
 .navLink:hover {

@@ -6,12 +6,23 @@
   box-shadow: var(--fiori-shadow-1);
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  margin-bottom: var(--fiori-space-2);
+}
+
+.icon {
+  flex-shrink: 0;
+  color: var(--fiori-text-secondary);
+}
+
 .title {
   font-size: 0.75rem;
   color: var(--fiori-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  margin-bottom: var(--fiori-space-2);
 }
 
 .value {

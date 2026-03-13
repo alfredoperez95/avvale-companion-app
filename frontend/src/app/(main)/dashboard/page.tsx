@@ -96,10 +96,10 @@ export default function DashboardPage() {
         </header>
 
         <section className={styles.kpiSection} aria-label="Resumen">
-          <KpiCard title="Total activaciones" value={kpis.total} />
-          <KpiCard title="Borradores" value={kpis.draft} subtitle="Pendientes de envío" />
-          <KpiCard title="Enviadas" value={kpis.sent} />
-          <KpiCard title="Errores" value={kpis.error} />
+          <KpiCard title="Total activaciones" value={kpis.total} icon="total" />
+          <KpiCard title="Borradores" value={kpis.draft} subtitle="Pendientes de envío" icon="draft" />
+          <KpiCard title="Enviadas" value={kpis.sent} icon="sent" />
+          <KpiCard title="Errores" value={kpis.error} icon="error" />
         </section>
 
         <FilterBar
