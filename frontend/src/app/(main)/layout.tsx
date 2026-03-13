@@ -5,8 +5,15 @@ import { apiFetch } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<{ id: string; email: string; name?: string | null; lastName?: string | null; appearance?: string | null } | null>(null);
+  const [user, setUser] = useState<{
+    id: string;
+    email: string;
+    name?: string | null;
+    lastName?: string | null;
+    appearance?: string | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<'microsoft' | 'fiori'>('microsoft');
 
   useEffect(() => {
     apiFetch('/api/auth/me')
@@ -17,7 +24,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         }
         return r.ok ? r.json() : null;
       })
-      .then(setUser)
+      .then((data) => {
+        setUser(data);
+        if (data?.appearance != null) setTheme(data.appearance === 'fiori' ? 'fiori' : 'microsoft');
+      })
       .catch(() => {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
@@ -33,6 +43,17 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     document.documentElement.setAttribute('data-appearance', value);
   }, [user]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ appearance?: string | null }>)?.detail;
+      if (detail?.appearance != null) {
+        setTheme(detail.appearance === 'fiori' ? 'fiori' : 'microsoft');
+      }
+    };
+    window.addEventListener('theme-changed', handler);
+    return () => window.removeEventListener('theme-changed', handler);
+  }, []);
+
   if (loading) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--fiori-text-secondary)' }}>
@@ -43,5 +64,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   if (!user) return null;
 
-  return <AppShell user={user}>{children}</AppShell>;
+  const activeTheme = theme;
+  return (
+    <AppShell user={user} theme={activeTheme}>
+      {children}
+    </AppShell>
+  );
 }

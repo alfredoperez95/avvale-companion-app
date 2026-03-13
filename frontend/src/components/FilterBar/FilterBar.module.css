@@ -31,3 +31,16 @@
   color: var(--fiori-text-secondary);
   margin-right: var(--fiori-space-1);
 }
+
+/* Tema Fiori */
+:global([data-theme="fiori"]) .bar {
+  padding: var(--fiori-space-4) 0;
+  margin-bottom: var(--fiori-space-5);
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+:global([data-theme="fiori"]) .select,
+:global([data-theme="fiori"]) .input {
+  border-radius: 0.25rem;
+  border: 0.0625rem solid var(--fiori-border);
+}

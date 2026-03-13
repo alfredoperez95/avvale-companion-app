@@ -48,6 +48,9 @@ export default function PerfilPage() {
             lastName: data.lastName ?? '',
             position: data.position ?? '',
           });
+          if (typeof document !== 'undefined' && data.appearance != null) {
+            document.documentElement.setAttribute('data-appearance', data.appearance === 'fiori' ? 'fiori' : 'microsoft');
+          }
         }
       })
       .finally(() => setLoading(false));
@@ -111,6 +114,10 @@ export default function PerfilPage() {
         return;
       }
       setProfile(data);
+      if (typeof document !== 'undefined') {
+        document.documentElement.setAttribute('data-appearance', data.appearance === 'fiori' ? 'fiori' : 'microsoft');
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: { appearance: data.appearance } }));
+      }
     } finally {
       setSavingAppearance(false);
     }

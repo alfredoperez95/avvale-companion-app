@@ -62,3 +62,23 @@
   color: var(--fiori-text-secondary);
   font-size: 0.875rem;
 }
+
+/* Tema Fiori */
+:global([data-theme="fiori"]) .wrap {
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0 0.0625rem rgba(0, 0, 0, 0.08);
+  border: 0.0625rem solid var(--fiori-border-light);
+}
+
+:global([data-theme="fiori"]) .th {
+  padding: var(--fiori-space-4) var(--fiori-space-4);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+:global([data-theme="fiori"]) .td {
+  padding: var(--fiori-space-4);
+}

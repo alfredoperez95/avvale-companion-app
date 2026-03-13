@@ -25,14 +25,15 @@ function getInitials(name?: string | null, lastName?: string | null, email?: str
 interface AppShellProps {
   children: React.ReactNode;
   user?: { id: string; email: string; name?: string | null; lastName?: string | null } | null;
+  theme?: 'microsoft' | 'fiori';
 }
 
-export function AppShell({ children, user }: AppShellProps) {
+export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps) {
   const pathname = usePathname();
   const initials = user ? getInitials(user.name, user.lastName, user.email) : '';
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-theme={theme}>
       <header className={styles.header} role="banner">
         <span className={styles.logo}>Activaciones</span>
         <div className={styles.headerRight}>

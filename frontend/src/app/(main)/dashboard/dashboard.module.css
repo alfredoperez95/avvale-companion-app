@@ -20,6 +20,20 @@
   margin-bottom: var(--fiori-space-6);
 }
 
+/* Tema Fiori: disposición tipo Launchpad */
+:global([data-theme="fiori"]) .kpiSection {
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--fiori-space-6);
+  margin-bottom: var(--fiori-space-8);
+}
+
+:global([data-theme="fiori"]) .pageTitle {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--fiori-text);
+  margin-bottom: var(--fiori-space-4);
+}
+
 .tableSection {
   margin-top: var(--fiori-space-2);
 }
