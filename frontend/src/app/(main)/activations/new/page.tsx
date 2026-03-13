@@ -8,6 +8,7 @@ import styles from './form.module.css';
 
 type SubAreaOption = { id: string; name: string };
 type AreaWithSubareas = { id: string; name: string; subAreas?: SubAreaOption[] };
+type CcContact = { id: string; name: string; email: string };
 type SelectedArea = { type: 'area'; areaId: string; areaName: string };
 type SelectedSubarea = { type: 'subarea'; subAreaId: string; subAreaName: string; areaId: string; areaName: string };
 type SelectedItem = SelectedArea | SelectedSubarea;
@@ -24,6 +25,8 @@ export default function NewActivationPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [areas, setAreas] = useState<AreaWithSubareas[]>([]);
+  const [ccContacts, setCcContacts] = useState<CcContact[]>([]);
+  const [selectedCcEmail, setSelectedCcEmail] = useState('');
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [form, setForm] = useState({
     projectName: '',
@@ -41,6 +44,12 @@ export default function NewActivationPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setAreas(Array.isArray(data) ? data : []))
       .catch(() => setAreas([]));
+  }, []);
+  useEffect(() => {
+    apiFetch('/api/cc-contacts')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setCcContacts(Array.isArray(data) ? data : []))
+      .catch(() => setCcContacts([]));
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -100,6 +109,7 @@ export default function NewActivationPage() {
         hubspotUrl: form.hubspotUrl.trim() || undefined,
         areaIds,
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
+        recipientCc: selectedCcEmail.trim() || undefined,
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
       };
@@ -198,6 +208,21 @@ export default function NewActivationPage() {
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="subject">Asunto</label>
           <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label} htmlFor="cc">CC (opcional)</label>
+          <select
+            id="cc"
+            value={selectedCcEmail}
+            onChange={(e) => setSelectedCcEmail(e.target.value)}
+            className={styles.input}
+            aria-label="Seleccionar contacto en copia"
+          >
+            <option value="">Ninguno</option>
+            {ccContacts.map((c) => (
+              <option key={c.id} value={c.email}>{c.name} ({c.email})</option>
+            ))}
+          </select>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="body">Cuerpo del correo</label>

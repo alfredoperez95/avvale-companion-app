@@ -34,6 +34,10 @@ export class CreateActivationDto {
 
   @IsOptional()
   @IsString()
+  recipientCc?: string;
+
+  @IsOptional()
+  @IsString()
   body?: string;
 
   @IsOptional()

@@ -78,8 +78,8 @@ model Activation {
   createdBy        String           @map("created_by")
   createdByUserId  String           @map("created_by_user_id")
   status           ActivationStatus @default(DRAFT)
-  recipientTo      String           @map("recipient_to")
-  recipientCc      String?          @map("recipient_cc")
+  recipientTo      String           @map("recipient_to") @db.Text
+  recipientCc      String?          @map("recipient_cc") @db.Text
   subject          String
   projectName      String           @map("project_name")
   client           String?          @map("client")
@@ -119,4 +119,13 @@ model ActivationSubArea {
 
   @@id([activationId, subAreaId])
   @@map("activation_sub_areas")
+}
+
+model CcContact {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("cc_contacts")
 }

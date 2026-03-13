@@ -31,6 +31,10 @@ export class UpdateActivationDto {
 
   @IsOptional()
   @IsString()
+  recipientCc?: string;
+
+  @IsOptional()
+  @IsString()
   body?: string;
 
   @IsOptional()

@@ -82,7 +82,7 @@ export class ActivationsService {
       throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
     }
     const subject = buildSubject(dto.projectName, dto.client ?? null);
-    const { recipientTo, recipientCc } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
+    const { recipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
     const activation = await this.prisma.activation.create({
       data: {
         createdByUserId: userId,
@@ -93,7 +93,7 @@ export class ActivationsService {
         offerCode: dto.offerCode,
         hubspotUrl: dto.hubspotUrl ?? null,
         recipientTo,
-        recipientCc,
+        recipientCc: dto.recipientCc?.trim() || null,
         subject,
         body: dto.body ?? null,
         attachmentUrls: dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null,
@@ -137,6 +137,7 @@ export class ActivationsService {
     const projectName = (dto.projectName !== undefined ? dto.projectName : activation.projectName) ?? '';
     const client = dto.client !== undefined ? dto.client : activation.client;
     data.subject = buildSubject(projectName, client);
+    if (dto.recipientCc !== undefined) data.recipientCc = dto.recipientCc?.trim() || null;
     if (dto.body !== undefined) data.body = dto.body || null;
     if (dto.attachmentUrls !== undefined) {
       data.attachmentUrls = dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null;
@@ -159,9 +160,8 @@ export class ActivationsService {
           data: subAreaIds.map((subAreaId) => ({ activationId, subAreaId })),
         });
       }
-      const { recipientTo, recipientCc } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
+      const { recipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
       data.recipientTo = recipientTo;
-      data.recipientCc = recipientCc;
     }
     await this.prisma.activation.update({ where: { id: activationId }, data });
     return this.findOneByIdAndUser(activationId, userId);
