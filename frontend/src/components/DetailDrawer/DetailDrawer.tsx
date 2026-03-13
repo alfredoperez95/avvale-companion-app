@@ -161,7 +161,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
                     <p><strong>Importe:</strong> {activation.projectAmount}</p>
                   )}
                   {activation.projectType && (
-                    <p><strong>Tipo:</strong> {activation.projectType === 'CONSULTORIA' ? 'Consultoría' : 'SW'}</p>
+                    <p><strong>Tipo:</strong> {activation.projectType === 'CONSULTORIA' ? 'Consultoría' : 'Software'}</p>
                   )}
                   {activation.hubspotUrl && (
                     <p>

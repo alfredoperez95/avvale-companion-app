@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
+import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import styles from './form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -60,10 +61,14 @@ export default function NewActivationPage() {
     if (!p) return;
     const projectTypeFromServiceType =
       p.serviceType === 'Consulting' ? 'CONSULTORIA' : p.serviceType === 'Software' ? 'SW' : '';
+    const rawProjectName = p.projectName ?? '';
+    const parsed = rawProjectName ? parseHubSpotStyleProjectName(rawProjectName) : null;
+    const projectName = parsed ? parsed.projectDescription : rawProjectName || '';
+    const client = parsed ? parsed.client : (p.client ?? '');
     setForm((prev) => ({
       ...prev,
-      projectName: p.projectName ?? prev.projectName,
-      client: p.client ?? prev.client,
+      projectName: projectName || prev.projectName,
+      client: client || prev.client,
       offerCode: p.offerCode ?? prev.offerCode,
       projectAmount: p.amount ?? prev.projectAmount,
       projectType: projectTypeFromServiceType || prev.projectType,
@@ -80,6 +85,16 @@ export default function NewActivationPage() {
     const value = e.target.value;
     setForm((prev) => ({ ...prev, [name]: value }));
     setError('');
+  };
+
+  const handleProjectNameBlur = () => {
+    const parsed = parseHubSpotStyleProjectName(form.projectName);
+    if (!parsed) return;
+    setForm((prev) => ({
+      ...prev,
+      projectName: parsed.projectDescription,
+      ...(prev.client.trim() === '' ? { client: parsed.client } : {}),
+    }));
   };
 
   const isAreaSelected = (areaId: string) => selected.some((s) => s.type === 'area' && s.areaId === areaId);
@@ -177,7 +192,7 @@ export default function NewActivationPage() {
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>
-          <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} required className={styles.input} placeholder="Implementación S/4HANA Public" />
+          <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} onBlur={handleProjectNameBlur} required className={styles.input} placeholder="Implementación S/4HANA Public" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="client">Cliente</label>
@@ -196,7 +211,7 @@ export default function NewActivationPage() {
           <select id="projectType" name="projectType" value={form.projectType} onChange={handleChange} required className={styles.input} aria-label="Tipo de oportunidad">
             <option value="">— Seleccionar —</option>
             <option value="CONSULTORIA">Consultoría</option>
-            <option value="SW">SW</option>
+            <option value="SW">Software</option>
           </select>
         </div>
         <div className={styles.formGroup}>

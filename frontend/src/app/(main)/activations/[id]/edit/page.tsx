@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import styles from '../new/form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -125,6 +126,16 @@ export default function EditActivationPage() {
     setError('');
   };
 
+  const handleProjectNameBlur = () => {
+    const parsed = parseHubSpotStyleProjectName(form.projectName);
+    if (!parsed) return;
+    setForm((prev) => ({
+      ...prev,
+      projectName: parsed.projectDescription,
+      ...(prev.client.trim() === '' ? { client: parsed.client } : {}),
+    }));
+  };
+
   const isAreaSelected = (areaId: string) => selected.some((s) => s.type === 'area' && s.areaId === areaId);
   const isSubareaSelected = (subAreaId: string) => selected.some((s) => s.type === 'subarea' && s.subAreaId === subAreaId);
 
@@ -223,7 +234,7 @@ export default function EditActivationPage() {
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>
-          <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} required className={styles.input} placeholder="Implementación S/4HANA Public" />
+          <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} onBlur={handleProjectNameBlur} required className={styles.input} placeholder="Implementación S/4HANA Public" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="client">Cliente</label>
@@ -242,7 +253,7 @@ export default function EditActivationPage() {
           <select id="projectType" name="projectType" value={form.projectType} onChange={handleChange} required className={styles.input} aria-label="Tipo de oportunidad">
             <option value="">— Seleccionar —</option>
             <option value="CONSULTORIA">Consultoría</option>
-            <option value="SW">SW</option>
+            <option value="SW">Software</option>
           </select>
         </div>
         <div className={styles.formGroup}>

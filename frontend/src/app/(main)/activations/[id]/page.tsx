@@ -125,7 +125,7 @@ export default function ActivationDetailPage() {
             <p><strong>Importe:</strong> {activation.projectAmount}</p>
           )}
           {activation.projectType && (
-            <p><strong>Tipo:</strong> {activation.projectType === 'CONSULTORIA' ? 'Consultoría' : 'SW'}</p>
+            <p><strong>Tipo:</strong> {activation.projectType === 'CONSULTORIA' ? 'Consultoría' : 'Software'}</p>
           )}
           {activation.hubspotUrl && (
             <p><strong>HubSpot:</strong> <a href={activation.hubspotUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>{activation.hubspotUrl}</a></p>
