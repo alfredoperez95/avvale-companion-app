@@ -17,17 +17,33 @@ const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
 export class ActivationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Obtiene emails de contactos de las áreas dadas; devuelve { recipientTo, recipientCc }. */
+  /** Obtiene emails: Director de cada área + contactos de todas sus subáreas; devuelve { recipientTo, recipientCc }. */
   private async getRecipientsFromAreaIds(areaIds: string[]): Promise<{ recipientTo: string; recipientCc: string | null }> {
     if (areaIds.length === 0) {
       return { recipientTo: PLACEHOLDER_RECIPIENT, recipientCc: null };
     }
-    const contacts = await this.prisma.areaContact.findMany({
-      where: { areaId: { in: areaIds } },
-      select: { email: true },
+    const areas = await this.prisma.area.findMany({
+      where: { id: { in: areaIds } },
+      select: {
+        directorEmail: true,
+        subAreas: {
+          select: {
+            contacts: { select: { email: true } },
+          },
+        },
+      },
     });
-    const emails = [...new Set(contacts.map((c) => c.email.trim()))].filter(Boolean);
-    const recipientTo = emails.length > 0 ? emails.join(', ') : PLACEHOLDER_RECIPIENT;
+    const emails = new Set<string>();
+    for (const area of areas) {
+      if (area.directorEmail?.trim()) emails.add(area.directorEmail.trim().toLowerCase());
+      for (const sub of area.subAreas) {
+        for (const c of sub.contacts) {
+          if (c.email?.trim()) emails.add(c.email.trim().toLowerCase());
+        }
+      }
+    }
+    const list = [...emails].filter(Boolean);
+    const recipientTo = list.length > 0 ? list.join(', ') : PLACEHOLDER_RECIPIENT;
     return { recipientTo, recipientCc: null };
   }
 

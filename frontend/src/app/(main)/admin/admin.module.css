@@ -57,6 +57,56 @@
   min-width: 12rem;
 }
 
+.directorBlock {
+  margin-bottom: var(--fiori-space-3);
+  padding: var(--fiori-space-2);
+  background: var(--fiori-background);
+  border-radius: 0.25rem;
+}
+
+.directorBlock label {
+  font-size: 0.75rem;
+  color: var(--fiori-text-secondary);
+  display: block;
+  margin-bottom: 0.125rem;
+}
+
+.directorBlock input {
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  min-width: 12rem;
+  margin-right: var(--fiori-space-2);
+  margin-bottom: var(--fiori-space-1);
+}
+
+.subareaSection {
+  margin-top: var(--fiori-space-4);
+  border-top: 1px solid var(--fiori-border-light);
+  padding-top: var(--fiori-space-3);
+}
+
+.subareaBlock {
+  margin-bottom: var(--fiori-space-3);
+  padding: var(--fiori-space-2);
+  background: var(--fiori-background);
+  border-radius: 0.25rem;
+}
+
+.subareaHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  margin-bottom: var(--fiori-space-2);
+  flex-wrap: wrap;
+}
+
+.subareaName {
+  font-weight: 500;
+  color: var(--fiori-text);
+}
+
 .contactsList {
   margin: 0;
   padding-left: 1.25rem;
@@ -109,7 +159,7 @@
   flex-wrap: wrap;
 }
 
-.addAreaRow .input {
+.addAreaRowInput {
   flex: 1;
   min-width: 14rem;
   padding: var(--fiori-space-2) var(--fiori-space-3);

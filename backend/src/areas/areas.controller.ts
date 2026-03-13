@@ -16,22 +16,24 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
-import { CreateAreaContactDto } from './dto/create-area-contact.dto';
-import { UpdateAreaContactDto } from './dto/update-area-contact.dto';
+import { CreateSubAreaDto } from './dto/create-sub-area.dto';
+import { UpdateSubAreaDto } from './dto/update-sub-area.dto';
+import { CreateSubAreaContactDto } from './dto/create-sub-area-contact.dto';
+import { UpdateSubAreaContactDto } from './dto/update-sub-area-contact.dto';
 
 @Controller('areas')
 @UseGuards(JwtAuthGuard)
 export class AreasController {
   constructor(private readonly areasService: AreasService) {}
 
-  /** Lista áreas. Si ?admin=true y el usuario es ADMIN, incluye contactos. */
+  /** Lista áreas. Si ?admin=true y el usuario es ADMIN, incluye director, subáreas y contactos. */
   @Get()
   async list(
     @CurrentUser() user: UserPayload,
     @Query('admin') admin?: string,
   ) {
-    const withContacts = admin === 'true' && user.role === 'ADMIN';
-    return this.areasService.findAll(withContacts);
+    const withDetails = admin === 'true' && user.role === 'ADMIN';
+    return this.areasService.findAll(withDetails);
   }
 
   @Post()
@@ -40,34 +42,66 @@ export class AreasController {
     return this.areasService.create(dto);
   }
 
-  @Get(':id/contacts')
+  // Rutas con segmento fijo "subareas" antes de :id para que no se matchee como id
+
+  @Get('subareas/:subAreaId/contacts')
   @UseGuards(AdminGuard)
-  async listContacts(@Param('id') id: string) {
-    return this.areasService.findContactsByAreaId(id);
+  async listSubAreaContacts(@Param('subAreaId') subAreaId: string) {
+    return this.areasService.findContactsBySubAreaId(subAreaId);
   }
 
-  @Post(':id/contacts')
+  @Post('subareas/:subAreaId/contacts')
   @UseGuards(AdminGuard)
-  async addContact(
-    @Param('id') id: string,
-    @Body() dto: CreateAreaContactDto,
+  async addSubAreaContact(
+    @Param('subAreaId') subAreaId: string,
+    @Body() dto: CreateSubAreaContactDto,
   ) {
-    return this.areasService.addContact(id, dto);
+    return this.areasService.addSubAreaContact(subAreaId, dto);
   }
 
-  @Patch('contacts/:contactId')
+  @Patch('subareas/contacts/:contactId')
   @UseGuards(AdminGuard)
-  async updateContact(
+  async updateSubAreaContact(
     @Param('contactId') contactId: string,
-    @Body() dto: UpdateAreaContactDto,
+    @Body() dto: UpdateSubAreaContactDto,
   ) {
-    return this.areasService.updateContact(contactId, dto);
+    return this.areasService.updateSubAreaContact(contactId, dto);
   }
 
-  @Delete('contacts/:contactId')
+  @Delete('subareas/contacts/:contactId')
   @UseGuards(AdminGuard)
-  async removeContact(@Param('contactId') contactId: string) {
-    await this.areasService.removeContact(contactId);
+  async removeSubAreaContact(@Param('contactId') contactId: string) {
+    await this.areasService.removeSubAreaContact(contactId);
+  }
+
+  @Patch('subareas/:subAreaId')
+  @UseGuards(AdminGuard)
+  async updateSubArea(
+    @Param('subAreaId') subAreaId: string,
+    @Body() dto: UpdateSubAreaDto,
+  ) {
+    return this.areasService.updateSubArea(subAreaId, dto);
+  }
+
+  @Delete('subareas/:subAreaId')
+  @UseGuards(AdminGuard)
+  async removeSubArea(@Param('subAreaId') subAreaId: string) {
+    await this.areasService.removeSubArea(subAreaId);
+  }
+
+  @Get(':id/subareas')
+  @UseGuards(AdminGuard)
+  async listSubAreas(@Param('id') id: string) {
+    return this.areasService.findSubAreasByAreaId(id);
+  }
+
+  @Post(':id/subareas')
+  @UseGuards(AdminGuard)
+  async addSubArea(
+    @Param('id') id: string,
+    @Body() dto: CreateSubAreaDto,
+  ) {
+    return this.areasService.createSubArea(id, dto);
   }
 
   @Patch(':id')

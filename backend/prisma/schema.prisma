@@ -36,25 +36,39 @@ model User {
 }
 
 model Area {
-  id        String        @id @default(uuid())
-  name      String
-  createdAt DateTime      @default(now()) @map("created_at")
+  id            String        @id @default(uuid())
+  name          String
+  directorName  String?       @map("director_name")
+  directorEmail String?       @map("director_email")
+  createdAt     DateTime      @default(now()) @map("created_at")
 
-  contacts        AreaContact[]
+  subAreas        SubArea[]
   activationAreas ActivationArea[]
 
   @@map("areas")
 }
 
-model AreaContact {
-  id     String @id @default(uuid())
-  areaId String @map("area_id")
-  name   String
-  email  String
+model SubArea {
+  id        String           @id @default(uuid())
+  areaId    String           @map("area_id")
+  name      String
+  createdAt DateTime         @default(now()) @map("created_at")
 
-  area Area @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  area     Area              @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  contacts SubAreaContact[]
 
-  @@map("area_contacts")
+  @@map("sub_areas")
+}
+
+model SubAreaContact {
+  id       String  @id @default(uuid())
+  subAreaId String @map("sub_area_id")
+  name     String
+  email    String
+
+  subArea SubArea @relation(fields: [subAreaId], references: [id], onDelete: Cascade)
+
+  @@map("sub_area_contacts")
 }
 
 model Activation {
