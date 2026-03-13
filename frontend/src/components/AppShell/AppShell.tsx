@@ -8,23 +8,41 @@ const navItems = [
   { href: '/dashboard', label: 'Inicio' },
   { href: '/activations', label: 'Activaciones' },
   { href: '/activations/new', label: 'Nueva activación' },
-  { href: '/perfil', label: 'Mi perfil' },
 ];
+
+function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
+  const n = (name ?? '').trim();
+  const l = (lastName ?? '').trim();
+  if (n && l) return `${n[0]}${l[0]}`.toUpperCase();
+  if (n && n.length >= 2) return n.slice(0, 2).toUpperCase();
+  if (n) return n[0].toUpperCase();
+  const e = (email ?? '').trim();
+  if (e.length >= 2) return e.slice(0, 2).toUpperCase();
+  if (e) return e[0].toUpperCase();
+  return '?';
+}
 
 interface AppShellProps {
   children: React.ReactNode;
-  user?: { email: string } | null;
+  user?: { id: string; email: string; name?: string | null; lastName?: string | null } | null;
 }
 
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
+  const initials = user ? getInitials(user.name, user.lastName, user.email) : '';
 
   return (
     <div className={styles.shell}>
       <header className={styles.header} role="banner">
         <span className={styles.logo}>Activaciones</span>
         <div className={styles.headerRight}>
-          {user?.email && <span aria-label="Usuario">{user.email}</span>}
+          {user && (
+            <Link href="/perfil" className={styles.avatarLink} aria-label="Ir a mi perfil">
+              <span className={styles.avatar} aria-hidden="true">
+                {initials}
+              </span>
+            </Link>
+          )}
         </div>
       </header>
       <div className={styles.body}>

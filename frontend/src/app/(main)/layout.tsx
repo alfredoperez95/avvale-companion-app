@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string; name?: string | null; lastName?: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
