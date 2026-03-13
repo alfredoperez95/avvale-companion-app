@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { ActivationsService } from './activations.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -40,5 +40,10 @@ export class ActivationsController {
     @Body() dto: UpdateActivationDto,
   ) {
     return this.activationsService.update(id, user.userId, dto);
+  }
+
+  @Delete(':id')
+  async remove(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    await this.activationsService.remove(id, user.userId);
   }
 }

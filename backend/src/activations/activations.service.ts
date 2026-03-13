@@ -99,4 +99,10 @@ export class ActivationsService {
     });
     return this.findOneByIdAndUser(activationId, userId);
   }
+
+  /** Elimina una activación solo si pertenece al usuario. */
+  async remove(activationId: string, userId: string): Promise<void> {
+    await this.findOneByIdAndUser(activationId, userId);
+    await this.prisma.activation.delete({ where: { id: activationId } });
+  }
 }

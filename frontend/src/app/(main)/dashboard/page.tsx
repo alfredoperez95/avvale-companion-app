@@ -125,6 +125,10 @@ export default function DashboardPage() {
         activationId={selectedId}
         onClose={() => setSelectedId(null)}
         onUpdated={handleDrawerUpdated}
+        onDeleted={() => {
+          if (selectedId) setList((prev) => prev.filter((a) => a.id !== selectedId));
+          setSelectedId(null);
+        }}
       />
     </>
   );

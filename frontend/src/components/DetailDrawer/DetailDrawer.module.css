@@ -130,6 +130,18 @@
   color: var(--fiori-text-inverse);
 }
 
+.btnDanger {
+  border-color: var(--fiori-error);
+  color: var(--fiori-error);
+  margin-left: auto;
+}
+
+.btnDanger:hover {
+  background: var(--fiori-error-bg);
+  border-color: var(--fiori-error);
+  color: var(--fiori-error);
+}
+
 .errorMsg {
   font-size: 0.8125rem;
   color: var(--fiori-error);

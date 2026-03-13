@@ -15,6 +15,7 @@ export default function ActivationDetailPage() {
   const [activation, setActivation] = useState<Activation | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -56,6 +57,30 @@ export default function ActivationDetailPage() {
   };
 
   const canSend = activation && (activation.status === 'DRAFT' || activation.status === 'ERROR');
+
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!window.confirm('¿Eliminar esta activación? Esta acción no se puede deshacer.')) return;
+    setError('');
+    setDeleting(true);
+    try {
+      const res = await apiFetch(`/api/activations/${id}`, { method: 'DELETE' });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.message ?? 'Error al eliminar');
+        return;
+      }
+      router.push('/activations');
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) return <p className={styles.loading}>Cargando…</p>;
   if (!activation) return <p className={styles.error}>Activation no encontrada.</p>;
@@ -146,6 +171,9 @@ export default function ActivationDetailPage() {
             {sending ? 'Enviando…' : 'Enviar activación'}
           </button>
         )}
+        <button type="button" onClick={handleDelete} disabled={deleting} className={styles.btnDanger}>
+          {deleting ? 'Eliminando…' : 'Eliminar'}
+        </button>
       </div>
     </main>
   );

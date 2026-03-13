@@ -11,6 +11,7 @@ interface DetailDrawerProps {
   activationId: string | null;
   onClose: () => void;
   onUpdated?: (activation: Activation) => void;
+  onDeleted?: () => void;
 }
 
 function parseAttachmentUrls(attachmentUrls: string | null): string[] {
@@ -23,10 +24,11 @@ function parseAttachmentUrls(attachmentUrls: string | null): string[] {
   }
 }
 
-export function DetailDrawer({ activationId, onClose, onUpdated }: DetailDrawerProps) {
+export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: DetailDrawerProps) {
   const [activation, setActivation] = useState<Activation | null>(null);
   const [loading, setLoading] = useState(!!activationId);
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -72,6 +74,30 @@ export function DetailDrawer({ activationId, onClose, onUpdated }: DetailDrawerP
       onUpdated?.(data);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!activationId || !activation) return;
+    if (!window.confirm('¿Eliminar esta activación? Esta acción no se puede deshacer.')) return;
+    setError('');
+    setDeleting(true);
+    try {
+      const res = await apiFetch(`/api/activations/${activationId}`, { method: 'DELETE' });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.message ?? 'Error al eliminar');
+        return;
+      }
+      onDeleted?.();
+      onClose();
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -192,6 +218,9 @@ export function DetailDrawer({ activationId, onClose, onUpdated }: DetailDrawerP
                 {sending ? 'Enviando…' : 'Enviar activación'}
               </button>
             )}
+            <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Eliminando…' : 'Eliminar'}
+            </button>
             {error && <span className={styles.errorMsg}>{error}</span>}
           </div>
         )}
