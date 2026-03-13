@@ -37,6 +37,16 @@ export class AttachmentsService {
     }
   }
 
+  /** URLs de HubSpot requieren sesión; el backend no la tiene, no intentar descargar. */
+  private isHubSpotUrl(url: string): boolean {
+    try {
+      const u = new URL(url);
+      return u.hostname === 'app.hubspot.com' || u.hostname.endsWith('.hubspot.com');
+    } catch {
+      return false;
+    }
+  }
+
   private getExtensionFromUrl(url: string): string {
     try {
       const u = new URL(url);
@@ -65,12 +75,24 @@ export class AttachmentsService {
       'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
       'application/vnd.ms-powerpoint': '.ppt',
       'image/jpeg': '.jpg',
+      'image/jpg': '.jpg',
       'image/png': '.png',
       'image/gif': '.gif',
       'image/webp': '.webp',
+      'image/svg+xml': '.svg',
+      'image/bmp': '.bmp',
+      'image/tiff': '.tiff',
       'text/plain': '.txt',
       'text/csv': '.csv',
+      'text/html': '.html',
+      'text/xml': '.xml',
       'application/zip': '.zip',
+      'application/x-zip-compressed': '.zip',
+      'application/json': '.json',
+      'application/xml': '.xml',
+      'application/vnd.oasis.opendocument.text': '.odt',
+      'application/vnd.oasis.opendocument.spreadsheet': '.ods',
+      'application/vnd.oasis.opendocument.presentation': '.odp',
     };
     return map[mime] ?? '.bin';
   }
@@ -125,6 +147,7 @@ export class AttachmentsService {
     for (const originalUrl of urls) {
       const trimmed = originalUrl.trim();
       if (!trimmed) continue;
+      if (this.isHubSpotUrl(trimmed)) continue;
       try {
         const { buffer, contentType, suggestedName } = await this.downloadFromUrl(trimmed);
         let ext = this.getExtensionFromUrl(trimmed);
@@ -132,12 +155,19 @@ export class AttachmentsService {
         const fileId = randomUUID();
         const hasSuggestedExt = suggestedName && path.extname(suggestedName);
         const baseFromSuggested = suggestedName ? path.basename(suggestedName).replace(/[^a-zA-Z0-9._-]/g, '_') : '';
-        const safeFileName =
+        let safeFileName =
           hasSuggestedExt
             ? baseFromSuggested
             : baseFromSuggested
               ? `${baseFromSuggested}${ext}`
               : `documento_${fileId}${ext}`;
+        if (safeFileName.endsWith('.bin') && contentType) {
+          const betterExt = this.getExtensionFromContentType(contentType);
+          if (betterExt !== '.bin') {
+            const withoutBin = safeFileName.slice(0, -4);
+            safeFileName = withoutBin.endsWith('.') ? withoutBin + betterExt.slice(1) : withoutBin + betterExt;
+          }
+        }
         const storedFileName = `${fileId}_${safeFileName}`;
         const storedPath = path.join('activations', activationId, storedFileName);
         const fullPath = path.join(this.baseDir, storedPath);

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
+import { downloadUrlsAndUploadAttachments } from '@/lib/download-urls-and-upload';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import styles from './form.module.css';
 
@@ -178,7 +179,24 @@ export default function NewActivationPage() {
         setError(Array.isArray(data.message) ? data.message.join(', ') : data.message ?? 'Error al guardar');
         return;
       }
-      router.push('/activations');
+      const activationId = (data as { id: string }).id;
+      if (attachmentUrls.length > 0) {
+        const result = await downloadUrlsAndUploadAttachments(activationId, attachmentUrls, apiFetch);
+        try {
+          sessionStorage.setItem(
+            'activation_download_result',
+            JSON.stringify({
+              total: attachmentUrls.length,
+              uploaded: result.uploaded,
+              failed: result.failed,
+              errors: result.errors,
+            }),
+          );
+        } catch {
+          // ignore
+        }
+      }
+      router.push(`/activations/${activationId}`);
       router.refresh();
     } finally {
       setLoading(false);

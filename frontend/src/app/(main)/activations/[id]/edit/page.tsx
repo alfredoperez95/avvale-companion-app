@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
+import { downloadUrlsAndUploadAttachments } from '@/lib/download-urls-and-upload';
 import styles from '../new/form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -46,6 +47,8 @@ export default function EditActivationPage() {
   const [attachments, setAttachments] = useState<{ id: string; fileName: string; originalUrl: string; contentType: string | null; createdAt: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [downloadingFromUrls, setDownloadingFromUrls] = useState(false);
+  const [downloadResult, setDownloadResult] = useState<{ uploaded: number; total: number; errors: string[] } | null>(null);
 
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
@@ -158,6 +161,32 @@ export default function EditActivationPage() {
     } finally {
       setUploading(false);
       e.target.value = '';
+    }
+  };
+
+  const handleDownloadFromUrls = async () => {
+    if (!id) return;
+    const urlList = form.attachmentUrlsText
+      .split(/[\n,]/)
+      .map((u) => u.trim())
+      .filter(Boolean);
+    if (urlList.length === 0) return;
+    setDownloadResult(null);
+    setDownloadingFromUrls(true);
+    try {
+      const result = await downloadUrlsAndUploadAttachments(id, urlList, apiFetch);
+      setDownloadResult({
+        uploaded: result.uploaded,
+        total: urlList.length,
+        errors: result.errors,
+      });
+      const r = await apiFetch(`/api/activations/${id}`);
+      if (r.ok) {
+        const data = await r.json();
+        setAttachments(data.attachments ?? []);
+      }
+    } finally {
+      setDownloadingFromUrls(false);
     }
   };
 
@@ -370,8 +399,21 @@ export default function EditActivationPage() {
           <label className={styles.label} htmlFor="attachmentUrlsText">URLs recopiladas</label>
           <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs recopiladas: una por línea o separadas por comas" aria-label="URLs recopiladas" />
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Los enlaces de HubSpot solo funcionan con tu sesión. Abre los enlaces, descarga los archivos en tu ordenador y añádelos más abajo con &quot;Añadir archivos&quot;.
+            Los enlaces de HubSpot solo funcionan con tu sesión. Usa &quot;Descargar desde enlaces y adjuntar&quot; para descargarlos con tu sesión y guardarlos aquí, o ábrelos y súbelos con &quot;Añadir archivos&quot;.
           </p>
+          {form.attachmentUrlsText.trim().length > 0 && (
+            <button type="button" className={styles.btnSecondary} onClick={handleDownloadFromUrls} disabled={downloadingFromUrls} style={{ marginTop: 'var(--fiori-space-1)' }}>
+              {downloadingFromUrls ? 'Descargando y adjuntando…' : 'Descargar desde enlaces y adjuntar'}
+            </button>
+          )}
+          {downloadResult != null && (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
+              {downloadResult.uploaded} de {downloadResult.total} adjuntos descargados y guardados.
+              {downloadResult.errors.length > 0 && (
+                <> Para los que no se pudieron descargar, ábrelos en otra pestaña y súbelos con &quot;Añadir archivos&quot;.</>
+              )}
+            </p>
+          )}
         </div>
         <div className={styles.formGroup}>
           <span className={styles.label}>Archivos adjuntos</span>
