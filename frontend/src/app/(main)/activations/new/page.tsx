@@ -278,7 +278,7 @@ export default function NewActivationPage() {
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="attachmentUrlsText">URLs de adjuntos</label>
-          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="Una URL por línea o separadas por comas" />
+          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs de adjuntos: una por línea o separadas por comas" aria-label="URLs de adjuntos" />
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>
