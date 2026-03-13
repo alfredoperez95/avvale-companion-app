@@ -216,7 +216,7 @@ export default function NewActivationPage() {
             type="text"
             value={selectedCcEmail}
             onChange={(e) => setSelectedCcEmail(e.target.value)}
-            list="cc-contacts-datalist"
+            list={selectedCcEmail.trim().length > 2 ? 'cc-contacts-datalist' : undefined}
             className={styles.input}
             placeholder="Escribe o elige un email en copia"
             aria-label="Email en copia (autocompletado desde contactos)"
