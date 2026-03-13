@@ -5,8 +5,7 @@ Prototipo en HTML y CSS vanilla que refleja la estética base de SAP Fiori (Hori
 ## Verificación manual
 
 1. Con el frontend en marcha (`npm run dev`), abre en el navegador:
-   - **http://localhost:3000/fiori-launchpad-prototype/**
-   - o **http://localhost:3000/fiori-launchpad-prototype/index.html**
+   - **http://localhost:3000/fiori-launchpad-prototype/index.html**
 
 2. Comprueba:
    - **Shell Header**: barra superior oscura (#1d2d3e), logo, búsqueda, avatar.
