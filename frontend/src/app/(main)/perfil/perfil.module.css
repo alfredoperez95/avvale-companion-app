@@ -1,0 +1,110 @@
+.page {
+  max-width: 38rem;
+  margin: 0 auto;
+}
+
+.loading {
+  padding: var(--fiori-space-8);
+  color: var(--fiori-text-secondary);
+}
+
+.header {
+  margin-bottom: var(--fiori-space-6);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+}
+
+.section {
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.25rem;
+  padding: var(--fiori-space-6);
+  box-shadow: var(--fiori-shadow-1);
+}
+
+.sectionTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  margin-bottom: var(--fiori-space-4);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGroup {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--fiori-space-1);
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--fiori-text);
+}
+
+.input {
+  width: 100%;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--fiori-shell-bg);
+}
+
+.inputReadOnly {
+  width: 100%;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.25rem;
+  background: var(--fiori-nav-bg);
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--fiori-text-secondary);
+  cursor: default;
+}
+
+.error {
+  color: var(--fiori-error);
+  font-size: 0.875rem;
+  margin-bottom: var(--fiori-space-3);
+}
+
+.actions {
+  margin-top: var(--fiori-space-4);
+}
+
+.btnPrimary {
+  padding: var(--fiori-space-2) var(--fiori-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: none;
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-text-inverse);
+  cursor: pointer;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #0854a0;
+}
+
+.btnPrimary:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}

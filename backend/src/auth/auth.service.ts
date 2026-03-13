@@ -34,6 +34,16 @@ export class AuthService {
     return this.usersService.findById(userId);
   }
 
+  async updateProfile(
+    userId: string,
+    dto: { name?: string; lastName?: string; position?: string },
+  ) {
+    const user = await this.usersService.updateProfile(userId, dto);
+    if (!user) return null;
+    const { passwordHash: _, ...rest } = user;
+    return rest;
+  }
+
   private buildTokenResponse(userId: string, email: string) {
     const payload: JwtPayload = { sub: userId, email };
     const accessToken = this.jwtService.sign(payload);

@@ -1,7 +1,8 @@
-import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { UserPayload } from './decorators/user-payload';
@@ -27,5 +28,11 @@ export class AuthController {
     if (!user) return null;
     const { passwordHash: _, ...rest } = user;
     return rest;
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(@CurrentUser() payload: UserPayload, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(payload.userId, dto);
   }
 }

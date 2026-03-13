@@ -18,6 +18,21 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   }
 
+  async updateProfile(
+    userId: string,
+    data: { name?: string; lastName?: string; position?: string },
+  ) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.name !== undefined && { name: data.name || null }),
+        ...(data.lastName !== undefined && { lastName: data.lastName || null }),
+        ...(data.position !== undefined && { position: data.position || null }),
+      },
+    });
+    return this.findById(userId);
+  }
+
   async create(dto: RegisterDto) {
     const existing = await this.findByEmail(dto.email);
     if (existing) throw new ConflictException('El email ya está registrado');

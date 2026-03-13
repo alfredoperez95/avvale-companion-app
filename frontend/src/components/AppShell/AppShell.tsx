@@ -8,6 +8,7 @@ const navItems = [
   { href: '/dashboard', label: 'Inicio' },
   { href: '/activations', label: 'Activaciones' },
   { href: '/activations/new', label: 'Nueva activación' },
+  { href: '/perfil', label: 'Mi perfil' },
 ];
 
 interface AppShellProps {
