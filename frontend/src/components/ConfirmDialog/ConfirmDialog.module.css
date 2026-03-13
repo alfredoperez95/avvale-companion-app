@@ -1,0 +1,71 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--fiori-space-4);
+}
+
+.dialog {
+  background: var(--fiori-surface);
+  border-radius: 0.25rem;
+  box-shadow: var(--fiori-shadow-2);
+  border: 1px solid var(--fiori-border-light);
+  min-width: 20rem;
+  max-width: 28rem;
+}
+
+.header {
+  padding: var(--fiori-space-4);
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+}
+
+.body {
+  padding: var(--fiori-space-4);
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+}
+
+.footer {
+  padding: var(--fiori-space-4);
+  border-top: 1px solid var(--fiori-border-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--fiori-space-3);
+}
+
+.btn {
+  padding: var(--fiori-space-2) var(--fiori-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: 1px solid var(--fiori-border);
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--fiori-nav-item-hover);
+}
+
+.btnDanger {
+  border-color: var(--fiori-error);
+  color: var(--fiori-error);
+  background: var(--fiori-surface);
+}
+
+.btnDanger:hover {
+  background: var(--fiori-error-bg);
+  border-color: var(--fiori-error);
+  color: var(--fiori-error);
+}

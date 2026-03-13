@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
+import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import styles from './DetailDrawer.module.css';
 
 interface DetailDrawerProps {
@@ -29,6 +30,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
   const [loading, setLoading] = useState(!!activationId);
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -77,9 +79,11 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => setShowDeleteConfirm(true);
+
+  const handleDeleteConfirm = async () => {
     if (!activationId || !activation) return;
-    if (!window.confirm('¿Eliminar esta activación? Esta acción no se puede deshacer.')) return;
+    setShowDeleteConfirm(false);
     setError('');
     setDeleting(true);
     try {
@@ -100,6 +104,8 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
       setDeleting(false);
     }
   };
+
+  const handleDeleteCancel = () => setShowDeleteConfirm(false);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
@@ -218,13 +224,23 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
                 {sending ? 'Enviando…' : 'Enviar activación'}
               </button>
             )}
-            <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={handleDelete} disabled={deleting}>
+            <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={handleDeleteClick} disabled={deleting}>
               {deleting ? 'Eliminando…' : 'Eliminar'}
             </button>
             {error && <span className={styles.errorMsg}>{error}</span>}
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Eliminar activación"
+        message="¿Eliminar esta activación? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </>
   );
 }

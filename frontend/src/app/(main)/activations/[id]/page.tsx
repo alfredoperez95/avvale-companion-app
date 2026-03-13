@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
+import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import styles from './detail.module.css';
 
 export default function ActivationDetailPage() {
@@ -16,6 +17,7 @@ export default function ActivationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -58,9 +60,11 @@ export default function ActivationDetailPage() {
 
   const canSend = activation && (activation.status === 'DRAFT' || activation.status === 'ERROR');
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => setShowDeleteConfirm(true);
+
+  const handleDeleteConfirm = async () => {
     if (!id) return;
-    if (!window.confirm('¿Eliminar esta activación? Esta acción no se puede deshacer.')) return;
+    setShowDeleteConfirm(false);
     setError('');
     setDeleting(true);
     try {
@@ -171,10 +175,20 @@ export default function ActivationDetailPage() {
             {sending ? 'Enviando…' : 'Enviar activación'}
           </button>
         )}
-        <button type="button" onClick={handleDelete} disabled={deleting} className={styles.btnDanger}>
+        <button type="button" onClick={handleDeleteClick} disabled={deleting} className={styles.btnDanger}>
           {deleting ? 'Eliminando…' : 'Eliminar'}
         </button>
       </div>
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Eliminar activación"
+        message="¿Eliminar esta activación? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </main>
   );
 }
