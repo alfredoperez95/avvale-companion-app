@@ -26,6 +26,21 @@
   margin-right: var(--fiori-space-6);
 }
 
+.logoLink {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  margin-right: var(--fiori-space-6);
+  text-decoration: none;
+}
+
+.logoImage {
+  height: calc(var(--fiori-shell-height) - (var(--fiori-space-3) * 2));
+  width: auto;
+  max-height: 2.25rem;
+  object-fit: contain;
+}
+
 .headerRight {
   margin-left: auto;
   display: flex;

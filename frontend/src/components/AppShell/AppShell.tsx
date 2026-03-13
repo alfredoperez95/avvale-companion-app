@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import styles from './AppShell.module.css';
 
@@ -35,7 +36,16 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
   return (
     <div className={styles.shell} data-theme={theme}>
       <header className={styles.header} role="banner">
-        <span className={styles.logo}>Activaciones</span>
+        <Link href="/dashboard" className={styles.logoLink} aria-label="Ir al inicio">
+          <Image
+            src="https://www.avvale.com/hubfs/avvale-logo-hor-col-neg-1.png"
+            alt="Avvale"
+            width={160}
+            height={36}
+            className={styles.logoImage}
+            priority
+          />
+        </Link>
         <div className={styles.headerRight}>
           {user && (
             <Link href="/perfil" className={styles.avatarLink} aria-label="Ir a mi perfil">
