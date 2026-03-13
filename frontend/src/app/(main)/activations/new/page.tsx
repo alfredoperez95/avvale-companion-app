@@ -1,37 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import styles from './form.module.css';
 
+type AreaOption = { id: string; name: string };
+
 export default function NewActivationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [areas, setAreas] = useState<AreaOption[]>([]);
+  const [selectedAreas, setSelectedAreas] = useState<AreaOption[]>([]);
   const [form, setForm] = useState({
     projectName: '',
     client: '',
     offerCode: '',
     hubspotUrl: '',
-    recipientTo: '',
-    recipientCc: '',
-    templateCode: '',
     body: '',
     attachmentUrlsText: '',
   });
 
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
+  useEffect(() => {
+    apiFetch('/api/areas')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setAreas(Array.isArray(data) ? data : []))
+      .catch(() => setAreas([]));
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setError('');
   };
 
+  const addArea = (area: AreaOption) => {
+    if (selectedAreas.some((a) => a.id === area.id)) return;
+    setSelectedAreas((prev) => [...prev, area]);
+  };
+
+  const removeArea = (id: string) => {
+    setSelectedAreas((prev) => prev.filter((a) => a.id !== id));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (selectedAreas.length === 0) {
+      setError('Selecciona al menos un área involucrada.');
+      return;
+    }
     setLoading(true);
     try {
       const attachmentUrls = form.attachmentUrlsText
@@ -43,9 +64,7 @@ export default function NewActivationPage() {
         client: form.client.trim() || undefined,
         offerCode: form.offerCode.trim(),
         hubspotUrl: form.hubspotUrl.trim() || undefined,
-        recipientTo: form.recipientTo.trim(),
-        recipientCc: form.recipientCc.trim() || undefined,
-        templateCode: form.templateCode.trim(),
+        areaIds: selectedAreas.map((a) => a.id),
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
       };
@@ -71,6 +90,8 @@ export default function NewActivationPage() {
     }
   };
 
+  const availableToSelect = areas.filter((a) => !selectedAreas.some((s) => s.id === a.id));
+
   return (
     <main className={styles.page}>
       <Link href="/dashboard" className={styles.back}>← Inicio</Link>
@@ -93,20 +114,42 @@ export default function NewActivationPage() {
           <input id="hubspotUrl" name="hubspotUrl" type="url" value={form.hubspotUrl} onChange={handleChange} className={styles.input} placeholder="https://..." />
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="recipientTo">Destinatario (To) *</label>
-          <input id="recipientTo" name="recipientTo" type="text" value={form.recipientTo} onChange={handleChange} required className={styles.input} placeholder="email@ejemplo.com" />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="recipientCc">Destinatario (CC)</label>
-          <input id="recipientCc" name="recipientCc" type="text" value={form.recipientCc} onChange={handleChange} className={styles.input} placeholder="opcional" />
+          <label className={styles.label}>Áreas involucradas en la activación *</label>
+          <div className={styles.areaTagsRow}>
+            <select
+              className={styles.areaSelect}
+              value=""
+              onChange={(e) => {
+                const id = e.target.value;
+                if (id) {
+                  const area = areas.find((a) => a.id === id);
+                  if (area) addArea(area);
+                  e.target.value = '';
+                }
+              }}
+              aria-label="Añadir área"
+            >
+              <option value="">Seleccionar área…</option>
+              {availableToSelect.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+            {selectedAreas.map((a) => (
+              <span key={a.id} className={styles.areaTag}>
+                {a.name}
+                <button type="button" className={styles.areaTagRemove} onClick={() => removeArea(a.id)} aria-label={`Quitar ${a.name}`}>×</button>
+              </span>
+            ))}
+          </div>
+          {selectedAreas.length === 0 && (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
+              Añade al menos un área. Los destinatarios se asignarán según los contactos configurados en cada área.
+            </p>
+          )}
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="subject">Asunto</label>
           <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="templateCode">Código de plantilla *</label>
-          <input id="templateCode" name="templateCode" type="text" value={form.templateCode} onChange={handleChange} required className={styles.input} placeholder="Ej. ACTIVACION_ESTANDAR" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="body">Cuerpo del correo</label>
@@ -118,7 +161,7 @@ export default function NewActivationPage() {
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>
-          <button type="submit" disabled={loading} className={styles.btnPrimary}>
+          <button type="submit" disabled={loading || selectedAreas.length === 0} className={styles.btnPrimary}>
             {loading ? 'Guardando…' : 'Guardar borrador'}
           </button>
           <Link href="/activations" className={styles.btnSecondary}>Cancelar</Link>

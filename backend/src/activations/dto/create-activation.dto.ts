@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, MinLength, Allow } from 'class-validator';
+import { IsString, IsOptional, IsArray, MinLength, Allow, ArrayMinSize } from 'class-validator';
 
 export class CreateActivationDto {
   @IsString()
@@ -18,22 +18,15 @@ export class CreateActivationDto {
   @IsString()
   hubspotUrl?: string;
 
-  @IsString()
-  @MinLength(1, { message: 'El destinatario es obligatorio' })
-  recipientTo: string;
-
-  @IsOptional()
-  @IsString()
-  recipientCc?: string;
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1, { message: 'Selecciona al menos un área involucrada' })
+  areaIds: string[];
 
   @Allow()
   @IsOptional()
   @IsString()
   subject?: string;
-
-  @IsString()
-  @MinLength(1, { message: 'El código de plantilla es obligatorio' })
-  templateCode: string;
 
   @IsOptional()
   @IsString()

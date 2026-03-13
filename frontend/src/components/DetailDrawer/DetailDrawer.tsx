@@ -174,12 +174,18 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
                   {activation.recipientCc && <p><strong>CC:</strong> {activation.recipientCc}</p>}
                 </>
               )}
+              {section('Asunto', <p style={{ margin: 0 }}><strong>{activation.subject}</strong></p>)}
               {section(
-                'Asunto y plantilla',
-                <>
-                  <p><strong>Asunto:</strong> {activation.subject}</p>
-                  <p><strong>Plantilla:</strong> {activation.templateCode}</p>
-                </>
+                'Áreas involucradas',
+                activation.activationAreas?.length ? (
+                  <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                    {activation.activationAreas.map((aa) => (
+                      <li key={aa.area.id}>{aa.area.name}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ color: 'var(--fiori-text-secondary)', margin: 0 }}>Sin áreas asignadas</p>
+                )
               )}
               {activation.body && section('Cuerpo del correo', <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{activation.body}</pre>)}
               {(() => {

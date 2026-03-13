@@ -35,6 +35,28 @@ model User {
   @@map("users")
 }
 
+model Area {
+  id        String        @id @default(uuid())
+  name      String
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  contacts        AreaContact[]
+  activationAreas ActivationArea[]
+
+  @@map("areas")
+}
+
+model AreaContact {
+  id     String @id @default(uuid())
+  areaId String @map("area_id")
+  name   String
+  email  String
+
+  area Area @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@map("area_contacts")
+}
+
 model Activation {
   id               String           @id @default(uuid())
   createdAt        DateTime         @default(now()) @map("created_at")
@@ -44,7 +66,6 @@ model Activation {
   recipientTo      String           @map("recipient_to")
   recipientCc      String?          @map("recipient_cc")
   subject          String
-  templateCode     String           @map("template_code")
   projectName      String           @map("project_name")
   client           String?          @map("client")
   offerCode        String           @map("offer_code")
@@ -56,7 +77,19 @@ model Activation {
   errorMessage     String?          @map("error_message")
   lastStatusAt     DateTime?        @map("last_status_at")
 
-  createdByUser User @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUser User             @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  activationAreas ActivationArea[]
 
   @@map("activations")
+}
+
+model ActivationArea {
+  activationId String @map("activation_id")
+  areaId       String @map("area_id")
+
+  activation Activation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+  area       Area       @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@id([activationId, areaId])
+  @@map("activation_areas")
 }

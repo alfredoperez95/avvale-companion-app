@@ -11,6 +11,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     name?: string | null;
     lastName?: string | null;
     appearance?: string | null;
+    role?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'microsoft' | 'fiori'>('microsoft');

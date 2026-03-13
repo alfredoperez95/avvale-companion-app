@@ -12,10 +12,10 @@ export interface Activation {
   recipientTo: string;
   recipientCc: string | null;
   subject: string;
-  templateCode: string;
   createdAt: string;
   createdBy: string;
   makeSentAt: string | null;
   makeRunId: string | null;
   errorMessage: string | null;
+  activationAreas?: { area: { id: string; name: string } }[];
 }

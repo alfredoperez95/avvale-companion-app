@@ -11,14 +11,31 @@ function buildSubject(projectName: string, client: string | null): string {
   return `Activación AEP - ${clientPart} - ${projectPart}`;
 }
 
+const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
+
 @Injectable()
 export class ActivationsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Obtiene emails de contactos de las áreas dadas; devuelve { recipientTo, recipientCc }. */
+  private async getRecipientsFromAreaIds(areaIds: string[]): Promise<{ recipientTo: string; recipientCc: string | null }> {
+    if (areaIds.length === 0) {
+      return { recipientTo: PLACEHOLDER_RECIPIENT, recipientCc: null };
+    }
+    const contacts = await this.prisma.areaContact.findMany({
+      where: { areaId: { in: areaIds } },
+      select: { email: true },
+    });
+    const emails = [...new Set(contacts.map((c) => c.email.trim()))].filter(Boolean);
+    const recipientTo = emails.length > 0 ? emails.join(', ') : PLACEHOLDER_RECIPIENT;
+    return { recipientTo, recipientCc: null };
+  }
+
   /** Crea una activación en estado DRAFT para el usuario. */
   async create(userId: string, createdByLabel: string, dto: CreateActivationDto) {
     const subject = buildSubject(dto.projectName, dto.client ?? null);
-    return this.prisma.activation.create({
+    const { recipientTo, recipientCc } = await this.getRecipientsFromAreaIds(dto.areaIds);
+    const activation = await this.prisma.activation.create({
       data: {
         createdByUserId: userId,
         createdBy: createdByLabel,
@@ -27,14 +44,17 @@ export class ActivationsService {
         client: dto.client ?? null,
         offerCode: dto.offerCode,
         hubspotUrl: dto.hubspotUrl ?? null,
-        recipientTo: dto.recipientTo,
-        recipientCc: dto.recipientCc ?? null,
+        recipientTo,
+        recipientCc,
         subject,
-        templateCode: dto.templateCode,
         body: dto.body ?? null,
         attachmentUrls: dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null,
       },
     });
+    await this.prisma.activationArea.createMany({
+      data: dto.areaIds.map((areaId) => ({ activationId: activation.id, areaId })),
+    });
+    return this.findOneByIdAndUser(activation.id, userId);
   }
 
   /** Lista solo activaciones del usuario (filtrado server-side). */
@@ -59,24 +79,35 @@ export class ActivationsService {
     if (dto.client !== undefined) data.client = dto.client || null;
     if (dto.offerCode !== undefined) data.offerCode = dto.offerCode;
     if (dto.hubspotUrl !== undefined) data.hubspotUrl = dto.hubspotUrl || null;
-    if (dto.recipientTo !== undefined) data.recipientTo = dto.recipientTo;
-    if (dto.recipientCc !== undefined) data.recipientCc = dto.recipientCc || null;
     const projectName = (dto.projectName !== undefined ? dto.projectName : activation.projectName) ?? '';
     const client = dto.client !== undefined ? dto.client : activation.client;
     data.subject = buildSubject(projectName, client);
-    if (dto.templateCode !== undefined) data.templateCode = dto.templateCode;
     if (dto.body !== undefined) data.body = dto.body || null;
     if (dto.attachmentUrls !== undefined) {
       data.attachmentUrls = dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null;
+    }
+    if (dto.areaIds !== undefined) {
+      await this.prisma.activationArea.deleteMany({ where: { activationId } });
+      if (dto.areaIds.length > 0) {
+        await this.prisma.activationArea.createMany({
+          data: dto.areaIds.map((areaId) => ({ activationId, areaId })),
+        });
+      }
+      const { recipientTo, recipientCc } = await this.getRecipientsFromAreaIds(dto.areaIds);
+      data.recipientTo = recipientTo;
+      data.recipientCc = recipientCc;
     }
     await this.prisma.activation.update({ where: { id: activationId }, data });
     return this.findOneByIdAndUser(activationId, userId);
   }
 
-  /** Obtiene una activación solo si pertenece al usuario. */
+  /** Obtiene una activación solo si pertenece al usuario, con áreas. */
   async findOneByIdAndUser(activationId: string, userId: string) {
     const activation = await this.prisma.activation.findFirst({
       where: { id: activationId, createdByUserId: userId },
+      include: {
+        activationAreas: { include: { area: { select: { id: true, name: true } } } },
+      },
     });
     if (!activation) throw new NotFoundException('Activation no encontrada');
     return activation;

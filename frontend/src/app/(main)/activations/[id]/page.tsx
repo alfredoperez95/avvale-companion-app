@@ -133,12 +133,18 @@ export default function ActivationDetailPage() {
           {activation.recipientCc && <p><strong>CC:</strong> {activation.recipientCc}</p>}
         </>
       )}
+      {section('Asunto', <p><strong>{activation.subject}</strong></p>)}
       {section(
-        'Asunto y plantilla',
-        <>
-          <p><strong>Asunto:</strong> {activation.subject}</p>
-          <p><strong>Plantilla:</strong> {activation.templateCode}</p>
-        </>
+        'Áreas involucradas',
+        activation.activationAreas?.length ? (
+          <ul className={styles.list}>
+            {activation.activationAreas.map((aa) => (
+              <li key={aa.area.id}>{aa.area.name}</li>
+            ))}
+          </ul>
+        ) : (
+          <p style={{ color: 'var(--fiori-text-secondary)', margin: 0 }}>Sin áreas asignadas</p>
+        )
       )}
       {activation.body && section('Cuerpo del correo', <pre className={styles.pre}>{activation.body}</pre>)}
       {urls.length > 0 &&

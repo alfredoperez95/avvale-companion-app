@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import styles from '../new/form.module.css';
 
+type AreaOption = { id: string; name: string };
+
 export default function EditActivationPage() {
   const params = useParams();
   const router = useRouter();
@@ -14,19 +16,25 @@ export default function EditActivationPage() {
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
+  const [areas, setAreas] = useState<AreaOption[]>([]);
+  const [selectedAreas, setSelectedAreas] = useState<AreaOption[]>([]);
   const [form, setForm] = useState({
     projectName: '',
     client: '',
     offerCode: '',
     hubspotUrl: '',
-    recipientTo: '',
-    recipientCc: '',
-    templateCode: '',
     body: '',
     attachmentUrlsText: '',
   });
 
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
+
+  useEffect(() => {
+    apiFetch('/api/areas')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setAreas(Array.isArray(data) ? data : []))
+      .catch(() => setAreas([]));
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -62,12 +70,11 @@ export default function EditActivationPage() {
           client: data.client ?? '',
           offerCode: data.offerCode ?? '',
           hubspotUrl: data.hubspotUrl ?? '',
-          recipientTo: data.recipientTo ?? '',
-          recipientCc: data.recipientCc ?? '',
-          templateCode: data.templateCode ?? '',
           body: data.body ?? '',
           attachmentUrlsText: urlsText,
         });
+        const areaList = (data.activationAreas ?? []).map((aa: { area: { id: string; name: string } }) => aa.area);
+        setSelectedAreas(areaList);
       })
       .catch(() => setLoadError('Error al cargar'))
       .finally(() => setFetchLoading(false));
@@ -78,9 +85,22 @@ export default function EditActivationPage() {
     setError('');
   };
 
+  const addArea = (area: AreaOption) => {
+    if (selectedAreas.some((a) => a.id === area.id)) return;
+    setSelectedAreas((prev) => [...prev, area]);
+  };
+
+  const removeArea = (areaId: string) => {
+    setSelectedAreas((prev) => prev.filter((a) => a.id !== areaId));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (selectedAreas.length === 0) {
+      setError('Selecciona al menos un área involucrada.');
+      return;
+    }
     setSaving(true);
     try {
       const attachmentUrls = form.attachmentUrlsText
@@ -92,9 +112,7 @@ export default function EditActivationPage() {
         client: form.client.trim() || undefined,
         offerCode: form.offerCode.trim(),
         hubspotUrl: form.hubspotUrl.trim() || undefined,
-        recipientTo: form.recipientTo.trim(),
-        recipientCc: form.recipientCc.trim() || undefined,
-        templateCode: form.templateCode.trim(),
+        areaIds: selectedAreas.map((a) => a.id),
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
       };
@@ -119,6 +137,8 @@ export default function EditActivationPage() {
       setSaving(false);
     }
   };
+
+  const availableToSelect = areas.filter((a) => !selectedAreas.some((s) => s.id === a.id));
 
   if (fetchLoading) return <p className={styles.error} style={{ padding: '2rem' }}>Cargando…</p>;
   if (loadError) return <p className={styles.error} style={{ padding: '2rem' }}>{loadError}</p>;
@@ -145,20 +165,37 @@ export default function EditActivationPage() {
           <input id="hubspotUrl" name="hubspotUrl" type="url" value={form.hubspotUrl} onChange={handleChange} className={styles.input} />
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="recipientTo">Destinatario (To) *</label>
-          <input id="recipientTo" name="recipientTo" type="text" value={form.recipientTo} onChange={handleChange} required className={styles.input} />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="recipientCc">Destinatario (CC)</label>
-          <input id="recipientCc" name="recipientCc" type="text" value={form.recipientCc} onChange={handleChange} className={styles.input} />
+          <label className={styles.label}>Áreas involucradas en la activación *</label>
+          <div className={styles.areaTagsRow}>
+            <select
+              className={styles.areaSelect}
+              value=""
+              onChange={(e) => {
+                const areaId = e.target.value;
+                if (areaId) {
+                  const area = areas.find((a) => a.id === areaId);
+                  if (area) addArea(area);
+                  e.target.value = '';
+                }
+              }}
+              aria-label="Añadir área"
+            >
+              <option value="">Seleccionar área…</option>
+              {availableToSelect.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+            {selectedAreas.map((a) => (
+              <span key={a.id} className={styles.areaTag}>
+                {a.name}
+                <button type="button" className={styles.areaTagRemove} onClick={() => removeArea(a.id)} aria-label={`Quitar ${a.name}`}>×</button>
+              </span>
+            ))}
+          </div>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="subject">Asunto</label>
           <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="templateCode">Código de plantilla *</label>
-          <input id="templateCode" name="templateCode" type="text" value={form.templateCode} onChange={handleChange} required className={styles.input} />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="body">Cuerpo del correo</label>
@@ -170,7 +207,7 @@ export default function EditActivationPage() {
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>
-          <button type="submit" disabled={saving} className={styles.btnPrimary}>
+          <button type="submit" disabled={saving || selectedAreas.length === 0} className={styles.btnPrimary}>
             {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>
           <Link href={`/activations/${id}`} className={styles.btnSecondary}>Cancelar</Link>

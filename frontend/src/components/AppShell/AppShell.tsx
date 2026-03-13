@@ -10,6 +10,7 @@ const navItems = [
   { href: '/activations', label: 'Activaciones' },
   { href: '/activations/new', label: 'Nueva activación' },
 ];
+const adminNavItem = { href: '/admin', label: 'Configuración' };
 
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
   const n = (name ?? '').trim();
@@ -25,7 +26,7 @@ function getInitials(name?: string | null, lastName?: string | null, email?: str
 
 interface AppShellProps {
   children: React.ReactNode;
-  user?: { id: string; email: string; name?: string | null; lastName?: string | null } | null;
+  user?: { id: string; email: string; name?: string | null; lastName?: string | null; role?: string } | null;
   theme?: 'microsoft' | 'fiori';
 }
 
@@ -46,6 +47,9 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
             priority
           />
         </Link>
+        <span className={styles.appName} aria-label="Nombre de la aplicación">
+          Activaciones
+        </span>
         <div className={styles.headerRight}>
           {user && (
             <Link href="/perfil" className={styles.avatarLink} aria-label="Ir a mi perfil">
@@ -67,6 +71,14 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
               {label}
             </Link>
           ))}
+          {user?.role === 'ADMIN' && (
+            <Link
+              href={adminNavItem.href}
+              className={pathname === adminNavItem.href || pathname?.startsWith(adminNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
+            >
+              {adminNavItem.label}
+            </Link>
+          )}
         </aside>
         <main className={styles.main} id="main-content">
           {children}

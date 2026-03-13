@@ -20,23 +20,9 @@ export class UpdateActivationDto {
   hubspotUrl?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(1)
-  recipientTo?: string;
-
-  @IsOptional()
-  @IsString()
-  recipientCc?: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  subject?: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  templateCode?: string;
+  @IsArray()
+  @IsString({ each: true })
+  areaIds?: string[];
 
   @IsOptional()
   @IsString()

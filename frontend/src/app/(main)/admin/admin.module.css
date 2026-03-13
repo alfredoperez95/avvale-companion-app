@@ -1,0 +1,161 @@
+.page {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+.back {
+  display: block;
+  margin-bottom: var(--fiori-space-4);
+  color: var(--fiori-link);
+  font-size: 0.875rem;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--fiori-space-6);
+  color: var(--fiori-text);
+}
+
+.forbidden {
+  padding: var(--fiori-space-8);
+  text-align: center;
+  color: var(--fiori-text-secondary);
+}
+
+.areaCard {
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+  padding: var(--fiori-space-4);
+  margin-bottom: var(--fiori-space-4);
+}
+
+.areaHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-3);
+  margin-bottom: var(--fiori-space-3);
+  flex-wrap: wrap;
+}
+
+.areaName {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+}
+
+.areaNameInput {
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  min-width: 12rem;
+}
+
+.contactsList {
+  margin: 0;
+  padding-left: 1.25rem;
+  margin-bottom: var(--fiori-space-2);
+}
+
+.contactRow {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  margin-bottom: var(--fiori-space-1);
+  flex-wrap: wrap;
+}
+
+.contactText {
+  font-size: 0.875rem;
+  color: var(--fiori-text);
+}
+
+.contactActions {
+  display: flex;
+  gap: var(--fiori-space-1);
+}
+
+.btnSmall {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  cursor: pointer;
+}
+
+.btnSmall:hover {
+  background: var(--fiori-border-light);
+}
+
+.btnSmallDanger:hover {
+  background: #fce8e8;
+  border-color: #d32f2f;
+  color: #b71c1c;
+}
+
+.addAreaRow {
+  display: flex;
+  gap: var(--fiori-space-2);
+  align-items: center;
+  margin-bottom: var(--fiori-space-6);
+  flex-wrap: wrap;
+}
+
+.addAreaRow .input {
+  flex: 1;
+  min-width: 14rem;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.btnPrimary {
+  padding: var(--fiori-space-2) var(--fiori-space-4);
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-shell-text);
+  border: none;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+.addContactRow {
+  display: flex;
+  gap: var(--fiori-space-2);
+  align-items: center;
+  margin-top: var(--fiori-space-2);
+  flex-wrap: wrap;
+}
+
+.addContactRow input {
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  width: 10rem;
+}
+
+.error {
+  color: #b71c1c;
+  font-size: 0.875rem;
+  margin-bottom: var(--fiori-space-2);
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+  margin-right: var(--fiori-space-1);
+}
