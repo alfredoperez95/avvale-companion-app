@@ -1,0 +1,23 @@
+/* Wrapper to scope Quill and avoid layout issues */
+.richTextEditorWrapper :global(.ql-container) {
+  font-size: 0.9375rem;
+  font-family: inherit;
+}
+
+.richTextEditorWrapper :global(.ql-editor) {
+  min-height: 120px;
+}
+
+.richTextEditorWrapper :global(.ql-toolbar) {
+  border-color: var(--fiori-border);
+  background: var(--fiori-background);
+}
+
+.richTextEditorWrapper :global(.ql-container) {
+  border-color: var(--fiori-border);
+}
+
+.richTextEditorWrapper :global(.ql-editor.ql-blank::before) {
+  color: var(--fiori-text-secondary);
+  font-style: normal;
+}

@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { ActivationsModule } from './activations/activations.module';
 import { AreasModule } from './areas/areas.module';
 import { ContactsModule } from './contacts/contacts.module';
+import { EmailTemplatesModule } from './email-templates/email-templates.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ContactsModule } from './contacts/contacts.module';
     ActivationsModule,
     AreasModule,
     ContactsModule,
+    EmailTemplatesModule,
   ],
 })
 export class AppModule {}

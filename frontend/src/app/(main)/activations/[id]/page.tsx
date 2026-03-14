@@ -10,6 +10,10 @@ import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import styles from './detail.module.css';
 
+function isHtmlBody(body: string | null | undefined): boolean {
+  return Boolean(body?.trim().startsWith('<'));
+}
+
 export default function ActivationDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -22,6 +26,7 @@ export default function ActivationDetailPage() {
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [sanitizedBody, setSanitizedBody] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -37,6 +42,19 @@ export default function ActivationDetailPage() {
       .then(setActivation)
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    const body = activation?.body;
+    if (!body || !isHtmlBody(body)) {
+      setSanitizedBody(null);
+      return;
+    }
+    let cancelled = false;
+    import('dompurify').then(({ default: DOMPurify }) => {
+      if (!cancelled) setSanitizedBody(DOMPurify.sanitize(body));
+    });
+    return () => { cancelled = true; };
+  }, [activation?.body]);
 
   const handleSend = async () => {
     if (!id) return;
@@ -201,7 +219,18 @@ export default function ActivationDetailPage() {
           <p style={{ color: 'var(--fiori-text-secondary)', margin: 0 }}>Sin áreas asignadas</p>
         )
       )}
-      {activation.body && section('Cuerpo del correo', <pre className={styles.pre}>{activation.body}</pre>)}
+      {activation.body && section(
+        'Cuerpo del correo',
+        isHtmlBody(activation.body) ? (
+          sanitizedBody != null ? (
+            <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: sanitizedBody }} />
+          ) : (
+            <p style={{ color: 'var(--fiori-text-secondary)', margin: 0 }}>Cargando…</p>
+          )
+        ) : (
+          <pre className={styles.pre}>{activation.body}</pre>
+        )
+      )}
       {attachmentList.length > 0 &&
         section(
           'URLs escaneadas',

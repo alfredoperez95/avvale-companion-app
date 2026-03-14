@@ -152,3 +152,12 @@ model CcContact {
 
   @@map("cc_contacts")
 }
+
+model EmailTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  content   String   @db.LongText
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("email_templates")
+}

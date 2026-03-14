@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
+import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import styles from './form.module.css';
 
 type SubAreaOption = { id: string; name: string };
 type AreaWithSubareas = { id: string; name: string; subAreas?: SubAreaOption[] };
 type CcContact = { id: string; name: string; email: string };
+type EmailTemplateItem = { id: string; name: string; content: string };
 type SelectedArea = { type: 'area'; areaId: string; areaName: string };
 type SelectedSubarea = { type: 'subarea'; subAreaId: string; subAreaName: string; areaId: string; areaName: string };
 type SelectedItem = SelectedArea | SelectedSubarea;
@@ -28,7 +30,9 @@ export default function NewActivationPage() {
   const [error, setError] = useState('');
   const [areas, setAreas] = useState<AreaWithSubareas[]>([]);
   const [ccContacts, setCcContacts] = useState<CcContact[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplateItem[]>([]);
   const [selectedCcEmail, setSelectedCcEmail] = useState('');
+  const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [form, setForm] = useState({
     projectName: '',
@@ -55,6 +59,12 @@ export default function NewActivationPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setCcContacts(Array.isArray(data) ? data : []))
       .catch(() => setCcContacts([]));
+  }, []);
+  useEffect(() => {
+    apiFetch('/api/email-templates')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setEmailTemplates(Array.isArray(data) ? data : []))
+      .catch(() => setEmailTemplates([]));
   }, []);
 
   useEffect(() => {
@@ -296,8 +306,44 @@ export default function NewActivationPage() {
           </datalist>
         </div>
         <div className={styles.formGroup}>
+          <label className={styles.label} htmlFor="template-select">Usar plantilla</label>
+          <select
+            id="template-select"
+            className={styles.input}
+            value=""
+            onChange={(e) => {
+              const id = e.target.value;
+              if (!id) return;
+              const t = emailTemplates.find((x) => x.id === id);
+              if (t) {
+                setForm((prev) => ({ ...prev, body: t.content ?? '' }));
+                setAppliedTemplateName(t.name);
+              }
+              e.target.value = '';
+            }}
+            style={{ maxWidth: '20rem' }}
+          >
+            <option value="">Sin plantilla</option>
+            {emailTemplates.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+          {appliedTemplateName && (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
+              Cuerpo rellenado con la plantilla &quot;{appliedTemplateName}&quot;. Puedes modificarlo abajo.
+            </p>
+          )}
+        </div>
+        <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="body">Cuerpo del correo</label>
-          <textarea id="body" name="body" value={form.body} onChange={handleChange} className={styles.textarea} style={{ minHeight: 120 }} placeholder="Contenido del email (opcional)" />
+          <RichTextEditor
+            id="body"
+            value={form.body}
+            onChange={(value) => setForm((prev) => ({ ...prev, body: value }))}
+            placeholder="Contenido del email (opcional)"
+            minHeight={120}
+            aria-label="Cuerpo del correo"
+          />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="attachmentUrlsText">URLs escaneadas</label>

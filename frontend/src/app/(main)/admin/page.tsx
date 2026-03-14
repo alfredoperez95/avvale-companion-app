@@ -66,6 +66,15 @@ export default function AdminPage() {
             <span className={styles.tileCta}>Gestionar áreas →</span>
           </article>
         </Link>
+        <Link href="/admin/email-templates" className={styles.tileLink} aria-labelledby="tile-templates-heading">
+          <article className={styles.tile}>
+            <h2 id="tile-templates-heading" className={styles.tileTitle}>Plantillas Email</h2>
+            <p className={styles.tileDesc}>
+              Plantillas predefinidas para el cuerpo del correo en activaciones.
+            </p>
+            <span className={styles.tileCta}>Gestionar plantillas →</span>
+          </article>
+        </Link>
       </div>
     </div>
   );

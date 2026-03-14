@@ -94,6 +94,34 @@
   margin: 0;
 }
 
+.bodyHtml {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.bodyHtml p {
+  margin: 0 0 var(--fiori-space-2);
+}
+
+.bodyHtml p:last-child {
+  margin-bottom: 0;
+}
+
+.bodyHtml a {
+  color: var(--fiori-link);
+}
+
+.bodyHtml a:hover {
+  text-decoration: underline;
+}
+
+.bodyHtml ul,
+.bodyHtml ol {
+  margin: 0 0 var(--fiori-space-2);
+  padding-left: 1.5rem;
+}
+
 .list {
   margin: 0;
   padding-left: 1.2rem;
