@@ -51,7 +51,7 @@ export default function NewActivationPage() {
       .catch(() => setAreas([]));
   }, []);
   useEffect(() => {
-    apiFetch('/api/cc-contacts')
+    apiFetch('/api/contacts')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setCcContacts(Array.isArray(data) ? data : []))
       .catch(() => setCcContacts([]));
@@ -283,13 +283,13 @@ export default function NewActivationPage() {
             type="text"
             value={selectedCcEmail}
             onChange={(e) => setSelectedCcEmail(e.target.value)}
-            list={selectedCcEmail.trim().length > 2 ? 'cc-contacts-datalist' : undefined}
+            list={selectedCcEmail.trim().length > 2 ? 'contacts-datalist' : undefined}
             className={styles.input}
             placeholder="Escribe o elige un email en copia"
             aria-label="Email en copia (autocompletado desde contactos)"
             autoComplete="off"
           />
-          <datalist id="cc-contacts-datalist">
+          <datalist id="contacts-datalist">
             {ccContacts.map((c) => (
               <option key={c.id} value={c.email}>{c.name} ({c.email})</option>
             ))}

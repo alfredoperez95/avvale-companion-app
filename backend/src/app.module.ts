@@ -6,7 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ActivationsModule } from './activations/activations.module';
 import { AreasModule } from './areas/areas.module';
-import { CcContactsModule } from './cc-contacts/cc-contacts.module';
+import { ContactsModule } from './contacts/contacts.module';
 
 @Module({
   imports: [
@@ -17,7 +17,7 @@ import { CcContactsModule } from './cc-contacts/cc-contacts.module';
     UsersModule,
     ActivationsModule,
     AreasModule,
-    CcContactsModule,
+    ContactsModule,
   ],
 })
 export class AppModule {}

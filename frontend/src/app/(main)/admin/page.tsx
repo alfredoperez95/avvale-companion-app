@@ -48,13 +48,13 @@ export default function AdminPage() {
       <h1 className={styles.h1}>Configuración</h1>
       <p className={styles.menuDesc}>Elige qué quieres configurar:</p>
       <div className={styles.tilesGrid}>
-        <Link href="/admin/cc-contacts" className={styles.tileLink} aria-labelledby="tile-cc-heading">
+        <Link href="/admin/contacts" className={styles.tileLink} aria-labelledby="tile-contacts-heading">
           <article className={styles.tile}>
-            <h2 id="tile-cc-heading" className={styles.tileTitle}>Contactos CC</h2>
+            <h2 id="tile-contacts-heading" className={styles.tileTitle}>Contactos</h2>
             <p className={styles.tileDesc}>
               Destinatarios en copia que aparecen como sugerencias al crear o editar una activación.
             </p>
-            <span className={styles.tileCta}>Gestionar contactos CC →</span>
+            <span className={styles.tileCta}>Gestionar contactos →</span>
           </article>
         </Link>
         <Link href="/admin/areas" className={styles.tileLink} aria-labelledby="tile-areas-heading">

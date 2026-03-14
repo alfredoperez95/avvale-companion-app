@@ -327,36 +327,40 @@ export default function AdminAreasPage() {
       </p>
       {error && <p className={styles.error}>{error}</p>}
 
-      <form onSubmit={handleCreateArea} className={styles.addAreaRow}>
-        <input
-          type="text"
-          className={styles.addAreaRowInput}
-          value={newAreaName}
-          onChange={(e) => setNewAreaName(e.target.value)}
-          placeholder="Nombre del área"
-          aria-label="Nombre del área"
-        />
-        <input
-          type="text"
-          className={styles.addAreaRowInput}
-          value={newAreaDirectorName}
-          onChange={(e) => setNewAreaDirectorName(e.target.value)}
-          placeholder="Director (nombre)"
-          aria-label="Director nombre"
-        />
-        <input
-          type="email"
-          className={styles.addAreaRowInput}
-          value={newAreaDirectorEmail}
-          onChange={(e) => setNewAreaDirectorEmail(e.target.value)}
-          placeholder="Director (email)"
-          aria-label="Director email"
-        />
-        <button type="submit" disabled={savingAreaId === 'new'} className={styles.btnPrimary}>
-          {savingAreaId === 'new' ? 'Guardando…' : 'Nueva área'}
-        </button>
-      </form>
+      <section className={styles.areasAddCard} aria-labelledby="areas-add-heading">
+        <h2 id="areas-add-heading" className={styles.areasAddTitle}>Añadir área</h2>
+        <form onSubmit={handleCreateArea} className={styles.addAreaRow}>
+          <input
+            type="text"
+            className={styles.addAreaRowInput}
+            value={newAreaName}
+            onChange={(e) => setNewAreaName(e.target.value)}
+            placeholder="Nombre del área"
+            aria-label="Nombre del área"
+          />
+          <input
+            type="text"
+            className={styles.addAreaRowInput}
+            value={newAreaDirectorName}
+            onChange={(e) => setNewAreaDirectorName(e.target.value)}
+            placeholder="Director (nombre)"
+            aria-label="Director nombre"
+          />
+          <input
+            type="email"
+            className={styles.addAreaRowInput}
+            value={newAreaDirectorEmail}
+            onChange={(e) => setNewAreaDirectorEmail(e.target.value)}
+            placeholder="Director (email)"
+            aria-label="Director email"
+          />
+          <button type="submit" disabled={savingAreaId === 'new'} className={styles.btnPrimary}>
+            {savingAreaId === 'new' ? 'Guardando…' : 'Crear área'}
+          </button>
+        </form>
+      </section>
 
+      <h2 className={styles.areasListTitle}>Áreas configuradas</h2>
       {areas.map((area) => (
         <div key={area.id} className={styles.areaCard}>
           <div className={styles.areaHeader}>
@@ -406,8 +410,9 @@ export default function AdminAreasPage() {
             )}
           </div>
 
+          <div className={styles.areaBody}>
           <div className={styles.directorBlock}>
-            <label>Director del área</label>
+            <span className={styles.directorLabel}>Director del área</span>
             {editingDirectorAreaId === area.id ? (
               <div className={styles.addContactRow}>
                 <input
@@ -461,7 +466,7 @@ export default function AdminAreasPage() {
           </div>
 
           <div className={styles.subareaSection}>
-            <strong>Subáreas</strong>
+            <h3 className={styles.subareaSectionTitle}>Subáreas</h3>
             {(area.subAreas ?? []).map((sub) => (
               <div key={sub.id} className={styles.subareaBlock}>
                 <div className={styles.subareaHeader}>
@@ -644,6 +649,7 @@ export default function AdminAreasPage() {
                 + Nueva subárea
               </button>
             )}
+          </div>
           </div>
         </div>
       ))}
