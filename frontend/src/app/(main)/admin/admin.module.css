@@ -58,6 +58,35 @@
   line-height: 1.4;
 }
 
+.tileLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.tileLink:hover .tile {
+  border-color: var(--fiori-shell-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tileLink:hover .tileCta {
+  color: var(--fiori-link);
+}
+
+.tileCta {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fiori-text-secondary);
+  margin-top: auto;
+  padding-top: var(--fiori-space-2);
+}
+
+.menuDesc {
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-4);
+}
+
 .h2 {
   font-size: 1.25rem;
   font-weight: 600;
