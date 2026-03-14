@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
+import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import styles from '../new/form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -409,11 +410,9 @@ export default function EditActivationPage() {
         <div className={styles.formGroup}>
           <span className={styles.label}>Archivos adjuntos</span>
           {attachments.length > 0 && (
-            <ul style={{ margin: 'var(--fiori-space-1) 0 0', paddingLeft: '1.2rem' }}>
-              {attachments.map((att) => (
-                <li key={att.id}>{att.fileName}</li>
-              ))}
-            </ul>
+            <div style={{ marginTop: 'var(--fiori-space-1)' }}>
+              <AttachmentGrid attachments={attachments} activationId={id!} apiFetch={apiFetch} />
+            </div>
           )}
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
             Añade archivos descargados desde HubSpot (o desde tu ordenador).

@@ -1,0 +1,117 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--fiori-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.card:hover {
+  border-color: var(--fiori-shell-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.preview {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fiori-nav-bg);
+  padding: var(--fiori-space-2);
+}
+
+.previewIconWrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.previewIcon {
+  width: 48px;
+  height: 48px;
+  color: var(--fiori-text-secondary);
+  flex-shrink: 0;
+}
+
+.previewImage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0.25rem;
+}
+
+.footer {
+  padding: var(--fiori-space-2);
+  border-top: 1px solid var(--fiori-border);
+  background: var(--fiori-surface);
+}
+
+.fileName {
+  font-size: 0.75rem;
+  color: var(--fiori-text);
+  margin: 0 0 var(--fiori-space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.downloadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  color: var(--fiori-link);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.downloadBtn:hover {
+  text-decoration: underline;
+}
+
+.extensionBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #0b5fff 0%, #001d66 100%);
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.puzzleIcon {
+  width: 12px;
+  height: 12px;
+  opacity: 0.95;
+}

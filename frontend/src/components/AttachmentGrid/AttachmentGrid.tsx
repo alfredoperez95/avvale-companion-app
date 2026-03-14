@@ -1,0 +1,162 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import styles from './AttachmentGrid.module.css';
+
+export type AttachmentItem = {
+  id: string;
+  fileName: string;
+  originalUrl: string;
+  contentType: string | null;
+  createdAt: string;
+};
+
+type ApiFetchFn = (path: string, init?: RequestInit) => Promise<Response>;
+
+function isImageType(contentType: string | null): boolean {
+  if (!contentType) return false;
+  return contentType.startsWith('image/');
+}
+
+function getFileIcon(contentType: string | null, fileName: string) {
+  const type = (contentType ?? '').toLowerCase();
+  const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+  if (type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+    return (
+      <svg className={styles.previewIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <path d="M21 15l-5-5L5 21" />
+      </svg>
+    );
+  }
+  if (type.includes('pdf') || ext === 'pdf') {
+    return (
+      <svg className={styles.previewIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+        <path d="M14 2v6h6M9 13h6M9 17h6M9 9h2" />
+      </svg>
+    );
+  }
+  return (
+    <svg className={styles.previewIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <path d="M14 2v6h6M12 18v-6M9 15h6" />
+    </svg>
+  );
+}
+
+function ImagePreview({
+  activationId,
+  attachmentId,
+  apiFetch,
+  contentType,
+}: {
+  activationId: string;
+  attachmentId: string;
+  apiFetch: ApiFetchFn;
+  contentType: string | null;
+}) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const urlRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isImageType(contentType)) return;
+    let cancelled = false;
+    apiFetch(`/api/activations/${activationId}/attachments/${attachmentId}`)
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((blob) => {
+        if (blob && !cancelled) {
+          const url = URL.createObjectURL(blob);
+          urlRef.current = url;
+          setObjectUrl(url);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (urlRef.current) {
+        URL.revokeObjectURL(urlRef.current);
+        urlRef.current = null;
+      }
+      setObjectUrl(null);
+    };
+  }, [activationId, attachmentId, apiFetch, contentType]);
+  if (!objectUrl) return null;
+  return <img src={objectUrl} alt="" className={styles.previewImage} />;
+}
+
+function SingleCard({
+  att,
+  activationId,
+  apiFetch,
+}: {
+  att: AttachmentItem;
+  activationId: string;
+  apiFetch: ApiFetchFn;
+}) {
+  const showImagePreview = isImageType(att.contentType);
+
+  const handleDownload = async () => {
+    const res = await apiFetch(`/api/activations/${activationId}/attachments/${att.id}`);
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = att.fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <li className={styles.card}>
+      <span className={styles.extensionBadge} title="Avvale Companion">
+        <svg className={styles.puzzleIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M19 11h-4V7a2 2 0 00-2-2h-2a2 2 0 00-2 2v4H5a2 2 0 00-2 2v2a2 2 0 002 2h4v4a2 2 0 002 2h2a2 2 0 002-2v-4h4a2 2 0 002-2v-2a2 2 0 00-2-2z" />
+        </svg>
+        Companion
+      </span>
+      <div className={styles.preview}>
+        {showImagePreview && (
+          <>
+            <span className={styles.previewIconWrap}>
+              {getFileIcon(att.contentType, att.fileName)}
+            </span>
+            <ImagePreview
+              activationId={activationId}
+              attachmentId={att.id}
+              apiFetch={apiFetch}
+              contentType={att.contentType}
+            />
+          </>
+        )}
+        {!showImagePreview && getFileIcon(att.contentType, att.fileName)}
+      </div>
+      <div className={styles.footer}>
+        <p className={styles.fileName} title={att.fileName}>
+          {att.fileName}
+        </p>
+        <button type="button" className={styles.downloadBtn} onClick={handleDownload}>
+          Descargar
+        </button>
+      </div>
+    </li>
+  );
+}
+
+interface AttachmentGridProps {
+  attachments: AttachmentItem[];
+  activationId: string;
+  apiFetch: ApiFetchFn;
+}
+
+export function AttachmentGrid({ attachments, activationId, apiFetch }: AttachmentGridProps) {
+  if (!attachments?.length) return null;
+  return (
+    <ul className={styles.grid}>
+      {attachments.map((att) => (
+        <SingleCard key={att.id} att={att} activationId={activationId} apiFetch={apiFetch} />
+      ))}
+    </ul>
+  );
+}

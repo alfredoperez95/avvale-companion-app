@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import styles from './DetailDrawer.module.css';
 
 interface DetailDrawerProps {
@@ -229,29 +230,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
               {activation.attachments && activation.attachments.length > 0 &&
                 section(
                   'Archivos adjuntos',
-                  <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                    {activation.attachments.map((att) => (
-                      <li key={att.id}>
-                        <button
-                          type="button"
-                          className={styles.linkButton}
-                          onClick={async () => {
-                            const res = await apiFetch(`/api/activations/${activation.id}/attachments/${att.id}`);
-                            if (!res.ok) return;
-                            const blob = await res.blob();
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = att.fileName;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          }}
-                        >
-                          {att.fileName} (descargar)
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                  <AttachmentGrid attachments={activation.attachments} activationId={activation.id} apiFetch={apiFetch} />
                 )}
               {section(
                 'Metadatos',

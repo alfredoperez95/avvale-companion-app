@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import styles from './detail.module.css';
 
 export default function ActivationDetailPage() {
@@ -225,29 +226,7 @@ export default function ActivationDetailPage() {
       {activation.attachments && activation.attachments.length > 0 &&
         section(
           'Archivos adjuntos',
-          <ul className={styles.list}>
-            {activation.attachments.map((att) => (
-              <li key={att.id}>
-                <button
-                  type="button"
-                  className={styles.linkButton}
-                  onClick={async () => {
-                    const res = await apiFetch(`/api/activations/${activation.id}/attachments/${att.id}`);
-                    if (!res.ok) return;
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = att.fileName;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                >
-                  {att.fileName} (descargar)
-                </button>
-              </li>
-            ))}
-          </ul>
+          <AttachmentGrid attachments={activation.attachments} activationId={activation.id} apiFetch={apiFetch} />
         )}
       {section(
         'Añadir archivos',
