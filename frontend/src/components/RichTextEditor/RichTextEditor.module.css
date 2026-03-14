@@ -8,10 +8,25 @@
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
+  align-items: center;
   padding: var(--fiori-space-1) var(--fiori-space-2);
   border-bottom: 1px solid var(--fiori-border);
   background: var(--fiori-background);
   border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.toolbarGroup {
+  margin-right: var(--fiori-space-2);
+}
+
+.toolbarSelect {
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  font-size: 0.8125rem;
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.2rem;
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  cursor: pointer;
 }
 
 .toolbarBtn,

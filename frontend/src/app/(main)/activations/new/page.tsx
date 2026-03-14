@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
+import { replaceTemplateVariables } from '@/lib/replace-template-variables';
 import styles from './form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -316,7 +317,10 @@ export default function NewActivationPage() {
               if (!id) return;
               const t = emailTemplates.find((x) => x.id === id);
               if (t) {
-                setForm((prev) => ({ ...prev, body: t.content ?? '' }));
+                setForm((prev) => ({
+                  ...prev,
+                  body: replaceTemplateVariables(t.content ?? '', prev),
+                }));
                 setAppliedTemplateName(t.name);
               }
               e.target.value = '';

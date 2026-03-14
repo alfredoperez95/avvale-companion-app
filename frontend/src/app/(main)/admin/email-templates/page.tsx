@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
+import { TEMPLATE_SHORTCODES } from '@/lib/replace-template-variables';
 import styles from '../admin.module.css';
 
 type EmailTemplateItem = { id: string; name: string; content: string; createdAt: string };
@@ -185,7 +186,12 @@ export default function AdminEmailTemplatesPage() {
                 placeholder="Escribe el contenido de la plantilla…"
                 minHeight={200}
                 aria-label="Contenido de la plantilla"
+                insertableVariables={TEMPLATE_SHORTCODES}
               />
+              <p className={styles.sectionDesc} style={{ marginTop: 'var(--fiori-space-2)' }}>
+                Variables disponibles (usa el desplegable del editor o escribe a mano):{' '}
+                {TEMPLATE_SHORTCODES.map((s) => s.value).join(', ')}. Se sustituirán por los datos del formulario al elegir la plantilla en una activación.
+              </p>
             </div>
             <div style={{ display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
               <button type="submit" disabled={saving} className={styles.btnPrimary}>

@@ -7,10 +7,40 @@ import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import styles from './RichTextEditor.module.css';
 
-function Toolbar({ editor }: { editor: Editor | null }) {
+function Toolbar({
+  editor,
+  insertableVariables,
+}: {
+  editor: Editor | null;
+  insertableVariables?: readonly { value: string; label: string }[];
+}) {
   if (!editor) return null;
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Formato">
+      {insertableVariables && insertableVariables.length > 0 && (
+        <span className={styles.toolbarGroup}>
+          <select
+            className={styles.toolbarSelect}
+            value=""
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) {
+                editor.chain().focus().insertContent(v).run();
+                e.target.value = '';
+              }
+            }}
+            title="Insertar variable"
+            aria-label="Insertar variable"
+          >
+            <option value="">Insertar variable</option>
+            {insertableVariables.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </span>
+      )}
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -58,6 +88,8 @@ function Toolbar({ editor }: { editor: Editor | null }) {
   );
 }
 
+export type InsertableVariable = { value: string; label: string };
+
 type RichTextEditorProps = {
   value: string;
   onChange: (value: string) => void;
@@ -65,6 +97,7 @@ type RichTextEditorProps = {
   minHeight?: number;
   id?: string;
   'aria-label'?: string;
+  insertableVariables?: readonly InsertableVariable[];
 };
 
 export function RichTextEditor({
@@ -74,8 +107,10 @@ export function RichTextEditor({
   minHeight = 120,
   id,
   'aria-label': ariaLabel,
+  insertableVariables,
 }: RichTextEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Link.configure({ openOnClick: false, HTMLAttributes: { target: '_blank', rel: 'noopener' } }),
@@ -103,7 +138,7 @@ export function RichTextEditor({
 
   return (
     <div className={styles.richTextEditorWrapper} style={{ minHeight }} data-rich-editor>
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} insertableVariables={insertableVariables} />
       <EditorContent editor={editor} className={styles.editorContent} />
     </div>
   );
