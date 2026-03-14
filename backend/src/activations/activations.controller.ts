@@ -67,6 +67,17 @@ export class ActivationsController {
     res.send(buffer);
   }
 
+  @Delete(':id/attachments/:attachmentId')
+  async deleteAttachment(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @Param('attachmentId') attachmentId: string,
+  ) {
+    await this.activationsService.findOneByIdAndUser(id, user.userId);
+    await this.attachmentsService.deleteAttachment(id, attachmentId);
+    return { ok: true };
+  }
+
   @Get(':id')
   async getOne(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.activationsService.findOneByIdAndUser(id, user.userId);

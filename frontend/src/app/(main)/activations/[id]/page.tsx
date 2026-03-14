@@ -226,7 +226,7 @@ export default function ActivationDetailPage() {
       {activation.attachments && activation.attachments.length > 0 &&
         section(
           'Archivos adjuntos',
-          <AttachmentGrid attachments={activation.attachments} activationId={activation.id} apiFetch={apiFetch} />
+          <AttachmentGrid attachments={activation.attachments} activationId={activation.id} apiFetch={apiFetch} onDeleted={refetchActivation} />
         )}
       {section(
         'Añadir archivos',

@@ -114,12 +114,27 @@ function SingleCard({
   att,
   activationId,
   apiFetch,
+  onDeleted,
 }: {
   att: AttachmentItem;
   activationId: string;
   apiFetch: ApiFetchFn;
+  onDeleted?: () => void;
 }) {
+  const [deleting, setDeleting] = useState(false);
   const showImagePreview = isImageType(att.contentType);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      const res = await apiFetch(`/api/activations/${activationId}/attachments/${att.id}`, { method: 'DELETE' });
+      if (res.ok) onDeleted?.();
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleDownload = async () => {
     const res = await apiFetch(`/api/activations/${activationId}/attachments/${att.id}`);
@@ -135,6 +150,18 @@ function SingleCard({
 
   return (
     <li className={styles.card}>
+      <button
+        type="button"
+        className={styles.deleteBtn}
+        onClick={handleDelete}
+        disabled={deleting}
+        title="Eliminar adjunto"
+        aria-label="Eliminar adjunto"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      </button>
       <span className={styles.extensionBadge} title="Avvale Companion">
         <svg className={styles.puzzleIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
           <path d="M19 11h-4V7a2 2 0 00-2-2h-2a2 2 0 00-2 2v4H5a2 2 0 00-2 2v2a2 2 0 002 2h4v4a2 2 0 002 2h2a2 2 0 002-2v-4h4a2 2 0 002-2v-2a2 2 0 00-2-2z" />
@@ -178,14 +205,22 @@ interface AttachmentGridProps {
   attachments: AttachmentItem[];
   activationId: string;
   apiFetch: ApiFetchFn;
+  /** Llamado tras eliminar un adjunto para que el padre actualice la lista */
+  onDeleted?: () => void;
 }
 
-export function AttachmentGrid({ attachments, activationId, apiFetch }: AttachmentGridProps) {
+export function AttachmentGrid({ attachments, activationId, apiFetch, onDeleted }: AttachmentGridProps) {
   if (!attachments?.length) return null;
   return (
     <ul className={styles.grid}>
       {attachments.map((att) => (
-        <SingleCard key={att.id} att={att} activationId={activationId} apiFetch={apiFetch} />
+        <SingleCard
+          key={att.id}
+          att={att}
+          activationId={activationId}
+          apiFetch={apiFetch}
+          onDeleted={onDeleted}
+        />
       ))}
     </ul>
   );

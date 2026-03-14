@@ -174,7 +174,7 @@ export default function EditActivationPage() {
   };
 
   const handleProjectNameBlur = () => {
-    const parsed = parseHubSpotStyleProjectName(form.projectName);
+    const parsed = parseHubSpotStyleProjectName(form.projectName, areas.map((a) => a.name));
     if (!parsed) return;
     setForm((prev) => ({
       ...prev,
@@ -411,7 +411,18 @@ export default function EditActivationPage() {
           <span className={styles.label}>Archivos adjuntos</span>
           {attachments.length > 0 && (
             <div style={{ marginTop: 'var(--fiori-space-1)' }}>
-              <AttachmentGrid attachments={attachments} activationId={id!} apiFetch={apiFetch} />
+              <AttachmentGrid
+                attachments={attachments}
+                activationId={id!}
+                apiFetch={apiFetch}
+                onDeleted={async () => {
+                  const r = await apiFetch(`/api/activations/${id}`);
+                  if (r.ok) {
+                    const data = await r.json();
+                    setAttachments(data.attachments ?? []);
+                  }
+                }}
+              />
             </div>
           )}
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>

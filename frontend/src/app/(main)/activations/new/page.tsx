@@ -90,7 +90,7 @@ export default function NewActivationPage() {
   };
 
   const handleProjectNameBlur = () => {
-    const parsed = parseHubSpotStyleProjectName(form.projectName);
+    const parsed = parseHubSpotStyleProjectName(form.projectName, areas.map((a) => a.name));
     if (!parsed) return;
     setForm((prev) => ({
       ...prev,

@@ -21,6 +21,179 @@
   color: var(--fiori-text);
 }
 
+.tilesGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fiori-space-6);
+  margin-bottom: var(--fiori-space-6);
+}
+
+@media (min-width: 52rem) {
+  .tilesGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.tile {
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+  padding: var(--fiori-space-4);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tileTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 var(--fiori-space-1);
+  color: var(--fiori-text);
+}
+
+.tileDesc {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-4);
+  line-height: 1.4;
+}
+
+.h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: var(--fiori-space-3);
+  margin-top: var(--fiori-space-6);
+  color: var(--fiori-text);
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 var(--fiori-space-2);
+  color: var(--fiori-text);
+}
+
+.sectionDesc {
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-3);
+}
+
+.ccAddRow {
+  display: flex;
+  gap: var(--fiori-space-2);
+  align-items: center;
+  margin-bottom: var(--fiori-space-4);
+  flex-wrap: wrap;
+}
+
+.ccInput {
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  min-width: 12rem;
+}
+
+.ccScrollWrap {
+  max-height: 20rem;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.375rem;
+  background: var(--fiori-surface);
+}
+
+.ccTableWrap {
+  min-width: 100%;
+}
+
+.ccTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.ccTable th {
+  text-align: left;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  background: var(--fiori-nav-bg);
+  font-weight: 600;
+  color: var(--fiori-text);
+  border-bottom: 1px solid var(--fiori-border);
+}
+
+.ccTable th:first-child {
+  border-radius: 0.25rem 0 0 0;
+}
+
+.ccTable td {
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border-bottom: 1px solid var(--fiori-border-light);
+  vertical-align: middle;
+}
+
+.ccTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ccTable tbody tr:hover {
+  background: var(--fiori-background);
+}
+
+.ccColActions {
+  white-space: nowrap;
+}
+
+.ccColActions .btnSmall {
+  margin-right: var(--fiori-space-1);
+}
+
+.ccColActions .btnSmall:last-child {
+  margin-right: 0;
+}
+
+.ccCellName {
+  font-weight: 500;
+  color: var(--fiori-text);
+}
+
+.ccCellEmail {
+  color: var(--fiori-text-secondary);
+}
+
+.ccCellInput {
+  width: 100%;
+  min-width: 10rem;
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.ccLetterRow {
+  background: var(--fiori-nav-bg);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border-top: 1px solid var(--fiori-border);
+  border-bottom: 1px solid var(--fiori-border);
+}
+
+.ccLetterRow:first-child {
+  border-top: none;
+}
+
+.ccEmpty {
+  text-align: center;
+  color: var(--fiori-text-secondary);
+  padding: var(--fiori-space-6);
+  font-style: italic;
+}
+
 .forbidden {
   padding: var(--fiori-space-8);
   text-align: center;

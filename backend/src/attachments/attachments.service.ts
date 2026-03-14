@@ -250,6 +250,22 @@ export class AttachmentsService {
     }
   }
 
+  /** Elimina un solo adjunto (registro y archivo en disco). */
+  async deleteAttachment(activationId: string, attachmentId: string): Promise<void> {
+    const attachment = await this.prisma.activationAttachment.findFirst({
+      where: { id: attachmentId, activationId },
+      select: { id: true, storedPath: true },
+    });
+    if (!attachment) throw new NotFoundException('Adjunto no encontrado');
+    const fullPath = path.join(this.baseDir, attachment.storedPath);
+    try {
+      await fs.unlink(fullPath);
+    } catch {
+      // ignore si el archivo ya no existe
+    }
+    await this.prisma.activationAttachment.delete({ where: { id: attachmentId } });
+  }
+
   /** Elimina todos los adjuntos de una activación (registros y archivos). */
   async deleteAttachmentsForActivation(activationId: string): Promise<void> {
     const list = await this.prisma.activationAttachment.findMany({

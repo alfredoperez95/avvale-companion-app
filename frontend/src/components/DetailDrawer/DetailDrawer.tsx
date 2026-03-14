@@ -230,7 +230,16 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
               {activation.attachments && activation.attachments.length > 0 &&
                 section(
                   'Archivos adjuntos',
-                  <AttachmentGrid attachments={activation.attachments} activationId={activation.id} apiFetch={apiFetch} />
+                  <AttachmentGrid
+                    attachments={activation.attachments}
+                    activationId={activation.id}
+                    apiFetch={apiFetch}
+                    onDeleted={() => {
+                      apiFetch(`/api/activations/${activationId}`)
+                        .then((r) => (r.ok ? r.json() : null))
+                        .then((data) => data && setActivation(data));
+                    }}
+                  />
                 )}
               {section(
                 'Metadatos',
