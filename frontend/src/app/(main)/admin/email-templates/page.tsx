@@ -153,13 +153,15 @@ export default function AdminEmailTemplatesPage() {
       <Link href="/admin" className={styles.back}>← Configuración</Link>
       <h1 className={styles.h1}>Plantillas Email</h1>
       <p className={styles.sectionDesc}>
-        Crea y edita plantillas para el cuerpo del correo. Podrás elegirlas al crear o editar una activación.
+        Crea y edita plantillas para el cuerpo del correo con el editor de texto enriquecido. Podrás elegirlas al crear o editar una activación.
       </p>
       {error && <p className={styles.error}>{error}</p>}
 
-      {showForm ? (
-        <div className={styles.areasAddCard}>
-          <h2 className={styles.areasAddTitle}>{editingId ? 'Editar plantilla' : 'Nueva plantilla'}</h2>
+      <section className={styles.areasAddCard} aria-labelledby="create-template-heading">
+        <h2 id="create-template-heading" className={styles.areasAddTitle}>
+          {showForm ? (editingId ? 'Editar plantilla' : 'Nueva plantilla') : 'Crear plantilla'}
+        </h2>
+        {showForm ? (
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 'var(--fiori-space-4)' }}>
               <label className={styles.label} htmlFor="template-name">Nombre</label>
@@ -175,7 +177,7 @@ export default function AdminEmailTemplatesPage() {
               />
             </div>
             <div style={{ marginBottom: 'var(--fiori-space-4)' }}>
-              <label className={styles.label} htmlFor="template-content">Contenido</label>
+              <label className={styles.label} htmlFor="template-content">Contenido (editor)</label>
               <RichTextEditor
                 id="template-content"
                 value={formContent}
@@ -194,14 +196,17 @@ export default function AdminEmailTemplatesPage() {
               </button>
             </div>
           </form>
-        </div>
-      ) : (
-        <div style={{ marginBottom: 'var(--fiori-space-4)' }}>
+        ) : (
+          <p className={styles.sectionDesc} style={{ marginBottom: 'var(--fiori-space-3)' }}>
+            Usa el botón para abrir el editor y crear una nueva plantilla.
+          </p>
+        )}
+        {!showForm && (
           <button type="button" className={styles.btnPrimary} onClick={openCreate}>
             Crear plantilla
           </button>
-        </div>
-      )}
+        )}
+      </section>
 
       <h2 className={styles.areasListTitle}>Plantillas disponibles</h2>
       {templates.length === 0 ? (

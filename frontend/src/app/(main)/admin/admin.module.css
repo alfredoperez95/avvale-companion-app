@@ -30,7 +30,13 @@
 
 @media (min-width: 52rem) {
   .tilesGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 72rem) {
+  .tilesGrid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 

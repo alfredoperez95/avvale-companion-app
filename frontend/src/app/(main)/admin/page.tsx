@@ -47,8 +47,8 @@ export default function AdminPage() {
       <Link href="/dashboard" className={styles.back}>← Inicio</Link>
       <h1 className={styles.h1}>Configuración</h1>
       <p className={styles.menuDesc}>Elige qué quieres configurar:</p>
-      <div className={styles.tilesGrid}>
-        <Link href="/admin/contacts" className={styles.tileLink} aria-labelledby="tile-contacts-heading">
+      <div className={styles.tilesGrid} role="list">
+        <Link href="/admin/contacts" className={styles.tileLink} aria-labelledby="tile-contacts-heading" role="listitem">
           <article className={styles.tile}>
             <h2 id="tile-contacts-heading" className={styles.tileTitle}>Contactos</h2>
             <p className={styles.tileDesc}>
@@ -57,7 +57,7 @@ export default function AdminPage() {
             <span className={styles.tileCta}>Gestionar contactos →</span>
           </article>
         </Link>
-        <Link href="/admin/areas" className={styles.tileLink} aria-labelledby="tile-areas-heading">
+        <Link href="/admin/areas" className={styles.tileLink} aria-labelledby="tile-areas-heading" role="listitem">
           <article className={styles.tile}>
             <h2 id="tile-areas-heading" className={styles.tileTitle}>Áreas</h2>
             <p className={styles.tileDesc}>
@@ -66,11 +66,11 @@ export default function AdminPage() {
             <span className={styles.tileCta}>Gestionar áreas →</span>
           </article>
         </Link>
-        <Link href="/admin/email-templates" className={styles.tileLink} aria-labelledby="tile-templates-heading">
+        <Link href="/admin/email-templates" className={styles.tileLink} aria-labelledby="tile-templates-heading" role="listitem">
           <article className={styles.tile}>
             <h2 id="tile-templates-heading" className={styles.tileTitle}>Plantillas Email</h2>
             <p className={styles.tileDesc}>
-              Plantillas predefinidas para el cuerpo del correo en activaciones.
+              Plantillas predefinidas para el cuerpo del correo. Crear y editar con el editor de texto enriquecido.
             </p>
             <span className={styles.tileCta}>Gestionar plantillas →</span>
           </article>
