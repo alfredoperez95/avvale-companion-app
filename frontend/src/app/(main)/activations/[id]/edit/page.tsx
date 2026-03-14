@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
-import { downloadUrlsAndUploadAttachments } from '@/lib/download-urls-and-upload';
 import styles from '../new/form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -43,12 +42,11 @@ export default function EditActivationPage() {
     hubspotUrl: '',
     body: '',
     attachmentUrlsText: '',
+    attachmentNames: [] as string[],
   });
   const [attachments, setAttachments] = useState<{ id: string; fileName: string; originalUrl: string; contentType: string | null; createdAt: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [downloadingFromUrls, setDownloadingFromUrls] = useState(false);
-  const [downloadResult, setDownloadResult] = useState<{ uploaded: number; total: number; errors: string[] } | null>(null);
 
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
@@ -94,6 +92,15 @@ export default function EditActivationPage() {
             urlsText = data.attachmentUrls;
           }
         }
+        let namesArr: string[] = [];
+        if (data.attachmentNames) {
+          try {
+            const parsed = JSON.parse(data.attachmentNames);
+            namesArr = Array.isArray(parsed) ? parsed : [];
+          } catch {
+            namesArr = [];
+          }
+        }
         setForm({
           projectName: data.projectName ?? '',
           client: data.client ?? '',
@@ -103,6 +110,7 @@ export default function EditActivationPage() {
           hubspotUrl: data.hubspotUrl ?? '',
           body: data.body ?? '',
           attachmentUrlsText: urlsText,
+          attachmentNames: namesArr,
         });
         setSelectedCcEmail((data.recipientCc ?? '').trim());
         const items: SelectedItem[] = [];
@@ -161,32 +169,6 @@ export default function EditActivationPage() {
     } finally {
       setUploading(false);
       e.target.value = '';
-    }
-  };
-
-  const handleDownloadFromUrls = async () => {
-    if (!id) return;
-    const urlList = form.attachmentUrlsText
-      .split(/[\n,]/)
-      .map((u) => u.trim())
-      .filter(Boolean);
-    if (urlList.length === 0) return;
-    setDownloadResult(null);
-    setDownloadingFromUrls(true);
-    try {
-      const result = await downloadUrlsAndUploadAttachments(id, urlList, apiFetch);
-      setDownloadResult({
-        uploaded: result.uploaded,
-        total: urlList.length,
-        errors: result.errors,
-      });
-      const r = await apiFetch(`/api/activations/${id}`);
-      if (r.ok) {
-        const data = await r.json();
-        setAttachments(data.attachments ?? []);
-      }
-    } finally {
-      setDownloadingFromUrls(false);
     }
   };
 
@@ -251,6 +233,7 @@ export default function EditActivationPage() {
         .split(/[\n,]/)
         .map((u) => u.trim())
         .filter(Boolean);
+      const attachmentNames = attachmentUrls.map((_, i) => form.attachmentNames[i] ?? '');
       const areaIds = selected.filter((s): s is SelectedArea => s.type === 'area').map((s) => s.areaId);
       const subAreaIds = selected.filter((s): s is SelectedSubarea => s.type === 'subarea').map((s) => s.subAreaId);
       const body = {
@@ -265,6 +248,7 @@ export default function EditActivationPage() {
         recipientCc: selectedCcEmail.trim() || undefined,
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
+        attachmentNames: attachmentUrls.length ? attachmentNames : undefined,
       };
       const res = await apiFetch(`/api/activations/${id}`, {
         method: 'PATCH',
@@ -396,28 +380,30 @@ export default function EditActivationPage() {
           <textarea id="body" name="body" value={form.body} onChange={handleChange} className={styles.textarea} style={{ minHeight: 120 }} />
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="attachmentUrlsText">URLs recopiladas</label>
-          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs recopiladas: una por línea o separadas por comas" aria-label="URLs recopiladas" />
+          <label className={styles.label} htmlFor="attachmentUrlsText">URLs escaneadas</label>
+          {(() => {
+            const urlList = form.attachmentUrlsText.split(/[\n,]/).map((u) => u.trim()).filter(Boolean);
+            const attachmentList = urlList.map((url, i) => ({ url, name: (form.attachmentNames[i] ?? '').trim() || url }));
+            return attachmentList.length > 0 ? (
+              <ul style={{ margin: '0 0 var(--fiori-space-1)', paddingLeft: '1.2rem' }}>
+                {attachmentList.map(({ url, name }, i) => (
+                  <li key={i}>
+                    <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--fiori-link)' }}>{name}</a>
+                  </li>
+                ))}
+              </ul>
+            ) : null;
+          })()}
+          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs escaneadas: una por línea o separadas por comas" aria-label="URLs escaneadas" />
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Los enlaces de HubSpot no se pueden descargar automáticamente desde la app. Usa &quot;Abrir enlaces en nuevas pestañas&quot;, descarga los archivos con tu sesión y súbelos con &quot;Añadir archivos&quot;.
+            Los enlaces de HubSpot no se pueden descargar automáticamente desde la app. Usa &quot;Descargar todos los adjuntos&quot;, descarga los archivos con tu sesión y súbelos con &quot;Añadir archivos&quot;.
           </p>
           {form.attachmentUrlsText.trim().length > 0 && (
             <div style={{ marginTop: 'var(--fiori-space-1)', display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
               <button type="button" className={styles.btnSecondary} onClick={() => form.attachmentUrlsText.split(/[\n,]/).map((u) => u.trim()).filter(Boolean).forEach((u) => window.open(u, '_blank', 'noopener'))}>
-                Abrir enlaces en nuevas pestañas
-              </button>
-              <button type="button" className={styles.btnSecondary} onClick={handleDownloadFromUrls} disabled={downloadingFromUrls}>
-                {downloadingFromUrls ? 'Descargando y adjuntando…' : 'Intentar descargar desde enlaces'}
+                Descargar todos los adjuntos
               </button>
             </div>
-          )}
-          {downloadResult != null && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-              {downloadResult.uploaded > 0 ? `${downloadResult.uploaded} de ${downloadResult.total} adjuntos descargados.` : 'No se pudieron descargar automáticamente.'}
-              {downloadResult.errors.length > 0 && (
-                <> Usa &quot;Abrir enlaces en nuevas pestañas&quot; y luego &quot;Añadir archivos&quot;.</>
-              )}
-            </p>
           )}
         </div>
         <div className={styles.formGroup}>

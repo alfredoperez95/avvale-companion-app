@@ -51,4 +51,9 @@ export class UpdateActivationDto {
   @IsArray()
   @IsString({ each: true })
   attachmentUrls?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  attachmentNames?: string[];
 }

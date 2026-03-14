@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
-import { downloadUrlsAndUploadAttachments } from '@/lib/download-urls-and-upload';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import styles from './detail.module.css';
@@ -22,8 +21,6 @@ export default function ActivationDetailPage() {
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [downloadingFromUrls, setDownloadingFromUrls] = useState(false);
-  const [downloadResult, setDownloadResult] = useState<{ uploaded: number; total: number; errors: string[] } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -39,22 +36,6 @@ export default function ActivationDetailPage() {
       .then(setActivation)
       .finally(() => setLoading(false));
   }, [id]);
-
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('activation_download_result');
-      if (!raw) return;
-      sessionStorage.removeItem('activation_download_result');
-      const parsed = JSON.parse(raw) as { total: number; uploaded: number; failed: number; errors: string[] };
-      setDownloadResult({
-        uploaded: parsed.uploaded,
-        total: parsed.total,
-        errors: parsed.errors ?? [],
-      });
-    } catch {
-      // ignore
-    }
-  }, []);
 
   const handleSend = async () => {
     if (!id) return;
@@ -114,41 +95,6 @@ export default function ActivationDetailPage() {
     }
   };
 
-  const handleDownloadFromUrls = async () => {
-    if (!id || !activation) return;
-    const urlList =
-      activation.attachmentUrls != null
-        ? (() => {
-            try {
-              const arr = JSON.parse(activation.attachmentUrls);
-              return Array.isArray(arr) ? arr as string[] : (activation.attachmentUrls as string).split(/[\n,]/).map((u: string) => u.trim()).filter(Boolean);
-            } catch {
-              return (activation.attachmentUrls as string).split(/[\n,]/).map((u: string) => u.trim()).filter(Boolean);
-            }
-          })()
-        : [];
-    // #region agent log
-    fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' }, body: JSON.stringify({ sessionId: '62b368', location: 'activations/[id]/page.tsx:handleDownloadFromUrls', message: 'handler entry', data: { id, hasActivation: !!activation, urlListLength: urlList.length, attachmentUrlsType: typeof activation?.attachmentUrls }, timestamp: Date.now(), hypothesisId: 'H2,H5' }) }).catch(() => {});
-    // #endregion
-    if (urlList.length === 0) return;
-    setDownloadResult(null);
-    setDownloadingFromUrls(true);
-    try {
-      const result = await downloadUrlsAndUploadAttachments(id, urlList, apiFetch);
-      // #region agent log
-      fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '62b368' }, body: JSON.stringify({ sessionId: '62b368', location: 'activations/[id]/page.tsx:afterDownload', message: 'result', data: { uploaded: result.uploaded, total: urlList.length, errorsLen: result.errors.length, errors: result.errors }, timestamp: Date.now(), hypothesisId: 'H3' }) }).catch(() => {});
-      // #endregion
-      setDownloadResult({
-        uploaded: result.uploaded,
-        total: urlList.length,
-        errors: result.errors,
-      });
-      refetchActivation();
-    } finally {
-      setDownloadingFromUrls(false);
-    }
-  };
-
   const handleDeleteClick = () => setShowDeleteConfirm(true);
 
   const handleDeleteConfirm = async () => {
@@ -193,6 +139,16 @@ export default function ActivationDetailPage() {
       urls = activation.attachmentUrls.split(/[\n,]/).map((u) => u.trim()).filter(Boolean);
     }
   }
+  let names: string[] = [];
+  if (activation.attachmentNames) {
+    try {
+      const parsed = JSON.parse(activation.attachmentNames);
+      names = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      names = [];
+    }
+  }
+  const attachmentList = urls.map((url, i) => ({ url, name: names[i]?.trim() || url }));
 
   return (
     <main className={styles.page}>
@@ -245,26 +201,23 @@ export default function ActivationDetailPage() {
         )
       )}
       {activation.body && section('Cuerpo del correo', <pre className={styles.pre}>{activation.body}</pre>)}
-      {urls.length > 0 &&
+      {attachmentList.length > 0 &&
         section(
-          'URLs recopiladas',
+          'URLs escaneadas',
           <>
             <ul className={styles.list}>
-              {urls.map((url, i) => (
+              {attachmentList.map(({ url, name }, i) => (
                 <li key={i}>
-                  <a href={url} target="_blank" rel="noopener noreferrer" className={styles.link}>{url}</a>
+                  <a href={url} target="_blank" rel="noopener noreferrer" className={styles.link}>{name}</a>
                 </li>
               ))}
             </ul>
             <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', margin: 'var(--fiori-space-1) 0 0' }}>
-              Los enlaces de HubSpot no se pueden descargar automáticamente desde esta app (restricción del navegador). Abre los enlaces en nuevas pestañas para descargar con tu sesión y luego súbelos abajo.
+              Los enlaces de HubSpot no se pueden descargar automáticamente desde esta app (restricción del navegador). Usa &quot;Descargar todos los adjuntos&quot; para abrir los enlaces y descargar con tu sesión, luego súbelos abajo.
             </p>
             <div style={{ marginTop: 'var(--fiori-space-1)', display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
-              <button type="button" className={styles.linkButton} onClick={() => urls.forEach((u) => window.open(u, '_blank', 'noopener'))}>
-                Abrir enlaces en nuevas pestañas
-              </button>
-              <button type="button" className={styles.linkButton} onClick={handleDownloadFromUrls} disabled={downloadingFromUrls}>
-                {downloadingFromUrls ? 'Descargando y adjuntando…' : 'Intentar descargar desde enlaces'}
+              <button type="button" className={styles.linkButton} onClick={() => attachmentList.forEach(({ url }) => window.open(url, '_blank', 'noopener'))}>
+                Descargar todos los adjuntos
               </button>
             </div>
           </>
@@ -296,25 +249,11 @@ export default function ActivationDetailPage() {
             ))}
           </ul>
         )}
-      {downloadResult != null && (
-        <div className={styles.section}>
-          <div className={styles.sectionContent}>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--fiori-text-secondary)' }}>
-              {downloadResult.uploaded > 0
-                ? `${downloadResult.uploaded} de ${downloadResult.total} adjuntos descargados y guardados.`
-                : 'No se pudieron descargar los adjuntos automáticamente (los enlaces de HubSpot suelen bloquearlo).'}
-              {downloadResult.errors.length > 0 && (
-                <> Usa &quot;Abrir enlaces en nuevas pestañas&quot; arriba, descarga los archivos con tu sesión y súbelos con &quot;Seleccionar archivos&quot;.</>
-              )}
-            </p>
-          </div>
-        </div>
-      )}
       {section(
         'Añadir archivos',
         <>
           <p style={{ margin: '0 0 var(--fiori-space-2)', fontSize: '0.875rem', color: 'var(--fiori-text-secondary)' }}>
-            Para enlaces de HubSpot: usa &quot;Abrir enlaces en nuevas pestañas&quot; arriba, descarga los archivos en tu ordenador (con tu sesión) y súbelos aquí.
+            Para enlaces de HubSpot: usa &quot;Descargar todos los adjuntos&quot; arriba, descarga los archivos en tu ordenador (con tu sesión) y súbelos aquí.
           </p>
           <label className={styles.linkButton} style={{ display: 'inline-block', cursor: uploading ? 'not-allowed' : 'pointer' }}>
             <input type="file" multiple disabled={uploading} onChange={handleFileUpload} style={{ display: 'none' }} />

@@ -94,6 +94,7 @@ model Activation {
   hubspotUrl       String?          @map("hubspot_url")
   body             String?          @map("body")
   attachmentUrls   String?          @map("attachment_urls")
+  attachmentNames  String?          @map("attachment_names")
   makeSentAt       DateTime?        @map("make_sent_at")
   makeRunId        String?          @map("make_run_id")
   errorMessage     String?          @map("error_message")

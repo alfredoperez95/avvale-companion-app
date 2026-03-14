@@ -25,6 +25,16 @@ function parseAttachmentUrls(attachmentUrls: string | null): string[] {
   }
 }
 
+function parseAttachmentNames(attachmentNames: string | null): string[] {
+  if (!attachmentNames) return [];
+  try {
+    const parsed = JSON.parse(attachmentNames);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: DetailDrawerProps) {
   const [activation, setActivation] = useState<Activation | null>(null);
   const [loading, setLoading] = useState(!!activationId);
@@ -199,14 +209,16 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
               {activation.body && section('Cuerpo del correo', <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{activation.body}</pre>)}
               {(() => {
                 const urls = parseAttachmentUrls(activation.attachmentUrls);
-                return urls.length > 0
+                const names = parseAttachmentNames(activation.attachmentNames);
+                const attachmentList = urls.map((url, i) => ({ url, name: names[i]?.trim() || url }));
+                return attachmentList.length > 0
                   ? section(
-                      'URLs recopiladas',
+                      'URLs escaneadas',
                       <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                        {urls.map((url, i) => (
+                        {attachmentList.map(({ url, name }, i) => (
                           <li key={i}>
                             <a href={url} target="_blank" rel="noopener noreferrer" className={styles.link}>
-                              {url}
+                              {name}
                             </a>
                           </li>
                         ))}

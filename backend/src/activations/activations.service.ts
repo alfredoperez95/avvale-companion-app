@@ -103,6 +103,7 @@ export class ActivationsService {
         subject,
         body: dto.body ?? null,
         attachmentUrls: dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null,
+        attachmentNames: dto.attachmentNames?.length ? JSON.stringify(dto.attachmentNames) : null,
       },
     });
     if (areaIds.length > 0) {
@@ -156,6 +157,9 @@ export class ActivationsService {
       if (dto.attachmentUrls.length > 0) {
         await this.attachmentsService.saveActivationAttachments(activationId, dto.attachmentUrls);
       }
+    }
+    if (dto.attachmentNames !== undefined) {
+      data.attachmentNames = dto.attachmentNames?.length ? JSON.stringify(dto.attachmentNames) : null;
     }
     if (dto.areaIds !== undefined || dto.subAreaIds !== undefined) {
       const areaIds = dto.areaIds ?? activation.activationAreas?.map((a) => a.areaId) ?? [];

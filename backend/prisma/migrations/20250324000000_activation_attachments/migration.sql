@@ -1,4 +1,4 @@
--- CreateTable activation_attachments (archivos descargados desde URLs recopiladas)
+-- CreateTable activation_attachments (archivos descargados desde URLs escaneadas)
 CREATE TABLE `activation_attachments` (
     `id` VARCHAR(191) NOT NULL,
     `activation_id` VARCHAR(191) NOT NULL,

@@ -52,4 +52,9 @@ export class CreateActivationDto {
   @IsArray()
   @IsString({ each: true })
   attachmentUrls?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  attachmentNames?: string[];
 }

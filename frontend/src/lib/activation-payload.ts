@@ -10,6 +10,8 @@ export interface ActivationPayloadFromExtension {
   /** "Consulting" | "Software" (desde HubSpot) → se mapea a CONSULTORIA | SW */
   serviceType?: string;
   attachmentUrls?: string[];
+  /** Nombres de archivo (mismo orden que attachmentUrls); puede ser string vacío si no hay nombre */
+  attachmentNames?: string[];
 }
 
 /**

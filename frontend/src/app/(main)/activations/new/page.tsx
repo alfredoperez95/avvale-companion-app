@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
-import { downloadUrlsAndUploadAttachments } from '@/lib/download-urls-and-upload';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import styles from './form.module.css';
 
@@ -40,6 +39,7 @@ export default function NewActivationPage() {
     hubspotUrl: '',
     body: '',
     attachmentUrlsText: '',
+    attachmentNames: [] as string[],
   });
 
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
@@ -75,6 +75,7 @@ export default function NewActivationPage() {
       projectType: projectTypeFromServiceType || prev.projectType,
       hubspotUrl: p.hubspotUrl ?? prev.hubspotUrl,
       attachmentUrlsText: p.attachmentUrls?.length ? p.attachmentUrls.join('\n') : prev.attachmentUrlsText,
+      attachmentNames: p.attachmentNames ?? [],
     }));
     if (typeof history !== 'undefined' && typeof location !== 'undefined') {
       history.replaceState(null, '', location.pathname + location.search);
@@ -149,6 +150,7 @@ export default function NewActivationPage() {
         .split(/[\n,]/)
         .map((u) => u.trim())
         .filter(Boolean);
+      const attachmentNames = attachmentUrls.map((_, i) => form.attachmentNames[i] ?? '');
       const areaIds = selected.filter((s): s is SelectedArea => s.type === 'area').map((s) => s.areaId);
       const subAreaIds = selected.filter((s): s is SelectedSubarea => s.type === 'subarea').map((s) => s.subAreaId);
       const body = {
@@ -163,6 +165,7 @@ export default function NewActivationPage() {
         recipientCc: selectedCcEmail.trim() || undefined,
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
+        attachmentNames: attachmentUrls.length ? attachmentNames : undefined,
       };
       const res = await apiFetch('/api/activations', {
         method: 'POST',
@@ -180,22 +183,6 @@ export default function NewActivationPage() {
         return;
       }
       const activationId = (data as { id: string }).id;
-      if (attachmentUrls.length > 0) {
-        const result = await downloadUrlsAndUploadAttachments(activationId, attachmentUrls, apiFetch);
-        try {
-          sessionStorage.setItem(
-            'activation_download_result',
-            JSON.stringify({
-              total: attachmentUrls.length,
-              uploaded: result.uploaded,
-              failed: result.failed,
-              errors: result.errors,
-            }),
-          );
-        } catch {
-          // ignore
-        }
-      }
       router.push(`/activations/${activationId}`);
       router.refresh();
     } finally {
@@ -313,8 +300,8 @@ export default function NewActivationPage() {
           <textarea id="body" name="body" value={form.body} onChange={handleChange} className={styles.textarea} style={{ minHeight: 120 }} placeholder="Contenido del email (opcional)" />
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="attachmentUrlsText">URLs recopiladas</label>
-          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs recopiladas: una por línea o separadas por comas" aria-label="URLs recopiladas" />
+          <label className={styles.label} htmlFor="attachmentUrlsText">URLs escaneadas</label>
+          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs escaneadas: una por línea o separadas por comas" aria-label="URLs escaneadas" />
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
             Los enlaces de HubSpot solo funcionan con tu sesión. Después de crear la activación, abre los enlaces, descarga los archivos en tu ordenador y añádelos en la vista de detalle con &quot;Añadir archivos&quot;.
           </p>

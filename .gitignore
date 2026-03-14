@@ -25,5 +25,5 @@ npm-debug.log*
 backend/prisma/*.db
 backend/prisma/*.db-journal
 
-# Adjuntos descargados (URLs recopiladas)
+# Adjuntos descargados (URLs escaneadas)
 backend/uploads/
