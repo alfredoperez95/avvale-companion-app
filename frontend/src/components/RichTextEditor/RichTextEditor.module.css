@@ -1,23 +1,68 @@
-/* Wrapper to scope Quill and avoid layout issues */
-.richTextEditorWrapper :global(.ql-container) {
+.richTextEditorWrapper {
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  border-bottom: 1px solid var(--fiori-border);
+  background: var(--fiori-background);
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.toolbarBtn,
+.toolbarBtnActive {
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 0.2rem;
+  background: transparent;
+  color: var(--fiori-text);
+  cursor: pointer;
+}
+
+.toolbarBtn:hover {
+  background: var(--fiori-nav-item-hover);
+}
+
+.toolbarBtnActive {
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-text-inverse);
+}
+
+.editorContent {
   font-size: 0.9375rem;
   font-family: inherit;
 }
 
-.richTextEditorWrapper :global(.ql-editor) {
+.richTextEditorWrapper :global(.ProseMirror) {
+  padding: var(--fiori-space-2) var(--fiori-space-3);
   min-height: 120px;
+  outline: none;
 }
 
-.richTextEditorWrapper :global(.ql-toolbar) {
-  border-color: var(--fiori-border);
-  background: var(--fiori-background);
-}
-
-.richTextEditorWrapper :global(.ql-container) {
-  border-color: var(--fiori-border);
-}
-
-.richTextEditorWrapper :global(.ql-editor.ql-blank::before) {
+.richTextEditorWrapper :global(.ProseMirror p.is-editor-empty:first-child::before) {
   color: var(--fiori-text-secondary);
-  font-style: normal;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.richTextEditorWrapper :global(.ProseMirror ul),
+.richTextEditorWrapper :global(.ProseMirror ol) {
+  padding-left: 1.5rem;
+  margin: 0.25em 0;
+}
+
+.richTextEditorWrapper :global(.ProseMirror a) {
+  color: var(--fiori-link);
+}
+
+.richTextEditorWrapper :global(.ProseMirror a:hover) {
+  text-decoration: underline;
 }
