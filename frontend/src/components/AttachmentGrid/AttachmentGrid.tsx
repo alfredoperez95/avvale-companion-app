@@ -18,6 +18,11 @@ function isImageType(contentType: string | null): boolean {
   return contentType.startsWith('image/');
 }
 
+function getFileExtension(fileName: string): string {
+  const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+  return ext ? `.${ext.toUpperCase()}` : '';
+}
+
 function getFileIcon(contentType: string | null, fileName: string) {
   const type = (contentType ?? '').toLowerCase();
   const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
@@ -30,11 +35,31 @@ function getFileIcon(contentType: string | null, fileName: string) {
       </svg>
     );
   }
+  /* PDF: documento con líneas de texto */
   if (type.includes('pdf') || ext === 'pdf') {
     return (
       <svg className={styles.previewIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-        <path d="M14 2v6h6M9 13h6M9 17h6M9 9h2" />
+        <path d="M6 2h8l4 4v14a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" />
+        <path d="M14 2v4h4" />
+        <path d="M8 10h8M8 14h5M8 18h6" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  /* PPTX: presentación / diapositiva con título y viñetas */
+  if (['ppt', 'pptx'].includes(ext) || type.includes('presentation') || type.includes('powerpoint')) {
+    return (
+      <svg className={styles.previewIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="4" y="3" width="16" height="16" rx="1" />
+        <path d="M7 7h10M7 11h8M7 14h6M7 17h9" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  /* XLSX: hoja de cálculo / tabla con números */
+  if (['xls', 'xlsx'].includes(ext) || type.includes('spreadsheet') || type.includes('excel')) {
+    return (
+      <svg className={styles.previewIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="1" />
+        <path d="M3 8h18M3 12h18M3 16h18M8 8v12M12 8v12M16 8v12" />
       </svg>
     );
   }
@@ -136,9 +161,14 @@ function SingleCard({
         <p className={styles.fileName} title={att.fileName}>
           {att.fileName}
         </p>
-        <button type="button" className={styles.downloadBtn} onClick={handleDownload}>
-          Descargar
-        </button>
+        <div className={styles.footerActions}>
+          <button type="button" className={styles.downloadBtn} onClick={handleDownload}>
+            Descargar
+          </button>
+          {getFileExtension(att.fileName) && (
+            <span className={styles.extCajita}>{getFileExtension(att.fileName)}</span>
+          )}
+        </div>
       </div>
     </li>
   );

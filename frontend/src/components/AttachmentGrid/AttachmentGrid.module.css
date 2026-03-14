@@ -76,6 +76,14 @@
   line-height: 1.3;
 }
 
+.footerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fiori-space-1);
+  flex-wrap: wrap;
+}
+
 .downloadBtn {
   display: inline-flex;
   align-items: center;
@@ -91,6 +99,18 @@
 
 .downloadBtn:hover {
   text-decoration: underline;
+}
+
+.extCajita {
+  display: inline-block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  background: var(--fiori-nav-bg);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  padding: 2px 6px;
+  letter-spacing: 0.02em;
 }
 
 .extensionBadge {
