@@ -57,3 +57,22 @@
 }
 .sap-icon.sap-icon--chain-link::before { content: "\e088"; font-family: "SAP-icons"; }
 .sap-icon.sap-icon--table-view::before { content: "\e0ba"; font-family: "SAP-icons"; }
+
+/* KPI dashboard: iconos SAP en ambos temas (fondo de color en la card) */
+.sap-icon.sap-icon--activities,
+.sap-icon.sap-icon--write-2,
+.sap-icon.sap-icon--accept,
+.sap-icon.sap-icon--message-error {
+  font-family: "SAP-icons";
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  vertical-align: middle;
+  -webkit-font-smoothing: antialiased;
+}
+.sap-icon.sap-icon--activities::before { content: "\e001"; font-family: "SAP-icons"; }
+.sap-icon.sap-icon--write-2::before { content: "\e034"; font-family: "SAP-icons"; }
+.sap-icon.sap-icon--accept::before { content: "\e05b"; font-family: "SAP-icons"; }
+.sap-icon.sap-icon--message-error::before { content: "\e0b1"; font-family: "SAP-icons"; }

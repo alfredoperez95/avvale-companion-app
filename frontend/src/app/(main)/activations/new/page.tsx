@@ -34,6 +34,8 @@ export default function NewActivationPage() {
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplateItem[]>([]);
   const [selectedCcEmail, setSelectedCcEmail] = useState('');
   const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [bodySectionVisible, setBodySectionVisible] = useState(false);
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [form, setForm] = useState({
     projectName: '',
@@ -205,26 +207,26 @@ export default function NewActivationPage() {
     <main className={styles.page}>
       <Link href="/dashboard" className={styles.back}>← Inicio</Link>
       <h1 className={styles.h1}>Nueva activación</h1>
-      <form onSubmit={handleSubmit} className={styles.form}>
+      <form onSubmit={handleSubmit} className={styles.form} autoComplete="off">
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>
-          <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} onBlur={handleProjectNameBlur} required className={styles.input} placeholder="Implementación S/4HANA Public" />
+          <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} onBlur={handleProjectNameBlur} required className={styles.input} placeholder="Implementación S/4HANA Public" autoComplete="off" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="client">Cliente</label>
-          <input id="client" name="client" type="text" value={form.client} onChange={handleChange} className={styles.input} placeholder="Nombre del cliente" />
+          <input id="client" name="client" type="text" value={form.client} onChange={handleChange} className={styles.input} placeholder="Nombre del cliente" autoComplete="off" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="offerCode">Código de oferta *</label>
-          <input id="offerCode" name="offerCode" type="text" value={form.offerCode} onChange={handleChange} required className={styles.input} placeholder="ESP_XX_XXXX" />
+          <input id="offerCode" name="offerCode" type="text" value={form.offerCode} onChange={handleChange} required className={styles.input} placeholder="ESP_XX_XXXX" autoComplete="off" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectAmount">Importe del proyecto *</label>
-          <input id="projectAmount" name="projectAmount" type="text" value={form.projectAmount} onChange={handleChange} required className={styles.input} placeholder="Ej. 150000" />
+          <input id="projectAmount" name="projectAmount" type="text" value={form.projectAmount} onChange={handleChange} required className={styles.input} placeholder="Ej. 150000" autoComplete="off" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectType">Tipo de oportunidad *</label>
-          <select id="projectType" name="projectType" value={form.projectType} onChange={handleChange} required className={styles.input} aria-label="Tipo de oportunidad">
+          <select id="projectType" name="projectType" value={form.projectType} onChange={handleChange} required className={styles.input} aria-label="Tipo de oportunidad" autoComplete="off">
             <option value="">— Seleccionar —</option>
             <option value="CONSULTORIA">Consultoría</option>
             <option value="SW">Software</option>
@@ -232,7 +234,7 @@ export default function NewActivationPage() {
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="hubspotUrl">URL HubSpot</label>
-          <input id="hubspotUrl" name="hubspotUrl" type="url" value={form.hubspotUrl} onChange={handleChange} className={styles.input} placeholder="https://app.hubspot.com/contacts/..../" />
+          <input id="hubspotUrl" name="hubspotUrl" type="url" value={form.hubspotUrl} onChange={handleChange} className={styles.input} placeholder="https://app.hubspot.com/contacts/..../" autoComplete="off" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label}>Áreas *</label>
@@ -240,6 +242,7 @@ export default function NewActivationPage() {
             <select
               className={styles.areaSelect}
               value=""
+              autoComplete="off"
               onChange={(e) => {
                 const v = e.target.value;
                 if (v) {
@@ -308,50 +311,66 @@ export default function NewActivationPage() {
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="template-select">Usar plantilla</label>
-          <select
-            id="template-select"
-            className={styles.input}
-            value=""
-            onChange={(e) => {
-              const id = e.target.value;
-              if (!id) return;
-              const t = emailTemplates.find((x) => x.id === id);
-              if (t) {
-                setForm((prev) => ({
-                  ...prev,
-                  body: replaceTemplateVariables(t.content ?? '', prev),
-                }));
-                setAppliedTemplateName(t.name);
-              }
-              e.target.value = '';
-            }}
-            style={{ maxWidth: '20rem' }}
-          >
-            <option value="">Sin plantilla</option>
-            {emailTemplates.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
+          <div className={styles.templateRow}>
+            <select
+              id="template-select"
+              className={styles.input}
+              value={selectedTemplateId}
+              autoComplete="off"
+              onChange={(e) => {
+                const id = e.target.value;
+                setSelectedTemplateId(id);
+                if (!id) {
+                  setAppliedTemplateName(null);
+                  return;
+                }
+                const t = emailTemplates.find((x) => x.id === id);
+                if (t) {
+                  setForm((prev) => ({
+                    ...prev,
+                    body: replaceTemplateVariables(t.content ?? '', prev),
+                  }));
+                  setAppliedTemplateName(t.name);
+                }
+              }}
+              style={{ maxWidth: '20rem' }}
+            >
+              <option value="">Sin plantilla</option>
+              {emailTemplates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={() => setBodySectionVisible(true)}
+              aria-label={selectedTemplateId ? 'Previsualizar y editar el contenido de la plantilla' : 'Mostrar sección para personalizar el cuerpo del correo'}
+            >
+              {selectedTemplateId ? 'Modificar plantilla' : 'Personalizar email'}
+            </button>
+          </div>
           {appliedTemplateName && (
             <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
               Cuerpo rellenado con la plantilla &quot;{appliedTemplateName}&quot;. Puedes modificarlo abajo.
             </p>
           )}
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="body">Cuerpo del correo</label>
-          <RichTextEditor
-            id="body"
-            value={form.body}
-            onChange={(value) => setForm((prev) => ({ ...prev, body: value }))}
-            placeholder="Contenido del email (opcional)"
-            minHeight={120}
-            aria-label="Cuerpo del correo"
-          />
-        </div>
+        {bodySectionVisible && (
+          <div className={styles.formGroup}>
+            <label className={styles.label} htmlFor="body">Cuerpo del correo</label>
+            <RichTextEditor
+              id="body"
+              value={form.body}
+              onChange={(value) => setForm((prev) => ({ ...prev, body: value }))}
+              placeholder="Contenido del email (opcional)"
+              minHeight={120}
+              aria-label="Cuerpo del correo"
+            />
+          </div>
+        )}
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="attachmentUrlsText">URLs escaneadas</label>
-          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs escaneadas: una por línea o separadas por comas" aria-label="URLs escaneadas" />
+          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs escaneadas: una por línea o separadas por comas" aria-label="URLs escaneadas" autoComplete="off" />
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
             Los enlaces de HubSpot solo funcionan con tu sesión. Después de crear la activación, abre los enlaces, descarga los archivos en tu ordenador y añádelos en la vista de detalle con &quot;Añadir archivos&quot;.
           </p>

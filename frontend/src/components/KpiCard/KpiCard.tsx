@@ -16,6 +16,7 @@ interface KpiCardProps {
 export function KpiCard({ title, value, subtitle, href, icon }: KpiCardProps) {
   const theme = useTheme();
   const isMicrosoft = theme === 'microsoft';
+  const isFiori = theme === 'fiori';
 
   const content = isMicrosoft ? (
     <>
@@ -28,6 +29,19 @@ export function KpiCard({ title, value, subtitle, href, icon }: KpiCardProps) {
         <div className={styles.value}>{value}</div>
       </div>
       <div className={styles.bottomLabel}>{title}</div>
+      {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
+    </>
+  ) : isFiori ? (
+    <>
+      <div className={styles.titleTop}>{title}</div>
+      <div className={styles.topRow}>
+        {icon && (
+          <span className={styles.iconWrap}>
+            <Icon name={icon} size={32} className={styles.icon} />
+          </span>
+        )}
+        <div className={styles.value}>{value}</div>
+      </div>
       {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
     </>
   ) : (

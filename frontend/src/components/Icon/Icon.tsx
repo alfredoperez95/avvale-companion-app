@@ -29,6 +29,8 @@ interface IconProps {
 
 /** Enlace y Tabla: siempre icono Fiori (SAP) en ambos temas */
 const FIORI_LINK_TABLE_NAMES: IconName[] = ['link', 'table'];
+/** KPI del dashboard: siempre icono SAP en ambos temas */
+const KPI_ICON_NAMES: IconName[] = ['total', 'draft', 'sent', 'error'];
 /** Listas y emoji: siempre SVG en ambos temas */
 const EDITOR_ICON_NAMES: IconName[] = ['listBullet', 'listNumber', 'emoji'];
 
@@ -127,6 +129,18 @@ export function Icon({ name, className, size = 24, 'aria-hidden': ariaHidden = t
 
   /* Enlace y Tabla: siempre icono Fiori (SAP) en ambos temas */
   if (useFioriLinkTable) {
+    const fioriClass = FIORI_ICON_CLASS[name];
+    return (
+      <span
+        className={`sap-icon ${fioriClass} ${styles.fioriIcon} ${className ?? ''}`.trim()}
+        style={{ fontSize: size }}
+        aria-hidden={ariaHidden}
+      />
+    );
+  }
+
+  /* KPI dashboard: siempre icono SAP en ambos temas */
+  if (KPI_ICON_NAMES.includes(name)) {
     const fioriClass = FIORI_ICON_CLASS[name];
     return (
       <span

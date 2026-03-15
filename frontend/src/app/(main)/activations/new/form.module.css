@@ -31,6 +31,13 @@
   margin-bottom: var(--fiori-space-4);
 }
 
+.templateRow {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-3);
+  flex-wrap: wrap;
+}
+
 .label {
   display: block;
   margin-bottom: var(--fiori-space-1);
