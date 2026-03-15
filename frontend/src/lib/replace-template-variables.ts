@@ -9,6 +9,7 @@ export const TEMPLATE_SHORTCODES = [
   { value: '{{importeProyecto}}', label: 'Importe del proyecto' },
   { value: '{{tipoOportunidad}}', label: 'Tipo de oportunidad' },
   { value: '{{urlHubSpot}}', label: 'URL HubSpot' },
+  { value: '{{Saludo}}', label: 'Saludo' },
 ] as const;
 
 export type TemplateVariables = {
@@ -18,6 +19,7 @@ export type TemplateVariables = {
   projectAmount: string;
   projectType: '' | 'CONSULTORIA' | 'SW';
   hubspotUrl: string;
+  saludo?: string;
 };
 
 const SHORTCODE_MAP: Record<string, keyof TemplateVariables> = {
@@ -27,6 +29,7 @@ const SHORTCODE_MAP: Record<string, keyof TemplateVariables> = {
   importeProyecto: 'projectAmount',
   tipoOportunidad: 'projectType',
   urlHubSpot: 'hubspotUrl',
+  Saludo: 'saludo',
 };
 
 function escapeForHtml(text: string): string {
@@ -44,6 +47,17 @@ function projectTypeLabel(projectType: '' | 'CONSULTORIA' | 'SW'): string {
 }
 
 /**
+ * Saludo según hora: 4:01–12:30 días, 12:31–20:00 tardes, 20:01–4:00 noches.
+ */
+export function getTimeBasedGreeting(date?: Date): string {
+  const d = date ?? new Date();
+  const mins = d.getHours() * 60 + d.getMinutes();
+  if (mins >= 241 && mins <= 750) return 'Buenos días a todos,';
+  if (mins >= 751 && mins <= 1200) return 'Buenas tardes a todos,';
+  return 'Buenas noches a todos,';
+}
+
+/**
  * Sustituye los shortcodes {{clave}} en el HTML por los valores del formulario.
  * Shortcodes no definidos se reemplazan por cadena vacía.
  */
@@ -55,6 +69,7 @@ export function replaceTemplateVariables(html: string, values: TemplateVariables
     projectAmount: values.projectAmount ?? '',
     projectType: projectTypeLabel(values.projectType),
     hubspotUrl: values.hubspotUrl ?? '',
+    saludo: values.saludo ?? getTimeBasedGreeting(),
   };
   let result = html;
   for (const [shortcodeKey, formKey] of Object.entries(SHORTCODE_MAP)) {

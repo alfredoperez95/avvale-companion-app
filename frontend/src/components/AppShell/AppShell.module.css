@@ -1,7 +1,8 @@
 .shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .header {
@@ -103,6 +104,8 @@
   border-right: 1px solid var(--fiori-border-light);
   flex-shrink: 0;
   padding: var(--fiori-space-2) 0;
+  overflow-y: auto;
+  align-self: stretch;
 }
 
 .navLink {
