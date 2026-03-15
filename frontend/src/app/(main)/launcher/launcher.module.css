@@ -3,6 +3,93 @@
   margin: 0 auto;
 }
 
+.welcomeTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--fiori-text);
+  margin: 0 0 var(--fiori-space-4);
+}
+
+.welcomeBanner {
+  position: relative;
+  min-height: 12rem;
+  border-radius: 0.5rem;
+  background-image: url('/resources/banner-avvale-welcome.png');
+  background-size: cover;
+  background-position: center;
+  margin-bottom: var(--fiori-space-6);
+  overflow: hidden;
+}
+
+.welcomeBannerOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--fiori-space-6);
+  background: rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.welcomeBannerTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 var(--fiori-space-3);
+}
+
+.welcomeBannerSubtitle {
+  font-size: 0.875rem;
+  color: #fff;
+  margin: 0 0 var(--fiori-space-1);
+  line-height: 1.4;
+}
+
+.welcomeBannerSubtitle:last-of-type {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.welcomeBannerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fiori-space-3);
+  justify-content: center;
+}
+
+.welcomeBannerBtnPrimary {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--fiori-shell-bg);
+  border: none;
+  border-radius: 0.25rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.welcomeBannerBtnPrimary:hover {
+  filter: brightness(1.05);
+}
+
+.welcomeBannerBtnSecondary {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fiori-shell-bg);
+  background: #fff;
+  border: 2px solid var(--fiori-shell-bg);
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.welcomeBannerBtnSecondary:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
 .h1 {
   font-size: 1.5rem;
   font-weight: 600;

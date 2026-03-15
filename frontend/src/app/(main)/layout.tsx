@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { UserProvider } from '@/contexts/UserContext';
 import '@/styles/fonts-fiori.css';
 import '@/styles/icons-fiori.css';
 
@@ -71,9 +72,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const activeTheme = theme;
   return (
     <ThemeProvider theme={activeTheme}>
-      <AppShell user={user} theme={activeTheme}>
-        {children}
-      </AppShell>
+      <UserProvider user={user}>
+        <AppShell user={user} theme={activeTheme}>
+          {children}
+        </AppShell>
+      </UserProvider>
     </ThemeProvider>
   );
 }
