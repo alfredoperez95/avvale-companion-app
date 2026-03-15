@@ -37,6 +37,10 @@ export default function NewActivationPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [bodySectionVisible, setBodySectionVisible] = useState(false);
   const [selected, setSelected] = useState<SelectedItem[]>([]);
+  const [scannedAttachments, setScannedAttachments] = useState<{ url: string; name: string }[]>([]);
+  const [addingUrl, setAddingUrl] = useState(false);
+  const [newUrl, setNewUrl] = useState('');
+  const [newUrlName, setNewUrlName] = useState('');
   const [form, setForm] = useState({
     projectName: '',
     client: '',
@@ -45,8 +49,6 @@ export default function NewActivationPage() {
     projectType: '' as '' | 'CONSULTORIA' | 'SW',
     hubspotUrl: '',
     body: '',
-    attachmentUrlsText: '',
-    attachmentNames: [] as string[],
   });
 
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
@@ -87,9 +89,13 @@ export default function NewActivationPage() {
       projectAmount: p.amount ?? prev.projectAmount,
       projectType: projectTypeFromServiceType || prev.projectType,
       hubspotUrl: p.hubspotUrl ?? prev.hubspotUrl,
-      attachmentUrlsText: p.attachmentUrls?.length ? p.attachmentUrls.join('\n') : prev.attachmentUrlsText,
-      attachmentNames: p.attachmentNames ?? [],
     }));
+    if (p.attachmentUrls?.length) {
+      const names = p.attachmentNames ?? [];
+      setScannedAttachments(
+        p.attachmentUrls.map((url, i) => ({ url, name: (names[i] ?? '').trim() || url })),
+      );
+    }
     if (typeof history !== 'undefined' && typeof location !== 'undefined') {
       history.replaceState(null, '', location.pathname + location.search);
     }
@@ -159,11 +165,9 @@ export default function NewActivationPage() {
     }
     setLoading(true);
     try {
-      const attachmentUrls = form.attachmentUrlsText
-        .split(/[\n,]/)
-        .map((u) => u.trim())
-        .filter(Boolean);
-      const attachmentNames = attachmentUrls.map((_, i) => form.attachmentNames[i] ?? '');
+      const validAttachments = scannedAttachments.filter((a) => a.url.trim());
+      const attachmentUrls = validAttachments.map((a) => a.url.trim());
+      const attachmentNames = validAttachments.map((a) => (a.name || a.url).trim());
       const areaIds = selected.filter((s): s is SelectedArea => s.type === 'area').map((s) => s.areaId);
       const subAreaIds = selected.filter((s): s is SelectedSubarea => s.type === 'subarea').map((s) => s.subAreaId);
       const body = {
@@ -371,13 +375,44 @@ export default function NewActivationPage() {
             />
           </div>
         )}
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="attachmentUrlsText">URLs escaneadas</label>
-          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs escaneadas: una por línea o separadas por comas" aria-label="URLs escaneadas" autoComplete="off" />
-          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Los enlaces de HubSpot solo funcionan con tu sesión. Después de crear la activación, abre los enlaces, descarga los archivos en tu ordenador y añádelos en la vista de detalle con &quot;Añadir archivos&quot;.
-          </p>
-        </div>
+        {(scannedAttachments.length > 0 || addingUrl) && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>URLs escaneadas</label>
+            {scannedAttachments.length > 0 && (
+              <ul className={styles.attachmentList} style={{ margin: '0 0 var(--fiori-space-2)', paddingLeft: '1.2rem' }}>
+                {scannedAttachments.map(({ url, name }, i) => (
+                  <li key={i} style={{ marginBottom: 'var(--fiori-space-1)' }}>
+                    <a href={url} target="_blank" rel="noopener noreferrer" className={styles.attachmentLink}>{name?.trim() || url}</a>
+                    {' '}
+                    <button type="button" className={styles.attachmentRemove} onClick={() => setScannedAttachments((prev) => prev.filter((_, j) => j !== i))} aria-label="Quitar">Quitar</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {addingUrl && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--fiori-space-2)', alignItems: 'center', marginBottom: 'var(--fiori-space-2)' }}>
+                <input type="url" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} className={styles.input} placeholder="URL" style={{ minWidth: '14rem' }} aria-label="URL" />
+                <input type="text" value={newUrlName} onChange={(e) => setNewUrlName(e.target.value)} className={styles.input} placeholder="Título" style={{ minWidth: '10rem' }} aria-label="Título" />
+                <button type="button" className={styles.btnSecondary} onClick={() => { if (newUrl.trim()) { setScannedAttachments((prev) => [...prev, { url: newUrl.trim(), name: newUrlName.trim() || newUrl.trim() }]); setNewUrl(''); setNewUrlName(''); setAddingUrl(false); } }}>Añadir</button>
+                <button type="button" className={styles.btnSecondary} onClick={() => { setAddingUrl(false); setNewUrl(''); setNewUrlName(''); }}>Cancelar</button>
+              </div>
+            )}
+            {!addingUrl && (
+              <div style={{ display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap', marginTop: scannedAttachments.length > 0 ? 'var(--fiori-space-1)' : 0 }}>
+                <button type="button" className={styles.btnSecondary} onClick={() => setAddingUrl(true)}>Añadir URL</button>
+                <button type="button" className={styles.btnSecondary} onClick={() => { const raw = window.prompt('Pega una o más URLs (una por línea o separadas por comas)'); if (raw) { const urls = raw.split(/[\n,]/).map((u) => u.trim()).filter(Boolean); setScannedAttachments((prev) => [...prev, ...urls.map((url) => ({ url, name: url }))]); } }}>Pegar URLs</button>
+              </div>
+            )}
+            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-2)' }}>
+              Los enlaces de HubSpot solo funcionan con tu sesión. Después de crear la activación, abre los enlaces, descarga los archivos y añádelos en la vista de detalle con &quot;Añadir archivos&quot;.
+            </p>
+          </div>
+        )}
+        {scannedAttachments.length === 0 && !addingUrl && (
+          <div className={styles.formGroup}>
+            <button type="button" className={styles.btnSecondary} onClick={() => setAddingUrl(true)}>Añadir URLs escaneadas</button>
+          </div>
+        )}
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>
           <button type="submit" disabled={loading || selected.length === 0 || !form.projectAmount.trim() || !form.projectType} className={styles.btnPrimary}>

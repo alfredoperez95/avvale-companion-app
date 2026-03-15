@@ -13,11 +13,12 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
 ];
 const adminNavItem = { href: '/admin', label: 'Configuración', icon: 'settings' as IconName };
 
-/** Tabs para tema Fiori: Launchpad, Activaciones, Configuraciones (sin iconos) */
+/** Tabs para tema Fiori: Launchpad, Nueva activación, Mis activaciones, Configuración (sin iconos) */
 const fioriTabs: { href: string; label: string; isActive: (pathname: string | null) => boolean }[] = [
   { href: '/dashboard', label: 'Launchpad', isActive: (p) => p === '/dashboard' },
-  { href: '/activations', label: 'Activaciones', isActive: (p) => p === '/activations' || (p != null && p.startsWith('/activations/')) },
-  { href: '/admin', label: 'Configuraciones', isActive: (p) => p === '/admin' || (p != null && p.startsWith('/admin/')) },
+  { href: '/activations/new', label: 'Nueva activación', isActive: (p) => p === '/activations/new' },
+  { href: '/activations', label: 'Mis activaciones', isActive: (p) => p === '/activations' || (p != null && p.startsWith('/activations/') && !p.startsWith('/activations/new')) },
+  { href: '/admin', label: 'Configuración', isActive: (p) => p === '/admin' || (p != null && p.startsWith('/admin/')) },
 ];
 
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
@@ -59,11 +60,6 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
           Activaciones
         </span>
         <div className={styles.headerRight}>
-          {theme === 'fiori' && (
-            <Link href="/activations/new" className={styles.headerButton} aria-label="Nueva activación">
-              Nueva Activación
-            </Link>
-          )}
           {user && (
             <Link href="/perfil" className={styles.avatarLink} aria-label="Ir a mi perfil">
               <span className={styles.avatar} aria-hidden="true">

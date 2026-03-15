@@ -53,6 +53,9 @@ export default function EditActivationPage() {
   const [attachments, setAttachments] = useState<{ id: string; fileName: string; originalUrl: string; contentType: string | null; createdAt: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [addingUrl, setAddingUrl] = useState(false);
+  const [newUrl, setNewUrl] = useState('');
+  const [newUrlName, setNewUrlName] = useState('');
 
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
@@ -433,33 +436,77 @@ export default function EditActivationPage() {
             aria-label="Cuerpo del correo"
           />
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="attachmentUrlsText">URLs escaneadas</label>
-          {(() => {
-            const urlList = form.attachmentUrlsText.split(/[\n,]/).map((u) => u.trim()).filter(Boolean);
-            const attachmentList = urlList.map((url, i) => ({ url, name: (form.attachmentNames[i] ?? '').trim() || url }));
-            return attachmentList.length > 0 ? (
-              <ul style={{ margin: '0 0 var(--fiori-space-1)', paddingLeft: '1.2rem' }}>
-                {attachmentList.map(({ url, name }, i) => (
-                  <li key={i}>
-                    <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--fiori-link)' }}>{name}</a>
-                  </li>
-                ))}
-              </ul>
-            ) : null;
-          })()}
-          <textarea id="attachmentUrlsText" name="attachmentUrlsText" value={form.attachmentUrlsText} onChange={handleChange} className={styles.textarea} style={{ minHeight: 60 }} placeholder="URLs escaneadas: una por línea o separadas por comas" aria-label="URLs escaneadas" />
-          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Los enlaces de HubSpot no se pueden descargar automáticamente desde la app. Usa &quot;Descargar todos los adjuntos&quot;, descarga los archivos con tu sesión y súbelos con &quot;Añadir archivos&quot;.
-          </p>
-          {form.attachmentUrlsText.trim().length > 0 && (
-            <div style={{ marginTop: 'var(--fiori-space-1)', display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
-              <button type="button" className={styles.btnSecondary} onClick={() => form.attachmentUrlsText.split(/[\n,]/).map((u) => u.trim()).filter(Boolean).forEach((u) => window.open(u, '_blank', 'noopener'))}>
-                Descargar todos los adjuntos
-              </button>
-            </div>
-          )}
-        </div>
+        {(() => {
+          const urlList = form.attachmentUrlsText.split(/[\n,]/).map((u) => u.trim()).filter(Boolean);
+          const attachmentList = urlList.map((url, i) => ({ url, name: (form.attachmentNames[i] ?? '').trim() || url }));
+          const removeScanned = (index: number) => {
+            const next = attachmentList.filter((_, j) => j !== index);
+            setForm((prev) => ({
+              ...prev,
+              attachmentUrlsText: next.map((a) => a.url).join('\n'),
+              attachmentNames: next.map((a) => a.name),
+            }));
+          };
+          const addScanned = (url: string, name: string) => {
+            setForm((prev) => ({
+              ...prev,
+              attachmentUrlsText: prev.attachmentUrlsText ? prev.attachmentUrlsText + '\n' + url : url,
+              attachmentNames: [...(prev.attachmentNames ?? []), name || url],
+            }));
+            setNewUrl('');
+            setNewUrlName('');
+            setAddingUrl(false);
+          };
+          return (
+            <>
+              {(attachmentList.length > 0 || addingUrl) && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>URLs escaneadas</label>
+                  {attachmentList.length > 0 && (
+                    <ul className={styles.attachmentList} style={{ margin: '0 0 var(--fiori-space-2)', paddingLeft: '1.2rem' }}>
+                      {attachmentList.map(({ url, name }, i) => (
+                        <li key={i} style={{ marginBottom: 'var(--fiori-space-1)' }}>
+                          <a href={url} target="_blank" rel="noopener noreferrer" className={styles.attachmentLink}>{name?.trim() || url}</a>
+                          {' '}
+                          <button type="button" className={styles.attachmentRemove} onClick={() => removeScanned(i)} aria-label="Quitar">Quitar</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {addingUrl && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--fiori-space-2)', alignItems: 'center', marginBottom: 'var(--fiori-space-2)' }}>
+                      <input type="url" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} className={styles.input} placeholder="URL" style={{ minWidth: '14rem' }} aria-label="URL" />
+                      <input type="text" value={newUrlName} onChange={(e) => setNewUrlName(e.target.value)} className={styles.input} placeholder="Título" style={{ minWidth: '10rem' }} aria-label="Título" />
+                      <button type="button" className={styles.btnSecondary} onClick={() => { if (newUrl.trim()) addScanned(newUrl.trim(), newUrlName.trim() || newUrl.trim()); }}>Añadir</button>
+                      <button type="button" className={styles.btnSecondary} onClick={() => { setAddingUrl(false); setNewUrl(''); setNewUrlName(''); }}>Cancelar</button>
+                    </div>
+                  )}
+                  {!addingUrl && (
+                    <div style={{ display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap', marginTop: attachmentList.length > 0 ? 'var(--fiori-space-1)' : 0 }}>
+                      <button type="button" className={styles.btnSecondary} onClick={() => setAddingUrl(true)}>Añadir URL</button>
+                      <button type="button" className={styles.btnSecondary} onClick={() => { const raw = window.prompt('Pega una o más URLs (una por línea o separadas por comas)'); if (raw) { const urls = raw.split(/[\n,]/).map((u) => u.trim()).filter(Boolean); setForm((prev) => ({ ...prev, attachmentUrlsText: prev.attachmentUrlsText ? prev.attachmentUrlsText + '\n' + urls.join('\n') : urls.join('\n'), attachmentNames: [...(prev.attachmentNames ?? []), ...urls.map((u) => u)] })); } }}>Pegar URLs</button>
+                    </div>
+                  )}
+                  {attachmentList.length > 0 && (
+                    <div style={{ marginTop: 'var(--fiori-space-1)', display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
+                      <button type="button" className={styles.btnSecondary} onClick={() => attachmentList.forEach(({ url }) => window.open(url, '_blank', 'noopener'))}>
+                        Descargar todos los adjuntos
+                      </button>
+                    </div>
+                  )}
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-2)' }}>
+                    Los enlaces de HubSpot no se pueden descargar automáticamente. Usa &quot;Descargar todos los adjuntos&quot;, descarga con tu sesión y súbelos con &quot;Añadir archivos&quot;.
+                  </p>
+                </div>
+              )}
+              {attachmentList.length === 0 && !addingUrl && (
+                <div className={styles.formGroup}>
+                  <button type="button" className={styles.btnSecondary} onClick={() => setAddingUrl(true)}>Añadir URLs escaneadas</button>
+                </div>
+              )}
+            </>
+          );
+        })()}
         <div className={styles.formGroup}>
           <span className={styles.label}>Archivos adjuntos</span>
           {attachments.length > 0 && (

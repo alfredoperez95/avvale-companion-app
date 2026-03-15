@@ -61,7 +61,7 @@
   font-size: 0.875rem;
 }
 
-/* Fiori: botón "Nueva Activación" en la cabecera */
+/* Botón "Nueva Activación" en la cabecera (base; Fiori usa el bloque siguiente) */
 .headerButton {
   display: inline-flex;
   align-items: center;
@@ -80,6 +80,24 @@
   background: var(--fiori-shell-hover);
   border-color: rgba(255, 255, 255, 0.8);
   color: var(--fiori-shell-text);
+  text-decoration: none;
+}
+
+/* Fiori: estética ghost/outlined – azul vivo, borde azul, esquinas muy redondeadas (pill) */
+:global([data-theme="fiori"]) .headerButton {
+  color: #1863ee;
+  background: transparent;
+  border: 1px solid #1863ee;
+  border-radius: 9999px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+:global([data-theme="fiori"]) .headerButton:hover {
+  color: #1450b8;
+  border-color: #1450b8;
+  background: rgba(24, 99, 238, 0.06);
   text-decoration: none;
 }
 
