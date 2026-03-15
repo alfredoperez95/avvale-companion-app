@@ -14,9 +14,9 @@ html[data-appearance='fiori'] {
   --fiori-nav-item-bg: transparent;
   --fiori-nav-item-hover: #e8eaed;
   --fiori-nav-item-active-bg: #e0e3e6;
-  --fiori-nav-item-active-border: 0.1875rem solid #0070f2;
+  --fiori-nav-item-active-border: 0.1875rem solid #0064d9;
   --fiori-nav-text: #1d2d3e;
-  --fiori-nav-text-active: #0070f2;
+  --fiori-nav-text-active: #0064d9;
 
   /* Content */
   --fiori-content-bg: #f5f6f7;
@@ -29,8 +29,8 @@ html[data-appearance='fiori'] {
   --fiori-text: #1d2d3e;
   --fiori-text-secondary: #556b82;
   --fiori-text-inverse: #fff;
-  --fiori-link: #0070f2;
-  --fiori-link-hover: #0854a0;
+  --fiori-link: #0064d9;
+  --fiori-link-hover: #0052b3;
 
   /* Semantic (Horizon value states) */
   --fiori-success: #107e3e;
@@ -39,7 +39,7 @@ html[data-appearance='fiori'] {
   --fiori-error-bg: #fde8e8;
   --fiori-warning: #e9730c;
   --fiori-warning-bg: #fff4e5;
-  --fiori-information: #0070f2;
+  --fiori-information: #0064d9;
   --fiori-information-bg: #ebf8ff;
 
   /* Spacing (4px base, igual que base) */

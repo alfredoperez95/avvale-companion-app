@@ -85,9 +85,9 @@
 
 /* Fiori: estética ghost/outlined – azul vivo, borde azul, esquinas muy redondeadas (pill) */
 :global([data-theme="fiori"]) .headerButton {
-  color: #1863ee;
+  color: #0064d9;
   background: transparent;
-  border: 1px solid #1863ee;
+  border: 1px solid #0064d9;
   border-radius: 9999px;
   padding: 0.5rem 1.25rem;
   font-size: 0.875rem;
@@ -95,9 +95,9 @@
 }
 
 :global([data-theme="fiori"]) .headerButton:hover {
-  color: #1450b8;
-  border-color: #1450b8;
-  background: rgba(24, 99, 238, 0.06);
+  color: #0052b3;
+  border-color: #0052b3;
+  background: rgba(0, 100, 217, 0.06);
   text-decoration: none;
 }
 
@@ -185,34 +185,71 @@
   padding: var(--fiori-space-6);
 }
 
-/* Fiori: layout en columna (tabs + main), sin barra lateral; fondo del contenido */
+/* Fiori: main crece con el contenido para que el scroll sea en .body (pageHeader se oculta, tabsNav queda fijo) */
+:global([data-theme="fiori"]) .main {
+  flex: 1 0 0%;
+  overflow: visible;
+  min-height: 0;
+}
+
+/* Fiori: layout en columna (tabs + main), sin barra lateral; fondo del contenido; scroll en body */
 :global([data-theme="fiori"]) .body {
   flex-direction: column;
   background: #f5f6f7;
+  overflow-y: auto;
 }
 
-/* Fiori: barra de tabs horizontal */
+/* Fiori: barra "dónde estás" (título + acción) encima de los tabs */
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 50px 0 40px 20px;
+  background: #fff;
+  border-bottom: 0 solid var(--fiori-border-light);
+  flex-shrink: 0;
+}
+
+.pageHeaderTitle {
+  font-family: "72Black", "72Blackfull", "72", "72full", Arial, Helvetica, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 27px;
+  letter-spacing: 0;
+  text-align: left;
+  color: var(--fiori-text);
+  margin: 0;
+}
+
+/* Fiori: barra de tabs horizontal; sticky debajo del header al hacer scroll */
 .tabsNav {
   display: flex;
-  align-items: center;
-  gap: 0;
+  align-items: stretch;
+  gap: var(--fiori-space-4);
   background: #fff;
   border-bottom: 1px solid var(--fiori-border-light);
   padding: 0 var(--fiori-space-4);
   flex-shrink: 0;
 }
 
+:global([data-theme="fiori"]) .tabsNav {
+  position: sticky;
+  top: var(--fiori-shell-height);
+  z-index: 10;
+}
+
 .tabLink {
+  font-family: "72-Bold", "72-Boldfull", "72", "72full", Arial, Helvetica, sans-serif;
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: var(--fiori-space-3) var(--fiori-space-4);
-  font-size: 0.875rem;
-  font-weight: 500;
+  padding: var(--fiori-space-3) var(--fiori-space-2) 0.075rem var(--fiori-space-2);
+  font-size: 0.945rem;
+  font-weight: 700;
   color: var(--fiori-nav-text);
   text-decoration: none;
   border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  margin-bottom: 0;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -230,3 +267,4 @@
   border-bottom-color: var(--fiori-nav-text-active);
   text-decoration: none;
 }
+

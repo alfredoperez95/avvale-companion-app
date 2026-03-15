@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import '@/styles/fonts-fiori.css';
 import '@/styles/icons-fiori.css';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {

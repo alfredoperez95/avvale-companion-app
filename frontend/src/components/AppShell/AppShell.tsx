@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { type IconName } from '@/components/Icon/Icon';
+import { Icon, type IconName } from '@/components/Icon/Icon';
 import styles from './AppShell.module.css';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
@@ -13,7 +13,7 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
 ];
 const adminNavItem = { href: '/admin', label: 'Configuración', icon: 'settings' as IconName };
 
-/** Tabs para tema Fiori: Casa (solo icono, sin enlace), Launchpad, Nueva activación, Mis activaciones, Configuración */
+/** Tabs para tema Fiori: Casa (solo icono, sin enlace), Dashboard, Nueva activación, Mis activaciones, Configuración */
 const fioriTabs: {
   href: string;
   label: string;
@@ -22,7 +22,7 @@ const fioriTabs: {
   isActive: (pathname: string | null) => boolean;
 }[] = [
   { href: '#', label: 'Inicio', icon: 'home', iconOnly: true, isActive: () => false },
-  { href: '/dashboard', label: 'Launchpad', isActive: (p) => p === '/dashboard' },
+  { href: '/dashboard', label: 'Dashboard', isActive: (p) => p === '/dashboard' },
   { href: '/activations/new', label: 'Nueva activación', isActive: (p) => p === '/activations/new' },
   { href: '/activations', label: 'Mis activaciones', isActive: (p) => p === '/activations' || (p != null && p.startsWith('/activations/') && !p.startsWith('/activations/new')) },
   { href: '/admin', label: 'Configuración', isActive: (p) => p === '/admin' || (p != null && p.startsWith('/admin/')) },
@@ -40,6 +40,15 @@ function getInitials(name?: string | null, lastName?: string | null, email?: str
   return '?';
 }
 
+/** Título para la barra "dónde estás" (solo Fiori) */
+function getPageHeader(pathname: string | null): { title: string } {
+  if (!pathname) return { title: 'Dashboard' };
+  if (pathname === '/dashboard') return { title: 'Dashboard' };
+  if (pathname.startsWith('/activations')) return { title: 'Activaciones' };
+  if (pathname.startsWith('/admin')) return { title: 'Configuración' };
+  return { title: 'Dashboard' };
+}
+
 interface AppShellProps {
   children: React.ReactNode;
   user?: { id: string; email: string; name?: string | null; lastName?: string | null; role?: string } | null;
@@ -49,6 +58,7 @@ interface AppShellProps {
 export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps) {
   const pathname = usePathname();
   const initials = user ? getInitials(user.name, user.lastName, user.email) : '';
+  const pageHeader = getPageHeader(pathname);
 
   return (
     <div className={styles.shell} data-theme={theme}>
@@ -79,6 +89,9 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
       <div className={styles.body}>
         {theme === 'fiori' ? (
           <>
+            <div className={styles.pageHeader}>
+              <h1 className={styles.pageHeaderTitle}>{pageHeader.title}</h1>
+            </div>
             <nav className={styles.tabsNav} aria-label="Navegación principal">
               {fioriTabs
                 .filter((tab) => tab.href !== '/admin' || user?.role === 'ADMIN')
