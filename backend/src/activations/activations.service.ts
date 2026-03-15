@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttachmentsService } from '../attachments/attachments.service';
+import { BillingAdminContactsService } from '../billing-admin-contacts/billing-admin-contacts.service';
 import { ActivationStatus } from '@prisma/client';
 import { CreateActivationDto } from './dto/create-activation.dto';
 import { UpdateActivationDto } from './dto/update-activation.dto';
@@ -19,6 +20,7 @@ export class ActivationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly attachmentsService: AttachmentsService,
+    private readonly billingAdminContactsService: BillingAdminContactsService,
   ) {}
 
   /** Obtiene emails: areaIds = área completa (director + todos contactos subáreas); subAreaIds = solo director del área + contactos de esas subáreas. */
@@ -78,6 +80,19 @@ export class ActivationsService {
     return { recipientTo, recipientCc: null };
   }
 
+  /** Añade los emails de Facturación y Administración al destinatario Para (To), sin duplicados. */
+  private async mergeBillingAdminIntoRecipientTo(areaRecipientTo: string): Promise<string> {
+    const billingEmails = await this.billingAdminContactsService.findAllEmails();
+    if (billingEmails.length === 0) return areaRecipientTo;
+    const areaEmails = areaRecipientTo
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const combined = new Set<string>([...areaEmails, ...billingEmails]);
+    const list = [...combined].filter(Boolean);
+    return list.length > 0 ? list.join(', ') : areaRecipientTo;
+  }
+
   /** Crea una activación en estado DRAFT para el usuario. */
   async create(userId: string, createdByLabel: string, dto: CreateActivationDto) {
     const areaIds = dto.areaIds ?? [];
@@ -86,7 +101,8 @@ export class ActivationsService {
       throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
     }
     const subject = buildSubject(dto.projectName, dto.client ?? null);
-    const { recipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
+    const { recipientTo: areaRecipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
+    const recipientTo = await this.mergeBillingAdminIntoRecipientTo(areaRecipientTo);
     const activation = await this.prisma.activation.create({
       data: {
         createdByUserId: userId,
@@ -179,8 +195,8 @@ export class ActivationsService {
           data: subAreaIds.map((subAreaId) => ({ activationId, subAreaId })),
         });
       }
-      const { recipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
-      data.recipientTo = recipientTo;
+      const { recipientTo: areaRecipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
+      data.recipientTo = await this.mergeBillingAdminIntoRecipientTo(areaRecipientTo);
     }
     await this.prisma.activation.update({ where: { id: activationId }, data });
     return this.findOneByIdAndUser(activationId, userId);

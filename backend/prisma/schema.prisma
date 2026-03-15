@@ -153,6 +153,15 @@ model CcContact {
   @@map("cc_contacts")
 }
 
+model BillingAdminContact {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("billing_admin_contacts")
+}
+
 model EmailTemplate {
   id        String   @id @default(uuid())
   name      String

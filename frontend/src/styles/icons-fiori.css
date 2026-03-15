@@ -37,8 +37,7 @@
 [data-theme="fiori"] .sap-icon--document-text::before { content: "\e030"; }
 [data-theme="fiori"] .sap-icon--add-document::before { content: "\e0ad"; }
 [data-theme="fiori"] .sap-icon--action-settings::before { content: "\e0c6"; }
-/* Borrador: lápiz/editar (write-2) en lugar de document */
-[data-theme="fiori"] .sap-icon--write-2::before { content: "\e034"; }
+[data-theme="fiori"] .sap-icon--write-2::before { content: "\e034"; } /* lápiz / editar (Borradores) */
 /* Enlace y Tabla: iconos Fiori en tema Fiori */
 [data-theme="fiori"] .sap-icon--chain-link::before { content: "\e088"; }
 [data-theme="fiori"] .sap-icon--table-view::before { content: "\e0ba"; }
@@ -60,6 +59,7 @@
 
 /* KPI dashboard: iconos SAP en ambos temas (fondo de color en la card) */
 .sap-icon.sap-icon--activities,
+.sap-icon.sap-icon--document,
 .sap-icon.sap-icon--write-2,
 .sap-icon.sap-icon--accept,
 .sap-icon.sap-icon--message-error {
@@ -73,6 +73,7 @@
   -webkit-font-smoothing: antialiased;
 }
 .sap-icon.sap-icon--activities::before { content: "\e001"; font-family: "SAP-icons"; }
+.sap-icon.sap-icon--document::before { content: "\e026"; font-family: "SAP-icons"; }
 .sap-icon.sap-icon--write-2::before { content: "\e034"; font-family: "SAP-icons"; }
 .sap-icon.sap-icon--accept::before { content: "\e05b"; font-family: "SAP-icons"; }
 .sap-icon.sap-icon--message-error::before { content: "\e0b1"; font-family: "SAP-icons"; }

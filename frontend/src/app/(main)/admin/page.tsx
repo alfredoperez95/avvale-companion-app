@@ -66,6 +66,15 @@ export default function AdminPage() {
             <span className={styles.tileCta}>Gestionar áreas →</span>
           </article>
         </Link>
+        <Link href="/admin/billing-admin" className={styles.tileLink} aria-labelledby="tile-billing-heading" role="listitem">
+          <article className={styles.tile}>
+            <h2 id="tile-billing-heading" className={styles.tileTitle}>Facturación y Administración</h2>
+            <p className={styles.tileDesc}>
+              Contactos que se incluyen siempre en todas las activaciones, de índole administrativo y/o de facturación.
+            </p>
+            <span className={styles.tileCta}>Gestionar contactos →</span>
+          </article>
+        </Link>
         <Link href="/admin/email-templates" className={styles.tileLink} aria-labelledby="tile-templates-heading" role="listitem">
           <article className={styles.tile}>
             <h2 id="tile-templates-heading" className={styles.tileTitle}>Plantillas Email</h2>

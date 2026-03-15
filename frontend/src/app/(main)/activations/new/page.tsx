@@ -285,6 +285,9 @@ export default function NewActivationPage() {
               Añade al menos un área (o subárea si aplica). Los destinatarios se asignarán según los contactos configurados.
             </p>
           )}
+          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-2)' }}>
+            Los contactos de Facturación y Administración se incluyen siempre en Para.
+          </p>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="subject">Asunto</label>

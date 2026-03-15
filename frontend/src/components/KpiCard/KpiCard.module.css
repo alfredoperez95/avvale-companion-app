@@ -36,7 +36,7 @@
 }
 
 :global([data-theme="microsoft"]) .card .bottomLabel {
-  font-size: 0.75rem;
+  font-size: 0.9375rem;
   color: var(--fiori-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -131,7 +131,7 @@
 }
 
 .title {
-  font-size: 0.75rem;
+  font-size: 0.9375rem;
   color: var(--fiori-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -156,7 +156,7 @@
 
 /* Tema Fiori: título arriba, icono + número grande en bloque central, subtítulo abajo (estilo ref) */
 .titleTop {
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--fiori-text);
   line-height: 1.3;
@@ -191,10 +191,8 @@
 :global([data-theme="fiori"]) .card .titleTop {
   flex-shrink: 0;
   margin-bottom: var(--fiori-space-2);
-  font-size: 0.75rem;
+  font-size: 0.9375rem;
   color: #1c2d3e;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 :global([data-theme="fiori"]) .card .topRow {
@@ -220,7 +218,7 @@
 }
 
 :global([data-theme="fiori"]) .title {
-  font-size: 0.6875rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--fiori-text-secondary);
   letter-spacing: 0.04em;

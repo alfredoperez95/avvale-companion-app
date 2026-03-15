@@ -37,7 +37,7 @@ const EDITOR_ICON_NAMES: IconName[] = ['listBullet', 'listNumber', 'emoji'];
 /** Mapeo nombre semántico → clase SAP (Fiori). Ver icons-fiori.css. No usado para link/table/listBullet/listNumber. */
 const FIORI_ICON_CLASS: Record<IconName, string> = {
   total: 'sap-icon--activities',
-  draft: 'sap-icon--write-2',
+  draft: 'sap-icon--document',
   sent: 'sap-icon--accept',
   error: 'sap-icon--message-error',
   home: 'sap-icon--home',
@@ -139,9 +139,14 @@ export function Icon({ name, className, size = 24, 'aria-hidden': ariaHidden = t
     );
   }
 
-  /* KPI dashboard: siempre icono SAP en ambos temas */
+  /* KPI dashboard: siempre icono SAP en ambos temas. En Fiori: Activaciones = documento, Borradores = lápiz (editar). */
   if (KPI_ICON_NAMES.includes(name)) {
-    const fioriClass = FIORI_ICON_CLASS[name];
+    const fioriClass =
+      theme === 'fiori' && name === 'draft'
+        ? 'sap-icon--write-2'
+        : theme === 'fiori' && name === 'total'
+          ? FIORI_ICON_CLASS['draft']
+          : FIORI_ICON_CLASS[name];
     return (
       <span
         className={`sap-icon ${fioriClass} ${styles.fioriIcon} ${className ?? ''}`.trim()}

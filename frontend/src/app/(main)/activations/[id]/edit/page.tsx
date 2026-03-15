@@ -363,6 +363,9 @@ export default function EditActivationPage() {
               </span>
             ))}
           </div>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-2)' }}>
+            Los contactos de Facturación y Administración se incluyen siempre en Para.
+          </p>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="subject">Asunto</label>
