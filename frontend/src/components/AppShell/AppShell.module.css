@@ -203,6 +203,9 @@
 }
 
 .tabLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   padding: var(--fiori-space-3) var(--fiori-space-4);
   font-size: 0.875rem;
   font-weight: 500;
@@ -211,6 +214,10 @@
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tabIcon {
+  flex-shrink: 0;
 }
 
 .tabLink:hover {

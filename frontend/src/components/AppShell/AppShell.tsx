@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Icon, type IconName } from '@/components/Icon/Icon';
+import { type IconName } from '@/components/Icon/Icon';
 import styles from './AppShell.module.css';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
@@ -13,8 +13,15 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
 ];
 const adminNavItem = { href: '/admin', label: 'Configuración', icon: 'settings' as IconName };
 
-/** Tabs para tema Fiori: Launchpad, Nueva activación, Mis activaciones, Configuración (sin iconos) */
-const fioriTabs: { href: string; label: string; isActive: (pathname: string | null) => boolean }[] = [
+/** Tabs para tema Fiori: Casa (solo icono, sin enlace), Launchpad, Nueva activación, Mis activaciones, Configuración */
+const fioriTabs: {
+  href: string;
+  label: string;
+  icon?: IconName;
+  iconOnly?: boolean;
+  isActive: (pathname: string | null) => boolean;
+}[] = [
+  { href: '#', label: 'Inicio', icon: 'home', iconOnly: true, isActive: () => false },
   { href: '/dashboard', label: 'Launchpad', isActive: (p) => p === '/dashboard' },
   { href: '/activations/new', label: 'Nueva activación', isActive: (p) => p === '/activations/new' },
   { href: '/activations', label: 'Mis activaciones', isActive: (p) => p === '/activations' || (p != null && p.startsWith('/activations/') && !p.startsWith('/activations/new')) },
@@ -75,15 +82,29 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
             <nav className={styles.tabsNav} aria-label="Navegación principal">
               {fioriTabs
                 .filter((tab) => tab.href !== '/admin' || user?.role === 'ADMIN')
-                .map(({ href, label, isActive }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={isActive(pathname) ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink}
-                  >
-                    {label}
-                  </Link>
-                ))}
+                .map((tab) => {
+                  const { href, label, icon, iconOnly, isActive } = tab;
+                  const active = isActive(pathname);
+                  const tabClass = active ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink;
+                  if (iconOnly && icon === 'home') {
+                    return (
+                      <span
+                        key="home"
+                        className={tabClass}
+                        role="button"
+                        aria-label={label}
+                        style={{ cursor: 'default' }}
+                      >
+                        <span className={`${styles.tabIcon} sap-icon sap-icon--launchpad`} style={{ fontSize: 18 }} aria-hidden />
+                      </span>
+                    );
+                  }
+                  return (
+                    <Link key={href} href={href} className={tabClass}>
+                      {label}
+                    </Link>
+                  );
+                })}
             </nav>
             <main className={styles.main} id="main-content">
               {children}

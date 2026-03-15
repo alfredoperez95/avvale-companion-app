@@ -10,6 +10,16 @@
   font-display: block;
 }
 
+/* SAP-icons-TNT (sap-icon://SAP-icons-TNT/intranet → \e07e). OpenUI5 no sirve TNT; uso CDN npm. */
+@font-face {
+  font-family: "SAP-icons-TNT";
+  src:
+    url("https://cdn.jsdelivr.net/npm/@sap-theming/theming-base-content@11.33.0/content/Base/baseLib/baseTheme/fonts/SAP-icons-TNT.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
 [data-theme="fiori"] .sap-icon {
   font-family: "SAP-icons";
   font-style: normal;
@@ -41,6 +51,24 @@
 /* Enlace y Tabla: iconos Fiori en tema Fiori */
 [data-theme="fiori"] .sap-icon--chain-link::before { content: "\e088"; }
 [data-theme="fiori"] .sap-icon--table-view::before { content: "\e0ba"; }
+/* Inicio / Launchpad en tab superior (SAP-icons \e070) */
+[data-theme="fiori"] .sap-icon--launchpad::before { content: "\e070"; }
+
+/* TNT: intranet (casa / inicio en tab superior) – sap-icon://SAP-icons-TNT/intranet */
+[data-theme="fiori"] .sap-icon-tnt--intranet {
+  font-family: "SAP-icons-TNT";
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  vertical-align: middle;
+  -webkit-font-smoothing: antialiased;
+}
+[data-theme="fiori"] .sap-icon-tnt--intranet::before {
+  content: "\e07e";
+  font-family: "SAP-icons-TNT";
+}
 
 /* Enlace y Tabla: mismo icono Fiori (SAP) también en tema Fluent */
 .sap-icon.sap-icon--chain-link,

@@ -1,0 +1,84 @@
+.wrap {
+  padding: var(--fiori-space-4);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+  margin-bottom: var(--fiori-space-2);
+}
+
+.note {
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+  margin-bottom: var(--fiori-space-4);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  margin-bottom: var(--fiori-space-4);
+}
+
+.controlsLabel {
+  font-size: 0.875rem;
+  color: var(--fiori-text);
+}
+
+.controlsBtn {
+  padding: var(--fiori-space-1) var(--fiori-space-3);
+  font-size: 1.25rem;
+  line-height: 1;
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 4px;
+  background: var(--fiori-background);
+  color: var(--fiori-text);
+  cursor: pointer;
+}
+
+.controlsBtn:hover {
+  background: var(--fiori-nav-text-active);
+  color: #fff;
+  border-color: var(--fiori-nav-text-active);
+}
+
+.controlsValue {
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  color: var(--fiori-text-secondary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(20, 1fr);
+  gap: var(--fiori-space-2);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--fiori-space-2);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 4px;
+  background: var(--fiori-background);
+}
+
+.icon {
+  font-family: "SAP-icons";
+  line-height: 1;
+  margin-bottom: var(--fiori-space-1);
+  /* fontSize se aplica por inline style desde el estado */
+}
+
+.code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.65rem;
+  color: var(--fiori-text-secondary);
+  word-break: break-all;
+  text-align: center;
+}
