@@ -1,0 +1,45 @@
+.footer {
+  flex-shrink: 0;
+  margin-top: var(--fiori-space-6);
+  padding: var(--fiori-space-4) 0;
+}
+
+/* Fiori: fondo oscuro, borde sutil, al final del contenido */
+:global([data-theme="fiori"]) .footer {
+  background: #1c2d3e;
+  border-top: 1px solid var(--fiori-border-light);
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Microsoft: misma superficie que el contenido, borde discreto */
+:global([data-theme="microsoft"]) .footer {
+  background: var(--fiori-surface);
+  border-top: 1px solid var(--fiori-border-light);
+}
+
+.footerInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 105em;
+  margin: 0 auto;
+  padding: 0 var(--fiori-space-4);
+}
+
+.logoLink {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  opacity: 0.85;
+}
+
+.logoLink:hover {
+  opacity: 1;
+}
+
+.logoImage {
+  height: 1.5rem;
+  width: auto;
+  object-fit: contain;
+}

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { Footer } from '@/components/Footer/Footer';
 import { Icon, type IconName } from '@/components/Icon/Icon';
 import styles from './AppShell.module.css';
 
@@ -65,63 +66,72 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
   return (
     <div className={styles.shell} data-theme={theme}>
       <header className={styles.header} role="banner">
-        <Link href="/launcher" className={styles.logoLink} aria-label="Ir al inicio">
-          <Image
-            src="https://www.avvale.com/hubfs/avvale-logo-hor-col-neg-1.png"
-            alt="Avvale"
-            width={160}
-            height={36}
-            className={styles.logoImage}
-            priority
-          />
-        </Link>
-        <span className={styles.appName} aria-label="Nombre de la aplicación">
-          Companion Apps
-        </span>
-        <div className={styles.headerRight}>
-          {user && (
-            <Link href="/perfil" className={styles.avatarLink} aria-label="Ir a mi perfil">
-              <span className={styles.avatar} aria-hidden="true">
-                {initials}
-              </span>
-            </Link>
-          )}
+        <div className={styles.headerInner}>
+          <Link href="/launcher" className={styles.logoLink} aria-label="Ir al inicio">
+            <Image
+              src="https://www.avvale.com/hubfs/avvale-logo-hor-col-neg-1.png"
+              alt="Avvale"
+              width={160}
+              height={36}
+              className={styles.logoImage}
+              priority
+            />
+          </Link>
+          <span className={styles.appName} aria-label="Nombre de la aplicación">
+            Companion Apps
+          </span>
+          <div className={styles.headerRight}>
+            {user && (
+              <Link href="/perfil" className={styles.avatarLink} aria-label="Ir a mi perfil">
+                <span className={styles.avatar} aria-hidden="true">
+                  {initials}
+                </span>
+              </Link>
+            )}
+          </div>
         </div>
       </header>
       <div className={styles.body}>
         {theme === 'fiori' ? (
           <>
-            {pathname !== '/launcher' && (
+            {pathname !== '/launcher' && pathname !== '/perfil' && (
               <>
                 <div className={styles.pageHeader}>
-                  <h1 className={styles.pageHeaderTitle}>{pageHeader.title}</h1>
+                  <div className={styles.pageHeaderInner}>
+                    <h1 className={styles.pageHeaderTitle}>{pageHeader.title}</h1>
+                  </div>
                 </div>
                 <nav className={styles.tabsNav} aria-label="Navegación principal">
-                  {fioriTabs
-                    .filter((tab) => tab.href !== '/launcher/activations/configuration' || user?.role === 'ADMIN')
-                    .map((tab) => {
-                      const { href, label, icon, iconOnly, isActive } = tab;
-                      const active = isActive(pathname);
-                      const tabClass = active ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink;
-                      if (iconOnly && icon === 'home') {
+                  <div className={styles.tabsNavInner}>
+                    {fioriTabs
+                      .filter((tab) => tab.href !== '/launcher/activations/configuration' || user?.role === 'ADMIN')
+                      .map((tab) => {
+                        const { href, label, icon, iconOnly, isActive } = tab;
+                        const active = isActive(pathname);
+                        const tabClass = active ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink;
+                        if (iconOnly && icon === 'home') {
+                          return (
+                            <Link key={href} href={href} className={tabClass} aria-label={label}>
+                              <span className={`${styles.tabIcon} sap-icon sap-icon--launchpad`} style={{ fontSize: 18 }} aria-hidden />
+                            </Link>
+                          );
+                        }
                         return (
-                          <Link key={href} href={href} className={tabClass} aria-label={label}>
-                            <span className={`${styles.tabIcon} sap-icon sap-icon--launchpad`} style={{ fontSize: 18 }} aria-hidden />
+                          <Link key={href} href={href} className={tabClass}>
+                            {label}
                           </Link>
                         );
-                      }
-                      return (
-                        <Link key={href} href={href} className={tabClass}>
-                          {label}
-                        </Link>
-                      );
-                    })}
+                      })}
+                  </div>
                 </nav>
               </>
             )}
-            <main className={styles.main} id="main-content">
-              {children}
-            </main>
+            <div className={styles.mainFooterWrap}>
+              <main className={styles.main} id="main-content">
+                {children}
+              </main>
+              <Footer />
+            </div>
           </>
         ) : (
           <>
@@ -146,9 +156,12 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                 </Link>
               )}
             </aside>
-            <main className={styles.main} id="main-content">
-              {children}
-            </main>
+            <div className={styles.mainFooterWrap}>
+              <main className={styles.main} id="main-content">
+                {children}
+              </main>
+              <Footer />
+            </div>
           </>
         )}
       </div>

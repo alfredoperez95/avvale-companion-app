@@ -30,7 +30,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--fiori-space-6);
-  background: rgba(0, 0, 0, 0.35);
+  background: rgb(28 45 62 / 85%);
   text-align: center;
 }
 
@@ -195,7 +195,7 @@
 }
 
 .tileIcon::before {
-  content: "\ee00e";
+  content: "\e00e";
 }
 
 .tileLink:hover .tileCta {

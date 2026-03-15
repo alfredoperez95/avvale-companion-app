@@ -14,11 +14,18 @@
   height: var(--fiori-shell-height);
   background: var(--fiori-shell-bg);
   color: var(--fiori-shell-text);
-  display: flex;
-  align-items: center;
-  padding: 0 var(--fiori-space-4);
   flex-shrink: 0;
   box-shadow: var(--fiori-shadow-1);
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 105em;
+  margin: 0 auto;
+  padding: 0 var(--fiori-space-4);
+  height: 100%;
 }
 
 .logo {
@@ -179,17 +186,27 @@
   text-decoration: none;
 }
 
+/* Wrapper main + footer: ocupa espacio restante y crece con el contenido para que el footer quede al final o abajo del todo */
+.mainFooterWrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: min-content; /* crece con el contenido; con flex: 1 queda abajo cuando no hay scroll */
+}
+
 .main {
   flex: 1;
   overflow: auto;
   padding: var(--fiori-space-6);
+  margin-top: 35px;
+  margin-bottom: 35px;
 }
 
-/* Fiori: main crece con el contenido para que el scroll sea en .body (pageHeader se oculta, tabsNav queda fijo) */
-:global([data-theme="fiori"]) .main {
-  flex: 1 0 0%;
-  overflow: visible;
+/* Fiori: main crece con el contenido, scroll en .body; el wrapper hace que el footer quede al final o abajo */
+:global([data-theme="fiori"]) .mainFooterWrap .main {
+  flex: 1 1 auto;
   min-height: 0;
+  overflow: visible;
 }
 
 /* Fiori: layout en columna (tabs + main), sin barra lateral; fondo del contenido; scroll en body */
@@ -201,13 +218,19 @@
 
 /* Fiori: barra "dónde estás" (título + acción) encima de los tabs */
 .pageHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 50px 0 40px 20px;
   background: #fff;
   border-bottom: 0 solid var(--fiori-border-light);
   flex-shrink: 0;
+}
+
+.pageHeaderInner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 105em;
+  margin: 0 auto;
+  padding: 50px var(--fiori-space-4) 40px var(--fiori-space-4);
 }
 
 .pageHeaderTitle {
@@ -223,13 +246,19 @@
 
 /* Fiori: barra de tabs horizontal; sticky debajo del header al hacer scroll */
 .tabsNav {
+  background: #fff;
+  border-bottom: 1px solid var(--fiori-border-light);
+  flex-shrink: 0;
+}
+
+.tabsNavInner {
   display: flex;
   align-items: stretch;
   gap: var(--fiori-space-4);
-  background: #fff;
-  border-bottom: 1px solid var(--fiori-border-light);
+  width: 100%;
+  max-width: 105em;
+  margin: 0 auto;
   padding: 0 var(--fiori-space-4);
-  flex-shrink: 0;
 }
 
 /* top: 0 respecto al content-box del .body (que ya tiene padding-top = header); así los tabs quedan justo bajo el header */
