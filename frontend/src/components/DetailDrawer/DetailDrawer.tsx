@@ -42,6 +42,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEmailBody, setShowEmailBody] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -207,13 +208,27 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
                   <p style={{ color: 'var(--fiori-text-secondary)', margin: 0 }}>Sin áreas asignadas</p>
                 )
               )}
-              {activation.body && section(
-                'Cuerpo del correo',
-                /<[a-z][\s\S]*>/i.test(activation.body) ? (
-                  <div className={styles.sectionContentBody} dangerouslySetInnerHTML={{ __html: activation.body }} />
-                ) : (
-                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{activation.body}</pre>
-                )
+              {activation.body && (
+                <div className={styles.section}>
+                  <h3 className={styles.sectionTitle}>Cuerpo del correo</h3>
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    onClick={() => setShowEmailBody((v) => !v)}
+                    aria-expanded={showEmailBody}
+                  >
+                    {showEmailBody ? 'Ocultar email' : 'Mostrar email'}
+                  </button>
+                  {showEmailBody && (
+                    <div className={`${styles.sectionContent} ${styles.sectionContentReveal}`}>
+                      {/<[a-z][\s\S]*>/i.test(activation.body) ? (
+                        <div className={styles.sectionContentBody} dangerouslySetInnerHTML={{ __html: activation.body }} />
+                      ) : (
+                        <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{activation.body}</pre>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
               {(() => {
                 const urls = parseAttachmentUrls(activation.attachmentUrls);
@@ -264,7 +279,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
         {!loading && activation && (
           <div className={styles.footer}>
             {activation.status === 'DRAFT' && (
-              <Link href={`/activations/${activationId}/edit`} className={styles.btn}>
+              <Link href={`/launcher/activations/activate/${activationId}/edit`} className={styles.btn}>
                 Editar borrador
               </Link>
             )}

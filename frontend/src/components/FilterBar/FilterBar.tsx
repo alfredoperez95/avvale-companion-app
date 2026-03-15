@@ -42,7 +42,7 @@ export function FilterBar({
             id="filter-search"
             type="search"
             className={styles.input}
-            placeholder="Proyecto o destinatario..."
+            placeholder="Proyecto, cliente o destinatario..."
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             aria-label="Buscar"

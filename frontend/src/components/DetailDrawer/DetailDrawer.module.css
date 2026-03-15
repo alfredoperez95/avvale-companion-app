@@ -82,6 +82,10 @@
   word-break: break-word;
 }
 
+.sectionContentReveal {
+  margin-top: var(--fiori-space-2);
+}
+
 .sectionContent p {
   margin: 0 0 var(--fiori-space-2);
 }

@@ -1,0 +1,256 @@
+.page {
+  max-width: 90rem;
+  margin: 0 auto;
+}
+
+.back {
+  display: block;
+  margin-bottom: var(--fiori-space-4);
+  color: var(--fiori-link);
+  font-size: 0.875rem;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--fiori-space-6);
+  color: var(--fiori-text);
+}
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fiori-space-4);
+}
+
+@media (min-width: 64rem) {
+  .form {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.formGroup {
+  min-width: 0;
+}
+
+.formGroupFull {
+  grid-column: 1 / -1;
+}
+
+.formGroupRow2 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fiori-space-4);
+}
+
+@media (min-width: 64rem) {
+  .formGroupRow2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.form .actions,
+.form .error {
+  grid-column: 1 / -1;
+}
+
+.templateRow {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-3);
+  flex-wrap: wrap;
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--fiori-space-1);
+  font-family: var(--fiori-font-family);
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--fiori-text);
+}
+
+.labelText {
+  text-decoration: underline;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  height: 2.5rem;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  font-size: 0.875rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.textarea {
+  height: auto;
+  min-height: 5rem;
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--fiori-shell-bg);
+}
+
+.inputReadOnly {
+  width: 100%;
+  height: 2.5rem;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.25rem;
+  background: var(--fiori-nav-bg);
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--fiori-text-secondary);
+  cursor: default;
+  box-sizing: border-box;
+}
+
+.error {
+  color: var(--fiori-error);
+  font-size: 0.875rem;
+  margin-bottom: var(--fiori-space-3);
+}
+
+.actions {
+  display: flex;
+  gap: var(--fiori-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--fiori-space-4);
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.5rem;
+  padding: 0 var(--fiori-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: none;
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-text-inverse);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #0854a0;
+}
+
+.btnPrimary:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.5rem;
+  padding: 0 var(--fiori-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: 1px solid var(--fiori-border);
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.btnSecondary:hover {
+  background: var(--fiori-nav-item-hover);
+  color: var(--fiori-text);
+  text-decoration: none;
+}
+
+.areaTagsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  margin-top: var(--fiori-space-1);
+}
+
+.areaTag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fiori-space-1);
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  background: var(--fiori-nav-item-hover);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--fiori-text);
+}
+
+.areaTagRemove {
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--fiori-text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.areaTagRemove:hover {
+  color: var(--fiori-error);
+}
+
+.areaSelect {
+  height: 2.5rem;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  font-size: 0.875rem;
+  min-width: 14rem;
+  box-sizing: border-box;
+}
+
+.attachmentList {
+  list-style: disc;
+}
+
+.attachmentLink {
+  color: var(--fiori-link);
+  text-decoration: none;
+}
+
+.attachmentLink:hover {
+  text-decoration: underline;
+}
+
+.attachmentRemove {
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  text-decoration: none;
+}
+
+.attachmentRemove:hover {
+  color: var(--fiori-error);
+  text-decoration: underline;
+}

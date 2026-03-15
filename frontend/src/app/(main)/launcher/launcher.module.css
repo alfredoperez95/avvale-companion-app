@@ -1,0 +1,100 @@
+.page {
+  max-width: 90rem;
+  margin: 0 auto;
+}
+
+.h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--fiori-space-6);
+  color: var(--fiori-text);
+}
+
+.menuDesc {
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-6);
+}
+
+.tilesGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fiori-space-6);
+}
+
+@media (min-width: 52rem) {
+  .tilesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 72rem) {
+  .tilesGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.tile {
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+  padding: var(--fiori-space-4);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tileTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 var(--fiori-space-1);
+  color: var(--fiori-text);
+}
+
+.tileDesc {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-4);
+  line-height: 1.4;
+}
+
+.tileLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  user-select: none;
+}
+
+.tileLink:hover {
+  text-decoration: none;
+}
+
+.tileLink .tile,
+.tileLink .tileTitle,
+.tileLink .tileDesc {
+  text-decoration: none;
+}
+
+.tileLink:hover .tile {
+  border-color: var(--fiori-shell-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tileLink:hover .tileTitle,
+.tileLink:hover .tileDesc {
+  text-decoration: none;
+}
+
+.tileCta {
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fiori-text-secondary);
+  margin-top: auto;
+  padding-top: var(--fiori-space-2);
+}
+
+.tileLink:hover .tileCta {
+  color: var(--fiori-link);
+  text-decoration: underline;
+}

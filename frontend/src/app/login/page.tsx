@@ -33,7 +33,7 @@ export default function LoginPage() {
       }
       if (data.accessToken) {
         typeof window !== 'undefined' && localStorage.setItem('token', data.accessToken);
-        router.push('/dashboard');
+        router.push('/launcher');
         router.refresh();
       }
     } catch (err) {

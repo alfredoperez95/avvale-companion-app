@@ -7,13 +7,14 @@ import { Icon, type IconName } from '@/components/Icon/Icon';
 import styles from './AppShell.module.css';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
-  { href: '/dashboard', label: 'Inicio', icon: 'home' },
-  { href: '/activations', label: 'Activaciones', icon: 'activations' },
-  { href: '/activations/new', label: 'Nueva activación', icon: 'new' },
+  { href: '/launcher', label: 'App Launcher', icon: 'home' },
+  { href: '/launcher/activations/dashboard', label: 'Dashboard', icon: 'activations' },
+  { href: '/launcher/activations/activate', label: 'Mis activaciones', icon: 'activations' },
+  { href: '/launcher/activations/activate/new', label: 'Nueva activación', icon: 'new' },
 ];
-const adminNavItem = { href: '/admin', label: 'Configuración', icon: 'settings' as IconName };
+const adminNavItem = { href: '/launcher/activations/configuration', label: 'Configuración', icon: 'settings' as IconName };
 
-/** Tabs para tema Fiori: Casa (solo icono, sin enlace), Dashboard, Nueva activación, Mis activaciones, Configuración */
+/** Tabs para tema Fiori: App Launcher (Inicio), Dashboard, Nueva activación, Mis activaciones, Configuración */
 const fioriTabs: {
   href: string;
   label: string;
@@ -21,11 +22,11 @@ const fioriTabs: {
   iconOnly?: boolean;
   isActive: (pathname: string | null) => boolean;
 }[] = [
-  { href: '#', label: 'Inicio', icon: 'home', iconOnly: true, isActive: () => false },
-  { href: '/dashboard', label: 'Dashboard', isActive: (p) => p === '/dashboard' },
-  { href: '/activations/new', label: 'Nueva activación', isActive: (p) => p === '/activations/new' },
-  { href: '/activations', label: 'Mis activaciones', isActive: (p) => p === '/activations' || (p != null && p.startsWith('/activations/') && !p.startsWith('/activations/new')) },
-  { href: '/admin', label: 'Configuración', isActive: (p) => p === '/admin' || (p != null && p.startsWith('/admin/')) },
+  { href: '/launcher', label: 'Inicio', icon: 'home', iconOnly: true, isActive: (p) => p === '/launcher' },
+  { href: '/launcher/activations/dashboard', label: 'Dashboard', isActive: (p) => p === '/launcher/activations/dashboard' },
+  { href: '/launcher/activations/activate/new', label: 'Nueva activación', isActive: (p) => p === '/launcher/activations/activate/new' },
+  { href: '/launcher/activations/activate', label: 'Mis activaciones', isActive: (p) => p === '/launcher/activations/activate' || (p != null && p.startsWith('/launcher/activations/activate/') && p !== '/launcher/activations/activate/new') },
+  { href: '/launcher/activations/configuration', label: 'Configuración', isActive: (p) => p === '/launcher/activations/configuration' || (p != null && p.startsWith('/launcher/activations/configuration/')) },
 ];
 
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
@@ -40,12 +41,13 @@ function getInitials(name?: string | null, lastName?: string | null, email?: str
   return '?';
 }
 
-/** Título para la barra "dónde estás" (solo Fiori); Activaciones para home/dashboard y continuidad de sección */
+/** Título para la barra "dónde estás" (solo Fiori); App Launcher, Activaciones, Configuración */
 function getPageHeader(pathname: string | null): { title: string } {
-  if (!pathname) return { title: 'Activaciones' };
-  if (pathname === '/dashboard') return { title: 'Activaciones' };
-  if (pathname.startsWith('/activations')) return { title: 'Activaciones' };
-  if (pathname.startsWith('/admin')) return { title: 'Configuración' };
+  if (!pathname) return { title: 'Inicio' };
+  if (pathname === '/launcher') return { title: 'Inicio' };
+  if (pathname === '/launcher/activations/dashboard') return { title: 'Activaciones' };
+  if (pathname.startsWith('/launcher/activations/activate')) return { title: 'Activaciones' };
+  if (pathname.startsWith('/launcher/activations/configuration')) return { title: 'Configuración' };
   return { title: 'Activaciones' };
 }
 
@@ -63,7 +65,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
   return (
     <div className={styles.shell} data-theme={theme}>
       <header className={styles.header} role="banner">
-        <Link href="/dashboard" className={styles.logoLink} aria-label="Ir al inicio">
+        <Link href="/launcher" className={styles.logoLink} aria-label="Ir al inicio">
           <Image
             src="https://www.avvale.com/hubfs/avvale-logo-hor-col-neg-1.png"
             alt="Avvale"
@@ -94,22 +96,16 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
             </div>
             <nav className={styles.tabsNav} aria-label="Navegación principal">
               {fioriTabs
-                .filter((tab) => tab.href !== '/admin' || user?.role === 'ADMIN')
+                .filter((tab) => tab.href !== '/launcher/activations/configuration' || user?.role === 'ADMIN')
                 .map((tab) => {
                   const { href, label, icon, iconOnly, isActive } = tab;
                   const active = isActive(pathname);
                   const tabClass = active ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink;
                   if (iconOnly && icon === 'home') {
                     return (
-                      <span
-                        key="home"
-                        className={tabClass}
-                        role="button"
-                        aria-label={label}
-                        style={{ cursor: 'default' }}
-                      >
+                      <Link key={href} href={href} className={tabClass} aria-label={label}>
                         <span className={`${styles.tabIcon} sap-icon sap-icon--launchpad`} style={{ fontSize: 18 }} aria-hidden />
-                      </span>
+                      </Link>
                     );
                   }
                   return (
@@ -130,7 +126,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                 <Link
                   key={href}
                   href={href}
-                  className={pathname === href || (href !== '/dashboard' && pathname?.startsWith(href)) ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
+                  className={pathname === href || (href !== '/launcher' && href !== '/launcher/activations/dashboard' && pathname?.startsWith(href)) ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
                 >
                   <Icon name={icon} size={20} className={styles.navIcon} />
                   {label}
