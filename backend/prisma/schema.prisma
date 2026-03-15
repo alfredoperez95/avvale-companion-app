@@ -92,9 +92,9 @@ model Activation {
   projectAmount    String?          @map("project_amount")
   projectType      ProjectType?     @map("project_type")
   hubspotUrl       String?          @map("hubspot_url")
-  body             String?          @map("body")
-  attachmentUrls   String?          @map("attachment_urls")
-  attachmentNames  String?          @map("attachment_names")
+  body             String?          @map("body") @db.Text
+  attachmentUrls   String?          @map("attachment_urls") @db.Text
+  attachmentNames  String?          @map("attachment_names") @db.Text
   makeSentAt       DateTime?        @map("make_sent_at")
   makeRunId        String?          @map("make_run_id")
   errorMessage     String?          @map("error_message")
