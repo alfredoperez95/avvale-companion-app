@@ -12,7 +12,12 @@ export type IconName =
   | 'home'
   | 'activations'
   | 'new'
-  | 'settings';
+  | 'settings'
+  | 'link'
+  | 'table'
+  | 'listBullet'
+  | 'listNumber'
+  | 'emoji';
 
 interface IconProps {
   name: IconName;
@@ -22,17 +27,66 @@ interface IconProps {
   'aria-hidden'?: boolean;
 }
 
-/** Mapeo nombre semántico → clase SAP (Fiori). Ver icons-fiori.css */
+/** Enlace y Tabla: siempre icono Fiori (SAP) en ambos temas */
+const FIORI_LINK_TABLE_NAMES: IconName[] = ['link', 'table'];
+/** Listas y emoji: siempre SVG en ambos temas */
+const EDITOR_ICON_NAMES: IconName[] = ['listBullet', 'listNumber', 'emoji'];
+
+/** Mapeo nombre semántico → clase SAP (Fiori). Ver icons-fiori.css. No usado para link/table/listBullet/listNumber. */
 const FIORI_ICON_CLASS: Record<IconName, string> = {
   total: 'sap-icon--activities',
-  draft: 'sap-icon--write-2',      /* Borrador: lápiz/editar */
-  sent: 'sap-icon--accept',       /* Enviadas: tick */
+  draft: 'sap-icon--write-2',
+  sent: 'sap-icon--accept',
   error: 'sap-icon--message-error',
   home: 'sap-icon--home',
   activations: 'sap-icon--document-text',
   new: 'sap-icon--add-document',
   settings: 'sap-icon--action-settings',
+  link: 'sap-icon--chain-link',
+  table: 'sap-icon--table-view',
+  listBullet: 'sap-icon--list',
+  listNumber: 'sap-icon--numbered-list',
+  emoji: 'sap-icon--list',
 };
+
+/** Icono lista numerada al estilo ref: números grandes, guiones cortos, mucho espacio vertical */
+function ListNumberIconSvg({ size }: { size: number }) {
+  const rowH = 7.5;
+  const lineY1 = 5.5;
+  const lineY2 = lineY1 + rowH;
+  const lineY3 = lineY2 + rowH;
+  const lineStartX = 5.5;
+  const lineLength = 7;
+  const lineThick = 1;
+  const contentTop = lineY1 - lineThick / 2;
+  const contentBottom = lineY3 + lineThick / 2;
+  const contentWidth = lineStartX + lineLength;
+  const translateX = (24 - contentWidth) / 2;
+  const contentCenterY = (contentTop + contentBottom) / 2;
+  const translateY = 12 - contentCenterY;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ display: 'block', verticalAlign: 'middle' }}>
+      <g transform={`translate(${translateX}, ${translateY})`}>
+        <text x="0" y={lineY1} dominantBaseline="middle" fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize="8" fontWeight="600" fill="currentColor">1</text>
+        <text x="0" y={lineY2} dominantBaseline="middle" fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize="8" fontWeight="600" fill="currentColor">2</text>
+        <text x="0" y={lineY3} dominantBaseline="middle" fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize="8" fontWeight="600" fill="currentColor">3</text>
+        <path d={`M${lineStartX} ${lineY1 - lineThick / 2}h${lineLength}v${lineThick}H${lineStartX}V${lineY1 - lineThick / 2}zM${lineStartX} ${lineY2 - lineThick / 2}h${lineLength}v${lineThick}H${lineStartX}V${lineY2 - lineThick / 2}zM${lineStartX} ${lineY3 - lineThick / 2}h${lineLength}v${lineThick}H${lineStartX}V${lineY3 - lineThick / 2}z`} fill="currentColor" />
+      </g>
+    </svg>
+  );
+}
+
+/** Icono emoji: carita sonriente dibujada con líneas (outline) */
+function EmojiIconSvg({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ display: 'block' }}>
+      <circle cx="10" cy="10" r="6.5" />
+      <circle cx="7.5" cy="8.5" r="1" />
+      <circle cx="12.5" cy="8.5" r="1" />
+      <path d="M7 11.2Q10 14 13 11.2" />
+    </svg>
+  );
+}
 
 /** Iconos Fluent (Microsoft) como SVG inline – sin dependencia de @fluentui/react-icons */
 function FluentIconSvg({ name, size }: { name: IconName; size: number }) {
@@ -58,10 +112,39 @@ const FLUENT_SVG_PATH: Record<IconName, string> = {
   activations: 'M7 4a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7ZM5 7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7Zm2 1a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H7Z',
   new: 'M10 3a.5.5 0 0 1 .5.5v6h6a.5.5 0 0 1 0 1h-6v6a.5.5 0 0 1-1 0v-6h-6a.5.5 0 0 1 0-1h6v-6A.5.5 0 0 1 10 3Z',
   settings: 'M10 2a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2Zm0 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm0 4a4.5 4.5 0 0 1 4.5 4.5.5.5 0 0 1-1 0 3.5 3.5 0 0 0-3.5-3.5.5.5 0 0 1 0-1ZM10 12a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2Zm0 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z',
+  /* Editor: iconos simples tipo Microsoft (enlace, tabla, listas) */
+  link: 'M7 7.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm6 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM9 9l2 2',
+  table: 'M4 4h12v12H4V4zM10 4v12M4 10h12',
+  listBullet: 'M3 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0 5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0 5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM6 6.5h9v1H6v-1zm0 5h9v1H6v-1zm0 5h9v1H6v-1z',
+  listNumber: '', /* dibujado por ListNumberIconSvg (1, 2, 3 + líneas) */
+  emoji: '', /* dibujado por EmojiIconSvg (carita outline) */
 };
 
 export function Icon({ name, className, size = 24, 'aria-hidden': ariaHidden = true }: IconProps) {
   const theme = useTheme();
+  const useFioriLinkTable = FIORI_LINK_TABLE_NAMES.includes(name);
+  const useEditorIcons = EDITOR_ICON_NAMES.includes(name);
+
+  /* Enlace y Tabla: siempre icono Fiori (SAP) en ambos temas */
+  if (useFioriLinkTable) {
+    const fioriClass = FIORI_ICON_CLASS[name];
+    return (
+      <span
+        className={`sap-icon ${fioriClass} ${styles.fioriIcon} ${className ?? ''}`.trim()}
+        style={{ fontSize: size }}
+        aria-hidden={ariaHidden}
+      />
+    );
+  }
+
+  /* Listas: siempre SVG tipo Microsoft, en todos los temas */
+  if (useEditorIcons) {
+    return (
+      <span className={className} aria-hidden={ariaHidden} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: size, height: size }}>
+        {name === 'listNumber' ? <ListNumberIconSvg size={size} /> : name === 'emoji' ? <EmojiIconSvg size={size} /> : <FluentIconSvg name={name} size={size} />}
+      </span>
+    );
+  }
 
   if (theme === 'fiori') {
     const fioriClass = FIORI_ICON_CLASS[name];

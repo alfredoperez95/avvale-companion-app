@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Icon, type IconName } from '@/components/Icon/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
 import styles from './KpiCard.module.css';
 
 interface KpiCardProps {
@@ -13,7 +14,23 @@ interface KpiCardProps {
 }
 
 export function KpiCard({ title, value, subtitle, href, icon }: KpiCardProps) {
-  const content = (
+  const theme = useTheme();
+  const isMicrosoft = theme === 'microsoft';
+
+  const content = isMicrosoft ? (
+    <>
+      <div className={styles.topRow}>
+        {icon && (
+          <span className={styles.iconWrap}>
+            <Icon name={icon} size={24} className={styles.icon} />
+          </span>
+        )}
+        <div className={styles.value}>{value}</div>
+      </div>
+      <div className={styles.bottomLabel}>{title}</div>
+      {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
+    </>
+  ) : (
     <>
       <div className={styles.header}>
         {icon && (

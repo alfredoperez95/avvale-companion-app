@@ -9,6 +9,7 @@
   flex-wrap: wrap;
   gap: 2px;
   align-items: center;
+  justify-content: flex-start;
   padding: var(--fiori-space-1) var(--fiori-space-2);
   border-bottom: 1px solid var(--fiori-border);
   background: var(--fiori-background);
@@ -31,6 +32,9 @@
 
 .toolbarBtn,
 .toolbarBtnActive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--fiori-space-1) var(--fiori-space-2);
   font-size: 0.875rem;
   border: none;
@@ -142,6 +146,137 @@
   background: var(--fiori-nav-item-hover);
 }
 
+/* Selector de tamaño de tabla */
+.tableSizeTitle {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--fiori-space-2);
+}
+
+.tableSizeGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--fiori-space-1);
+}
+
+.tableSizeOption {
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  font-size: 0.8125rem;
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  cursor: pointer;
+}
+
+.tableSizeOption:hover {
+  background: var(--fiori-information-bg);
+  border-color: var(--fiori-information);
+  color: var(--fiori-information);
+}
+
+/* Barra contextual cuando el cursor está en una tabla */
+.tableToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  border-bottom: 1px solid var(--fiori-border-light);
+  background: var(--fiori-nav-bg);
+}
+
+.tableToolbarBtn,
+.tableToolbarBtnDanger {
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  font-size: 0.75rem;
+  border: none;
+  border-radius: 0.2rem;
+  background: transparent;
+  color: var(--fiori-text);
+  cursor: pointer;
+}
+
+.tableToolbarBtn:hover {
+  background: var(--fiori-nav-item-hover);
+}
+
+.tableToolbarBtnDanger:hover {
+  background: var(--fiori-error-bg);
+  color: var(--fiori-error);
+}
+
+.tableToolbarSep {
+  width: 1px;
+  height: 1.25rem;
+  background: var(--fiori-border);
+  margin: 0 var(--fiori-space-1);
+}
+
+/* Panel de enlace (URL) */
+.linkLabel {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  margin-bottom: var(--fiori-space-1);
+}
+
+.linkInput {
+  width: 100%;
+  min-width: 14rem;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  font-size: 0.875rem;
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  margin-bottom: var(--fiori-space-2);
+  box-sizing: border-box;
+}
+
+.linkInput:focus {
+  outline: none;
+  border-color: var(--fiori-shell-bg);
+}
+
+.linkActions {
+  display: flex;
+  gap: var(--fiori-space-2);
+  justify-content: flex-end;
+}
+
+.linkBtnPrimary,
+.linkBtnSecondary {
+  padding: var(--fiori-space-1) var(--fiori-space-3);
+  font-size: 0.8125rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.linkBtnPrimary {
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-shell-text);
+  border: none;
+}
+
+.linkBtnPrimary:hover {
+  opacity: 0.9;
+}
+
+.linkBtnSecondary {
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  border: 1px solid var(--fiori-border);
+}
+
+.linkBtnSecondary:hover {
+  background: var(--fiori-nav-item-hover);
+}
+
 .editorContent {
   font-size: 0.9375rem;
   font-family: inherit;
@@ -182,6 +317,31 @@
   padding: 0.1em 0.25em;
   border-radius: 0.2em;
   font-weight: 500;
+}
+
+/* Tablas en el editor (y en HTML de correo) */
+.richTextEditorWrapper :global(.ProseMirror table) {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.5em 0;
+}
+
+.richTextEditorWrapper :global(.ProseMirror th),
+.richTextEditorWrapper :global(.ProseMirror td) {
+  border: 1px solid var(--fiori-border);
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  box-sizing: border-box;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.richTextEditorWrapper :global(.ProseMirror th) {
+  background: var(--fiori-nav-bg);
+  font-weight: 600;
 }
 
 /* Desplegable al hacer clic en una variable */

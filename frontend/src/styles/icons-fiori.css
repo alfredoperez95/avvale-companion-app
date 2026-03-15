@@ -39,3 +39,21 @@
 [data-theme="fiori"] .sap-icon--action-settings::before { content: "\e0c6"; }
 /* Borrador: lápiz/editar (write-2) en lugar de document */
 [data-theme="fiori"] .sap-icon--write-2::before { content: "\e034"; }
+/* Enlace y Tabla: iconos Fiori en tema Fiori */
+[data-theme="fiori"] .sap-icon--chain-link::before { content: "\e088"; }
+[data-theme="fiori"] .sap-icon--table-view::before { content: "\e0ba"; }
+
+/* Enlace y Tabla: mismo icono Fiori (SAP) también en tema Fluent */
+.sap-icon.sap-icon--chain-link,
+.sap-icon.sap-icon--table-view {
+  font-family: "SAP-icons";
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  vertical-align: middle;
+  -webkit-font-smoothing: antialiased;
+}
+.sap-icon.sap-icon--chain-link::before { content: "\e088"; font-family: "SAP-icons"; }
+.sap-icon.sap-icon--table-view::before { content: "\e0ba"; font-family: "SAP-icons"; }

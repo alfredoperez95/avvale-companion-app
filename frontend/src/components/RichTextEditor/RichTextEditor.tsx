@@ -9,7 +9,9 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
+import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
 import { VariableHighlightExtension } from './variableHighlightExtension';
+import { Icon } from '@/components/Icon/Icon';
 import styles from './RichTextEditor.module.css';
 
 /** 9 colores estándar para email (3x3) */
@@ -71,6 +73,17 @@ const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [
 
 const VARIABLE_REGEX = /\{\{[^}]+\}\}/g;
 
+/** Opciones de tamaño para insertar tabla (filas × columnas) */
+const TABLE_SIZES = [
+  { rows: 2, cols: 2 },
+  { rows: 2, cols: 3 },
+  { rows: 3, cols: 2 },
+  { rows: 3, cols: 3 },
+  { rows: 3, cols: 4 },
+  { rows: 4, cols: 3 },
+  { rows: 4, cols: 4 },
+];
+
 /** Devuelve el rango { from, to } de la variable que contiene la posición, o null. */
 function getVariableRangeAtPos(doc: PMNode, pos: number): { from: number; to: number } | null {
   let result: { from: number; to: number } | null = null;
@@ -102,16 +115,23 @@ function Toolbar({
 }) {
   const [colorOpen, setColorOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [tableSizeOpen, setTableSizeOpen] = useState(false);
   const colorGroupRef = useRef<HTMLSpanElement>(null);
   const emojiGroupRef = useRef<HTMLSpanElement>(null);
+  const linkGroupRef = useRef<HTMLSpanElement>(null);
+  const tableSizeGroupRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!editor) return;
     const handleMouseDown = (e: MouseEvent) => {
       const t = e.target as Node | null;
-      if (colorGroupRef.current?.contains(t) || emojiGroupRef.current?.contains(t)) return;
+      if (colorGroupRef.current?.contains(t) || emojiGroupRef.current?.contains(t) || linkGroupRef.current?.contains(t) || tableSizeGroupRef.current?.contains(t)) return;
       setColorOpen(false);
       setEmojiOpen(false);
+      setLinkOpen(false);
+      setTableSizeOpen(false);
     };
     document.addEventListener('mousedown', handleMouseDown);
     return () => document.removeEventListener('mousedown', handleMouseDown);
@@ -172,7 +192,7 @@ function Toolbar({
         <button
           type="button"
           className={colorOpen ? styles.toolbarBtnActive : styles.toolbarBtn}
-          onClick={() => { setColorOpen((o) => !o); setEmojiOpen(false); }}
+          onClick={() => { setColorOpen((o) => !o); setEmojiOpen(false); setTableSizeOpen(false); }}
           title="Color del texto"
           aria-label="Color del texto"
           aria-expanded={colorOpen}
@@ -203,12 +223,12 @@ function Toolbar({
         <button
           type="button"
           className={emojiOpen ? styles.toolbarBtnActive : styles.toolbarBtn}
-          onClick={() => { setEmojiOpen((o) => !o); setColorOpen(false); }}
+          onClick={() => { setEmojiOpen((o) => !o); setColorOpen(false); setTableSizeOpen(false); }}
           title="Insertar emoji"
           aria-label="Insertar emoji"
           aria-expanded={emojiOpen}
         >
-          😀
+          <Icon name="emoji" size={16} />
         </button>
         {emojiOpen && (
           <div className={styles.toolbarDropdown} role="menu">
@@ -242,28 +262,119 @@ function Toolbar({
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         className={editor.isActive('bulletList') ? styles.toolbarBtnActive : styles.toolbarBtn}
         title="Lista"
+        aria-label="Lista con viñetas"
       >
-        • Lista
+        <Icon name="listBullet" size={16} />
       </button>
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         className={editor.isActive('orderedList') ? styles.toolbarBtnActive : styles.toolbarBtn}
         title="Lista numerada"
+        aria-label="Lista numerada"
       >
-        1. Lista
+        <Icon name="listNumber" size={16} />
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          const url = window.prompt('URL del enlace:');
-          if (url) editor.chain().focus().setLink({ href: url }).run();
-        }}
-        className={editor.isActive('link') ? styles.toolbarBtnActive : styles.toolbarBtn}
-        title="Enlace"
-      >
-        Enlace
-      </button>
+      <span ref={linkGroupRef} className={styles.toolbarGroup} style={{ position: 'relative' }}>
+        <button
+          type="button"
+          onClick={() => {
+            setLinkOpen((o) => !o);
+            setColorOpen(false);
+            setEmojiOpen(false);
+            setTableSizeOpen(false);
+            if (!linkOpen) setLinkUrl(editor.getAttributes('link').href ?? '');
+          }}
+          className={editor.isActive('link') ? styles.toolbarBtnActive : styles.toolbarBtn}
+          title="Enlace"
+          aria-label="Insertar o editar enlace"
+          aria-expanded={linkOpen}
+        >
+          <Icon name="link" size={16} />
+        </button>
+        {linkOpen && (
+          <div className={styles.toolbarDropdown} role="dialog" aria-label="URL del enlace">
+            <label className={styles.linkLabel} htmlFor="link-url-input">
+              URL del enlace
+            </label>
+            <input
+              id="link-url-input"
+              type="url"
+              className={styles.linkInput}
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="https://..."
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const url = linkUrl.trim();
+                  if (url) editor.chain().focus().setLink({ href: url }).run();
+                  setLinkOpen(false);
+                }
+                if (e.key === 'Escape') setLinkOpen(false);
+              }}
+            />
+            <div className={styles.linkActions}>
+              <button
+                type="button"
+                className={styles.linkBtnPrimary}
+                onClick={() => {
+                  const url = linkUrl.trim();
+                  if (url) editor.chain().focus().setLink({ href: url }).run();
+                  setLinkOpen(false);
+                }}
+              >
+                Aplicar
+              </button>
+              <button
+                type="button"
+                className={styles.linkBtnSecondary}
+                onClick={() => setLinkOpen(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </span>
+      <span ref={tableSizeGroupRef} className={styles.toolbarGroup} style={{ position: 'relative' }}>
+        <button
+          type="button"
+          className={tableSizeOpen ? styles.toolbarBtnActive : styles.toolbarBtn}
+          onClick={() => {
+            setTableSizeOpen((o) => !o);
+            setColorOpen(false);
+            setEmojiOpen(false);
+            setLinkOpen(false);
+          }}
+          title="Insertar tabla"
+          aria-label="Insertar tabla"
+          aria-expanded={tableSizeOpen}
+        >
+          <Icon name="table" size={16} />
+        </button>
+        {tableSizeOpen && (
+          <div className={styles.toolbarDropdown} role="menu" aria-label="Tamaño de la tabla">
+            <div className={styles.tableSizeTitle}>Filas × Columnas</div>
+            <div className={styles.tableSizeGrid}>
+              {TABLE_SIZES.map(({ rows, cols }) => (
+                <button
+                  key={`${rows}-${cols}`}
+                  type="button"
+                  className={styles.tableSizeOption}
+                  onClick={() => {
+                    editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+                    setTableSizeOpen(false);
+                  }}
+                >
+                  {rows}×{cols}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </span>
     </div>
   );
 }
@@ -350,6 +461,7 @@ export function RichTextEditor({
   insertableVariables,
 }: RichTextEditorProps) {
   const [variablePicker, setVariablePicker] = useState<{ from: number; to: number } | null>(null);
+  const [showTableToolbar, setShowTableToolbar] = useState(false);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -360,6 +472,10 @@ export function RichTextEditor({
       Underline,
       TextStyle,
       Color,
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
       VariableHighlightExtension,
     ],
     content: value ?? '',
@@ -410,9 +526,80 @@ export function RichTextEditor({
     };
   }, [editor, insertableVariables?.length]);
 
+  useEffect(() => {
+    if (!editor) return;
+    const handler = () => setShowTableToolbar(editor.isActive('table'));
+    editor.on('selectionUpdate', handler);
+    handler();
+    return () => {
+      editor.off('selectionUpdate', handler);
+    };
+  }, [editor]);
+
   return (
     <div className={styles.richTextEditorWrapper} style={{ minHeight }} data-rich-editor>
       <Toolbar editor={editor} insertableVariables={insertableVariables} />
+      {editor && showTableToolbar && (
+        <div className={styles.tableToolbar} role="toolbar" aria-label="Acciones de tabla">
+          <button
+            type="button"
+            className={styles.tableToolbarBtn}
+            onClick={() => editor.chain().focus().addRowBefore().run()}
+            title="Añadir fila arriba"
+          >
+            Fila arriba
+          </button>
+          <button
+            type="button"
+            className={styles.tableToolbarBtn}
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            title="Añadir fila abajo"
+          >
+            Fila abajo
+          </button>
+          <button
+            type="button"
+            className={styles.tableToolbarBtn}
+            onClick={() => editor.chain().focus().addColumnBefore().run()}
+            title="Añadir columna antes"
+          >
+            Col antes
+          </button>
+          <button
+            type="button"
+            className={styles.tableToolbarBtn}
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            title="Añadir columna después"
+          >
+            Col después
+          </button>
+          <span className={styles.tableToolbarSep} aria-hidden="true" />
+          <button
+            type="button"
+            className={styles.tableToolbarBtnDanger}
+            onClick={() => editor.chain().focus().deleteRow().run()}
+            title="Eliminar fila"
+          >
+            Quitar fila
+          </button>
+          <button
+            type="button"
+            className={styles.tableToolbarBtnDanger}
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+            title="Eliminar columna"
+          >
+            Quitar col
+          </button>
+          <button
+            type="button"
+            className={styles.tableToolbarBtnDanger}
+            onClick={() => editor.chain().focus().deleteTable().run()}
+            title="Eliminar tabla"
+          >
+            Quitar tabla
+          </button>
+        </div>
+      )}
       <EditorContent editor={editor} className={styles.editorContent} />
       {editor &&
         variablePicker &&
