@@ -209,39 +209,39 @@ export default function NewActivationPage() {
 
   return (
     <main className={styles.page}>
-      <Link href="/dashboard" className={styles.back}>← Inicio</Link>
+      <Link href="/dashboard" className={styles.back}>← Dashboard</Link>
       <h1 className={styles.h1}>Nueva activación</h1>
       <form onSubmit={handleSubmit} className={styles.form} autoComplete="off">
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>
+        <div id="form-group-project-name" className={styles.formGroup}>
+          <label className={styles.label} htmlFor="projectName"><span className={styles.labelText}>Nombre del proyecto</span> *</label>
           <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} onBlur={handleProjectNameBlur} required className={styles.input} placeholder="Implementación S/4HANA Public" autoComplete="off" />
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="client">Cliente</label>
+        <div id="form-group-client" className={styles.formGroup}>
+          <label className={styles.label} htmlFor="client"><span className={styles.labelText}>Cliente</span></label>
           <input id="client" name="client" type="text" value={form.client} onChange={handleChange} className={styles.input} placeholder="Nombre del cliente" autoComplete="off" />
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="offerCode">Código de oferta *</label>
+        <div id="form-group-offer-code" className={styles.formGroup}>
+          <label className={styles.label} htmlFor="offerCode"><span className={styles.labelText}>Código de oferta</span> *</label>
           <input id="offerCode" name="offerCode" type="text" value={form.offerCode} onChange={handleChange} required className={styles.input} placeholder="ESP_XX_XXXX" autoComplete="off" />
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="projectAmount">Importe del proyecto *</label>
+        <div id="form-group-project-amount" className={styles.formGroup}>
+          <label className={styles.label} htmlFor="projectAmount"><span className={styles.labelText}>Importe del proyecto</span> *</label>
           <input id="projectAmount" name="projectAmount" type="text" value={form.projectAmount} onChange={handleChange} required className={styles.input} placeholder="Ej. 150000" autoComplete="off" />
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="projectType">Tipo de oportunidad *</label>
+        <div id="form-group-project-type" className={styles.formGroup}>
+          <label className={styles.label} htmlFor="projectType"><span className={styles.labelText}>Tipo de oportunidad</span> *</label>
           <select id="projectType" name="projectType" value={form.projectType} onChange={handleChange} required className={styles.input} aria-label="Tipo de oportunidad" autoComplete="off">
             <option value="">— Seleccionar —</option>
             <option value="CONSULTORIA">Consultoría</option>
             <option value="SW">Software</option>
           </select>
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="hubspotUrl">URL HubSpot</label>
+        <div id="form-group-hubspot-url" className={styles.formGroup}>
+          <label className={styles.label} htmlFor="hubspotUrl"><span className={styles.labelText}>URL HubSpot</span></label>
           <input id="hubspotUrl" name="hubspotUrl" type="url" value={form.hubspotUrl} onChange={handleChange} className={styles.input} placeholder="https://app.hubspot.com/contacts/..../" autoComplete="off" />
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Áreas *</label>
+        <div id="form-group-areas" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+          <label className={styles.label}><span className={styles.labelText}>Áreas</span> *</label>
           <div className={styles.areaTagsRow}>
             <select
               className={styles.areaSelect}
@@ -293,31 +293,33 @@ export default function NewActivationPage() {
             Los contactos de Facturación y Administración se incluyen siempre en Para.
           </p>
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="subject">Asunto</label>
-          <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
+        <div className={styles.formGroupRow2}>
+          <div id="form-group-subject" className={styles.formGroup}>
+            <label className={styles.label} htmlFor="subject"><span className={styles.labelText}>Asunto email</span></label>
+            <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
+          </div>
+          <div id="form-group-cc" className={styles.formGroup}>
+            <label className={styles.label} htmlFor="cc"><span className={styles.labelText}>CC (opcional)</span></label>
+            <input
+              id="cc"
+              type="text"
+              value={selectedCcEmail}
+              onChange={(e) => setSelectedCcEmail(e.target.value)}
+              list={selectedCcEmail.trim().length > 2 ? 'contacts-datalist' : undefined}
+              className={styles.input}
+              placeholder="Escribe o elige un email en copia"
+              aria-label="Email en copia (autocompletado desde contactos)"
+              autoComplete="off"
+            />
+            <datalist id="contacts-datalist">
+              {ccContacts.map((c) => (
+                <option key={c.id} value={c.email}>{c.name} ({c.email})</option>
+              ))}
+            </datalist>
+          </div>
         </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="cc">CC (opcional)</label>
-          <input
-            id="cc"
-            type="text"
-            value={selectedCcEmail}
-            onChange={(e) => setSelectedCcEmail(e.target.value)}
-            list={selectedCcEmail.trim().length > 2 ? 'contacts-datalist' : undefined}
-            className={styles.input}
-            placeholder="Escribe o elige un email en copia"
-            aria-label="Email en copia (autocompletado desde contactos)"
-            autoComplete="off"
-          />
-          <datalist id="contacts-datalist">
-            {ccContacts.map((c) => (
-              <option key={c.id} value={c.email}>{c.name} ({c.email})</option>
-            ))}
-          </datalist>
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="template-select">Usar plantilla</label>
+        <div id="form-group-template" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+          <label className={styles.label} htmlFor="template-select"><span className={styles.labelText}>Usar plantilla</span></label>
           <div className={styles.templateRow}>
             <select
               id="template-select"
@@ -363,8 +365,8 @@ export default function NewActivationPage() {
           )}
         </div>
         {bodySectionVisible && (
-          <div className={styles.formGroup}>
-            <label className={styles.label} htmlFor="body">Cuerpo del correo</label>
+          <div id="form-group-body" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+            <label className={styles.label} htmlFor="body"><span className={styles.labelText}>Cuerpo del correo</span></label>
             <RichTextEditor
               id="body"
               value={form.body}
@@ -376,8 +378,8 @@ export default function NewActivationPage() {
           </div>
         )}
         {(scannedAttachments.length > 0 || addingUrl) && (
-          <div className={styles.formGroup}>
-            <label className={styles.label}>URLs escaneadas</label>
+          <div id="form-group-scanned-urls" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+            <label className={styles.label}><span className={styles.labelText}>URLs escaneadas</span></label>
             {scannedAttachments.length > 0 && (
               <ul className={styles.attachmentList} style={{ margin: '0 0 var(--fiori-space-2)', paddingLeft: '1.2rem' }}>
                 {scannedAttachments.map(({ url, name }, i) => (
@@ -409,7 +411,7 @@ export default function NewActivationPage() {
           </div>
         )}
         {scannedAttachments.length === 0 && !addingUrl && (
-          <div className={styles.formGroup}>
+          <div id="form-group-add-urls" className={`${styles.formGroup} ${styles.formGroupFull}`}>
             <button type="button" className={styles.btnSecondary} onClick={() => setAddingUrl(true)}>Añadir URLs escaneadas</button>
           </div>
         )}

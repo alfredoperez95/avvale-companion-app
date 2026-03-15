@@ -232,9 +232,10 @@
   flex-shrink: 0;
 }
 
+/* top: 0 respecto al content-box del .body (que ya tiene padding-top = header); así los tabs quedan justo bajo el header */
 :global([data-theme="fiori"]) .tabsNav {
   position: sticky;
-  top: var(--fiori-shell-height);
+  top: 0;
   z-index: 10;
 }
 

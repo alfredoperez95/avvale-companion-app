@@ -68,6 +68,17 @@
   text-decoration: none;
   color: inherit;
   display: block;
+  user-select: none;
+}
+
+.tileLink:hover {
+  text-decoration: none;
+}
+
+.tileLink .tile,
+.tileLink .tileTitle,
+.tileLink .tileDesc {
+  text-decoration: none;
 }
 
 .tileLink:hover .tile {
@@ -75,11 +86,18 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+.tileLink:hover .tileTitle,
+.tileLink:hover .tileDesc {
+  text-decoration: none;
+}
+
 .tileLink:hover .tileCta {
   color: var(--fiori-link);
+  text-decoration: underline;
 }
 
 .tileCta {
+  text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--fiori-text-secondary);

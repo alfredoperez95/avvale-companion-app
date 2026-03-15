@@ -36,7 +36,7 @@ export default function AdminPage() {
   if (forbidden) {
     return (
       <div className={styles.page}>
-        <Link href="/dashboard" className={styles.back}>← Volver</Link>
+        <Link href="/dashboard" className={styles.back}>← Dashboard</Link>
         <p className={styles.forbidden}>No tienes permisos para acceder a esta sección.</p>
       </div>
     );
@@ -44,7 +44,7 @@ export default function AdminPage() {
 
   return (
     <div className={styles.page}>
-      <Link href="/dashboard" className={styles.back}>← Volver</Link>
+      <Link href="/dashboard" className={styles.back}>← Dashboard</Link>
       <h1 className={styles.h1}>Configuración</h1>
       <p className={styles.menuDesc}>Elige qué quieres configurar:</p>
       <div className={styles.tilesGrid} role="list">

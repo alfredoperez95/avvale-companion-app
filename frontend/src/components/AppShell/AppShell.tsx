@@ -40,13 +40,13 @@ function getInitials(name?: string | null, lastName?: string | null, email?: str
   return '?';
 }
 
-/** Título para la barra "dónde estás" (solo Fiori) */
+/** Título para la barra "dónde estás" (solo Fiori); Activaciones para home/dashboard y continuidad de sección */
 function getPageHeader(pathname: string | null): { title: string } {
-  if (!pathname) return { title: 'Dashboard' };
-  if (pathname === '/dashboard') return { title: 'Dashboard' };
+  if (!pathname) return { title: 'Activaciones' };
+  if (pathname === '/dashboard') return { title: 'Activaciones' };
   if (pathname.startsWith('/activations')) return { title: 'Activaciones' };
   if (pathname.startsWith('/admin')) return { title: 'Configuración' };
-  return { title: 'Dashboard' };
+  return { title: 'Activaciones' };
 }
 
 interface AppShellProps {

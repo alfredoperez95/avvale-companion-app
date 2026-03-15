@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
@@ -78,6 +79,7 @@ export default function ActivationsPage() {
   return (
     <>
       <div className={styles.page}>
+        <Link href="/dashboard" className={styles.back}>← Dashboard</Link>
         <header className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Mis activaciones</h1>
         </header>

@@ -207,7 +207,14 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
                   <p style={{ color: 'var(--fiori-text-secondary)', margin: 0 }}>Sin áreas asignadas</p>
                 )
               )}
-              {activation.body && section('Cuerpo del correo', <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{activation.body}</pre>)}
+              {activation.body && section(
+                'Cuerpo del correo',
+                /<[a-z][\s\S]*>/i.test(activation.body) ? (
+                  <div className={styles.sectionContentBody} dangerouslySetInnerHTML={{ __html: activation.body }} />
+                ) : (
+                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{activation.body}</pre>
+                )
+              )}
               {(() => {
                 const urls = parseAttachmentUrls(activation.attachmentUrls);
                 const names = parseAttachmentNames(activation.attachmentNames);
