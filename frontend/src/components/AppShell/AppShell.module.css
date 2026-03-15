@@ -61,6 +61,28 @@
   font-size: 0.875rem;
 }
 
+/* Fiori: botón "Nueva Activación" en la cabecera */
+.headerButton {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--fiori-space-2) var(--fiori-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fiori-shell-text);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 0.25rem;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.headerButton:hover {
+  background: var(--fiori-shell-hover);
+  border-color: rgba(255, 255, 255, 0.8);
+  color: var(--fiori-shell-text);
+  text-decoration: none;
+}
+
 .avatarLink {
   display: flex;
   align-items: center;
@@ -143,4 +165,43 @@
   flex: 1;
   overflow: auto;
   padding: var(--fiori-space-6);
+}
+
+/* Fiori: layout en columna (tabs + main), sin barra lateral; fondo del contenido */
+:global([data-theme="fiori"]) .body {
+  flex-direction: column;
+  background: #f5f6f7;
+}
+
+/* Fiori: barra de tabs horizontal */
+.tabsNav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #fff;
+  border-bottom: 1px solid var(--fiori-border-light);
+  padding: 0 var(--fiori-space-4);
+  flex-shrink: 0;
+}
+
+.tabLink {
+  padding: var(--fiori-space-3) var(--fiori-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fiori-nav-text);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tabLink:hover {
+  color: var(--fiori-nav-text-active);
+  text-decoration: none;
+}
+
+.tabLinkActive {
+  color: var(--fiori-nav-text-active);
+  border-bottom-color: var(--fiori-nav-text-active);
+  text-decoration: none;
 }

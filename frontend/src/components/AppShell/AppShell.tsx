@@ -13,6 +13,13 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
 ];
 const adminNavItem = { href: '/admin', label: 'Configuración', icon: 'settings' as IconName };
 
+/** Tabs para tema Fiori: Launchpad, Activaciones, Configuraciones (sin iconos) */
+const fioriTabs: { href: string; label: string; isActive: (pathname: string | null) => boolean }[] = [
+  { href: '/dashboard', label: 'Launchpad', isActive: (p) => p === '/dashboard' },
+  { href: '/activations', label: 'Activaciones', isActive: (p) => p === '/activations' || (p != null && p.startsWith('/activations/')) },
+  { href: '/admin', label: 'Configuraciones', isActive: (p) => p === '/admin' || (p != null && p.startsWith('/admin/')) },
+];
+
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
   const n = (name ?? '').trim();
   const l = (lastName ?? '').trim();
@@ -52,6 +59,11 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
           Activaciones
         </span>
         <div className={styles.headerRight}>
+          {theme === 'fiori' && (
+            <Link href="/activations/new" className={styles.headerButton} aria-label="Nueva activación">
+              Nueva Activación
+            </Link>
+          )}
           {user && (
             <Link href="/perfil" className={styles.avatarLink} aria-label="Ir a mi perfil">
               <span className={styles.avatar} aria-hidden="true">
@@ -62,30 +74,53 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
         </div>
       </header>
       <div className={styles.body}>
-        <aside className={styles.nav} aria-label="Navegación lateral">
-          {navItems.map(({ href, label, icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={pathname === href || (href !== '/dashboard' && pathname?.startsWith(href)) ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
-            >
-              <Icon name={icon} size={20} className={styles.navIcon} />
-              {label}
-            </Link>
-          ))}
-          {user?.role === 'ADMIN' && (
-            <Link
-              href={adminNavItem.href}
-              className={pathname === adminNavItem.href || pathname?.startsWith(adminNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
-            >
-              <Icon name={adminNavItem.icon} size={20} className={styles.navIcon} />
-              {adminNavItem.label}
-            </Link>
-          )}
-        </aside>
-        <main className={styles.main} id="main-content">
-          {children}
-        </main>
+        {theme === 'fiori' ? (
+          <>
+            <nav className={styles.tabsNav} aria-label="Navegación principal">
+              {fioriTabs
+                .filter((tab) => tab.href !== '/admin' || user?.role === 'ADMIN')
+                .map(({ href, label, isActive }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={isActive(pathname) ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink}
+                  >
+                    {label}
+                  </Link>
+                ))}
+            </nav>
+            <main className={styles.main} id="main-content">
+              {children}
+            </main>
+          </>
+        ) : (
+          <>
+            <aside className={styles.nav} aria-label="Navegación lateral">
+              {navItems.map(({ href, label, icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={pathname === href || (href !== '/dashboard' && pathname?.startsWith(href)) ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
+                >
+                  <Icon name={icon} size={20} className={styles.navIcon} />
+                  {label}
+                </Link>
+              ))}
+              {user?.role === 'ADMIN' && (
+                <Link
+                  href={adminNavItem.href}
+                  className={pathname === adminNavItem.href || pathname?.startsWith(adminNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
+                >
+                  <Icon name={adminNavItem.icon} size={20} className={styles.navIcon} />
+                  {adminNavItem.label}
+                </Link>
+              )}
+            </aside>
+            <main className={styles.main} id="main-content">
+              {children}
+            </main>
+          </>
+        )}
       </div>
     </div>
   );
