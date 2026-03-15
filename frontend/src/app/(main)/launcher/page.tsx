@@ -18,12 +18,9 @@ export default function LauncherPage() {
       {bannerVisible && (
         <section className={styles.welcomeBanner} aria-label="Bienvenida a SAP for Me">
           <div className={styles.welcomeBannerOverlay}>
-            <h3 className={styles.welcomeBannerTitle}>Le damos la bienvenida a SAP for Me</h3>
+            <h3 className={styles.welcomeBannerTitle}>Te damos la bienvenida a Avvale Companion Apps</h3>
             <p className={styles.welcomeBannerSubtitle}>
-              Recuerde que siempre puede editar sus intereses para personalizar la página de inicio.
-            </p>
-            <p className={styles.welcomeBannerSubtitle}>
-              Pruébela y no dude en enviarnos su feedback.
+              Un ecosistema de aplicaciones internas creado para reunir en un único punto de acceso distintas soluciones desarrolladas por Avvale, orientadas a optimizar operaciones, acelerar tareas recurrentes y dar soporte a procesos de negocio y gestión interna.
             </p>
             <div className={styles.welcomeBannerActions}>
               <Link href="#" className={styles.welcomeBannerBtnPrimary} aria-label="Editar mis intereses">
@@ -59,6 +56,7 @@ export default function LauncherPage() {
               Dashboard, mis activaciones, nueva activación y toda la gestión de activaciones por email.
             </p>
             <span className={styles.tileCta}>Abrir Activaciones →</span>
+            <span className={styles.tileIcon} aria-hidden="true" />
           </article>
         </Link>
       </div>

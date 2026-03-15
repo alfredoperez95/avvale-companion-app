@@ -76,7 +76,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
           />
         </Link>
         <span className={styles.appName} aria-label="Nombre de la aplicación">
-          Activaciones
+          Companion Apps
         </span>
         <div className={styles.headerRight}>
           {user && (
@@ -91,30 +91,34 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
       <div className={styles.body}>
         {theme === 'fiori' ? (
           <>
-            <div className={styles.pageHeader}>
-              <h1 className={styles.pageHeaderTitle}>{pageHeader.title}</h1>
-            </div>
-            <nav className={styles.tabsNav} aria-label="Navegación principal">
-              {fioriTabs
-                .filter((tab) => tab.href !== '/launcher/activations/configuration' || user?.role === 'ADMIN')
-                .map((tab) => {
-                  const { href, label, icon, iconOnly, isActive } = tab;
-                  const active = isActive(pathname);
-                  const tabClass = active ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink;
-                  if (iconOnly && icon === 'home') {
-                    return (
-                      <Link key={href} href={href} className={tabClass} aria-label={label}>
-                        <span className={`${styles.tabIcon} sap-icon sap-icon--launchpad`} style={{ fontSize: 18 }} aria-hidden />
-                      </Link>
-                    );
-                  }
-                  return (
-                    <Link key={href} href={href} className={tabClass}>
-                      {label}
-                    </Link>
-                  );
-                })}
-            </nav>
+            {pathname !== '/launcher' && (
+              <>
+                <div className={styles.pageHeader}>
+                  <h1 className={styles.pageHeaderTitle}>{pageHeader.title}</h1>
+                </div>
+                <nav className={styles.tabsNav} aria-label="Navegación principal">
+                  {fioriTabs
+                    .filter((tab) => tab.href !== '/launcher/activations/configuration' || user?.role === 'ADMIN')
+                    .map((tab) => {
+                      const { href, label, icon, iconOnly, isActive } = tab;
+                      const active = isActive(pathname);
+                      const tabClass = active ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink;
+                      if (iconOnly && icon === 'home') {
+                        return (
+                          <Link key={href} href={href} className={tabClass} aria-label={label}>
+                            <span className={`${styles.tabIcon} sap-icon sap-icon--launchpad`} style={{ fontSize: 18 }} aria-hidden />
+                          </Link>
+                        );
+                      }
+                      return (
+                        <Link key={href} href={href} className={tabClass}>
+                          {label}
+                        </Link>
+                      );
+                    })}
+                </nav>
+              </>
+            )}
             <main className={styles.main} id="main-content">
               {children}
             </main>
