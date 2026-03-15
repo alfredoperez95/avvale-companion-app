@@ -5,6 +5,7 @@ import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import { VariableHighlightExtension } from './variableHighlightExtension';
 import styles from './RichTextEditor.module.css';
 
 function Toolbar({
@@ -115,6 +116,7 @@ export function RichTextEditor({
       StarterKit,
       Link.configure({ openOnClick: false, HTMLAttributes: { target: '_blank', rel: 'noopener' } }),
       Placeholder.configure({ placeholder: placeholder ?? '' }),
+      VariableHighlightExtension,
     ],
     content: value ?? '',
     editorProps: {

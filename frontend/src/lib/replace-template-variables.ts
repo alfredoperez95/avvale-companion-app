@@ -52,9 +52,9 @@ function projectTypeLabel(projectType: '' | 'CONSULTORIA' | 'SW'): string {
 export function getTimeBasedGreeting(date?: Date): string {
   const d = date ?? new Date();
   const mins = d.getHours() * 60 + d.getMinutes();
-  if (mins >= 241 && mins <= 750) return 'Buenos días a todos,';
-  if (mins >= 751 && mins <= 1200) return 'Buenas tardes a todos,';
-  return 'Buenas noches a todos,';
+  if (mins >= 241 && mins <= 750) return 'Buenos días a todos';
+  if (mins >= 751 && mins <= 1200) return 'Buenas tardes a todos';
+  return 'Buenas noches a todos';
 }
 
 /**

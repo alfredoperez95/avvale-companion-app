@@ -158,8 +158,8 @@ export default function AdminEmailTemplatesPage() {
       </p>
       {error && <p className={styles.error}>{error}</p>}
 
-      <section className={styles.areasAddCard} aria-labelledby="create-template-heading">
-        <h2 id="create-template-heading" className={styles.areasAddTitle}>
+      <section className={styles.templateCard} aria-labelledby="create-template-heading">
+        <h2 id="create-template-heading" className={styles.templateCardTitle}>
           {showForm ? (editingId ? 'Editar plantilla' : 'Nueva plantilla') : 'Crear plantilla'}
         </h2>
         {showForm ? (
@@ -188,7 +188,7 @@ export default function AdminEmailTemplatesPage() {
                 aria-label="Contenido de la plantilla"
                 insertableVariables={TEMPLATE_SHORTCODES}
               />
-              <p className={styles.sectionDesc} style={{ marginTop: 'var(--fiori-space-2)' }}>
+              <p className={styles.templateVariablesHelp}>
                 Variables disponibles (usa el desplegable del editor o escribe a mano):{' '}
                 {TEMPLATE_SHORTCODES.map((s) => s.value).join(', ')}. Se sustituirán por los datos del formulario al elegir la plantilla en una activación.
               </p>

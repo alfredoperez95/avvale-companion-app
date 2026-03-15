@@ -81,3 +81,12 @@
 .richTextEditorWrapper :global(.ProseMirror a:hover) {
   text-decoration: underline;
 }
+
+/* Variables de plantilla {{nombre}} con color destacado del tema */
+.richTextEditorWrapper :global(.ProseMirror .variableHighlight) {
+  background: var(--fiori-information-bg);
+  color: var(--fiori-information);
+  padding: 0.1em 0.25em;
+  border-radius: 0.2em;
+  font-weight: 500;
+}
