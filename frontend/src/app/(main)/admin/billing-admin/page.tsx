@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
@@ -118,6 +118,20 @@ export default function AdminBillingAdminPage() {
     }
   };
 
+  const contactGroups = useMemo(() => {
+    const map = new Map<string, ContactItem[]>();
+    for (const c of contacts) {
+      const first = (c.name.trim() || c.email)[0]?.toUpperCase() ?? '#';
+      const letter = /^[A-Z]$/.test(first) ? first : '#';
+      if (!map.has(letter)) map.set(letter, []);
+      map.get(letter)!.push(c);
+    }
+    const keys = Array.from(map.keys()).sort((a, b) =>
+      a === '#' ? 1 : b === '#' ? -1 : a.localeCompare(b),
+    );
+    return keys.map((k) => ({ letter: k, contacts: map.get(k)! }));
+  }, [contacts]);
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -186,76 +200,83 @@ export default function AdminBillingAdminPage() {
                   </td>
                 </tr>
               ) : (
-                contacts.map((c) => (
-                  <tr key={c.id}>
-                    {editingId === c.id ? (
-                      <>
-                        <td>
-                          <input
-                            type="text"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            placeholder="Nombre"
-                            className={styles.contactsCellInput}
-                            aria-label="Nombre"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="email"
-                            value={editEmail}
-                            onChange={(e) => setEditEmail(e.target.value)}
-                            placeholder="Email"
-                            className={styles.contactsCellInput}
-                            aria-label="Email"
-                          />
-                        </td>
-                        <td className={styles.contactsColActions}>
-                          <button
-                            type="button"
-                            className={styles.btnSmall}
-                            onClick={() => handleUpdate(c.id)}
-                            disabled={savingId === c.id}
-                          >
-                            Guardar
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.btnSmall}
-                            onClick={() => setEditingId(null)}
-                          >
-                            Cancelar
-                          </button>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className={styles.contactsCellName}>{c.name}</td>
-                        <td className={styles.contactsCellEmail}>{c.email}</td>
-                        <td className={styles.contactsColActions}>
-                          <button
-                            type="button"
-                            className={styles.btnSmall}
-                            onClick={() => {
-                              setEditingId(c.id);
-                              setEditName(c.name);
-                              setEditEmail(c.email);
-                            }}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            className={`${styles.btnSmall} ${styles.btnSmallDanger}`}
-                            onClick={() => setConfirmDeleteId(c.id)}
-                          >
-                            Eliminar
-                          </button>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))
+                contactGroups.flatMap((g) => [
+                  <tr key={`letter-${g.letter}`}>
+                    <td colSpan={3} className={styles.contactsLetterRow}>
+                      {g.letter === '#' ? 'Otros' : g.letter}
+                    </td>
+                  </tr>,
+                  ...g.contacts.map((c) => (
+                    <tr key={c.id}>
+                      {editingId === c.id ? (
+                        <>
+                          <td>
+                            <input
+                              type="text"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              placeholder="Nombre"
+                              className={styles.contactsCellInput}
+                              aria-label="Nombre"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="email"
+                              value={editEmail}
+                              onChange={(e) => setEditEmail(e.target.value)}
+                              placeholder="Email"
+                              className={styles.contactsCellInput}
+                              aria-label="Email"
+                            />
+                          </td>
+                          <td className={styles.contactsColActions}>
+                            <button
+                              type="button"
+                              className={styles.btnSmall}
+                              onClick={() => handleUpdate(c.id)}
+                              disabled={savingId === c.id}
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.btnSmall}
+                              onClick={() => setEditingId(null)}
+                            >
+                              Cancelar
+                            </button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className={styles.contactsCellName}>{c.name}</td>
+                          <td className={styles.contactsCellEmail}>{c.email}</td>
+                          <td className={styles.contactsColActions}>
+                            <button
+                              type="button"
+                              className={styles.btnSmall}
+                              onClick={() => {
+                                setEditingId(c.id);
+                                setEditName(c.name);
+                                setEditEmail(c.email);
+                              }}
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              className={`${styles.btnSmall} ${styles.btnSmallDanger}`}
+                              onClick={() => setConfirmDeleteId(c.id)}
+                            >
+                              Eliminar
+                            </button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  )),
+                ])
               )}
             </tbody>
           </table>
