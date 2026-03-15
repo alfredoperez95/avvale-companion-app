@@ -49,6 +49,99 @@
   color: var(--fiori-text-inverse);
 }
 
+.toolbarK {
+  font-style: italic;
+  font-weight: 500;
+}
+
+.toolbarColorIcon {
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.toolbarDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 2px;
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.375rem;
+  box-shadow: var(--fiori-shadow-2);
+  padding: var(--fiori-space-2);
+  z-index: 50;
+}
+
+.colorGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.colorSwatch {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  padding: 0;
+  cursor: pointer;
+}
+
+.colorSwatch:hover {
+  transform: scale(1.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.emojiDropdownScroll {
+  max-height: 14rem;
+  max-width: 16rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.emojiCategory {
+  margin-bottom: var(--fiori-space-2);
+}
+
+.emojiCategory:last-child {
+  margin-bottom: 0;
+}
+
+.emojiCategoryTitle {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--fiori-space-1) 0;
+  margin-bottom: var(--fiori-space-1);
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.emojiGrid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+}
+
+.emojiSwatch {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  font-size: 1.125rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.emojiSwatch:hover {
+  background: var(--fiori-nav-item-hover);
+}
+
 .editorContent {
   font-size: 0.9375rem;
   font-family: inherit;
@@ -89,4 +182,63 @@
   padding: 0.1em 0.25em;
   border-radius: 0.2em;
   font-weight: 500;
+}
+
+/* Desplegable al hacer clic en una variable */
+.variablePicker {
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.375rem;
+  box-shadow: var(--fiori-shadow-2);
+  min-width: 12rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.variablePickerTitle {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.variablePickerList {
+  list-style: none;
+  margin: 0;
+  padding: var(--fiori-space-1);
+}
+
+.variablePickerItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--fiori-text);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.variablePickerItem:hover {
+  background: var(--fiori-information-bg);
+  color: var(--fiori-information);
+}
+
+.variablePickerValue {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+  color: var(--fiori-information);
+  margin-bottom: 0.125rem;
+}
+
+.variablePickerLabel {
+  font-size: 0.75rem;
+  color: var(--fiori-text-secondary);
 }
