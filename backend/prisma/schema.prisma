@@ -31,6 +31,7 @@ model User {
   lastName     String?  @map("last_name")
   position     String?  @map("position")
   appearance   String?  @map("appearance")
+  avatarPath   String?  @map("avatar_path")
   passwordHash String   @map("password_hash")
   role         UserRole @default(USER)
   enabled      Boolean  @default(true)

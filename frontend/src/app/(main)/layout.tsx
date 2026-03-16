@@ -15,6 +15,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     name?: string | null;
     lastName?: string | null;
     position?: string | null;
+    avatarPath?: string | null;
     appearance?: string | null;
     role?: string;
   } | null>(null);
@@ -58,6 +59,17 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     };
     window.addEventListener('theme-changed', handler);
     return () => window.removeEventListener('theme-changed', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<typeof user>)?.detail;
+      if (detail && typeof detail === 'object' && 'id' in detail) {
+        setUser(detail);
+      }
+    };
+    window.addEventListener('user-updated', handler);
+    return () => window.removeEventListener('user-updated', handler);
   }, []);
 
   if (loading) {

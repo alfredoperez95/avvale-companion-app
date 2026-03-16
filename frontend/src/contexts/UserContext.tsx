@@ -8,6 +8,7 @@ export type User = {
   name?: string | null;
   lastName?: string | null;
   position?: string | null;
+  avatarPath?: string | null;
   appearance?: string | null;
   role?: string;
 };

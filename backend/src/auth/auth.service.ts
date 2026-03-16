@@ -47,6 +47,14 @@ export class AuthService {
     return rest;
   }
 
+  async setAvatar(userId: string, file: { buffer: Buffer; mimetype?: string }) {
+    return this.usersService.setAvatar(userId, file);
+  }
+
+  async getAvatarBuffer(userId: string) {
+    return this.usersService.getAvatarBuffer(userId);
+  }
+
   private buildTokenResponse(userId: string, email: string) {
     const payload: JwtPayload = { sub: userId, email };
     const accessToken = this.jwtService.sign(payload);

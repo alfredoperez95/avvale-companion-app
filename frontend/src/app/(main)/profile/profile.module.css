@@ -3,6 +3,84 @@
   margin: 0 auto;
 }
 
+.avatarBlock {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--fiori-space-6);
+}
+
+.avatarFileInput {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.avatarWrapper {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.avatarWrapper:hover .avatarOverlay,
+.avatarWrapper:focus-visible .avatarOverlay {
+  opacity: 1;
+}
+
+.avatar,
+.avatarImage {
+  width: 4.8rem;
+  height: 4.8rem;
+  border-radius: 50%;
+  display: block;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 100, 217, 0.15);
+  color: #0064d9;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.avatarImage {
+  object-fit: cover;
+}
+
+.avatarOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: #fff;
+}
+
+.avatarOverlayIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.avatarOverlayText {
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+  padding: 0 0.25rem;
+}
+
 .loading {
   padding: var(--fiori-space-8);
   color: var(--fiori-text-secondary);
@@ -38,6 +116,19 @@
 .form {
   display: flex;
   flex-direction: column;
+}
+
+.nameRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fiori-space-4);
+  margin-bottom: var(--fiori-space-4);
+}
+
+.nameRow .formGroup {
+  flex: 1 1 10rem;
+  margin-bottom: 0;
+  min-width: 0;
 }
 
 .formGroup {

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Footer } from '@/components/Footer/Footer';
 import { Icon, type IconName } from '@/components/Icon/Icon';
+import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import styles from './AppShell.module.css';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
@@ -72,13 +73,14 @@ function getPageHeader(pathname: string | null): { title: string } {
 
 interface AppShellProps {
   children: React.ReactNode;
-  user?: { id: string; email: string; name?: string | null; lastName?: string | null; position?: string | null; role?: string } | null;
+  user?: { id: string; email: string; name?: string | null; lastName?: string | null; position?: string | null; avatarPath?: string | null; role?: string } | null;
   theme?: 'microsoft' | 'fiori';
 }
 
 export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps) {
   const pathname = usePathname();
   const initials = user ? getInitials(user.name, user.lastName, user.email) : '';
+  const avatarUrl = useAvatarUrl(user?.avatarPath ?? null);
   const pageHeader = getPageHeader(pathname);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
@@ -129,16 +131,24 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                   aria-haspopup="true"
                   aria-label="Menú de cuenta"
                 >
-                  <span className={styles.avatar} aria-hidden="true">
-                    {initials}
-                  </span>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className={styles.avatarImage} aria-hidden />
+                  ) : (
+                    <span className={styles.avatar} aria-hidden="true">
+                      {initials}
+                    </span>
+                  )}
                 </button>
                 {avatarMenuOpen && (
                   <div className={styles.avatarDropdown} role="menu">
                     <div className={styles.avatarDropdownHeader}>
-                      <span className={styles.avatarDropdownAvatar} aria-hidden="true">
-                        {initials}
-                      </span>
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="" className={`${styles.avatarDropdownAvatar} ${styles.avatarDropdownAvatarImage}`} aria-hidden />
+                      ) : (
+                        <span className={styles.avatarDropdownAvatar} aria-hidden="true">
+                          {initials}
+                        </span>
+                      )}
                       <div className={styles.avatarDropdownName}>
                         {[user.name, user.lastName].filter(Boolean).join(' ') || user.email || 'Usuario'}
                       </div>

@@ -1,4 +1,6 @@
-import { Controller, Post, Body, Get, Patch, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, UseGuards, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -34,5 +36,36 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async updateProfile(@CurrentUser() payload: UserPayload, @Body() dto: UpdateProfileDto) {
     return this.authService.updateProfile(payload.userId, dto);
+  }
+
+  @Post('me/avatar')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAvatar(
+    @CurrentUser() payload: UserPayload,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ) {
+    if (!file?.buffer) throw new BadRequestException('Falta el archivo');
+    const { avatarPath } = await this.authService.setAvatar(payload.userId, {
+      buffer: file.buffer,
+      mimetype: file.mimetype,
+    });
+    const user = await this.authService.validateUserById(payload.userId);
+    if (!user) return { avatarPath };
+    const { passwordHash: _, ...rest } = user;
+    return rest;
+  }
+
+  @Get('me/avatar')
+  @UseGuards(JwtAuthGuard)
+  async getAvatar(@CurrentUser() payload: UserPayload, @Res() res: Response) {
+    const result = await this.authService.getAvatarBuffer(payload.userId);
+    if (!result) {
+      res.status(404).send();
+      return;
+    }
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('Content-Type', result.contentType);
+    res.send(result.buffer);
   }
 }

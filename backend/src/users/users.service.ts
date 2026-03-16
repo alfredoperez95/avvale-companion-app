@@ -1,16 +1,28 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
 import { RegisterDto } from '../auth/dto/register.dto';
 import { UserRole } from '@prisma/client';
 import { CreateUserByAdminDto } from './dto/create-user-by-admin.dto';
 import { UpdateUserByAdminDto } from './dto/update-user-by-admin.dto';
 
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+const AVATAR_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
 @Injectable()
 export class UsersService {
   private readonly SALT_ROUNDS = 10;
+  private readonly uploadsDir: string;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {
+    this.uploadsDir = this.config.get<string>('ATTACHMENTS_DIR') ?? path.join(process.cwd(), 'uploads');
+  }
 
   private omitPasswordHash<T extends { passwordHash?: string }>(user: T): Omit<T, 'passwordHash'> {
     const { passwordHash: _, ...rest } = user;
@@ -77,6 +89,64 @@ export class UsersService {
       },
     });
     return this.omitPasswordHash(user);
+  }
+
+  private getAvatarDir(): string {
+    return path.join(this.uploadsDir, 'avatars');
+  }
+
+  private getExtensionFromMime(mimetype: string): string {
+    const m = mimetype?.split(';')[0].trim().toLowerCase();
+    if (m === 'image/jpeg' || m === 'image/jpg') return '.jpg';
+    if (m === 'image/png') return '.png';
+    if (m === 'image/webp') return '.webp';
+    if (m === 'image/gif') return '.gif';
+    return '.jpg';
+  }
+
+  async setAvatar(userId: string, file: { buffer: Buffer; mimetype?: string }): Promise<{ avatarPath: string }> {
+    if (!file.buffer || file.buffer.length > AVATAR_MAX_BYTES) {
+      throw new BadRequestException('Imagen no válida o demasiado grande (máx. 2 MB)');
+    }
+    const mime = file.mimetype?.split(';')[0].trim().toLowerCase();
+    if (!mime || !AVATAR_MIMES.includes(mime)) {
+      throw new BadRequestException('Formato no permitido. Use JPEG, PNG, WebP o GIF.');
+    }
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const avatarDir = this.getAvatarDir();
+    await fs.mkdir(avatarDir, { recursive: true });
+    const ext = this.getExtensionFromMime(file.mimetype);
+    const fileName = `${userId}${ext}`;
+    const fullPath = path.join(avatarDir, fileName);
+
+    if (user.avatarPath) {
+      const oldPath = path.join(this.uploadsDir, user.avatarPath);
+      await fs.unlink(oldPath).catch(() => {});
+    }
+
+    await fs.writeFile(fullPath, file.buffer);
+    const storedPath = path.join('avatars', fileName);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarPath: storedPath },
+    });
+    return { avatarPath: storedPath };
+  }
+
+  async getAvatarBuffer(userId: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { avatarPath: true } });
+    if (!user?.avatarPath) return null;
+    const fullPath = path.join(this.uploadsDir, user.avatarPath);
+    try {
+      const buffer = await fs.readFile(fullPath);
+      const ext = path.extname(user.avatarPath).toLowerCase();
+      const contentType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : ext === '.gif' ? 'image/gif' : 'image/jpeg';
+      return { buffer, contentType };
+    } catch {
+      return null;
+    }
   }
 
   async updateByAdmin(id: string, dto: UpdateUserByAdminDto) {

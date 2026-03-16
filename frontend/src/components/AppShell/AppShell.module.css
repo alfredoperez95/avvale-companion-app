@@ -142,6 +142,14 @@
   letter-spacing: 0.02em;
 }
 
+.avatarImage {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
 .avatarDropdown {
   position: absolute;
   top: calc(100% + var(--fiori-space-2));
@@ -169,6 +177,11 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   margin-bottom: var(--fiori-space-3);
+}
+
+.avatarDropdownAvatarImage {
+  object-fit: cover;
+  display: block;
 }
 
 .avatarDropdownName {

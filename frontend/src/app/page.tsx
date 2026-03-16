@@ -1,16 +1,24 @@
-import Link from 'next/link';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getToken } from '@/lib/api';
 import styles from './page.module.css';
 
 export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (getToken()) {
+      router.replace('/launcher');
+    } else {
+      router.replace('/login');
+    }
+  }, [router]);
+
   return (
     <main className={styles.main}>
-      <h1 className={styles.title}>Activaciones</h1>
-      <p className={styles.lead}>
-        Gestión de activaciones por email. Inicia sesión para continuar.
-      </p>
-      <Link href="/login" className={styles.link}>
-        Iniciar sesión
-      </Link>
+      <p className={styles.lead}>Redirigiendo…</p>
     </main>
   );
 }

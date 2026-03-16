@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import styles from './profile.module.css';
 
 type Profile = {
@@ -11,6 +12,7 @@ type Profile = {
   name: string | null;
   lastName: string | null;
   position: string | null;
+  avatarPath?: string | null;
   appearance: string | null;
   role?: string;
   createdAt?: string;
@@ -19,10 +21,23 @@ type Profile = {
 const APPEARANCE_MICROSOFT = 'microsoft';
 const APPEARANCE_FIORI = 'fiori';
 
+function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
+  const n = (name ?? '').trim();
+  const l = (lastName ?? '').trim();
+  if (n && l) return `${n[0]}${l[0]}`.toUpperCase();
+  if (n && n.length >= 2) return n.slice(0, 2).toUpperCase();
+  if (n) return n[0].toUpperCase();
+  const e = (email ?? '').trim();
+  if (e.length >= 2) return e.slice(0, 2).toUpperCase();
+  if (e) return e[0].toUpperCase();
+  return '?';
+}
+
 export default function PerfilPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [savingAppearance, setSavingAppearance] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
@@ -30,6 +45,8 @@ export default function PerfilPage() {
     lastName: '',
     position: '',
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarUrl = useAvatarUrl(profile?.avatarPath ?? null);
 
   useEffect(() => {
     apiFetch('/api/auth/me')
@@ -94,6 +111,49 @@ export default function PerfilPage() {
 
   const currentAppearance = profile?.appearance ?? APPEARANCE_MICROSOFT;
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) {
+      setError('Selecciona una imagen (JPEG, PNG, WebP o GIF).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('La imagen no puede superar 2 MB.');
+      return;
+    }
+    setError('');
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiFetch('/api/auth/me/avatar', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.message ?? 'Error al subir la foto');
+        return;
+      }
+      setProfile((prev) => (prev ? { ...prev, ...data } : data));
+      if (typeof window !== 'undefined' && data.id) {
+        window.dispatchEvent(new CustomEvent('user-updated', { detail: data }));
+      }
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleAppearanceSelect = async (value: string) => {
     if (value === currentAppearance || savingAppearance) return;
     setSavingAppearance(true);
@@ -126,43 +186,86 @@ export default function PerfilPage() {
 
   if (loading) return <p className={styles.loading}>Cargando…</p>;
 
+  const initials = getInitials(profile?.name, profile?.lastName, profile?.email);
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>Mi perfil</h1>
       </header>
       <section className={styles.section} aria-labelledby="perfil-datos">
+        <div className={styles.avatarBlock}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className={styles.avatarFileInput}
+            aria-hidden
+            onChange={handleAvatarFileChange}
+          />
+          <div
+            className={styles.avatarWrapper}
+            role="button"
+            tabIndex={0}
+            aria-label="Cambiar foto de perfil"
+            onClick={handleAvatarClick}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAvatarClick(); } }}
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className={styles.avatarImage} />
+            ) : (
+              <span className={styles.avatar} aria-hidden="true">
+                {initials}
+              </span>
+            )}
+            <span className={styles.avatarOverlay} aria-hidden="true">
+              {uploadingAvatar ? (
+                <span className={styles.avatarOverlayText}>Subiendo…</span>
+              ) : (
+                <>
+                  <svg className={styles.avatarOverlayIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  <span className={styles.avatarOverlayText}>Cambiar foto</span>
+                </>
+              )}
+            </span>
+          </div>
+        </div>
         <h2 id="perfil-datos" className={styles.sectionTitle}>
           Datos del usuario
         </h2>
         <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.formGroup}>
-            <label className={styles.label} htmlFor="name">
-              Nombre
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              value={form.name}
-              onChange={handleChange}
-              className={styles.input}
-              placeholder="Tu nombre"
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.label} htmlFor="lastName">
-              Apellido
-            </label>
-            <input
-              id="lastName"
-              name="lastName"
-              type="text"
-              value={form.lastName}
-              onChange={handleChange}
-              className={styles.input}
-              placeholder="Tu apellido"
-            />
+          <div className={styles.nameRow}>
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="name">
+                Nombre
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                value={form.name}
+                onChange={handleChange}
+                className={styles.input}
+                placeholder="Tu nombre"
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="lastName">
+                Apellidos
+              </label>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                value={form.lastName}
+                onChange={handleChange}
+                className={styles.input}
+                placeholder="Tus apellidos"
+              />
+            </div>
           </div>
           <div className={styles.formGroup}>
             <label className={styles.label} htmlFor="email">
