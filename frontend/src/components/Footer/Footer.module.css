@@ -21,25 +21,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--fiori-space-3);
   width: 100%;
   max-width: 105em;
   margin: 0 auto;
   padding: 0 var(--fiori-space-4);
 }
 
-.logoLink {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-  opacity: 0.85;
+.copyright {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
 }
 
-.logoLink:hover {
-  opacity: 1;
+:global([data-theme="fiori"]) .copyright {
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.logoImage {
-  height: 1.5rem;
-  width: auto;
-  object-fit: contain;
-}

@@ -59,6 +59,25 @@ export default function LauncherPage() {
             <span className={styles.tileIcon} aria-hidden="true" />
           </article>
         </Link>
+        <Link
+          href="https://pipeline-ten-taupe.vercel.app/dashboard"
+          className={styles.tileLink}
+          aria-labelledby="tile-pipeline-heading"
+          role="listitem"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <article className={styles.tile}>
+            <h2 id="tile-pipeline-heading" className={styles.tileTitle}>
+              Pipeline Dashboard
+            </h2>
+            <p className={styles.tileDesc}>
+              Pipeline de ventas, métricas y análisis por equipo y fase, basado en la recopilación semanal de datos desde HubSpot.
+            </p>
+            <span className={styles.tileCta}>Abrir Pipeline Dashboard →</span>
+            <span className={`${styles.tileIcon} ${styles.tileIconPipeline}`} aria-hidden="true" />
+          </article>
+        </Link>
       </div>
     </div>
   );

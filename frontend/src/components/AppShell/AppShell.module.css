@@ -202,6 +202,12 @@
   margin-bottom: 35px;
 }
 
+/* Microsoft: sin márgenes verticales en main */
+:global([data-theme="microsoft"]) .main {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 /* Fiori: main crece con el contenido, scroll en .body; el wrapper hace que el footer quede al final o abajo */
 :global([data-theme="fiori"]) .mainFooterWrap .main {
   flex: 1 1 auto;

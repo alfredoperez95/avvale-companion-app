@@ -34,6 +34,11 @@
   text-align: center;
 }
 
+/* Microsoft: overlay del banner con azul corporativo */
+:global([data-theme="microsoft"]) .welcomeBannerOverlay {
+  background: rgb(10 110 208 / 85%);
+}
+
 .welcomeBannerTitle {
   font-size: 1.5rem;
   font-weight: 700;
@@ -75,6 +80,11 @@
 
 .welcomeBannerBtnPrimary:hover {
   filter: brightness(1.05);
+}
+
+/* Microsoft: botón primario del banner con borde blanco */
+:global([data-theme="microsoft"]) .welcomeBannerBtnPrimary {
+  border: 2px solid #fff;
 }
 
 .welcomeBannerBtnSecondary {
@@ -196,6 +206,16 @@
 
 .tileIcon::before {
   content: "\e00e";
+}
+
+/* Fiori: icono en el tile de Pipeline Dashboard */
+:global([data-theme="fiori"]) .tileIconPipeline::before {
+  content: "\e0b7";
+}
+
+/* Microsoft: icono tipo documento/app en el tile de Activaciones */
+:global([data-theme="microsoft"]) .tileIcon::before {
+  content: "\e026";
 }
 
 .tileLink:hover .tileCta {
