@@ -82,7 +82,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
           </span>
           <div className={styles.headerRight}>
             {user && (
-              <Link href="/perfil" className={styles.avatarLink} aria-label="Ir a mi perfil">
+              <Link href="/profile" className={styles.avatarLink} aria-label="Ir a mi perfil">
                 <span className={styles.avatar} aria-hidden="true">
                   {initials}
                 </span>
@@ -94,7 +94,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
       <div className={styles.body}>
         {theme === 'fiori' ? (
           <>
-            {pathname !== '/launcher' && pathname !== '/perfil' && (
+            {pathname !== '/launcher' && pathname !== '/profile' && (
               <>
                 <div className={styles.pageHeader}>
                   <div className={styles.pageHeaderInner}>
