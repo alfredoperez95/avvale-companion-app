@@ -14,6 +14,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     email: string;
     name?: string | null;
     lastName?: string | null;
+    position?: string | null;
     appearance?: string | null;
     role?: string;
   } | null>(null);

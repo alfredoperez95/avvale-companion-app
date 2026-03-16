@@ -26,6 +26,7 @@ export default function AdminUsersPage() {
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newName, setNewName] = useState('');
+  const [newPosition, setNewPosition] = useState('');
   const [newRole, setNewRole] = useState<'USER' | 'ADMIN'>('USER');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -35,7 +36,7 @@ export default function AdminUsersPage() {
   const [editEnabled, setEditEnabled] = useState(true);
   const [editNewPassword, setEditNewPassword] = useState('');
   const [showPasswordField, setShowPasswordField] = useState(false);
-  const [showPasswordField, setShowPasswordField] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const loadUsers = async () => {
     const res = await apiFetch('/api/users');
@@ -63,6 +64,7 @@ export default function AdminUsersPage() {
           setLoading(false);
           return;
         }
+        if (user?.id) setCurrentUserId(user.id);
         loadUsers().finally(() => setLoading(false));
       })
       .catch(() => setLoading(false));
@@ -86,6 +88,7 @@ export default function AdminUsersPage() {
           email,
           password,
           name: newName.trim() || undefined,
+          position: newPosition.trim() || undefined,
           role: newRole,
         }),
       });
@@ -97,6 +100,7 @@ export default function AdminUsersPage() {
       setNewEmail('');
       setNewPassword('');
       setNewName('');
+      setNewPosition('');
       setNewRole('USER');
       setShowCreate(false);
       await loadUsers();
@@ -175,63 +179,79 @@ export default function AdminUsersPage() {
 
       <div className={styles.card}>
         <h2 className={styles.cardTitle}>Crear usuario</h2>
+        <p className={styles.cardDesc}>
+          Añade un nuevo usuario con email y contraseña. Opcionalmente asigna nombre, puesto y rol.
+        </p>
         {!showCreate ? (
           <button type="button" className={styles.btnPrimary} onClick={() => setShowCreate(true)}>
             Crear usuario
           </button>
         ) : (
-          <form onSubmit={handleCreate}>
-            <div className={styles.formRow}>
-              <label htmlFor="new-email">Email</label>
-              <input
-                id="new-email"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                className={styles.input}
-                required
-                placeholder="usuario@ejemplo.com"
-              />
+          <form onSubmit={handleCreate} className={styles.createForm}>
+            <div className={styles.createFormGrid}>
+              <div className={styles.createFormRow}>
+                <label htmlFor="new-email">Email</label>
+                <input
+                  id="new-email"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className={styles.input}
+                  required
+                  placeholder="usuario@ejemplo.com"
+                />
+              </div>
+              <div className={styles.createFormRow}>
+                <label htmlFor="new-password">Contraseña</label>
+                <input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className={styles.input}
+                  required
+                  minLength={6}
+                  placeholder="Mín. 6 caracteres"
+                />
+              </div>
+              <div className={styles.createFormRow}>
+                <label htmlFor="new-name">Nombre</label>
+                <input
+                  id="new-name"
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className={styles.input}
+                  placeholder="Opcional"
+                />
+              </div>
+              <div className={styles.createFormRow}>
+                <label htmlFor="new-position">Puesto</label>
+                <input
+                  id="new-position"
+                  type="text"
+                  value={newPosition}
+                  onChange={(e) => setNewPosition(e.target.value)}
+                  className={styles.input}
+                  placeholder="Opcional"
+                />
+              </div>
+              <div className={styles.createFormRow}>
+                <label htmlFor="new-role">Rol</label>
+                <select
+                  id="new-role"
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value as 'USER' | 'ADMIN')}
+                  className={styles.select}
+                >
+                  <option value="USER">Usuario</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
+              </div>
             </div>
-            <div className={styles.formRow}>
-              <label htmlFor="new-password">Contraseña</label>
-              <input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className={styles.input}
-                required
-                minLength={6}
-                placeholder="Mín. 6 caracteres"
-              />
-            </div>
-            <div className={styles.formRow}>
-              <label htmlFor="new-name">Nombre</label>
-              <input
-                id="new-name"
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className={styles.input}
-                placeholder="Opcional"
-              />
-            </div>
-            <div className={styles.formRow}>
-              <label htmlFor="new-role">Rol</label>
-              <select
-                id="new-role"
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value as 'USER' | 'ADMIN')}
-                className={styles.select}
-              >
-                <option value="USER">Usuario</option>
-                <option value="ADMIN">Administrador</option>
-              </select>
-            </div>
-            <div className={styles.formRow}>
+            <div className={styles.createFormActions}>
               <button type="submit" disabled={savingId === 'new'} className={styles.btnPrimary}>
-                {savingId === 'new' ? 'Guardando…' : 'Crear'}
+                {savingId === 'new' ? 'Guardando…' : 'Crear usuario'}
               </button>
               <button
                 type="button"
@@ -255,8 +275,8 @@ export default function AdminUsersPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th scope="col">Email</th>
                   <th scope="col">Nombre</th>
+                  <th scope="col">Email</th>
                   <th scope="col">Puesto</th>
                   <th scope="col">Rol</th>
                   <th scope="col">Estado</th>
@@ -273,10 +293,15 @@ export default function AdminUsersPage() {
                 ) : (
                   users.map((u) => (
                     <tr key={u.id}>
-                      <td className={styles.cellEmail}>{u.email}</td>
                       <td className={styles.cellName}>
-                        {[u.name, u.lastName].filter(Boolean).join(' ') || '—'}
+                        <span className={styles.cellNameWrap}>
+                          <span>{[u.name, u.lastName].filter(Boolean).join(' ') || '—'}</span>
+                          {u.id === currentUserId && (
+                            <span className={styles.badgeCurrentUser}>Tu usuario</span>
+                          )}
+                        </span>
                       </td>
+                      <td className={styles.cellEmail}>{u.email}</td>
                       <td>{u.position || '—'}</td>
                       <td>{u.role === 'ADMIN' ? 'Administrador' : 'Usuario'}</td>
                       <td>
@@ -360,17 +385,28 @@ export default function AdminUsersPage() {
                     <option value="ADMIN">Administrador</option>
                   </select>
                 </div>
-                <div className={styles.modalCheckboxRow}>
-                  <input
-                    type="checkbox"
-                    id="edit-enabled"
-                    checked={editEnabled}
-                    onChange={(e) => setEditEnabled(e.target.checked)}
-                    aria-label="Usuario habilitado"
-                  />
-                  <label htmlFor="edit-enabled" className={styles.checkboxLabel}>
-                    Usuario habilitado
+                <div>
+                  <label className={styles.switchRow}>
+                    <span className={styles.switch}>
+                      <input
+                        type="checkbox"
+                        id="edit-enabled"
+                        role="switch"
+                        checked={editEnabled}
+                        onChange={(e) => setEditEnabled(e.target.checked)}
+                        disabled={editingId === currentUserId}
+                        aria-label="Usuario habilitado"
+                      />
+                      <span className={styles.switchTrack} aria-hidden />
+                      <span className={styles.switchThumb} aria-hidden />
+                    </span>
+                    <span className={styles.switchLabel}>Usuario habilitado</span>
                   </label>
+                  {editingId === currentUserId && (
+                    <p className={styles.switchLegend}>
+                      No puedes deshabilitar tu propio usuario.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className={styles.modalActions}>

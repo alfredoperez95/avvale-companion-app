@@ -2,11 +2,21 @@
 
 import styles from './FilterBar.module.css';
 
+export type SolicitanteOption = { id: string; name?: string | null; lastName?: string | null; email: string };
+
 interface FilterBarProps {
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  solicitanteFilter?: string;
+  onSolicitanteFilterChange?: (userId: string) => void;
+  solicitanteOptions?: SolicitanteOption[];
+}
+
+function getSolicitanteLabel(u: SolicitanteOption): string {
+  const full = [u.name, u.lastName].filter(Boolean).join(' ').trim();
+  return full || u.email;
 }
 
 export function FilterBar({
@@ -14,7 +24,11 @@ export function FilterBar({
   onStatusFilterChange,
   searchValue = '',
   onSearchChange,
+  solicitanteFilter = '',
+  onSolicitanteFilterChange,
+  solicitanteOptions = [],
 }: FilterBarProps) {
+  const showSolicitante = solicitanteOptions.length > 0 && onSolicitanteFilterChange;
   return (
     <div className={styles.bar} role="search">
       <label className={styles.label} htmlFor="filter-status">
@@ -33,6 +47,27 @@ export function FilterBar({
         <option value="SENT">Enviado</option>
         <option value="ERROR">Error</option>
       </select>
+      {showSolicitante && (
+        <>
+          <label className={styles.label} htmlFor="filter-solicitante">
+            Solicitante
+          </label>
+          <select
+            id="filter-solicitante"
+            className={styles.select}
+            value={solicitanteFilter}
+            onChange={(e) => onSolicitanteFilterChange(e.target.value)}
+            aria-label="Filtrar por solicitante"
+          >
+            <option value="">Todos</option>
+            {solicitanteOptions.map((u) => (
+              <option key={u.id} value={u.id}>
+                {getSolicitanteLabel(u)}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
       {onSearchChange && (
         <>
           <label className={styles.label} htmlFor="filter-search">

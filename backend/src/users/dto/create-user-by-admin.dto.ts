@@ -18,6 +18,10 @@ export class CreateUserByAdminDto {
   lastName?: string;
 
   @IsOptional()
+  @IsString()
+  position?: string;
+
+  @IsOptional()
   @IsEnum(UserRole, { message: 'El rol debe ser USER o ADMIN' })
   role?: UserRole;
 }

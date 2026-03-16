@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
-import { FilterBar } from '@/components/FilterBar/FilterBar';
+import { FilterBar, type SolicitanteOption } from '@/components/FilterBar/FilterBar';
 import { DataTable, type Column } from '@/components/DataTable/DataTable';
 import { DetailDrawer } from '@/components/DetailDrawer/DetailDrawer';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
@@ -15,6 +15,8 @@ export default function ActivationsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchValue, setSearchValue] = useState('');
+  const [solicitanteFilter, setSolicitanteFilter] = useState('');
+  const [solicitanteOptions, setSolicitanteOptions] = useState<SolicitanteOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,9 +32,28 @@ export default function ActivationsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    apiFetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((user) => {
+        if (user?.role === 'ADMIN') {
+          apiFetch('/api/users')
+            .then((r) => (r.ok ? r.json() : []))
+            .then((users: { id: string; name?: string | null; lastName?: string | null; email: string }[]) => {
+              setSolicitanteOptions(Array.isArray(users) ? users : []);
+            })
+            .catch(() => setSolicitanteOptions([]));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const filtered = useMemo(() => {
     let data = list;
     if (statusFilter) data = data.filter((a) => a.status === statusFilter);
+    if (solicitanteFilter) {
+      data = data.filter((a) => a.createdByUserId === solicitanteFilter);
+    }
     if (searchValue.trim()) {
       const q = searchValue.trim().toLowerCase();
       data = data.filter(
@@ -44,7 +65,17 @@ export default function ActivationsPage() {
       );
     }
     return data;
-  }, [list, statusFilter, searchValue]);
+  }, [list, statusFilter, solicitanteFilter, searchValue]);
+
+  function getRequesterName(row: Activation): string {
+    const u = row.createdByUser;
+    if (u) {
+      const full = [u.name, u.lastName].filter(Boolean).join(' ').trim();
+      if (full) return full;
+      return u.email ?? row.createdBy ?? '—';
+    }
+    return row.createdBy ?? '—';
+  }
 
   const columns: Column<Activation>[] = [
     {
@@ -65,6 +96,7 @@ export default function ActivationsPage() {
     },
     { key: 'client', header: 'Cliente', render: (row) => row.client ?? '—' },
     { key: 'offerCode', header: 'Oferta', render: (row) => row.offerCode },
+    { key: 'createdByUser', header: 'Solicitante', render: (row) => getRequesterName(row) },
     { key: 'status', header: 'Estado', render: (row) => <StatusTag status={row.status} /> },
     {
       key: 'createdAt',
@@ -90,6 +122,9 @@ export default function ActivationsPage() {
           onStatusFilterChange={setStatusFilter}
           searchValue={searchValue}
           onSearchChange={setSearchValue}
+          solicitanteFilter={solicitanteFilter}
+          onSolicitanteFilterChange={setSolicitanteFilter}
+          solicitanteOptions={solicitanteOptions}
         />
         <section className={styles.tableSection}>
           <DataTable<Activation>

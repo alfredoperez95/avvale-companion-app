@@ -17,6 +17,8 @@ export interface Activation {
   subject: string;
   createdAt: string;
   createdBy: string;
+  createdByUserId?: string;
+  createdByUser?: { name: string | null; lastName: string | null; email: string } | null;
   makeSentAt: string | null;
   makeRunId: string | null;
   errorMessage: string | null;

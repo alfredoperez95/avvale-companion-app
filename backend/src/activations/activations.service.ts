@@ -146,7 +146,44 @@ export class ActivationsService {
         ...(filters?.status && { status: filters.status }),
       },
       orderBy: { createdAt: 'desc' },
+      include: {
+        createdByUser: { select: { name: true, lastName: true, email: true } },
+      },
     });
+  }
+
+  /** Lista todas las activaciones (solo para ADMIN). */
+  async findAllForAdmin(filters?: { status?: ActivationStatus }) {
+    return this.prisma.activation.findMany({
+      where: {
+        ...(filters?.status && { status: filters.status }),
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        createdByUser: { select: { name: true, lastName: true, email: true } },
+      },
+    });
+  }
+
+  /** Obtiene una activación por id sin filtrar por usuario (para ADMIN). */
+  async findOneById(activationId: string) {
+    const activation = await this.prisma.activation.findFirst({
+      where: { id: activationId },
+      include: {
+        activationAreas: { include: { area: { select: { id: true, name: true } } } },
+        activationSubAreas: {
+          include: {
+            subArea: {
+              include: { area: { select: { id: true, name: true } } },
+            },
+          },
+        },
+        attachments: { orderBy: { createdAt: 'asc' }, select: { id: true, fileName: true, originalUrl: true, contentType: true, createdAt: true } },
+        createdByUser: { select: { name: true, lastName: true, email: true } },
+      },
+    });
+    if (!activation) throw new NotFoundException('Activation no encontrada');
+    return activation;
   }
 
   /** Actualiza una activación solo si es DRAFT y pertenece al usuario. */
@@ -216,6 +253,7 @@ export class ActivationsService {
           },
         },
         attachments: { orderBy: { createdAt: 'asc' }, select: { id: true, fileName: true, originalUrl: true, contentType: true, createdAt: true } },
+        createdByUser: { select: { name: true, lastName: true, email: true } },
       },
     });
     if (!activation) throw new NotFoundException('Activation no encontrada');

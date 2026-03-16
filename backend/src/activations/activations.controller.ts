@@ -26,6 +26,9 @@ export class ActivationsController {
 
   @Get()
   async list(@CurrentUser() user: UserPayload, @Query('status') status?: ActivationStatus) {
+    if (user.role === 'ADMIN') {
+      return this.activationsService.findAllForAdmin({ status });
+    }
     return this.activationsService.findAllByUser(user.userId, { status });
   }
 
@@ -80,6 +83,9 @@ export class ActivationsController {
 
   @Get(':id')
   async getOne(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    if (user.role === 'ADMIN') {
+      return this.activationsService.findOneById(id);
+    }
     return this.activationsService.findOneByIdAndUser(id, user.userId);
   }
 

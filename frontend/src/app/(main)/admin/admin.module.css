@@ -45,9 +45,75 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--fiori-text);
-  margin: 0 0 var(--fiori-space-3);
+  margin: 0 0 var(--fiori-space-2);
   padding-bottom: var(--fiori-space-2);
   border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.cardDesc {
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-4);
+  line-height: 1.4;
+}
+
+.createForm {
+  margin-top: var(--fiori-space-2);
+}
+
+.createFormGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fiori-space-4);
+  margin-bottom: var(--fiori-space-4);
+}
+
+@media (min-width: 32rem) {
+  .createFormGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 72rem) {
+  .createFormGrid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.createFormRow {
+  margin-bottom: 0;
+}
+
+.createFormRow label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fiori-text-secondary);
+  margin-bottom: var(--fiori-space-1);
+}
+
+.createFormRow .input,
+.createFormRow .select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.createFormActions {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  padding-top: var(--fiori-space-4);
+  border-top: 1px solid var(--fiori-border-light);
+}
+
+.createFormActions .btnPrimary {
+  min-width: 6rem;
+}
+
+.createFormActions .btnSmall {
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  font-size: 0.875rem;
 }
 
 .formRow {
@@ -166,6 +232,20 @@
 
 .cellEmail {
   color: var(--fiori-text-secondary);
+}
+
+.cellEmailWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  flex-wrap: wrap;
+}
+
+.cellNameWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  flex-wrap: wrap;
 }
 
 .empty {
@@ -310,6 +390,101 @@
   cursor: pointer;
 }
 
+/* Switch tipo Fiori: pista + cursor (interruptor) */
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-3);
+  margin-bottom: var(--fiori-space-4);
+  margin-top: var(--fiori-space-4);
+}
+
+.switchLabel {
+  font-weight: 500;
+  color: var(--fiori-text);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.switchTrack {
+  display: block;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: var(--fiori-border-light);
+  border: 1px solid var(--fiori-border);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.switch input:checked + .switchTrack {
+  background: var(--fiori-shell-bg);
+  border-color: var(--fiori-shell-bg);
+}
+
+.switch input:focus-visible + .switchTrack {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}
+
+.switch input:hover:not(:disabled) + .switchTrack {
+  border-color: var(--fiori-text-secondary);
+}
+
+.switch input:checked:hover:not(:disabled) + .switchTrack {
+  opacity: 0.9;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: var(--fiori-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  transition: transform 0.2s;
+}
+
+.switch input:checked ~ .switchThumb {
+  transform: translateX(1.25rem);
+}
+
+.switch input:disabled + .switchTrack {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.switch input:disabled ~ .switchThumb {
+  opacity: 0.9;
+}
+
+.switchLegend {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  margin: var(--fiori-space-1) 0 0 0;
+}
+
 .modalCheckboxRow {
   display: flex;
   align-items: center;
@@ -385,6 +560,16 @@
   border-radius: 0.25rem;
   background: #ffebee;
   color: #c62828;
+}
+
+.badgeCurrentUser {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  background: var(--fiori-information-bg);
+  color: var(--fiori-information);
 }
 
 .checkboxLabel {

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -71,7 +72,7 @@ function getPageHeader(pathname: string | null): { title: string } {
 
 interface AppShellProps {
   children: React.ReactNode;
-  user?: { id: string; email: string; name?: string | null; lastName?: string | null; role?: string } | null;
+  user?: { id: string; email: string; name?: string | null; lastName?: string | null; position?: string | null; role?: string } | null;
   theme?: 'microsoft' | 'fiori';
 }
 
@@ -79,6 +80,26 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
   const pathname = usePathname();
   const initials = user ? getInitials(user.name, user.lastName, user.email) : '';
   const pageHeader = getPageHeader(pathname);
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const avatarMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!avatarMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target as Node)) {
+        setAvatarMenuOpen(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [avatarMenuOpen]);
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+  };
 
   return (
     <div className={styles.shell} data-theme={theme}>
@@ -99,11 +120,54 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
           </span>
           <div className={styles.headerRight}>
             {user && (
-              <Link href="/profile" className={styles.avatarLink} aria-label="Ir a mi perfil">
-                <span className={styles.avatar} aria-hidden="true">
-                  {initials}
-                </span>
-              </Link>
+              <div className={styles.avatarMenu} ref={avatarMenuRef}>
+                <button
+                  type="button"
+                  className={styles.avatarTrigger}
+                  onClick={(e) => { e.preventDefault(); setAvatarMenuOpen((v) => !v); }}
+                  aria-expanded={avatarMenuOpen}
+                  aria-haspopup="true"
+                  aria-label="Menú de cuenta"
+                >
+                  <span className={styles.avatar} aria-hidden="true">
+                    {initials}
+                  </span>
+                </button>
+                {avatarMenuOpen && (
+                  <div className={styles.avatarDropdown} role="menu">
+                    <div className={styles.avatarDropdownHeader}>
+                      <span className={styles.avatarDropdownAvatar} aria-hidden="true">
+                        {initials}
+                      </span>
+                      <div className={styles.avatarDropdownName}>
+                        {[user.name, user.lastName].filter(Boolean).join(' ') || user.email || 'Usuario'}
+                      </div>
+                      <div className={styles.avatarDropdownPosition}>
+                        {user.position?.trim() || '—'}
+                      </div>
+                      <div className={styles.avatarDropdownEmail}>{user.email}</div>
+                    </div>
+                    <div className={styles.avatarDropdownDivider} />
+                    <Link
+                      href="/profile"
+                      className={styles.avatarDropdownItem}
+                      role="menuitem"
+                      onClick={() => setAvatarMenuOpen(false)}
+                    >
+                      Mi cuenta
+                    </Link>
+                    <div className={styles.avatarDropdownDivider} />
+                    <button
+                      type="button"
+                      className={styles.avatarDropdownItem}
+                      role="menuitem"
+                      onClick={handleLogout}
+                    >
+                      Cerrar sesión
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

@@ -108,17 +108,25 @@
   text-decoration: none;
 }
 
-.avatarLink {
+.avatarMenu {
+  position: relative;
+  display: inline-flex;
+}
+
+.avatarTrigger {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
   color: var(--fiori-shell-text);
-  text-decoration: none;
+  cursor: pointer;
 }
 
-.avatarLink:hover {
-  color: var(--fiori-shell-text);
-  text-decoration: none;
+.avatarTrigger:hover .avatar {
+  background: var(--fiori-shell-hover);
 }
 
 .avatar {
@@ -134,8 +142,128 @@
   letter-spacing: 0.02em;
 }
 
-.avatarLink:hover .avatar {
-  background: var(--fiori-shell-hover);
+.avatarDropdown {
+  position: absolute;
+  top: calc(100% + var(--fiori-space-2));
+  right: 0;
+  min-width: 14rem;
+  padding: 0;
+  z-index: 200;
+}
+
+.avatarDropdownHeader {
+  padding: var(--fiori-space-4);
+  text-align: center;
+}
+
+.avatarDropdownAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(0, 100, 217, 0.15);
+  color: #0064d9;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: var(--fiori-space-3);
+}
+
+.avatarDropdownName {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  margin-bottom: var(--fiori-space-1);
+}
+
+.avatarDropdownPosition,
+.avatarDropdownEmail {
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.avatarDropdownEmail {
+  margin-top: var(--fiori-space-1);
+}
+
+.avatarDropdownDivider {
+  height: 1px;
+  background: var(--fiori-border-light);
+  margin: 0;
+}
+
+.avatarDropdownItem {
+  display: block;
+  width: 100%;
+  padding: var(--fiori-space-3) var(--fiori-space-4);
+  font-size: 0.875rem;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* Fiori: popover con fuente 72, borde sutil, hover azul */
+:global([data-theme="fiori"]) .avatarDropdown {
+  background: #fff;
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+:global([data-theme="fiori"]) .avatarDropdownHeader .avatarDropdownName,
+:global([data-theme="fiori"]) .avatarDropdownPosition,
+:global([data-theme="fiori"]) .avatarDropdownEmail {
+  color: var(--fiori-text);
+  font-family: "72", "72full", Arial, Helvetica, sans-serif;
+}
+
+:global([data-theme="fiori"]) .avatarDropdownItem {
+  color: var(--fiori-text);
+  font-family: "72", "72full", Arial, Helvetica, sans-serif;
+}
+
+:global([data-theme="fiori"]) .avatarDropdownItem:hover {
+  background: rgba(0, 100, 217, 0.08);
+  color: #0064d9;
+}
+
+/* Microsoft / Fluent: elevación, gris neutro, hover suave */
+:global([data-theme="microsoft"]) .avatarDropdown {
+  background: #fff;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14), 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+:global([data-theme="microsoft"]) .avatarDropdownAvatar {
+  background: #e1dfdd;
+  color: #323130;
+}
+
+:global([data-theme="microsoft"]) .avatarDropdownName {
+  color: #323130;
+}
+
+:global([data-theme="microsoft"]) .avatarDropdownPosition,
+:global([data-theme="microsoft"]) .avatarDropdownEmail {
+  color: #605e5c;
+}
+
+:global([data-theme="microsoft"]) .avatarDropdownDivider {
+  background: #edebe9;
+}
+
+:global([data-theme="microsoft"]) .avatarDropdownItem {
+  color: #323130;
+}
+
+:global([data-theme="microsoft"]) .avatarDropdownItem:hover {
+  background: #f3f2f1;
+  color: #323130;
 }
 
 .body {

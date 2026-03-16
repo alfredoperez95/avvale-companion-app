@@ -71,6 +71,7 @@ export class UsersService {
         email: dto.email.toLowerCase(),
         name: dto.name ?? null,
         lastName: dto.lastName ?? null,
+        position: dto.position?.trim() || null,
         passwordHash,
         role: dto.role ?? UserRole.USER,
       },
