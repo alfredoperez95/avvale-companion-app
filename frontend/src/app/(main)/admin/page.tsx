@@ -34,6 +34,8 @@ export default function AdminUsersPage() {
   const [editRole, setEditRole] = useState<'USER' | 'ADMIN'>('USER');
   const [editEnabled, setEditEnabled] = useState(true);
   const [editNewPassword, setEditNewPassword] = useState('');
+  const [showPasswordField, setShowPasswordField] = useState(false);
+  const [showPasswordField, setShowPasswordField] = useState(false);
 
   const loadUsers = async () => {
     const res = await apiFetch('/api/users');
@@ -127,6 +129,7 @@ export default function AdminUsersPage() {
       setEditNewPassword('');
       setEditEmail('');
       setEditPosition('');
+      setShowPasswordField(false);
       await loadUsers();
     } finally {
       setSavingId(null);
@@ -140,6 +143,7 @@ export default function AdminUsersPage() {
     setEditRole((u.role as 'USER' | 'ADMIN') || 'USER');
     setEditEnabled(u.enabled !== false);
     setEditNewPassword('');
+    setShowPasswordField(false);
     setError('');
   };
 
@@ -307,85 +311,107 @@ export default function AdminUsersPage() {
           onClick={(e) => e.target === e.currentTarget && setEditingId(null)}
         >
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2 id="edit-user-title" className={styles.modalTitle}>Editar usuario</h2>
-            {error && <p className={styles.error}>{error}</p>}
+            <header className={styles.modalHeader}>
+              <h2 id="edit-user-title" className={styles.modalTitle}>Editar usuario</h2>
+              <button
+                type="button"
+                className={styles.modalClose}
+                onClick={() => { setEditingId(null); setError(''); }}
+                aria-label="Cerrar"
+              >
+                <span aria-hidden>×</span>
+              </button>
+            </header>
             <form onSubmit={handleUpdate}>
-              <div className={styles.formRow}>
-                <label htmlFor="edit-email">Correo electrónico</label>
-                <input
-                  id="edit-email"
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  className={styles.input}
-                  required
-                  placeholder="usuario@ejemplo.com"
-                />
-              </div>
-              <div className={styles.formRow}>
-                <label htmlFor="edit-position">Puesto</label>
-                <input
-                  id="edit-position"
-                  type="text"
-                  value={editPosition}
-                  onChange={(e) => setEditPosition(e.target.value)}
-                  className={styles.input}
-                  placeholder="Ej. Consultor, Director..."
-                />
-              </div>
-              <div className={styles.formRow}>
-                <label htmlFor="edit-role">Rol</label>
-                <select
-                  id="edit-role"
-                  value={editRole}
-                  onChange={(e) => setEditRole(e.target.value as 'USER' | 'ADMIN')}
-                  className={styles.select}
-                >
-                  <option value="USER">Usuario</option>
-                  <option value="ADMIN">Administrador</option>
-                </select>
-              </div>
-              <div className={styles.formRow}>
-                <label>
+              <div className={styles.modalBody}>
+                {error && <p className={styles.error}>{error}</p>}
+                <div className={styles.modalFormRow}>
+                  <label htmlFor="edit-email">Correo electrónico</label>
+                  <input
+                    id="edit-email"
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className={styles.input}
+                    required
+                    placeholder="usuario@ejemplo.com"
+                  />
+                </div>
+                <div className={styles.modalFormRow}>
+                  <label htmlFor="edit-position">Puesto</label>
+                  <input
+                    id="edit-position"
+                    type="text"
+                    value={editPosition}
+                    onChange={(e) => setEditPosition(e.target.value)}
+                    className={styles.input}
+                    placeholder="Ej. Consultor, Director..."
+                  />
+                </div>
+                <div className={styles.modalFormRow}>
+                  <label htmlFor="edit-role">Rol</label>
+                  <select
+                    id="edit-role"
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value as 'USER' | 'ADMIN')}
+                    className={styles.select}
+                  >
+                    <option value="USER">Usuario</option>
+                    <option value="ADMIN">Administrador</option>
+                  </select>
+                </div>
+                <div className={styles.modalCheckboxRow}>
                   <input
                     type="checkbox"
+                    id="edit-enabled"
                     checked={editEnabled}
                     onChange={(e) => setEditEnabled(e.target.checked)}
                     aria-label="Usuario habilitado"
                   />
-                  <span className={styles.checkboxLabel}>Usuario habilitado</span>
-                </label>
-              </div>
-              <div className={styles.formRow}>
-                <label htmlFor="edit-password">Nueva contraseña</label>
-                <input
-                  id="edit-password"
-                  type="password"
-                  value={editNewPassword}
-                  onChange={(e) => setEditNewPassword(e.target.value)}
-                  className={styles.input}
-                  minLength={6}
-                  placeholder="Dejar vacío para no cambiar"
-                />
+                  <label htmlFor="edit-enabled" className={styles.checkboxLabel}>
+                    Usuario habilitado
+                  </label>
+                </div>
               </div>
               <div className={styles.modalActions}>
-                <button
-                  type="submit"
-                  disabled={savingId === editingId}
-                  className={styles.btnPrimary}
-                >
-                  {savingId === editingId ? 'Guardando…' : 'Guardar'}
-                </button>
-                <button
-                  type="button"
-                  className={styles.btnSmall}
-                  onClick={() => {
-                    setEditingId(null);
-                    setError('');
-                  }}
-                >
-                  Cancelar
-                </button>
+                <div className={styles.modalActionsLeft}>
+                  <button
+                    type="button"
+                    className={styles.btnSmall}
+                    onClick={() => setShowPasswordField((v) => !v)}
+                    aria-pressed={showPasswordField}
+                  >
+                    {showPasswordField ? 'Ocultar contraseña' : 'Restablecer contraseña'}
+                  </button>
+                  {showPasswordField && (
+                    <input
+                      id="edit-password"
+                      type="password"
+                      value={editNewPassword}
+                      onChange={(e) => setEditNewPassword(e.target.value)}
+                      className={styles.modalPasswordInput}
+                      minLength={6}
+                      placeholder="Nueva contraseña (mín. 6 caracteres)"
+                      aria-label="Nueva contraseña"
+                    />
+                  )}
+                </div>
+                <div className={styles.modalActionsRight}>
+                  <button
+                    type="button"
+                    className={styles.btnSmall}
+                    onClick={() => { setEditingId(null); setError(''); }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingId === editingId}
+                    className={styles.btnPrimary}
+                  >
+                    {savingId === editingId ? 'Guardando…' : 'Guardar'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
