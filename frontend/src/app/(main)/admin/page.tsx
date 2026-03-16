@@ -1,0 +1,341 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { apiFetch } from '@/lib/api';
+import styles from './admin.module.css';
+
+type UserItem = {
+  id: string;
+  email: string;
+  name?: string | null;
+  lastName?: string | null;
+  role: string;
+  createdAt: string;
+};
+
+export default function AdminUsersPage() {
+  const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [error, setError] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newRole, setNewRole] = useState<'USER' | 'ADMIN'>('USER');
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editRole, setEditRole] = useState<'USER' | 'ADMIN'>('USER');
+  const [editNewPassword, setEditNewPassword] = useState('');
+
+  const loadUsers = async () => {
+    const res = await apiFetch('/api/users');
+    if (res.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+    if (!res.ok) return;
+    const data = await res.json();
+    setUsers(Array.isArray(data) ? data : []);
+  };
+
+  useEffect(() => {
+    apiFetch('/api/auth/me')
+      .then((r) => {
+        if (r.status === 401) {
+          window.location.href = '/login';
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      })
+      .then((user) => {
+        if (user?.role !== 'ADMIN') {
+          setForbidden(true);
+          setLoading(false);
+          return;
+        }
+        loadUsers().finally(() => setLoading(false));
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = newEmail.trim();
+    const password = newPassword;
+    if (!email || !password || password.length < 6) {
+      setError('Email y contraseña (mín. 6 caracteres) son obligatorios.');
+      return;
+    }
+    setError('');
+    setSavingId('new');
+    try {
+      const res = await apiFetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          name: newName.trim() || undefined,
+          role: newRole,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.message ?? 'Error al crear usuario');
+        return;
+      }
+      setNewEmail('');
+      setNewPassword('');
+      setNewName('');
+      setNewRole('USER');
+      setShowCreate(false);
+      await loadUsers();
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+    const payload: { role?: string; newPassword?: string } = { role: editRole };
+    if (editNewPassword.trim().length >= 6) payload.newPassword = editNewPassword;
+    setError('');
+    setSavingId(editingId);
+    try {
+      const res = await apiFetch(`/api/users/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.message ?? 'Error al actualizar');
+        return;
+      }
+      setEditingId(null);
+      setEditNewPassword('');
+      await loadUsers();
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const openEdit = (u: UserItem) => {
+    setEditingId(u.id);
+    setEditRole((u.role as 'USER' | 'ADMIN') || 'USER');
+    setEditNewPassword('');
+    setError('');
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p className={styles.forbidden}>Cargando…</p>
+      </div>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <div className={styles.page}>
+        <Link href="/launcher" className={styles.back}>← Inicio</Link>
+        <p className={styles.forbidden}>No tienes permisos para acceder a esta sección.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.page}>
+      <Link href="/launcher" className={styles.back}>← Inicio</Link>
+      <h1 className={styles.h1}>Gestión de usuarios</h1>
+      <p className={styles.sectionDesc}>
+        Crear usuarios y modificar permisos o contraseñas. Solo visible para administradores.
+      </p>
+      {error && <p className={styles.error}>{error}</p>}
+
+      <div className={styles.card}>
+        <h2 className={styles.cardTitle}>Crear usuario</h2>
+        {!showCreate ? (
+          <button type="button" className={styles.btnPrimary} onClick={() => setShowCreate(true)}>
+            Crear usuario
+          </button>
+        ) : (
+          <form onSubmit={handleCreate}>
+            <div className={styles.formRow}>
+              <label htmlFor="new-email">Email</label>
+              <input
+                id="new-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className={styles.input}
+                required
+                placeholder="usuario@ejemplo.com"
+              />
+            </div>
+            <div className={styles.formRow}>
+              <label htmlFor="new-password">Contraseña</label>
+              <input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className={styles.input}
+                required
+                minLength={6}
+                placeholder="Mín. 6 caracteres"
+              />
+            </div>
+            <div className={styles.formRow}>
+              <label htmlFor="new-name">Nombre</label>
+              <input
+                id="new-name"
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className={styles.input}
+                placeholder="Opcional"
+              />
+            </div>
+            <div className={styles.formRow}>
+              <label htmlFor="new-role">Rol</label>
+              <select
+                id="new-role"
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value as 'USER' | 'ADMIN')}
+                className={styles.select}
+              >
+                <option value="USER">Usuario</option>
+                <option value="ADMIN">Administrador</option>
+              </select>
+            </div>
+            <div className={styles.formRow}>
+              <button type="submit" disabled={savingId === 'new'} className={styles.btnPrimary}>
+                {savingId === 'new' ? 'Guardando…' : 'Crear'}
+              </button>
+              <button
+                type="button"
+                className={styles.btnSmall}
+                onClick={() => {
+                  setShowCreate(false);
+                  setError('');
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      <div className={styles.card}>
+        <h2 className={styles.cardTitle}>Usuarios</h2>
+        <div className={styles.scrollWrap}>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th scope="col">Email</th>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Rol</th>
+                  <th scope="col" className={styles.colActions}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className={styles.empty}>
+                      No hay usuarios.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((u) => (
+                    <tr key={u.id}>
+                      <td className={styles.cellEmail}>{u.email}</td>
+                      <td className={styles.cellName}>
+                        {[u.name, u.lastName].filter(Boolean).join(' ') || '—'}
+                      </td>
+                      <td>{u.role === 'ADMIN' ? 'Administrador' : 'Usuario'}</td>
+                      <td className={styles.colActions}>
+                        <button
+                          type="button"
+                          className={styles.btnSmall}
+                          onClick={() => openEdit(u)}
+                        >
+                          Editar
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {editingId != null && (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-user-title"
+          onClick={(e) => e.target === e.currentTarget && setEditingId(null)}
+        >
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h2 id="edit-user-title" className={styles.modalTitle}>Editar usuario</h2>
+            {error && <p className={styles.error}>{error}</p>}
+            <form onSubmit={handleUpdate}>
+              <div className={styles.formRow}>
+                <label htmlFor="edit-role">Rol</label>
+                <select
+                  id="edit-role"
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as 'USER' | 'ADMIN')}
+                  className={styles.select}
+                >
+                  <option value="USER">Usuario</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
+              </div>
+              <div className={styles.formRow}>
+                <label htmlFor="edit-password">Nueva contraseña</label>
+                <input
+                  id="edit-password"
+                  type="password"
+                  value={editNewPassword}
+                  onChange={(e) => setEditNewPassword(e.target.value)}
+                  className={styles.input}
+                  minLength={6}
+                  placeholder="Dejar vacío para no cambiar"
+                />
+              </div>
+              <div className={styles.modalActions}>
+                <button
+                  type="submit"
+                  disabled={savingId === editingId}
+                  className={styles.btnPrimary}
+                >
+                  {savingId === editingId ? 'Guardando…' : 'Guardar'}
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnSmall}
+                  onClick={() => {
+                    setEditingId(null);
+                    setError('');
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

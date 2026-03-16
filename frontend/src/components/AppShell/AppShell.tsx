@@ -14,8 +14,9 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/launcher/activations/activate/new', label: 'Nueva activación', icon: 'new' },
 ];
 const adminNavItem = { href: '/launcher/activations/configuration', label: 'Configuración', icon: 'settings' as IconName };
+const adminUsersNavItem = { href: '/admin', label: 'Gestión de usuarios', icon: 'settings' as IconName };
 
-/** Tabs para tema Fiori: App Launcher (Inicio), Dashboard, Nueva activación, Mis activaciones, Configuración */
+/** Tabs para tema Fiori: App Launcher (Inicio), Dashboard, Nueva activación, Mis activaciones, Configuración, Gestión de usuarios */
 const fioriTabs: {
   href: string;
   label: string;
@@ -28,6 +29,7 @@ const fioriTabs: {
   { href: '/launcher/activations/activate/new', label: 'Nueva activación', isActive: (p) => p === '/launcher/activations/activate/new' },
   { href: '/launcher/activations/activate', label: 'Mis activaciones', isActive: (p) => p === '/launcher/activations/activate' || (p != null && p.startsWith('/launcher/activations/activate/') && p !== '/launcher/activations/activate/new') },
   { href: '/launcher/activations/configuration', label: 'Configuración', isActive: (p) => p === '/launcher/activations/configuration' || (p != null && p.startsWith('/launcher/activations/configuration/')) },
+  { href: '/admin', label: 'Gestión de usuarios', isActive: (p) => p != null && p.startsWith('/admin') },
 ];
 
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
@@ -49,6 +51,7 @@ function getPageHeader(pathname: string | null): { title: string } {
   if (pathname === '/launcher/activations/dashboard') return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/activate')) return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/configuration')) return { title: 'Configuración' };
+  if (pathname.startsWith('/admin')) return { title: 'Gestión de usuarios' };
   return { title: 'Activaciones' };
 }
 
@@ -104,7 +107,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                 <nav className={styles.tabsNav} aria-label="Navegación principal">
                   <div className={styles.tabsNavInner}>
                     {fioriTabs
-                      .filter((tab) => tab.href !== '/launcher/activations/configuration' || user?.role === 'ADMIN')
+                      .filter((tab) => (tab.href !== '/launcher/activations/configuration' && tab.href !== '/admin') || user?.role === 'ADMIN')
                       .map((tab) => {
                         const { href, label, icon, iconOnly, isActive } = tab;
                         const active = isActive(pathname);
@@ -147,13 +150,22 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                 </Link>
               ))}
               {user?.role === 'ADMIN' && (
-                <Link
-                  href={adminNavItem.href}
-                  className={pathname === adminNavItem.href || pathname?.startsWith(adminNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
-                >
-                  <Icon name={adminNavItem.icon} size={20} className={styles.navIcon} />
-                  {adminNavItem.label}
-                </Link>
+                <>
+                  <Link
+                    href={adminNavItem.href}
+                    className={pathname === adminNavItem.href || pathname?.startsWith(adminNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
+                  >
+                    <Icon name={adminNavItem.icon} size={20} className={styles.navIcon} />
+                    {adminNavItem.label}
+                  </Link>
+                  <Link
+                    href={adminUsersNavItem.href}
+                    className={pathname === adminUsersNavItem.href || pathname?.startsWith(adminUsersNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
+                  >
+                    <Icon name={adminUsersNavItem.icon} size={20} className={styles.navIcon} />
+                    {adminUsersNavItem.label}
+                  </Link>
+                </>
               )}
             </aside>
             <div className={styles.mainFooterWrap}>

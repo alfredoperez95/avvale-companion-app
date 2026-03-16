@@ -1,0 +1,214 @@
+.page {
+  max-width: 90rem;
+  margin: 0 auto;
+}
+
+.back {
+  display: block;
+  margin-bottom: var(--fiori-space-4);
+  color: var(--fiori-link);
+  font-size: 0.875rem;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--fiori-space-6);
+  color: var(--fiori-text);
+}
+
+.sectionDesc {
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-3);
+}
+
+.forbidden {
+  padding: var(--fiori-space-8);
+  text-align: center;
+  color: var(--fiori-text-secondary);
+}
+
+.card {
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.5rem;
+  padding: var(--fiori-space-4);
+  margin-bottom: var(--fiori-space-6);
+}
+
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+  margin: 0 0 var(--fiori-space-3);
+  padding-bottom: var(--fiori-space-2);
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.formRow {
+  display: flex;
+  gap: var(--fiori-space-2);
+  align-items: center;
+  margin-bottom: var(--fiori-space-3);
+  flex-wrap: wrap;
+}
+
+.formRow label {
+  font-size: 0.875rem;
+  color: var(--fiori-text);
+  min-width: 6rem;
+}
+
+.input {
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  min-width: 12rem;
+}
+
+.select {
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  min-width: 10rem;
+}
+
+.btnPrimary {
+  padding: var(--fiori-space-2) var(--fiori-space-4);
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-shell-text);
+  border: none;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnSmall {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  cursor: pointer;
+}
+
+.btnSmall:hover {
+  background: var(--fiori-border-light);
+}
+
+.scrollWrap {
+  max-height: 20rem;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.375rem;
+  background: var(--fiori-surface);
+}
+
+.tableWrap {
+  min-width: 100%;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th {
+  text-align: left;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  background: var(--fiori-nav-bg);
+  font-weight: 600;
+  color: var(--fiori-text);
+  border-bottom: 1px solid var(--fiori-border);
+}
+
+.table td {
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border-bottom: 1px solid var(--fiori-border-light);
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: var(--fiori-background);
+}
+
+.colActions {
+  white-space: nowrap;
+}
+
+.colActions .btnSmall {
+  margin-right: var(--fiori-space-1);
+}
+
+.cellName {
+  font-weight: 500;
+  color: var(--fiori-text);
+}
+
+.cellEmail {
+  color: var(--fiori-text-secondary);
+}
+
+.empty {
+  text-align: center;
+  color: var(--fiori-text-secondary);
+  padding: var(--fiori-space-6);
+  font-style: italic;
+}
+
+.error {
+  color: #b71c1c;
+  font-size: 0.875rem;
+  margin-bottom: var(--fiori-space-2);
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--fiori-surface);
+  border-radius: 0.5rem;
+  padding: var(--fiori-space-5);
+  max-width: 24rem;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modalTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 var(--fiori-space-4);
+  color: var(--fiori-text);
+}
+
+.modalActions {
+  margin-top: var(--fiori-space-4);
+  display: flex;
+  gap: var(--fiori-space-2);
+}
