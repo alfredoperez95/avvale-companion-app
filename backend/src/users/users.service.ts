@@ -81,8 +81,16 @@ export class UsersService {
   async updateByAdmin(id: string, dto: UpdateUserByAdminDto) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Usuario no encontrado');
-    const data: { role?: UserRole; passwordHash?: string } = {};
+    const data: { email?: string; position?: string | null; role?: UserRole; enabled?: boolean; passwordHash?: string } = {};
+    if (dto.email !== undefined && dto.email.trim() !== '') {
+      const normalizedEmail = dto.email.toLowerCase().trim();
+      const other = await this.findByEmail(normalizedEmail);
+      if (other && other.id !== id) throw new ConflictException('El correo electrónico ya está en uso');
+      data.email = normalizedEmail;
+    }
+    if (dto.position !== undefined) data.position = dto.position.trim() || null;
     if (dto.role !== undefined) data.role = dto.role;
+    if (dto.enabled !== undefined) data.enabled = dto.enabled;
     if (dto.newPassword !== undefined && dto.newPassword.length > 0) {
       data.passwordHash = await bcrypt.hash(dto.newPassword, this.SALT_ROUNDS);
     }

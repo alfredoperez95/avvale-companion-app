@@ -27,6 +27,9 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
+    if (user.enabled === false) {
+      throw new UnauthorizedException('Usuario deshabilitado. Contacte al administrador.');
+    }
     return this.buildTokenResponse(user.id, user.email);
   }
 

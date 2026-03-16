@@ -10,7 +10,10 @@ type UserItem = {
   email: string;
   name?: string | null;
   lastName?: string | null;
+  position?: string | null;
+  appearance?: string | null;
   role: string;
+  enabled?: boolean;
   createdAt: string;
 };
 
@@ -26,7 +29,10 @@ export default function AdminUsersPage() {
   const [newRole, setNewRole] = useState<'USER' | 'ADMIN'>('USER');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editEmail, setEditEmail] = useState('');
+  const [editPosition, setEditPosition] = useState('');
   const [editRole, setEditRole] = useState<'USER' | 'ADMIN'>('USER');
+  const [editEnabled, setEditEnabled] = useState(true);
   const [editNewPassword, setEditNewPassword] = useState('');
 
   const loadUsers = async () => {
@@ -100,7 +106,9 @@ export default function AdminUsersPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
-    const payload: { role?: string; newPassword?: string } = { role: editRole };
+    const payload: { email?: string; position?: string; role?: string; enabled?: boolean; newPassword?: string } = { role: editRole, enabled: editEnabled };
+    if (editEmail.trim()) payload.email = editEmail.trim();
+    payload.position = editPosition.trim();
     if (editNewPassword.trim().length >= 6) payload.newPassword = editNewPassword;
     setError('');
     setSavingId(editingId);
@@ -117,6 +125,8 @@ export default function AdminUsersPage() {
       }
       setEditingId(null);
       setEditNewPassword('');
+      setEditEmail('');
+      setEditPosition('');
       await loadUsers();
     } finally {
       setSavingId(null);
@@ -125,7 +135,10 @@ export default function AdminUsersPage() {
 
   const openEdit = (u: UserItem) => {
     setEditingId(u.id);
+    setEditEmail(u.email ?? '');
+    setEditPosition(u.position ?? '');
     setEditRole((u.role as 'USER' | 'ADMIN') || 'USER');
+    setEditEnabled(u.enabled !== false);
     setEditNewPassword('');
     setError('');
   };
@@ -240,14 +253,16 @@ export default function AdminUsersPage() {
                 <tr>
                   <th scope="col">Email</th>
                   <th scope="col">Nombre</th>
+                  <th scope="col">Puesto</th>
                   <th scope="col">Rol</th>
+                  <th scope="col">Estado</th>
                   <th scope="col" className={styles.colActions}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className={styles.empty}>
+                    <td colSpan={6} className={styles.empty}>
                       No hay usuarios.
                     </td>
                   </tr>
@@ -258,7 +273,13 @@ export default function AdminUsersPage() {
                       <td className={styles.cellName}>
                         {[u.name, u.lastName].filter(Boolean).join(' ') || '—'}
                       </td>
+                      <td>{u.position || '—'}</td>
                       <td>{u.role === 'ADMIN' ? 'Administrador' : 'Usuario'}</td>
+                      <td>
+                        <span className={u.enabled !== false ? styles.badgeEnabled : styles.badgeDisabled}>
+                          {u.enabled !== false ? 'Habilitado' : 'Deshabilitado'}
+                        </span>
+                      </td>
                       <td className={styles.colActions}>
                         <button
                           type="button"
@@ -290,6 +311,29 @@ export default function AdminUsersPage() {
             {error && <p className={styles.error}>{error}</p>}
             <form onSubmit={handleUpdate}>
               <div className={styles.formRow}>
+                <label htmlFor="edit-email">Correo electrónico</label>
+                <input
+                  id="edit-email"
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className={styles.input}
+                  required
+                  placeholder="usuario@ejemplo.com"
+                />
+              </div>
+              <div className={styles.formRow}>
+                <label htmlFor="edit-position">Puesto</label>
+                <input
+                  id="edit-position"
+                  type="text"
+                  value={editPosition}
+                  onChange={(e) => setEditPosition(e.target.value)}
+                  className={styles.input}
+                  placeholder="Ej. Consultor, Director..."
+                />
+              </div>
+              <div className={styles.formRow}>
                 <label htmlFor="edit-role">Rol</label>
                 <select
                   id="edit-role"
@@ -300,6 +344,17 @@ export default function AdminUsersPage() {
                   <option value="USER">Usuario</option>
                   <option value="ADMIN">Administrador</option>
                 </select>
+              </div>
+              <div className={styles.formRow}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={editEnabled}
+                    onChange={(e) => setEditEnabled(e.target.checked)}
+                    aria-label="Usuario habilitado"
+                  />
+                  <span className={styles.checkboxLabel}>Usuario habilitado</span>
+                </label>
               </div>
               <div className={styles.formRow}>
                 <label htmlFor="edit-password">Nueva contraseña</label>

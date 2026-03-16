@@ -234,10 +234,10 @@ export default function PerfilPage() {
           <h2 id="perfil-admin" className={styles.sectionTitle}>
             Administración
           </h2>
-          <Link href="/launcher/activations/configuration" className={styles.adminCard}>
-            <span className={styles.adminCardTitle}>Configuración</span>
+          <Link href="/admin" className={styles.adminCard}>
+            <span className={styles.adminCardTitle}>Gestión de usuarios</span>
             <span className={styles.adminCardDesc}>
-              Gestionar áreas, director, subáreas y contactos para las activaciones.
+              Crear y gestionar usuarios, permisos y contraseñas de la aplicación.
             </span>
           </Link>
         </section>

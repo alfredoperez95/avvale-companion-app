@@ -16,8 +16,8 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
 const adminNavItem = { href: '/launcher/activations/configuration', label: 'Configuración', icon: 'settings' as IconName };
 const adminUsersNavItem = { href: '/admin', label: 'Gestión de usuarios', icon: 'settings' as IconName };
 
-/** Tabs para tema Fiori: App Launcher (Inicio), Dashboard, Nueva activación, Mis activaciones, Configuración, Gestión de usuarios */
-const fioriTabs: {
+/** Tabs del aplicativo activaciones (tema Fiori): Inicio, Dashboard, Nueva activación, Mis activaciones, Configuración */
+const fioriTabsActivations: {
   href: string;
   label: string;
   icon?: IconName;
@@ -29,6 +29,20 @@ const fioriTabs: {
   { href: '/launcher/activations/activate/new', label: 'Nueva activación', isActive: (p) => p === '/launcher/activations/activate/new' },
   { href: '/launcher/activations/activate', label: 'Mis activaciones', isActive: (p) => p === '/launcher/activations/activate' || (p != null && p.startsWith('/launcher/activations/activate/') && p !== '/launcher/activations/activate/new') },
   { href: '/launcher/activations/configuration', label: 'Configuración', isActive: (p) => p === '/launcher/activations/configuration' || (p != null && p.startsWith('/launcher/activations/configuration/')) },
+];
+
+/** Tab común: icono Inicio para volver al App Launcher (siempre visible en tabsNavInner) */
+const fioriTabHome = { href: '/launcher', label: 'Inicio', icon: 'home' as IconName, iconOnly: true, isActive: (p: string | null) => p === '/launcher' };
+
+/** Tabs del aplicativo admin (tema Fiori): Inicio (común) + Gestión de usuarios */
+const fioriTabsAdmin: {
+  href: string;
+  label: string;
+  icon?: IconName;
+  iconOnly?: boolean;
+  isActive: (pathname: string | null) => boolean;
+}[] = [
+  fioriTabHome,
   { href: '/admin', label: 'Gestión de usuarios', isActive: (p) => p != null && p.startsWith('/admin') },
 ];
 
@@ -51,7 +65,7 @@ function getPageHeader(pathname: string | null): { title: string } {
   if (pathname === '/launcher/activations/dashboard') return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/activate')) return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/configuration')) return { title: 'Configuración' };
-  if (pathname.startsWith('/admin')) return { title: 'Gestión de usuarios' };
+  if (pathname.startsWith('/admin')) return { title: 'Administración' };
   return { title: 'Activaciones' };
 }
 
@@ -106,8 +120,12 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                 </div>
                 <nav className={styles.tabsNav} aria-label="Navegación principal">
                   <div className={styles.tabsNavInner}>
-                    {fioriTabs
-                      .filter((tab) => (tab.href !== '/launcher/activations/configuration' && tab.href !== '/admin') || user?.role === 'ADMIN')
+                    {(pathname?.startsWith('/admin') ? fioriTabsAdmin : fioriTabsActivations)
+                      .filter((tab) =>
+                        pathname?.startsWith('/admin')
+                          ? tab.href === '/launcher' || user?.role === 'ADMIN'
+                          : (tab.href !== '/launcher/activations/configuration') || user?.role === 'ADMIN'
+                      )
                       .map((tab) => {
                         const { href, label, icon, iconOnly, isActive } = tab;
                         const active = isActive(pathname);

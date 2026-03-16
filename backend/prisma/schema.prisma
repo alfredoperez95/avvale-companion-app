@@ -33,6 +33,7 @@ model User {
   appearance   String?  @map("appearance")
   passwordHash String   @map("password_hash")
   role         UserRole @default(USER)
+  enabled      Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
 
   activations Activation[]
