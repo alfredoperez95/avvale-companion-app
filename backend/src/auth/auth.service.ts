@@ -55,6 +55,10 @@ export class AuthService {
     return this.usersService.getAvatarBuffer(userId);
   }
 
+  async removeAvatar(userId: string) {
+    return this.usersService.removeAvatar(userId);
+  }
+
   private buildTokenResponse(userId: string, email: string) {
     const payload: JwtPayload = { sub: userId, email };
     const accessToken = this.jwtService.sign(payload);

@@ -38,6 +38,7 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [deletingAvatar, setDeletingAvatar] = useState(false);
   const [savingAppearance, setSavingAppearance] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
@@ -154,6 +155,33 @@ export default function PerfilPage() {
     }
   };
 
+  const handleRemoveAvatar = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!profile?.avatarPath || deletingAvatar) return;
+    setError('');
+    setDeletingAvatar(true);
+    try {
+      const res = await apiFetch('/api/auth/me/avatar', { method: 'DELETE' });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.message ?? 'Error al eliminar la foto');
+        return;
+      }
+      setProfile((prev) => (prev ? { ...prev, avatarPath: null } : prev));
+      if (typeof window !== 'undefined' && data.id) {
+        window.dispatchEvent(new CustomEvent('user-updated', { detail: data }));
+      }
+    } finally {
+      setDeletingAvatar(false);
+    }
+  };
+
   const handleAppearanceSelect = async (value: string) => {
     if (value === currentAppearance || savingAppearance) return;
     setSavingAppearance(true);
@@ -231,6 +259,24 @@ export default function PerfilPage() {
                 </>
               )}
             </span>
+            {avatarUrl && !uploadingAvatar && (
+              <button
+                type="button"
+                className={styles.avatarRemoveBtn}
+                onClick={handleRemoveAvatar}
+                disabled={deletingAvatar}
+                aria-label="Eliminar foto de perfil"
+                title="Eliminar foto de perfil"
+              >
+                {deletingAvatar ? (
+                  <span className={styles.avatarRemoveBtnText}>…</span>
+                ) : (
+                  <svg className={styles.avatarRemoveIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
         </div>
         <h2 id="perfil-datos" className={styles.sectionTitle}>

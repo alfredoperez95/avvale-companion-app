@@ -117,7 +117,7 @@ export class UsersService {
 
     const avatarDir = this.getAvatarDir();
     await fs.mkdir(avatarDir, { recursive: true });
-    const ext = this.getExtensionFromMime(file.mimetype);
+    const ext = this.getExtensionFromMime(mime);
     const fileName = `${userId}${ext}`;
     const fullPath = path.join(avatarDir, fileName);
 
@@ -147,6 +147,19 @@ export class UsersService {
     } catch {
       return null;
     }
+  }
+
+  /** Elimina la imagen de perfil del disco y pone avatarPath a null. */
+  async removeAvatar(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { avatarPath: true } });
+    if (user?.avatarPath) {
+      const fullPath = path.join(this.uploadsDir, user.avatarPath);
+      await fs.unlink(fullPath).catch(() => {});
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarPath: null },
+    });
   }
 
   async updateByAdmin(id: string, dto: UpdateUserByAdminDto) {

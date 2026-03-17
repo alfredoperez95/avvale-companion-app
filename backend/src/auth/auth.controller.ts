@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Patch, UseGuards, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, Delete, UseGuards, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
@@ -67,5 +67,15 @@ export class AuthController {
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.setHeader('Content-Type', result.contentType);
     res.send(result.buffer);
+  }
+
+  @Delete('me/avatar')
+  @UseGuards(JwtAuthGuard)
+  async deleteAvatar(@CurrentUser() payload: UserPayload) {
+    await this.authService.removeAvatar(payload.userId);
+    const user = await this.authService.validateUserById(payload.userId);
+    if (!user) return { avatarPath: null };
+    const { passwordHash: _, ...rest } = user;
+    return rest;
   }
 }
