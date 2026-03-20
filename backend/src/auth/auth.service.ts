@@ -10,6 +10,8 @@ export interface JwtPayload {
   email: string;
 }
 
+type Appearance = 'microsoft' | 'fiori';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -57,6 +59,14 @@ export class AuthService {
 
   async removeAvatar(userId: string) {
     return this.usersService.removeAvatar(userId);
+  }
+
+  getLoginBranding() {
+    const rawAppearance = (process.env.LOGIN_APPEARANCE ?? process.env.DEFAULT_APPEARANCE ?? 'microsoft')
+      .toLowerCase()
+      .trim();
+    const appearance: Appearance = rawAppearance === 'fiori' ? 'fiori' : 'microsoft';
+    return { appearance };
   }
 
   private buildTokenResponse(userId: string, email: string) {

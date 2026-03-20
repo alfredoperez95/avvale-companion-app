@@ -23,6 +23,11 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @Get('branding')
+  getBranding() {
+    return this.authService.getLoginBranding();
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() payload: UserPayload) {
