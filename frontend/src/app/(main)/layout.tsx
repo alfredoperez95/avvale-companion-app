@@ -76,7 +76,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }, []);
 
   if (showLoading) {
-    return <LoadingScreen message="Preparando tu espacio de trabajo..." />;
+    return (
+      <AppShell user={user} theme={theme}>
+        <LoadingScreen message="Preparando tu espacio de trabajo..." fullPage={false} />
+      </AppShell>
+    );
   }
 
   if (loading || !user) return null;
