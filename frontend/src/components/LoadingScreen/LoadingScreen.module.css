@@ -31,6 +31,11 @@
   justify-content: center;
 }
 
+.ui5Busy {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
 .busyIndicator {
   width: 2rem;
   height: 2rem;
