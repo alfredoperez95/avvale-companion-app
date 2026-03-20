@@ -1,8 +1,8 @@
  'use client';
 
 import { useEffect, useState } from 'react';
+import '@ui5/webcomponents/dist/BusyIndicator.js';
 import styles from './LoadingScreen.module.css';
-import { Ui5BusyIndicator } from './Ui5BusyIndicator';
 
 interface LoadingScreenProps {
   message?: string;
@@ -25,7 +25,7 @@ export function LoadingScreen({ message = 'Cargando contenido...', fullPage = tr
         <div className={styles.indicatorWrap}>
           {isFiori ? (
             <span className={styles.ui5Busy}>
-              <Ui5BusyIndicator active />
+              <ui5-busy-indicator active />
             </span>
           ) : (
             <span className={styles.busyIndicator} aria-hidden="true" />
