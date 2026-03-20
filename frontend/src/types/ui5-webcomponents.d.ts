@@ -5,6 +5,7 @@ declare module 'react' {
     interface IntrinsicElements {
       'ui5-busy-indicator': DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
         active?: boolean;
+        delay?: number | string;
       };
     }
   }

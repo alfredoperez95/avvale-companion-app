@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import '@ui5/webcomponents/dist/BusyIndicator.js';
 import { apiFetch } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
 import { LoadingScreen } from '@/components/LoadingScreen/LoadingScreen';

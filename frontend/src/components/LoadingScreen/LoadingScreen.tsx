@@ -1,7 +1,6 @@
  'use client';
 
 import { useEffect, useState } from 'react';
-import '@ui5/webcomponents/dist/BusyIndicator.js';
 import styles from './LoadingScreen.module.css';
 
 interface LoadingScreenProps {
@@ -10,11 +9,14 @@ interface LoadingScreenProps {
 }
 
 export function LoadingScreen({ message = 'Cargando contenido...', fullPage = true }: LoadingScreenProps) {
-  const [appearance, setAppearance] = useState<'fiori' | 'microsoft'>('microsoft');
-
+  const [appearance, setAppearance] = useState<'fiori' | 'microsoft'>(() => {
+    if (typeof document === 'undefined') return 'microsoft';
+    return document.documentElement.getAttribute('data-appearance') === 'fiori' ? 'fiori' : 'microsoft';
+  });
   useEffect(() => {
     const value = document.documentElement.getAttribute('data-appearance');
-    setAppearance(value === 'fiori' ? 'fiori' : 'microsoft');
+    const nextAppearance = value === 'fiori' ? 'fiori' : 'microsoft';
+    setAppearance(nextAppearance);
   }, []);
 
   const isFiori = appearance === 'fiori';
@@ -25,7 +27,7 @@ export function LoadingScreen({ message = 'Cargando contenido...', fullPage = tr
         <div className={styles.indicatorWrap}>
           {isFiori ? (
             <span className={styles.ui5Busy}>
-              <ui5-busy-indicator active />
+              <ui5-busy-indicator active delay={0} />
             </span>
           ) : (
             <span className={styles.busyIndicator} aria-hidden="true" />
