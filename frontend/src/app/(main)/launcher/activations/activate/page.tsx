@@ -8,6 +8,7 @@ import { FilterBar, type SolicitanteOption } from '@/components/FilterBar/Filter
 import { DataTable, type Column } from '@/components/DataTable/DataTable';
 import { DetailDrawer } from '@/components/DetailDrawer/DetailDrawer';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
+import { useSmoothLoading } from '@/hooks/useSmoothLoading';
 import styles from './activations.module.css';
 
 export default function ActivationsPage() {
@@ -18,6 +19,7 @@ export default function ActivationsPage() {
   const [solicitanteFilter, setSolicitanteFilter] = useState('');
   const [solicitanteOptions, setSolicitanteOptions] = useState<SolicitanteOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const tableLoading = useSmoothLoading(loading, { delayMs: 150, minVisibleMs: 250 });
 
   useEffect(() => {
     apiFetch('/api/activations')
@@ -130,7 +132,7 @@ export default function ActivationsPage() {
           <DataTable<Activation>
             columns={columns}
             data={filtered}
-            loading={loading}
+            loading={tableLoading}
             emptyMessage="No hay activaciones. Crea una desde Inicio o Nueva activación."
             getRowId={(row) => row.id}
             onRowClick={(row) => setSelectedId(row.id)}

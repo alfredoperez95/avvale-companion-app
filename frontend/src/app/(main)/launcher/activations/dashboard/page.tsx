@@ -8,6 +8,7 @@ import { FilterBar, type SolicitanteOption } from '@/components/FilterBar/Filter
 import { DataTable, type Column } from '@/components/DataTable/DataTable';
 import { DetailDrawer } from '@/components/DetailDrawer/DetailDrawer';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
+import { useSmoothLoading } from '@/hooks/useSmoothLoading';
 import styles from './dashboard.module.css';
 
 export default function DashboardPage() {
@@ -18,6 +19,7 @@ export default function DashboardPage() {
   const [solicitanteFilter, setSolicitanteFilter] = useState('');
   const [solicitanteOptions, setSolicitanteOptions] = useState<SolicitanteOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const tableLoading = useSmoothLoading(loading, { delayMs: 150, minVisibleMs: 250 });
 
   useEffect(() => {
     apiFetch('/api/activations')
@@ -149,7 +151,7 @@ export default function DashboardPage() {
           <DataTable<Activation>
             columns={columns}
             data={filtered}
-            loading={loading}
+            loading={tableLoading}
             emptyMessage="No hay activaciones que coincidan con los filtros."
             getRowId={(row) => row.id}
             onRowClick={(row) => setSelectedId(row.id)}

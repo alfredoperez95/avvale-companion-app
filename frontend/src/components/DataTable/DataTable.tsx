@@ -26,10 +26,26 @@ export function DataTable<T>({
   onRowClick,
 }: DataTableProps<T>) {
   if (loading) {
+    const skeletonRows = 6;
+    const skeletonGridStyle = { gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(4rem, 1fr))` };
     return (
       <div className={styles.wrap}>
         <div className={styles.loading} role="status" aria-live="polite">
-          Cargando…
+          <div className={styles.skeletonHeader} style={skeletonGridStyle}>
+            {columns.map((col) => (
+              <span key={`header-${col.key}`} className={styles.skeletonHeaderCell} />
+            ))}
+          </div>
+          <div className={styles.skeletonBody}>
+            {Array.from({ length: skeletonRows }).map((_, rowIndex) => (
+              <div key={`row-${rowIndex}`} className={styles.skeletonRow} style={skeletonGridStyle}>
+                {columns.map((col) => (
+                  <span key={`cell-${rowIndex}-${col.key}`} className={styles.skeletonCell} />
+                ))}
+              </div>
+            ))}
+          </div>
+          <span className={styles.loadingText}>Cargando datos...</span>
         </div>
       </div>
     );

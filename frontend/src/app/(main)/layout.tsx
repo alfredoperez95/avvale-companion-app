@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
+import { LoadingScreen } from '@/components/LoadingScreen/LoadingScreen';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { UserProvider } from '@/contexts/UserContext';
+import { useSmoothLoading } from '@/hooks/useSmoothLoading';
 import '@/styles/fonts-fiori.css';
 import '@/styles/icons-fiori.css';
 
@@ -21,6 +23,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'microsoft' | 'fiori'>('microsoft');
+  const showLoading = useSmoothLoading(loading, { delayMs: 150, minVisibleMs: 250 });
 
   useEffect(() => {
     apiFetch('/api/auth/me')
@@ -72,15 +75,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     return () => window.removeEventListener('user-updated', handler);
   }, []);
 
-  if (loading) {
-    return (
-      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--fiori-text-secondary)' }}>
-        Cargando…
-      </div>
-    );
+  if (showLoading) {
+    return <LoadingScreen message="Preparando tu espacio de trabajo..." />;
   }
 
-  if (!user) return null;
+  if (loading || !user) return null;
 
   const activeTheme = theme;
   return (
