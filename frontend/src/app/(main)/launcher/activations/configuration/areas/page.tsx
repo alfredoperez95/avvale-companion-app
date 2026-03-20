@@ -301,13 +301,7 @@ export default function AdminAreasPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className={styles.page}>
-        <p className={styles.forbidden}>Cargando…</p>
-      </div>
-    );
-  }
+  if (loading) return null;
 
   if (forbidden) {
     return (

@@ -140,7 +140,7 @@ export default function ActivationDetailPage() {
     }
   };
 
-  if (loading) return <p className={styles.loading}>Cargando…</p>;
+  if (loading) return null;
   if (!activation) return <p className={styles.error}>Activation no encontrada.</p>;
 
   const section = (title: string, children: React.ReactNode) => (

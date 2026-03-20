@@ -287,7 +287,7 @@ export default function EditActivationPage() {
     }
   };
 
-  if (fetchLoading) return <p className={styles.error} style={{ padding: '2rem' }}>Cargando…</p>;
+  if (fetchLoading) return null;
   if (loadError) return <p className={styles.error} style={{ padding: '2rem' }}>{loadError}</p>;
 
   return (

@@ -212,7 +212,7 @@ export default function PerfilPage() {
     }
   };
 
-  if (loading) return <p className={styles.loading}>Cargando…</p>;
+  if (loading) return null;
 
   const initials = getInitials(profile?.name, profile?.lastName, profile?.email);
 
