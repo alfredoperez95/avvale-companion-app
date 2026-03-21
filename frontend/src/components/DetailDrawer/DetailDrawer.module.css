@@ -31,10 +31,22 @@
   flex-shrink: 0;
 }
 
+.headerTitles {
+  min-width: 0;
+}
+
 .title {
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--fiori-text);
+}
+
+.subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fiori-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .close {

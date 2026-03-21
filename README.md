@@ -58,6 +58,7 @@ Siguiente: **Paso 1 — MariaDB** (si aún no tienes la base de datos) o **Paso 
 - `backend/` — API NestJS (Prisma, MariaDB, JWT). Incluye `Dockerfile`.
 - `frontend/` — Next.js (App Router). Incluye `Dockerfile`.
 - `docs/VERIFICACION.md` — Comprobación paso a paso (health, auth, frontend).
+- `docs/MAKE.md` — Webhook a Make, variables `MAKE_*` y callback opcional.
 - `.env.example` — Variables de entorno de ejemplo
 
 Cada servicio se construye y ejecuta con su propio Dockerfile (sin docker-compose).
@@ -72,6 +73,8 @@ Cada servicio se construye y ejecuta con su propio Dockerfile (sin docker-compos
 ### 1. Variables de entorno
 
 Ya hecho en **Paso 0** (`.env` en la raíz y `./scripts/prepare-env.sh`). Si no, hazlo ahora.
+
+Para **envíos vía Make**, define al menos `MAKE_WEBHOOK_URL` (y opcionalmente `MAKE_WEBHOOK_SECRET`, `MAKE_CALLBACK_SECRET`). Detalle del payload JSON y del escenario en [docs/MAKE.md](docs/MAKE.md).
 
 ### 2. Base de datos y tablas
 

@@ -39,6 +39,14 @@
   color: var(--fiori-text);
 }
 
+.activationMeta {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fiori-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .section {
   margin-bottom: var(--fiori-space-5);
 }

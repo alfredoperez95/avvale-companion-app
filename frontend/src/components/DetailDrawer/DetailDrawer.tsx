@@ -7,6 +7,7 @@ import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
+import { formatActivationCode } from '@/lib/activation-code';
 import styles from './DetailDrawer.module.css';
 
 interface DetailDrawerProps {
@@ -149,9 +150,16 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
         onKeyDown={handleKeyDown}
       >
         <div className={styles.header}>
-          <h2 id="drawer-title" className={styles.title}>
-            {loading ? 'Cargando…' : activation?.projectName ?? 'Detalle'}
-          </h2>
+          <div className={styles.headerTitles}>
+            <h2 id="drawer-title" className={styles.title}>
+              {loading ? 'Cargando…' : activation?.projectName ?? 'Detalle'}
+            </h2>
+            {!loading && activation && (
+              <p className={styles.subtitle}>
+                {formatActivationCode(activation.activationNumber)} · n.º {activation.activationNumber}
+              </p>
+            )}
+          </div>
           <button type="button" className={styles.close} onClick={onClose} aria-label="Cerrar">
             ×
           </button>

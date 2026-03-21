@@ -2,6 +2,8 @@ export type ActivationStatus = 'DRAFT' | 'READY_TO_SEND' | 'SENT' | 'ERROR';
 
 export interface Activation {
   id: string;
+  /** Secuencial único (humano / Make / logs). */
+  activationNumber: number;
   status: ActivationStatus;
   projectName: string;
   client: string | null;

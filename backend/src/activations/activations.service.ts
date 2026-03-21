@@ -5,12 +5,23 @@ import { BillingAdminContactsService } from '../billing-admin-contacts/billing-a
 import { ActivationStatus } from '@prisma/client';
 import { CreateActivationDto } from './dto/create-activation.dto';
 import { UpdateActivationDto } from './dto/update-activation.dto';
+import { MakeService } from '../make/make.service';
+import { buildMakeWebhookPayload, ActivationForMakePayload } from '../make/make-webhook-payload';
+import { formatActivationCode } from './activation-code';
 
-/** Genera el asunto en formato: Activación AEP - CLIENTE - Proyecto */
-function buildSubject(projectName: string, client: string | null): string {
+/** Asunto provisional antes de conocer activationNumber (misma forma legacy sin código). */
+function buildSubjectWithoutCode(projectName: string, client: string | null): string {
   const clientPart = (client ?? '').trim().toUpperCase();
   const projectPart = (projectName ?? '').trim();
   return `Activación AEP - ${clientPart} - ${projectPart}`;
+}
+
+/** Asunto con código visible: Activación AEP [ACT-000124] - CLIENTE - Proyecto */
+function buildSubject(projectName: string, client: string | null, activationNumber: number): string {
+  const clientPart = (client ?? '').trim().toUpperCase();
+  const projectPart = (projectName ?? '').trim();
+  const code = formatActivationCode(activationNumber);
+  return `Activación AEP [${code}] - ${clientPart} - ${projectPart}`;
 }
 
 const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
@@ -21,6 +32,7 @@ export class ActivationsService {
     private readonly prisma: PrismaService,
     private readonly attachmentsService: AttachmentsService,
     private readonly billingAdminContactsService: BillingAdminContactsService,
+    private readonly makeService: MakeService,
   ) {}
 
   /** Obtiene emails: areaIds = área completa (director + todos contactos subáreas); subAreaIds = solo director del área + contactos de esas subáreas. */
@@ -100,38 +112,48 @@ export class ActivationsService {
     if (areaIds.length === 0 && subAreaIds.length === 0) {
       throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
     }
-    const subject = buildSubject(dto.projectName, dto.client ?? null);
     const { recipientTo: areaRecipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
     const recipientTo = await this.mergeBillingAdminIntoRecipientTo(areaRecipientTo);
-    const activation = await this.prisma.activation.create({
-      data: {
-        createdByUserId: userId,
-        createdBy: createdByLabel,
-        status: ActivationStatus.DRAFT,
-        projectName: dto.projectName,
-        client: dto.client ?? null,
-        offerCode: dto.offerCode,
-        projectAmount: dto.projectAmount.trim() || null,
-        projectType: dto.projectType,
-        hubspotUrl: dto.hubspotUrl ?? null,
-        recipientTo,
-        recipientCc: dto.recipientCc?.trim() || null,
-        subject,
-        body: dto.body ?? null,
-        attachmentUrls: dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null,
-        attachmentNames: dto.attachmentNames?.length ? JSON.stringify(dto.attachmentNames) : null,
-      },
+
+    const activation = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.activation.create({
+        data: {
+          createdByUserId: userId,
+          createdBy: createdByLabel,
+          status: ActivationStatus.DRAFT,
+          projectName: dto.projectName,
+          client: dto.client ?? null,
+          offerCode: dto.offerCode,
+          projectAmount: dto.projectAmount.trim() || null,
+          projectType: dto.projectType,
+          hubspotUrl: dto.hubspotUrl ?? null,
+          recipientTo,
+          recipientCc: dto.recipientCc?.trim() || null,
+          subject: buildSubjectWithoutCode(dto.projectName, dto.client ?? null),
+          body: dto.body ?? null,
+          attachmentUrls: dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null,
+          attachmentNames: dto.attachmentNames?.length ? JSON.stringify(dto.attachmentNames) : null,
+        },
+      });
+      await tx.activation.update({
+        where: { id: created.id },
+        data: {
+          subject: buildSubject(dto.projectName, dto.client ?? null, created.activationNumber),
+        },
+      });
+      if (areaIds.length > 0) {
+        await tx.activationArea.createMany({
+          data: areaIds.map((areaId) => ({ activationId: created.id, areaId })),
+        });
+      }
+      if (subAreaIds.length > 0) {
+        await tx.activationSubArea.createMany({
+          data: subAreaIds.map((subAreaId) => ({ activationId: created.id, subAreaId })),
+        });
+      }
+      return created;
     });
-    if (areaIds.length > 0) {
-      await this.prisma.activationArea.createMany({
-        data: areaIds.map((areaId) => ({ activationId: activation.id, areaId })),
-      });
-    }
-    if (subAreaIds.length > 0) {
-      await this.prisma.activationSubArea.createMany({
-        data: subAreaIds.map((subAreaId) => ({ activationId: activation.id, subAreaId })),
-      });
-    }
+
     if (dto.attachmentUrls?.length) {
       await this.attachmentsService.saveActivationAttachments(activation.id, dto.attachmentUrls);
     }
@@ -201,7 +223,7 @@ export class ActivationsService {
     if (dto.hubspotUrl !== undefined) data.hubspotUrl = dto.hubspotUrl || null;
     const projectName = (dto.projectName !== undefined ? dto.projectName : activation.projectName) ?? '';
     const client = dto.client !== undefined ? dto.client : activation.client;
-    data.subject = buildSubject(projectName, client);
+    data.subject = buildSubject(projectName, client, activation.activationNumber);
     if (dto.recipientCc !== undefined) data.recipientCc = dto.recipientCc?.trim() || null;
     if (dto.body !== undefined) data.body = dto.body || null;
     if (dto.attachmentUrls !== undefined) {
@@ -260,7 +282,7 @@ export class ActivationsService {
     return activation;
   }
 
-  /** Marca como READY_TO_SEND y opcionalmente llama al webhook de Make. Solo DRAFT o ERROR. */
+  /** Dispara el webhook de Make con el payload v2; si OK → READY_TO_SEND + makeRunId; si falla → ERROR + errorMessage. Solo DRAFT o ERROR. */
   async requestSend(activationId: string, userId: string) {
     const activation = await this.findOneByIdAndUser(activationId, userId);
     if (activation.status !== ActivationStatus.DRAFT && activation.status !== ActivationStatus.ERROR) {
@@ -268,13 +290,31 @@ export class ActivationsService {
         `No se puede enviar: estado actual es ${activation.status}. Solo DRAFT o ERROR.`,
       );
     }
-    await this.prisma.activation.update({
-      where: { id: activationId },
-      data: {
-        status: ActivationStatus.READY_TO_SEND,
-        lastStatusAt: new Date(),
-      },
-    });
+
+    const payload = buildMakeWebhookPayload(activation as ActivationForMakePayload);
+    const result = await this.makeService.triggerWebhook(payload);
+
+    if (result.success) {
+      await this.prisma.activation.update({
+        where: { id: activationId },
+        data: {
+          status: ActivationStatus.READY_TO_SEND,
+          makeRunId: result.makeRunId ?? null,
+          errorMessage: null,
+          lastStatusAt: new Date(),
+        },
+      });
+    } else {
+      await this.prisma.activation.update({
+        where: { id: activationId },
+        data: {
+          status: ActivationStatus.ERROR,
+          errorMessage: result.errorMessage ?? 'Error desconocido al contactar con Make',
+          lastStatusAt: new Date(),
+        },
+      });
+    }
+
     return this.findOneByIdAndUser(activationId, userId);
   }
 

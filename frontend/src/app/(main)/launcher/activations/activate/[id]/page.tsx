@@ -8,6 +8,7 @@ import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
+import { formatActivationCode } from '@/lib/activation-code';
 import styles from './detail.module.css';
 
 function isHtmlBody(body: string | null | undefined): boolean {
@@ -175,7 +176,12 @@ export default function ActivationDetailPage() {
         ← Mis activaciones
       </Link>
       <div className={styles.header}>
-        <h1 className={styles.title}>{activation.projectName}</h1>
+        <div>
+          <h1 className={styles.title}>{activation.projectName}</h1>
+          <p className={styles.activationMeta}>
+            {formatActivationCode(activation.activationNumber)} · n.º {activation.activationNumber}
+          </p>
+        </div>
         <StatusTag status={activation.status} />
       </div>
 

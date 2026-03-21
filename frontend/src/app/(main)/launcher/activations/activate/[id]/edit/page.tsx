@@ -8,6 +8,7 @@ import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { replaceTemplateVariables } from '@/lib/replace-template-variables';
+import { formatActivationCode } from '@/lib/activation-code';
 import styles from '../../new/form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -56,8 +57,12 @@ export default function EditActivationPage() {
   const [addingUrl, setAddingUrl] = useState(false);
   const [newUrl, setNewUrl] = useState('');
   const [newUrlName, setNewUrlName] = useState('');
+  const [activationNumber, setActivationNumber] = useState<number | null>(null);
 
-  const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
+  const computedSubject =
+    activationNumber != null
+      ? `Activación AEP [${formatActivationCode(activationNumber)}] - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`
+      : `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
   useEffect(() => {
     apiFetch('/api/areas?withSubareas=true')
@@ -97,6 +102,9 @@ export default function EditActivationPage() {
         if (data.status !== 'DRAFT') {
           router.replace(`/launcher/activations/activate/${id}`);
           return;
+        }
+        if (typeof data.activationNumber === 'number') {
+          setActivationNumber(data.activationNumber);
         }
         let urlsText = '';
         if (data.attachmentUrls) {
