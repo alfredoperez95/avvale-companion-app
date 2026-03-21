@@ -17,6 +17,12 @@
   font-size: 0.875rem;
 }
 
+.selectSolicitante {
+  width: 10rem;
+  min-width: 10rem;
+  max-width: 10rem;
+}
+
 .input {
   min-width: 12rem;
   padding: var(--fiori-space-2) var(--fiori-space-3);

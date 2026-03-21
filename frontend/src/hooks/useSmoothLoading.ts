@@ -31,6 +31,9 @@ export function useSmoothLoading(loading: boolean, options?: SmoothLoadingOption
     clearTimers();
 
     if (loading) {
+      if (visible) {
+        return clearTimers;
+      }
       showTimerRef.current = window.setTimeout(() => {
         shownAtRef.current = Date.now();
         setVisible(true);

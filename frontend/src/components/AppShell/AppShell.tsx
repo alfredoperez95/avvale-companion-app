@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { Footer } from '@/components/Footer/Footer';
 import { Icon, type IconName } from '@/components/Icon/Icon';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
+import { clearAppearanceCookie } from '@/lib/appearance-cookie';
 import styles from './AppShell.module.css';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
@@ -99,6 +100,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
+      clearAppearanceCookie();
       window.location.href = '/login';
     }
   };

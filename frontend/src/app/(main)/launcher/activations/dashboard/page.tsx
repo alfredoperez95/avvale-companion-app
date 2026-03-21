@@ -9,6 +9,7 @@ import { DataTable, type Column } from '@/components/DataTable/DataTable';
 import { DetailDrawer } from '@/components/DetailDrawer/DetailDrawer';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useSmoothLoading } from '@/hooks/useSmoothLoading';
+import { formatActivationCode } from '@/lib/activation-code';
 import styles from './dashboard.module.css';
 
 export default function DashboardPage() {
@@ -18,6 +19,7 @@ export default function DashboardPage() {
   const [searchValue, setSearchValue] = useState('');
   const [solicitanteFilter, setSolicitanteFilter] = useState('');
   const [solicitanteOptions, setSolicitanteOptions] = useState<SolicitanteOption[]>([]);
+  const [solicitanteLoading, setSolicitanteLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const tableLoading = useSmoothLoading(loading, { delayMs: 150, minVisibleMs: 250 });
 
@@ -44,10 +46,17 @@ export default function DashboardPage() {
             .then((users: { id: string; name?: string | null; lastName?: string | null; email: string }[]) => {
               setSolicitanteOptions(Array.isArray(users) ? users : []);
             })
-            .catch(() => setSolicitanteOptions([]));
+            .catch(() => setSolicitanteOptions([]))
+            .finally(() => setSolicitanteLoading(false));
+        } else {
+          setSolicitanteOptions([]);
+          setSolicitanteLoading(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setSolicitanteOptions([]);
+        setSolicitanteLoading(false);
+      });
   }, []);
 
   const filtered = useMemo(() => {
@@ -58,13 +67,18 @@ export default function DashboardPage() {
     }
     if (searchValue.trim()) {
       const q = searchValue.trim().toLowerCase();
-      data = data.filter(
-        (a) =>
+      const qNum = searchValue.trim().replace(/\D/g, '');
+      data = data.filter((a) => {
+        const code = formatActivationCode(a.activationNumber).toLowerCase();
+        return (
           a.projectName.toLowerCase().includes(q) ||
           (a.client && a.client.toLowerCase().includes(q)) ||
           a.recipientTo.toLowerCase().includes(q) ||
-          (a.recipientCc && a.recipientCc.toLowerCase().includes(q))
-      );
+          (a.recipientCc && a.recipientCc.toLowerCase().includes(q)) ||
+          code.includes(q) ||
+          String(a.activationNumber).includes(qNum)
+        );
+      });
     }
     return data;
   }, [list, statusFilter, solicitanteFilter, searchValue]);
@@ -88,6 +102,15 @@ export default function DashboardPage() {
   }
 
   const columns: Column<Activation>[] = [
+    {
+      key: 'activationNumber',
+      header: 'Nº',
+      render: (row) => (
+        <span title={`${formatActivationCode(row.activationNumber)}`}>
+          {formatActivationCode(row.activationNumber)}
+        </span>
+      ),
+    },
     {
       key: 'projectName',
       header: 'Proyecto',
@@ -131,10 +154,10 @@ export default function DashboardPage() {
         </header>
 
         <section className={styles.kpiSection} aria-label="Resumen">
-          <KpiCard title="Activaciones" value={kpis.total} icon="total" />
-          <KpiCard title="Borradores" value={kpis.draft} icon="draft" />
-          <KpiCard title="Enviadas" value={kpis.sent} icon="sent" />
-          <KpiCard title="Errores" value={kpis.error} icon="error" />
+          <KpiCard title="Activaciones" value={kpis.total} icon="total" loading={loading} />
+          <KpiCard title="Borradores" value={kpis.draft} icon="draft" loading={loading} />
+          <KpiCard title="Enviadas" value={kpis.sent} icon="sent" loading={loading} />
+          <KpiCard title="Errores" value={kpis.error} icon="error" loading={loading} />
         </section>
 
         <FilterBar
@@ -145,6 +168,7 @@ export default function DashboardPage() {
           solicitanteFilter={solicitanteFilter}
           onSolicitanteFilterChange={setSolicitanteFilter}
           solicitanteOptions={solicitanteOptions}
+          solicitanteLoading={solicitanteLoading}
         />
 
         <section className={styles.tableSection}>

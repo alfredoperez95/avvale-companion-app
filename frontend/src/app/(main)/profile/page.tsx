@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { clearAppearanceCookie, setAppearanceCookie } from '@/lib/appearance-cookie';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import styles from './profile.module.css';
 
@@ -68,7 +69,9 @@ export default function PerfilPage() {
             position: data.position ?? '',
           });
           if (typeof document !== 'undefined' && data.appearance != null) {
-            document.documentElement.setAttribute('data-appearance', data.appearance === 'fiori' ? 'fiori' : 'microsoft');
+            const appearanceValue = data.appearance === 'fiori' ? 'fiori' : 'microsoft';
+            document.documentElement.setAttribute('data-appearance', appearanceValue);
+            setAppearanceCookie(appearanceValue);
           }
         }
       })
@@ -96,6 +99,7 @@ export default function PerfilPage() {
       });
       if (res.status === 401) {
         localStorage.removeItem('token');
+        clearAppearanceCookie();
         window.location.href = '/login';
         return;
       }
@@ -138,6 +142,7 @@ export default function PerfilPage() {
       });
       if (res.status === 401) {
         localStorage.removeItem('token');
+        clearAppearanceCookie();
         window.location.href = '/login';
         return;
       }
@@ -165,6 +170,7 @@ export default function PerfilPage() {
       const res = await apiFetch('/api/auth/me/avatar', { method: 'DELETE' });
       if (res.status === 401) {
         localStorage.removeItem('token');
+        clearAppearanceCookie();
         window.location.href = '/login';
         return;
       }
@@ -194,6 +200,7 @@ export default function PerfilPage() {
       });
       if (res.status === 401) {
         localStorage.removeItem('token');
+        clearAppearanceCookie();
         window.location.href = '/login';
         return;
       }
@@ -204,7 +211,9 @@ export default function PerfilPage() {
       }
       setProfile(data);
       if (typeof document !== 'undefined') {
-        document.documentElement.setAttribute('data-appearance', data.appearance === 'fiori' ? 'fiori' : 'microsoft');
+        const appearanceValue = data.appearance === 'fiori' ? 'fiori' : 'microsoft';
+        document.documentElement.setAttribute('data-appearance', appearanceValue);
+        setAppearanceCookie(appearanceValue);
         window.dispatchEvent(new CustomEvent('theme-changed', { detail: { appearance: data.appearance } }));
       }
     } finally {

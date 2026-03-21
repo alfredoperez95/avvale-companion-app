@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getAppearanceFromCookie, setAppearanceCookie } from '@/lib/appearance-cookie';
 import styles from './login.module.css';
 
 type Appearance = 'microsoft' | 'fiori';
@@ -19,7 +20,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [brandingReady, setBrandingReady] = useState(false);
-  const [appearance, setAppearance] = useState<Appearance>('microsoft');
+  const [appearance, setAppearance] = useState<Appearance>(() => getAppearanceFromCookie() ?? 'microsoft');
 
   const apiBase = useMemo(() => getApiBase(), []);
 
@@ -28,6 +29,7 @@ export default function LoginPage() {
     const applyAppearance = (value: Appearance) => {
       if (typeof document !== 'undefined') {
         document.documentElement.setAttribute('data-appearance', value);
+        setAppearanceCookie(value);
       }
     };
 

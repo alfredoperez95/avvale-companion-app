@@ -11,12 +11,14 @@ interface KpiCardProps {
   subtitle?: string;
   href?: string;
   icon?: IconName;
+  loading?: boolean;
 }
 
-export function KpiCard({ title, value, subtitle, href, icon }: KpiCardProps) {
+export function KpiCard({ title, value, subtitle, href, icon, loading = false }: KpiCardProps) {
   const theme = useTheme();
   const isMicrosoft = theme === 'microsoft';
   const isFiori = theme === 'fiori';
+  const valueNode = loading ? <span className={styles.valueSkeleton} aria-hidden="true" /> : value;
 
   const content = isMicrosoft ? (
     <>
@@ -26,7 +28,7 @@ export function KpiCard({ title, value, subtitle, href, icon }: KpiCardProps) {
             <Icon name={icon} size={24} className={styles.icon} />
           </span>
         )}
-        <div className={styles.value}>{value}</div>
+        <div className={styles.value}>{valueNode}</div>
       </div>
       <div className={styles.bottomLabel}>{title}</div>
       {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
@@ -40,7 +42,7 @@ export function KpiCard({ title, value, subtitle, href, icon }: KpiCardProps) {
             <Icon name={icon} size={32} className={styles.icon} />
           </span>
         )}
-        <div className={styles.value}>{value}</div>
+        <div className={styles.value}>{valueNode}</div>
       </div>
       {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
     </>
@@ -54,7 +56,7 @@ export function KpiCard({ title, value, subtitle, href, icon }: KpiCardProps) {
         )}
         <div className={styles.title}>{title}</div>
       </div>
-      <div className={styles.value}>{value}</div>
+      <div className={styles.value}>{valueNode}</div>
       {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
     </>
   );
