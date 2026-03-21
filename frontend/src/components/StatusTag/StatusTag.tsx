@@ -4,7 +4,7 @@ import styles from './StatusTag.module.css';
 
 const statusMap: Record<string, { label: string; style: string }> = {
   DRAFT: { label: 'Borrador', style: styles.draft },
-  READY_TO_SEND: { label: 'Listo para enviar', style: styles.readyToSend },
+  READY_TO_SEND: { label: 'Envío iniciado', style: styles.readyToSend },
   SENT: { label: 'Enviado', style: styles.sent },
   ERROR: { label: 'Error', style: styles.error },
 };

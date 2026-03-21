@@ -1,6 +1,8 @@
 # Integración con Make (envíos)
 
-El backend dispara un **webhook personalizado** en Make al solicitar el envío (`POST /api/activations/:id/send`). El cuerpo es un JSON **schema v2** definido en TypeScript en [`backend/src/make/make-webhook-payload.ts`](../backend/src/make/make-webhook-payload.ts).
+El backend dispara un **webhook personalizado** en Make al solicitar el envío (`POST /api/activations/:id/send`). El cuerpo es un JSON **schema v3** definido en TypeScript en [`backend/src/make/make-webhook-payload.ts`](../backend/src/make/make-webhook-payload.ts).
+
+La **firma HTML** global se configura en la app (Configuración → Firma) y se expone en el campo `emailSignature` del payload.
 
 ## Variables de entorno
 
@@ -12,14 +14,15 @@ El backend dispara un **webhook personalizado** en Make al solicitar el envío (
 
 Copia los valores en `.env` en la raíz y ejecuta `./scripts/prepare-env.sh` para propagar a `backend/.env`.
 
-## Payload del webhook (v2)
+## Payload del webhook (v3)
 
 Campos principales:
 
-- `schemaVersion`: `2`
+- `schemaVersion`: `3`
 - `activationId`: UUID de la activación (clave técnica)
 - `activationNumber`: entero secuencial único (humano / logs)
 - `activationCode`: string derivado, p. ej. `ACT-000124` (misma regla que en la app)
+- `emailSignature`: HTML de la firma global, o `null` si no hay firma guardada o solo espacios
 - `recipientTo`, `recipientCc`, `subject`, `body`
 - `projectName`, `client`, `offerCode`, `projectAmount`, `projectType`, `hubspotUrl`
 - `createdBy`, `createdByUser` (`name`, `lastName`, `email`)
@@ -27,6 +30,8 @@ Campos principales:
 - `attachments[]`: `url` y `fileName` (adjuntos o URLs escaneadas)
 
 El asunto (`subject`) incluye el código visible, p. ej. `Activación AEP [ACT-000124] - CLIENTE - Proyecto`.
+
+En Make, suele concatenarse el cuerpo del mensaje con la firma, p. ej. `body` + `emailSignature` (respetando HTML).
 
 ## Respuesta HTTP esperada (opcional)
 
@@ -70,7 +75,7 @@ Requiere `MAKE_CALLBACK_SECRET` configurado en el backend. Si no está definido,
 1. **Trigger:** Webhooks → **Custom webhook** (método POST). Copia la URL a `MAKE_WEBHOOK_URL`.
 2. **Parser:** El cuerpo del body suele ser el JSON enviado por Nest (o un objeto `data` según la configuración del webhook); usa el módulo *JSON* / *Parse JSON* si hace falta.
 3. **Validación (opcional):** Si usas `MAKE_WEBHOOK_SECRET`, comprobar que la cabecera `X-Webhook-Secret` coincide.
-4. **Envío:** Conector de correo (Gmail, Outlook, etc.) o el que use la organización. Puedes usar `activationCode` o `activationNumber` en el asunto o cuerpo.
+4. **Envío:** Conector de correo (Gmail, Outlook, etc.). Usa `body`, `emailSignature`, `subject`, `activationCode`, etc., según tu plantilla de correo.
 5. **Respuesta (opcional):** **Webhook response** con JSON que incluya `makeRunId` o `executionId`.
 6. **Callback (opcional):** Módulo **HTTP** → POST a `/api/webhooks/make/callback` con `secret`, `activationId`, `status` y opcionalmente `activationNumber` copiado del trigger.
 

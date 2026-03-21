@@ -7,6 +7,7 @@ import { CreateActivationDto } from './dto/create-activation.dto';
 import { UpdateActivationDto } from './dto/update-activation.dto';
 import { MakeService } from '../make/make.service';
 import { buildMakeWebhookPayload, ActivationForMakePayload } from '../make/make-webhook-payload';
+import { EmailSignatureService } from '../email-signature/email-signature.service';
 import { formatActivationCode } from './activation-code';
 
 /** Asunto provisional antes de conocer activationNumber (misma forma legacy sin código). */
@@ -33,6 +34,7 @@ export class ActivationsService {
     private readonly attachmentsService: AttachmentsService,
     private readonly billingAdminContactsService: BillingAdminContactsService,
     private readonly makeService: MakeService,
+    private readonly emailSignatureService: EmailSignatureService,
   ) {}
 
   /** Obtiene emails: areaIds = área completa (director + todos contactos subáreas); subAreaIds = solo director del área + contactos de esas subáreas. */
@@ -282,7 +284,7 @@ export class ActivationsService {
     return activation;
   }
 
-  /** Dispara el webhook de Make con el payload v2; si OK → READY_TO_SEND + makeRunId; si falla → ERROR + errorMessage. Solo DRAFT o ERROR. */
+  /** Dispara el webhook de Make con el payload v3 (incl. firma global); si OK → READY_TO_SEND + makeRunId; si falla → ERROR + errorMessage. Solo DRAFT o ERROR. */
   async requestSend(activationId: string, userId: string) {
     const activation = await this.findOneByIdAndUser(activationId, userId);
     if (activation.status !== ActivationStatus.DRAFT && activation.status !== ActivationStatus.ERROR) {
@@ -291,7 +293,11 @@ export class ActivationsService {
       );
     }
 
-    const payload = buildMakeWebhookPayload(activation as ActivationForMakePayload);
+    const signatureHtml = await this.emailSignatureService.getContent();
+    const emailSignature = signatureHtml.trim() ? signatureHtml : null;
+    const payload = buildMakeWebhookPayload(activation as ActivationForMakePayload, {
+      emailSignature,
+    });
     const result = await this.makeService.triggerWebhook(payload);
 
     if (result.success) {

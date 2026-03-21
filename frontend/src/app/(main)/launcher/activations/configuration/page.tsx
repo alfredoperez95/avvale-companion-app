@@ -78,6 +78,15 @@ export default function AdminPage() {
             <span className={styles.tileCta}>Gestionar plantillas →</span>
           </article>
         </Link>
+        <Link href="/launcher/activations/configuration/email-signature" className={styles.tileLink} aria-labelledby="tile-signature-heading" role="listitem">
+          <article className={styles.tile}>
+            <h2 id="tile-signature-heading" className={styles.tileTitle}>Firma</h2>
+            <p className={styles.tileDesc}>
+              Firma HTML que se incluye en el envío hacia Make para añadirla al correo (una sola firma global).
+            </p>
+            <span className={styles.tileCta}>Editar firma →</span>
+          </article>
+        </Link>
       </div>
     </div>
   );

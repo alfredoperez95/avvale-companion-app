@@ -1,11 +1,11 @@
 /**
- * Contrato del cuerpo JSON enviado al webhook personalizado de Make (schema v2).
- * Versionar con schemaVersion si cambian campos obligatorios.
+ * Contrato del cuerpo JSON enviado al webhook personalizado de Make (schema v3).
+ * v3: añade emailSignature (HTML de la firma global de configuración).
  */
 
 import { formatActivationCode } from '../activations/activation-code';
 
-export const MAKE_WEBHOOK_SCHEMA_VERSION = 2 as const;
+export const MAKE_WEBHOOK_SCHEMA_VERSION = 3 as const;
 
 export interface MakeWebhookAttachmentV1 {
   url: string;
@@ -35,6 +35,8 @@ export interface MakeWebhookPayloadV1 {
   activationId: string;
   activationNumber: number;
   activationCode: string;
+  /** HTML de la firma global; null si no hay firma configurada. */
+  emailSignature: string | null;
   recipientTo: string;
   recipientCc: string | null;
   subject: string;
@@ -82,6 +84,10 @@ export type ActivationForMakePayload = {
   createdByUser: { name: string | null; lastName: string | null; email: string };
 };
 
+export type MakeWebhookPayloadOptions = {
+  emailSignature: string | null;
+};
+
 function parseStoredJsonArray(raw: string | null): string[] {
   if (!raw?.trim()) return [];
   try {
@@ -92,7 +98,10 @@ function parseStoredJsonArray(raw: string | null): string[] {
   }
 }
 
-export function buildMakeWebhookPayload(activation: ActivationForMakePayload): MakeWebhookPayloadV1 {
+export function buildMakeWebhookPayload(
+  activation: ActivationForMakePayload,
+  options: MakeWebhookPayloadOptions,
+): MakeWebhookPayloadV1 {
   const areas: MakeWebhookAreaV1[] = activation.activationAreas.map((a) => ({
     id: a.area.id,
     name: a.area.name,
@@ -122,6 +131,7 @@ export function buildMakeWebhookPayload(activation: ActivationForMakePayload): M
     activationId: activation.id,
     activationNumber: activation.activationNumber,
     activationCode: formatActivationCode(activation.activationNumber),
+    emailSignature: options.emailSignature,
     recipientTo: activation.recipientTo,
     recipientCc: activation.recipientCc,
     subject: activation.subject,

@@ -173,3 +173,12 @@ model EmailTemplate {
 
   @@map("email_templates")
 }
+
+/** Firma global de correo (como máximo una fila gestionada por la aplicación). */
+model EmailSignature {
+  id        String   @id @default(uuid())
+  content   String   @db.LongText
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_signature")
+}

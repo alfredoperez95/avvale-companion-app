@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
@@ -10,6 +10,7 @@ import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
+import Image from '@tiptap/extension-image';
 import { VariableHighlightExtension } from './variableHighlightExtension';
 import { Icon } from '@/components/Icon/Icon';
 import styles from './RichTextEditor.module.css';
@@ -109,9 +110,11 @@ function getVariableRangeAtPos(doc: PMNode, pos: number): { from: number; to: nu
 function Toolbar({
   editor,
   insertableVariables,
+  allowImages,
 }: {
   editor: Editor | null;
   insertableVariables?: readonly { value: string; label: string }[];
+  allowImages?: boolean;
 }) {
   const [colorOpen, setColorOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -122,6 +125,7 @@ function Toolbar({
   const emojiGroupRef = useRef<HTMLSpanElement>(null);
   const linkGroupRef = useRef<HTMLSpanElement>(null);
   const tableSizeGroupRef = useRef<HTMLSpanElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!editor) return;
@@ -375,6 +379,49 @@ function Toolbar({
           </div>
         )}
       </span>
+      {allowImages && (
+        <>
+          <input
+            ref={imageFileInputRef}
+            type="file"
+            accept="image/*"
+            className={styles.toolbarFileInput}
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file || !file.type.startsWith('image/')) {
+                e.target.value = '';
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = () => {
+                const src = reader.result as string;
+                editor.chain().focus().setImage({ src }).run();
+              };
+              reader.readAsDataURL(file);
+              e.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            className={styles.toolbarBtn}
+            title="Insertar imagen"
+            aria-label="Insertar imagen"
+            onClick={() => {
+              setColorOpen(false);
+              setEmojiOpen(false);
+              setLinkOpen(false);
+              setTableSizeOpen(false);
+              imageFileInputRef.current?.click();
+            }}
+          >
+            <span className={styles.toolbarImageGlyph} aria-hidden>
+              🖼
+            </span>
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -449,6 +496,8 @@ type RichTextEditorProps = {
   id?: string;
   'aria-label'?: string;
   insertableVariables?: readonly InsertableVariable[];
+  /** Si es true, permite insertar imágenes (data URL, p. ej. firma de correo). */
+  allowImages?: boolean;
 };
 
 export function RichTextEditor({
@@ -459,13 +508,13 @@ export function RichTextEditor({
   id,
   'aria-label': ariaLabel,
   insertableVariables,
+  allowImages = false,
 }: RichTextEditorProps) {
   const [variablePicker, setVariablePicker] = useState<{ from: number; to: number } | null>(null);
   const [showTableToolbar, setShowTableToolbar] = useState(false);
 
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit,
       Link.configure({ openOnClick: false, HTMLAttributes: { target: '_blank', rel: 'noopener' } }),
       Placeholder.configure({ placeholder: placeholder ?? '' }),
@@ -477,7 +526,21 @@ export function RichTextEditor({
       TableHeader,
       TableCell,
       VariableHighlightExtension,
+      ...(allowImages
+        ? [
+            Image.configure({
+              inline: false,
+              allowBase64: true,
+            }),
+          ]
+        : []),
     ],
+    [allowImages, placeholder],
+  );
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions,
     content: value ?? '',
     editorProps: {
       attributes: {
@@ -538,7 +601,7 @@ export function RichTextEditor({
 
   return (
     <div className={styles.richTextEditorWrapper} style={{ minHeight }} data-rich-editor>
-      <Toolbar editor={editor} insertableVariables={insertableVariables} />
+      <Toolbar editor={editor} insertableVariables={insertableVariables} allowImages={allowImages} />
       {editor && showTableToolbar && (
         <div className={styles.tableToolbar} role="toolbar" aria-label="Acciones de tabla">
           <button

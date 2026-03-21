@@ -58,7 +58,7 @@ export function FilterBar({
       >
         <option value="">Todos</option>
         <option value="DRAFT">Borrador</option>
-        <option value="READY_TO_SEND">Listo para enviar</option>
+        <option value="READY_TO_SEND">Envío iniciado</option>
         <option value="SENT">Enviado</option>
         <option value="ERROR">Error</option>
       </select>

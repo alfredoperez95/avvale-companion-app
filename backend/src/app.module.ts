@@ -9,6 +9,7 @@ import { AreasModule } from './areas/areas.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { BillingAdminContactsModule } from './billing-admin-contacts/billing-admin-contacts.module';
 import { EmailTemplatesModule } from './email-templates/email-templates.module';
+import { EmailSignatureModule } from './email-signature/email-signature.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { EmailTemplatesModule } from './email-templates/email-templates.module';
     ContactsModule,
     BillingAdminContactsModule,
     EmailTemplatesModule,
+    EmailSignatureModule,
   ],
 })
 export class AppModule {}
