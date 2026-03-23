@@ -536,3 +536,102 @@
   border-radius: 0.375rem;
   border-left-width: 0.25rem;
 }
+
+/* Firma: HTML fuente (mismo content que el editor) */
+.htmlSourceDetails {
+  margin-top: var(--fiori-space-4);
+  margin-bottom: var(--fiori-space-4);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.375rem;
+  padding: var(--fiori-space-3);
+  background: var(--fiori-surface-2, var(--fiori-surface));
+}
+
+.htmlSourceSummary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+  list-style-position: outside;
+}
+
+.htmlSourceHelp {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  margin: var(--fiori-space-3) 0 var(--fiori-space-2);
+  line-height: 1.45;
+}
+
+.htmlSourceTextarea {
+  width: 100%;
+  min-height: 14rem;
+  box-sizing: border-box;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  resize: vertical;
+}
+
+.htmlSourceTextarea:focus {
+  outline: 2px solid var(--fiori-focus, var(--fiori-link));
+  outline-offset: 1px;
+}
+
+/* Firma: vista previa del HTML real (tablas, imágenes, estilos inline) */
+.signaturePreviewSection {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.signaturePreviewLabel {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+  margin-bottom: var(--fiori-space-1);
+}
+
+.signaturePreviewHint {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-3);
+  line-height: 1.45;
+}
+
+.signaturePreviewBox {
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  padding: var(--fiori-space-3);
+  background: #fff;
+  color: #000;
+  overflow: auto;
+  max-height: 28rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.signaturePreviewBox :global(table) {
+  border-collapse: collapse;
+  max-width: 100%;
+}
+
+.signaturePreviewBox :global(td),
+.signaturePreviewBox :global(th) {
+  vertical-align: top;
+}
+
+.signaturePreviewBox :global(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.signaturePreviewEmpty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fiori-text-secondary);
+  font-style: italic;
+}

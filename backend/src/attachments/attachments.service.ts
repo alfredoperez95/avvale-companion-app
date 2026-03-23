@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import * as fs from 'fs/promises';
@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 
 const DOWNLOAD_TIMEOUT_MS = 30_000;
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+const PUBLIC_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 export interface DownloadResult {
   saved: string[];
@@ -14,14 +15,33 @@ export interface DownloadResult {
 }
 
 @Injectable()
-export class AttachmentsService {
+export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
   private readonly baseDir: string;
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
     this.baseDir = this.config.get<string>('ATTACHMENTS_DIR') ?? path.join(process.cwd(), 'uploads');
+  }
+
+  onModuleInit() {
+    this.cleanupTimer = setInterval(() => {
+      this.clearExpiredPublicAccess().catch(() => undefined);
+    }, PUBLIC_CLEANUP_INTERVAL_MS);
+    this.cleanupTimer.unref?.();
+  }
+
+  onModuleDestroy() {
+    if (this.cleanupTimer) clearInterval(this.cleanupTimer);
+    this.cleanupTimer = null;
+  }
+
+  buildPublicUrl(baseUrl: string, token: string): string {
+    const normalized = baseUrl.trim().replace(/\/+$/, '');
+    const withoutApi = normalized.replace(/\/api$/i, '');
+    return `${withoutApi}/api/public/attachments/${token}`;
   }
 
   private async ensureDir(dirPath: string): Promise<void> {
@@ -237,6 +257,68 @@ export class AttachmentsService {
       where: { id: attachmentId, activationId },
     });
     if (!attachment) throw new NotFoundException('Adjunto no encontrado');
+    const fullPath = path.join(this.baseDir, attachment.storedPath);
+    try {
+      const buffer = await fs.readFile(fullPath);
+      return {
+        buffer,
+        fileName: attachment.fileName,
+        contentType: attachment.contentType,
+      };
+    } catch {
+      throw new NotFoundException('Archivo no encontrado en disco');
+    }
+  }
+
+  /** Publica todos los adjuntos de una activación con token no adivinable (sin expiración hasta que se programe). */
+  async publishForActivation(activationId: string): Promise<void> {
+    const attachments = await this.prisma.activationAttachment.findMany({
+      where: { activationId },
+      select: { id: true, publicToken: true },
+    });
+    for (const a of attachments) {
+      await this.prisma.activationAttachment.update({
+        where: { id: a.id },
+        data: {
+          publicToken: a.publicToken ?? randomUUID(),
+          publishedAt: new Date(),
+        },
+      });
+    }
+  }
+
+  /** Programa expiración de URLs públicas para una activación (p. ej. SENT + 30 min). */
+  async schedulePublicExpiryForActivation(activationId: string, ttlMinutes: number): Promise<void> {
+    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
+    await this.prisma.activationAttachment.updateMany({
+      where: { activationId, publicToken: { not: null } },
+      data: { publicExpiresAt: expiresAt },
+    });
+  }
+
+  /** Revoca acceso público expirado sin borrar archivos físicos. */
+  async clearExpiredPublicAccess(): Promise<number> {
+    const now = new Date();
+    const result = await this.prisma.activationAttachment.updateMany({
+      where: { publicToken: { not: null }, publicExpiresAt: { lte: now } },
+      data: { publicToken: null, publicExpiresAt: null, publishedAt: null },
+    });
+    return result.count;
+  }
+
+  /** Descarga pública temporal por token no adivinable. */
+  async getPublicAttachmentFileByToken(
+    token: string,
+  ): Promise<{ buffer: Buffer; fileName: string; contentType: string | null }> {
+    const now = new Date();
+    const attachment = await this.prisma.activationAttachment.findFirst({
+      where: {
+        publicToken: token,
+        OR: [{ publicExpiresAt: null }, { publicExpiresAt: { gt: now } }],
+      },
+      select: { storedPath: true, fileName: true, contentType: true },
+    });
+    if (!attachment) throw new NotFoundException('Adjunto público no encontrado o expirado');
     const fullPath = path.join(this.baseDir, attachment.storedPath);
     try {
       const buffer = await fs.readFile(fullPath);

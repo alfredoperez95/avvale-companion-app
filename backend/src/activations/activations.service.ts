@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import { BillingAdminContactsService } from '../billing-admin-contacts/billing-admin-contacts.service';
@@ -27,15 +28,98 @@ function buildSubject(projectName: string, client: string | null, activationNumb
 
 const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
 
+function normalizeEmailHtmlSpacing(
+  html: string | null,
+  options?: { preserveTrailingBreaks?: boolean },
+): string | null {
+  if (!html?.trim()) return html ?? null;
+  let out = html;
+  const preserveTrailingBreaks = options?.preserveTrailingBreaks ?? false;
+  // Normaliza párrafos vacíos a un salto explícito.
+  out = out.replace(
+    /<p\b[^>]*>\s*(?:&nbsp;|\s|<span>\s*&nbsp;\s*<\/span>|<span>\s*<\/span>|<br\s*\/?>)*\s*<\/p>/gi,
+    '<br>',
+  );
+  // Convierte estructura de párrafos a saltos <br> para que cada salto de línea sea explícito.
+  out = out.replace(/<p\b[^>]*>/gi, '');
+  out = out.replace(/<\/p>/gi, '<br>');
+  // Mantiene saltos simples o dobles; evita ráfagas largas.
+  out = out.replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>');
+  // Evita saltos sobrantes al principio/fin.
+  out = out.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
+  if (!preserveTrailingBreaks) {
+    out = out.replace(/(?:<br\s*\/?>\s*)+\s*$/i, '');
+  }
+  return out;
+}
+
 @Injectable()
 export class ActivationsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
     private readonly attachmentsService: AttachmentsService,
     private readonly billingAdminContactsService: BillingAdminContactsService,
     private readonly makeService: MakeService,
     private readonly emailSignatureService: EmailSignatureService,
   ) {}
+
+  /** Devuelve la base pública del backend con sufijo /api (exactamente una vez). */
+  private async getBackendApiBaseUrl(): Promise<string> {
+    const raw =
+      this.config.get<string>('BACKEND_PUBLIC_URL') ??
+      this.config.get<string>('NEXT_PUBLIC_API_URL') ??
+      'http://localhost:4000';
+    const clean = raw.trim().replace(/\/+$/, '');
+    const withoutApiSuffix = clean.replace(/\/api$/i, '');
+    let resolved = `${withoutApiSuffix}/api`;
+    let source: 'env' | 'ngrok' = 'env';
+    const looksLocalhost =
+      /^https?:\/\/localhost(?::\d+)?(\/|$)/i.test(withoutApiSuffix) ||
+      /^https?:\/\/127\.0\.0\.1(?::\d+)?(\/|$)/i.test(withoutApiSuffix);
+    if (looksLocalhost) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 1200);
+        const res = await fetch('http://127.0.0.1:4040/api/tunnels', { signal: controller.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          const data = (await res.json()) as {
+            tunnels?: { public_url?: string; proto?: string }[];
+          };
+          const tunnel = data.tunnels?.find((t) => t.public_url?.startsWith('https://'));
+          if (tunnel?.public_url) {
+            resolved = `${tunnel.public_url.replace(/\/+$/, '')}/api`;
+            source = 'ngrok';
+          }
+        }
+      } catch {
+        // fallback a localhost si ngrok no está disponible
+      }
+    }
+    // #region agent log
+    fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'd7e201' },
+      body: JSON.stringify({
+        sessionId: 'd7e201',
+        runId: 'post-fix',
+        hypothesisId: 'A_B',
+        location: 'activations.service.ts:getBackendApiBaseUrl',
+        message: 'Resolved backend api base URL',
+        data: {
+          hasBackendPublicUrl: Boolean(this.config.get<string>('BACKEND_PUBLIC_URL')),
+          hasNextPublicApiUrl: Boolean(this.config.get<string>('NEXT_PUBLIC_API_URL')),
+          raw,
+          resolved,
+          source,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    return resolved;
+  }
 
   /** Obtiene emails: areaIds = área completa (director + todos contactos subáreas); subAreaIds = solo director del área + contactos de esas subáreas. */
   private async getRecipientsFromAreasAndSubAreas(
@@ -202,7 +286,17 @@ export class ActivationsService {
             },
           },
         },
-        attachments: { orderBy: { createdAt: 'asc' }, select: { id: true, fileName: true, originalUrl: true, contentType: true, createdAt: true } },
+        attachments: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            fileName: true,
+            originalUrl: true,
+            contentType: true,
+            createdAt: true,
+            publicToken: true,
+          },
+        },
         createdByUser: { select: { name: true, lastName: true, email: true } },
       },
     });
@@ -276,7 +370,17 @@ export class ActivationsService {
             },
           },
         },
-        attachments: { orderBy: { createdAt: 'asc' }, select: { id: true, fileName: true, originalUrl: true, contentType: true, createdAt: true } },
+        attachments: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            fileName: true,
+            originalUrl: true,
+            contentType: true,
+            createdAt: true,
+            publicToken: true,
+          },
+        },
         createdByUser: { select: { name: true, lastName: true, email: true } },
       },
     });
@@ -293,12 +397,42 @@ export class ActivationsService {
       );
     }
 
+    await this.attachmentsService.publishForActivation(activationId);
+    const refreshed = await this.findOneByIdAndUser(activationId, userId);
+
     const signatureHtml = await this.emailSignatureService.getContent();
     const emailSignature = signatureHtml.trim() ? signatureHtml : null;
-    const payload = buildMakeWebhookPayload(activation as ActivationForMakePayload, {
+    const attachmentsBaseUrl = await this.getBackendApiBaseUrl();
+    const payload = buildMakeWebhookPayload(refreshed as ActivationForMakePayload, {
       emailSignature,
+      attachmentsBaseUrl,
     });
-    const result = await this.makeService.triggerWebhook(payload);
+    // #region agent log
+    fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'd7e201' },
+      body: JSON.stringify({
+        sessionId: 'd7e201',
+        runId: 'post-fix',
+        hypothesisId: 'C_D',
+        location: 'activations.service.ts:requestSend',
+        message: 'Attachment URL selected for Make payload',
+        data: {
+          activationId,
+          attachmentsBaseUrl,
+          attachmentsCount: payload.attachments.length,
+          firstAttachmentUrl: payload.attachments[0]?.url ?? null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    const normalizedPayload = {
+      ...payload,
+      body: normalizeEmailHtmlSpacing(payload.body, { preserveTrailingBreaks: true }),
+      emailSignature: normalizeEmailHtmlSpacing(payload.emailSignature),
+    };
+    const result = await this.makeService.triggerWebhook(normalizedPayload);
 
     if (result.success) {
       await this.prisma.activation.update({

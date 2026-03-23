@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { AttachmentsService } from '../attachments/attachments.service';
 import { ActivationStatus } from '@prisma/client';
 import { MakeWebhookPayloadV1 } from './make-webhook-payload';
 import { MakeCallbackDto } from './dto/make-callback.dto';
@@ -25,6 +26,7 @@ export class MakeService {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly attachmentsService: AttachmentsService,
   ) {}
 
   /**
@@ -143,6 +145,7 @@ export class MakeService {
           lastStatusAt: new Date(),
         },
       });
+      await this.attachmentsService.schedulePublicExpiryForActivation(dto.activationId, 30);
       return;
     }
 

@@ -111,10 +111,12 @@ function Toolbar({
   editor,
   insertableVariables,
   allowImages,
+  disableTableFeatures,
 }: {
   editor: Editor | null;
   insertableVariables?: readonly { value: string; label: string }[];
   allowImages?: boolean;
+  disableTableFeatures?: boolean;
 }) {
   const [colorOpen, setColorOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -342,43 +344,45 @@ function Toolbar({
           </div>
         )}
       </span>
-      <span ref={tableSizeGroupRef} className={styles.toolbarGroup} style={{ position: 'relative' }}>
-        <button
-          type="button"
-          className={tableSizeOpen ? styles.toolbarBtnActive : styles.toolbarBtn}
-          onClick={() => {
-            setTableSizeOpen((o) => !o);
-            setColorOpen(false);
-            setEmojiOpen(false);
-            setLinkOpen(false);
-          }}
-          title="Insertar tabla"
-          aria-label="Insertar tabla"
-          aria-expanded={tableSizeOpen}
-        >
-          <Icon name="table" size={16} />
-        </button>
-        {tableSizeOpen && (
-          <div className={styles.toolbarDropdown} role="menu" aria-label="Tamaño de la tabla">
-            <div className={styles.tableSizeTitle}>Filas × Columnas</div>
-            <div className={styles.tableSizeGrid}>
-              {TABLE_SIZES.map(({ rows, cols }) => (
-                <button
-                  key={`${rows}-${cols}`}
-                  type="button"
-                  className={styles.tableSizeOption}
-                  onClick={() => {
-                    editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
-                    setTableSizeOpen(false);
-                  }}
-                >
-                  {rows}×{cols}
-                </button>
-              ))}
+      {!disableTableFeatures && (
+        <span ref={tableSizeGroupRef} className={styles.toolbarGroup} style={{ position: 'relative' }}>
+          <button
+            type="button"
+            className={tableSizeOpen ? styles.toolbarBtnActive : styles.toolbarBtn}
+            onClick={() => {
+              setTableSizeOpen((o) => !o);
+              setColorOpen(false);
+              setEmojiOpen(false);
+              setLinkOpen(false);
+            }}
+            title="Insertar tabla"
+            aria-label="Insertar tabla"
+            aria-expanded={tableSizeOpen}
+          >
+            <Icon name="table" size={16} />
+          </button>
+          {tableSizeOpen && (
+            <div className={styles.toolbarDropdown} role="menu" aria-label="Tamaño de la tabla">
+              <div className={styles.tableSizeTitle}>Filas × Columnas</div>
+              <div className={styles.tableSizeGrid}>
+                {TABLE_SIZES.map(({ rows, cols }) => (
+                  <button
+                    key={`${rows}-${cols}`}
+                    type="button"
+                    className={styles.tableSizeOption}
+                    onClick={() => {
+                      editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+                      setTableSizeOpen(false);
+                    }}
+                  >
+                    {rows}×{cols}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-      </span>
+          )}
+        </span>
+      )}
       {allowImages && (
         <>
           <input
@@ -498,6 +502,8 @@ type RichTextEditorProps = {
   insertableVariables?: readonly InsertableVariable[];
   /** Si es true, permite insertar imágenes (data URL, p. ej. firma de correo). */
   allowImages?: boolean;
+  /** Si es true, no incluye extensiones de tabla ni UI de tablas (p. ej. firma con HTML fuente aparte). */
+  disableTableFeatures?: boolean;
 };
 
 export function RichTextEditor({
@@ -509,9 +515,12 @@ export function RichTextEditor({
   'aria-label': ariaLabel,
   insertableVariables,
   allowImages = false,
+  disableTableFeatures = false,
 }: RichTextEditorProps) {
   const [variablePicker, setVariablePicker] = useState<{ from: number; to: number } | null>(null);
   const [showTableToolbar, setShowTableToolbar] = useState(false);
+  /** Evita setContent cuando value ya es el HTML emitido por onUpdate pero getHTML() difiere por normalización TipTap. */
+  const lastEmittedHtmlRef = useRef<string | null>(null);
 
   const extensions = useMemo(
     () => [
@@ -521,10 +530,14 @@ export function RichTextEditor({
       Underline,
       TextStyle,
       Color,
-      Table.configure({ resizable: false }),
-      TableRow,
-      TableHeader,
-      TableCell,
+      ...(disableTableFeatures
+        ? []
+        : [
+            Table.configure({ resizable: false }),
+            TableRow,
+            TableHeader,
+            TableCell,
+          ]),
       VariableHighlightExtension,
       ...(allowImages
         ? [
@@ -535,7 +548,7 @@ export function RichTextEditor({
           ]
         : []),
     ],
-    [allowImages, placeholder],
+    [allowImages, placeholder, disableTableFeatures],
   );
 
   const editor = useEditor({
@@ -549,7 +562,9 @@ export function RichTextEditor({
       },
     },
     onUpdate: ({ editor: e }) => {
-      onChange(e.getHTML());
+      const html = e.getHTML();
+      lastEmittedHtmlRef.current = html;
+      onChange(html);
     },
   });
 
@@ -570,9 +585,15 @@ export function RichTextEditor({
   useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
-    if (value !== current) {
-      editor.commands.setContent(value || '', { emitUpdate: false });
+    if (value === current) {
+      lastEmittedHtmlRef.current = current;
+      return;
     }
+    if (value === lastEmittedHtmlRef.current) {
+      return;
+    }
+    editor.commands.setContent(value || '', { emitUpdate: false });
+    lastEmittedHtmlRef.current = editor.getHTML();
   }, [value, editor]);
 
   useEffect(() => {
@@ -590,19 +611,24 @@ export function RichTextEditor({
   }, [editor, insertableVariables?.length]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || disableTableFeatures) return;
     const handler = () => setShowTableToolbar(editor.isActive('table'));
     editor.on('selectionUpdate', handler);
     handler();
     return () => {
       editor.off('selectionUpdate', handler);
     };
-  }, [editor]);
+  }, [editor, disableTableFeatures]);
 
   return (
     <div className={styles.richTextEditorWrapper} style={{ minHeight }} data-rich-editor>
-      <Toolbar editor={editor} insertableVariables={insertableVariables} allowImages={allowImages} />
-      {editor && showTableToolbar && (
+      <Toolbar
+        editor={editor}
+        insertableVariables={insertableVariables}
+        allowImages={allowImages}
+        disableTableFeatures={disableTableFeatures}
+      />
+      {editor && !disableTableFeatures && showTableToolbar && (
         <div className={styles.tableToolbar} role="toolbar" aria-label="Acciones de tabla">
           <button
             type="button"

@@ -80,12 +80,13 @@ export type ActivationForMakePayload = {
       area: { id: string; name: string };
     };
   }[];
-  attachments: { originalUrl: string; fileName: string }[];
+  attachments: { id: string; originalUrl: string; fileName: string; publicToken: string | null }[];
   createdByUser: { name: string | null; lastName: string | null; email: string };
 };
 
 export type MakeWebhookPayloadOptions = {
   emailSignature: string | null;
+  attachmentsBaseUrl: string;
 };
 
 function parseStoredJsonArray(raw: string | null): string[] {
@@ -114,7 +115,9 @@ export function buildMakeWebhookPayload(
   }));
 
   let attachmentList: MakeWebhookAttachmentV1[] = activation.attachments.map((a) => ({
-    url: a.originalUrl,
+    url: a.publicToken
+      ? `${options.attachmentsBaseUrl}/public/attachments/${a.publicToken}`
+      : `${options.attachmentsBaseUrl}/activations/${activation.id}/attachments/${a.id}`,
     fileName: a.fileName,
   }));
   if (attachmentList.length === 0) {

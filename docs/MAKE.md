@@ -11,6 +11,7 @@ La **firma HTML** global se configura en la app (Configuración → Firma) y se 
 | `MAKE_WEBHOOK_URL` | Sí (para enviar) | URL del módulo *Custom webhook* en Make. |
 | `MAKE_WEBHOOK_SECRET` | No | Si se define, el backend envía cabecera `X-Webhook-Secret` con este valor. |
 | `MAKE_CALLBACK_SECRET` | Sí (para callback) | Secreto compartido en el cuerpo JSON del callback (ver abajo). |
+| `BACKEND_PUBLIC_URL` | Recomendada | URL pública del backend (con o sin `/api`) para construir `attachments[].url` públicos temporales. Si falta, se usa `NEXT_PUBLIC_API_URL` y luego `http://localhost:4000`. |
 
 Copia los valores en `.env` en la raíz y ejecuta `./scripts/prepare-env.sh` para propagar a `backend/.env`.
 
@@ -27,11 +28,18 @@ Campos principales:
 - `projectName`, `client`, `offerCode`, `projectAmount`, `projectType`, `hubspotUrl`
 - `createdBy`, `createdByUser` (`name`, `lastName`, `email`)
 - `areas`, `subAreas` (ids y nombres)
-- `attachments[]`: `url` y `fileName` (adjuntos o URLs escaneadas)
+- `attachments[]`: `url` y `fileName` (URL pública temporal del archivo almacenado en backend)
 
 El asunto (`subject`) incluye el código visible, p. ej. `Activación AEP [ACT-000124] - CLIENTE - Proyecto`.
 
 En Make, suele concatenarse el cuerpo del mensaje con la firma, p. ej. `body` + `emailSignature` (respetando HTML).
+
+### Descarga de adjuntos desde Make
+
+- `attachments[].url` apunta al endpoint público temporal `GET /api/public/attachments/:token`.
+- No requiere JWT para la descarga (token no adivinable en la URL).
+- El acceso público se revoca automáticamente **30 minutos después del callback `SENT`**.
+- La revocación elimina solo la publicación pública; el archivo sigue almacenado en backend.
 
 ## Respuesta HTTP esperada (opcional)
 
