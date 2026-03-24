@@ -517,7 +517,7 @@ export default function EditActivationPage() {
             ))}
           </div>
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-2)' }}>
-            En Para se incluyen siempre Facturación/Administración, creador y JP. En CC se añaden automáticamente director, contactos de subárea y contactos globales de CC.
+            En Para se incluyen siempre Facturación/Administración, creador y JP. En CC se añaden automáticamente director y contactos de subárea.
           </p>
         </div>
         <div className={styles.formGroup}>
@@ -544,7 +544,7 @@ export default function EditActivationPage() {
             ))}
           </datalist>
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Este campo añade CC manuales adicionales a los que el sistema ya incluye automáticamente.
+            Este campo añade los contactos manuales seleccionados a los CC automáticos.
           </p>
         </div>
         <div className={styles.formGroup}>

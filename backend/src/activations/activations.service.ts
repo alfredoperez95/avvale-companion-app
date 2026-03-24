@@ -167,13 +167,6 @@ export class ActivationsService {
     return billingEmails.filter(Boolean);
   }
 
-  private async getGlobalCcEmails(): Promise<string[]> {
-    const contacts = await this.prisma.ccContact.findMany({ select: { email: true } });
-    return contacts
-      .map((c) => c.email?.trim().toLowerCase())
-      .filter((e): e is string => Boolean(e));
-  }
-
   private splitEmails(raw: string | null | undefined): string[] {
     return (raw ?? '')
       .split(/[,\n;]+/)
@@ -202,7 +195,6 @@ export class ActivationsService {
   ): Promise<ActivationRecipients> {
     const areaRecipients = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
     const billingAdminEmails = await this.getBillingAdminEmails();
-    const globalCcEmails = await this.getGlobalCcEmails();
 
     const toList = this.mergeEmailLists(
       billingAdminEmails,
@@ -212,7 +204,6 @@ export class ActivationsService {
     const ccList = this.mergeEmailLists(
       areaRecipients.directors,
       areaRecipients.subAreaContacts,
-      globalCcEmails,
       this.splitEmails(manualCcRaw),
     );
 
