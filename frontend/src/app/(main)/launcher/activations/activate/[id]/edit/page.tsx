@@ -80,6 +80,8 @@ export default function EditActivationPage() {
     autoCandidates: [],
   });
   const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(null);
+  /** Plantilla cuyo HTML crudo se re-sustituye al cambiar el formulario. */
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [form, setForm] = useState({
     projectName: '',
@@ -162,6 +164,27 @@ export default function EditActivationPage() {
       .then((data) => setEmailTemplates(Array.isArray(data) ? data : []))
       .catch(() => setEmailTemplates([]));
   }, []);
+
+  useEffect(() => {
+    if (!appliedTemplateId) return;
+    const t = emailTemplates.find((x) => x.id === appliedTemplateId);
+    if (!t) return;
+    setForm((prev) => ({
+      ...prev,
+      body: replaceTemplateVariables(t.content ?? '', prev),
+    }));
+  }, [
+    appliedTemplateId,
+    emailTemplates,
+    form.projectName,
+    form.client,
+    form.offerCode,
+    form.projectAmount,
+    form.projectType,
+    form.hubspotUrl,
+    form.projectJpName,
+    form.projectJpEmail,
+  ]);
 
   useEffect(() => {
     if (!id) return;
@@ -663,10 +686,7 @@ export default function EditActivationPage() {
               if (!templateId) return;
               const t = emailTemplates.find((x) => x.id === templateId);
               if (t) {
-                setForm((prev) => ({
-                  ...prev,
-                  body: replaceTemplateVariables(t.content ?? '', prev),
-                }));
+                setAppliedTemplateId(templateId);
                 setAppliedTemplateName(t.name);
               }
               e.target.value = '';
@@ -680,7 +700,7 @@ export default function EditActivationPage() {
           </select>
           {appliedTemplateName && (
             <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-              Cuerpo rellenado con la plantilla &quot;{appliedTemplateName}&quot;. Puedes modificarlo abajo.
+              Cuerpo generado desde la plantilla &quot;{appliedTemplateName}&quot;. Al cambiar datos del formulario se actualizan las variables; si editas el cuerpo a mano, esos cambios pueden perderse al modificar esos campos.
             </p>
           )}
         </div>

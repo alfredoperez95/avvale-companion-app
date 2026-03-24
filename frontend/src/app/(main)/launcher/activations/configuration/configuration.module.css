@@ -680,3 +680,32 @@
   color: var(--fiori-text-secondary);
   font-style: italic;
 }
+
+.catalogModeTabs {
+  display: flex;
+  gap: var(--fiori-space-2);
+  margin: calc(-1 * var(--fiori-space-2)) 0 var(--fiori-space-4);
+  flex-wrap: wrap;
+}
+
+.catalogModeTab,
+.catalogModeTabActive {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  border-radius: 0.25rem;
+  border: 1px solid var(--fiori-border-light);
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  cursor: pointer;
+}
+
+.catalogModeTab:hover {
+  border-color: var(--fiori-link);
+}
+
+.catalogModeTabActive {
+  border-color: var(--fiori-link);
+  background: var(--fiori-highlight, rgba(0, 112, 242, 0.08));
+  font-weight: 600;
+}

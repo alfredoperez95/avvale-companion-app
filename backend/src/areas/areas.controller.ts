@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { AreasService } from './areas.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AdminGuard } from '../auth/guards/admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
 import { CreateAreaDto } from './dto/create-area.dto';
@@ -26,95 +25,111 @@ import { UpdateSubAreaContactDto } from './dto/update-sub-area-contact.dto';
 export class AreasController {
   constructor(private readonly areasService: AreasService) {}
 
-  /** Lista áreas. ?admin=true (ADMIN): director, subáreas y contactos. ?withSubareas=true: áreas con subAreas id+name (formulario activaciones). */
+  /**
+   * ?admin=true: vista gestión (ADMIN → árbol sistema; USER → árbol propio con contactos).
+   * ?withSubareas=true: áreas del usuario con subáreas para el formulario de activaciones.
+   */
   @Get()
   async list(
     @CurrentUser() user: UserPayload,
     @Query('admin') admin?: string,
     @Query('withSubareas') withSubareas?: string,
+    /** Solo ADMIN: con admin=true, lista el árbol personal enriquecido en lugar del catálogo sistema. */
+    @Query('personal') personal?: string,
   ) {
-    const withDetails = admin === 'true' && user.role === 'ADMIN';
+    const withDetails = admin === 'true';
     const withSubareasList = withSubareas === 'true';
-    return this.areasService.findAll(withDetails, withSubareasList);
+    const personalCatalog = personal === 'true';
+    return this.areasService.findAll(user, withDetails, withSubareasList, personalCatalog);
   }
 
+  /** ?system=true solo ADMIN: crea área en catálogo sistema (owner null). */
   @Post()
-  @UseGuards(AdminGuard)
-  async create(@Body() dto: CreateAreaDto) {
-    return this.areasService.create(dto);
+  async create(
+    @CurrentUser() user: UserPayload,
+    @Body() dto: CreateAreaDto,
+    @Query('system') system?: string,
+  ) {
+    const systemCatalog = system === 'true';
+    return this.areasService.create(user, dto, systemCatalog);
   }
-
-  // Rutas con segmento fijo "subareas" antes de :id para que no se matchee como id
 
   @Get('subareas/:subAreaId/contacts')
-  @UseGuards(AdminGuard)
-  async listSubAreaContacts(@Param('subAreaId') subAreaId: string) {
-    return this.areasService.findContactsBySubAreaId(subAreaId);
+  async listSubAreaContacts(
+    @CurrentUser() user: UserPayload,
+    @Param('subAreaId') subAreaId: string,
+  ) {
+    return this.areasService.findContactsBySubAreaId(user, subAreaId);
   }
 
   @Post('subareas/:subAreaId/contacts')
-  @UseGuards(AdminGuard)
   async addSubAreaContact(
+    @CurrentUser() user: UserPayload,
     @Param('subAreaId') subAreaId: string,
     @Body() dto: CreateSubAreaContactDto,
   ) {
-    return this.areasService.addSubAreaContact(subAreaId, dto);
+    return this.areasService.addSubAreaContact(user, subAreaId, dto);
   }
 
   @Patch('subareas/contacts/:contactId')
-  @UseGuards(AdminGuard)
   async updateSubAreaContact(
+    @CurrentUser() user: UserPayload,
     @Param('contactId') contactId: string,
     @Body() dto: UpdateSubAreaContactDto,
   ) {
-    return this.areasService.updateSubAreaContact(contactId, dto);
+    return this.areasService.updateSubAreaContact(user, contactId, dto);
   }
 
   @Delete('subareas/contacts/:contactId')
-  @UseGuards(AdminGuard)
-  async removeSubAreaContact(@Param('contactId') contactId: string) {
-    await this.areasService.removeSubAreaContact(contactId);
+  async removeSubAreaContact(
+    @CurrentUser() user: UserPayload,
+    @Param('contactId') contactId: string,
+  ) {
+    await this.areasService.removeSubAreaContact(user, contactId);
   }
 
   @Patch('subareas/:subAreaId')
-  @UseGuards(AdminGuard)
   async updateSubArea(
+    @CurrentUser() user: UserPayload,
     @Param('subAreaId') subAreaId: string,
     @Body() dto: UpdateSubAreaDto,
   ) {
-    return this.areasService.updateSubArea(subAreaId, dto);
+    return this.areasService.updateSubArea(user, subAreaId, dto);
   }
 
   @Delete('subareas/:subAreaId')
-  @UseGuards(AdminGuard)
-  async removeSubArea(@Param('subAreaId') subAreaId: string) {
-    await this.areasService.removeSubArea(subAreaId);
+  async removeSubArea(
+    @CurrentUser() user: UserPayload,
+    @Param('subAreaId') subAreaId: string,
+  ) {
+    await this.areasService.removeSubArea(user, subAreaId);
   }
 
   @Get(':id/subareas')
-  @UseGuards(AdminGuard)
-  async listSubAreas(@Param('id') id: string) {
-    return this.areasService.findSubAreasByAreaId(id);
+  async listSubAreas(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.areasService.findSubAreasByAreaId(user, id);
   }
 
   @Post(':id/subareas')
-  @UseGuards(AdminGuard)
   async addSubArea(
+    @CurrentUser() user: UserPayload,
     @Param('id') id: string,
     @Body() dto: CreateSubAreaDto,
   ) {
-    return this.areasService.createSubArea(id, dto);
+    return this.areasService.createSubArea(user, id, dto);
   }
 
   @Patch(':id')
-  @UseGuards(AdminGuard)
-  async update(@Param('id') id: string, @Body() dto: UpdateAreaDto) {
-    return this.areasService.update(id, dto);
+  async update(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @Body() dto: UpdateAreaDto,
+  ) {
+    return this.areasService.update(user, id, dto);
   }
 
   @Delete(':id')
-  @UseGuards(AdminGuard)
-  async remove(@Param('id') id: string) {
-    await this.areasService.remove(id);
+  async remove(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    await this.areasService.remove(user, id);
   }
 }

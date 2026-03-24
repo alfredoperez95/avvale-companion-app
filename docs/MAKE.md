@@ -1,6 +1,6 @@
 # Integración con Make (envíos)
 
-El backend dispara un **webhook personalizado** en Make al solicitar el envío (`POST /api/activations/:id/send`). El cuerpo es un JSON **schema v3** definido en TypeScript en [`backend/src/make/make-webhook-payload.ts`](../backend/src/make/make-webhook-payload.ts).
+El backend dispara un **webhook personalizado** en Make al solicitar el envío (`POST /api/activations/:id/send`). El cuerpo es un JSON **schema v4** definido en TypeScript en [`backend/src/make/make-webhook-payload.ts`](../backend/src/make/make-webhook-payload.ts).
 
 La **firma HTML** global se configura en la app (Configuración → Firma) y se expone en el campo `emailSignature` del payload.
 
@@ -15,16 +15,16 @@ La **firma HTML** global se configura en la app (Configuración → Firma) y se 
 
 Copia los valores en `.env` en la raíz y ejecuta `./scripts/prepare-env.sh` para propagar a `backend/.env`.
 
-## Payload del webhook (v3)
+## Payload del webhook (v4)
 
 Campos principales:
 
-- `schemaVersion`: `3`
+- `schemaVersion`: `4`
 - `activationId`: UUID de la activación (clave técnica)
 - `activationNumber`: entero secuencial único (humano / logs)
 - `activationCode`: string derivado, p. ej. `ACT-000124` (misma regla que en la app)
 - `emailSignature`: HTML de la firma global, o `null` si no hay firma guardada o solo espacios
-- `recipientTo` (array), `recipientToCsv`, `toRecipients`, `recipientCc` (array), `recipientCcCsv`, `subject`, `body`
+- `recipientTo` (array), `recipientToCsv`, `toRecipients`, `recipientCc` (array), `recipientCcCsv`, `ccRecipients`, `subject`, `body`
 - `projectName`, `client`, `offerCode`, `projectAmount`, `projectType`, `hubspotUrl`
 - `createdBy`, `createdByUser` (`name`, `lastName`, `email`)
 - `areas`, `subAreas` (ids y nombres)
@@ -43,7 +43,7 @@ En Make, suele concatenarse el cuerpo del mensaje con la firma, p. ej. `body` + 
 ]
 ```
 
-`toRecipients` se envía como array estructurado de objetos con `address`, por ejemplo:
+`toRecipients` y `ccRecipients` se envían como arrays de objetos con **`address` en la raíz** (lo que exige la validación del módulo **Microsoft 365 Email** en Make), por ejemplo:
 
 ```json
 [
@@ -51,6 +51,10 @@ En Make, suele concatenarse el cuerpo del mensaje con la firma, p. ej. `body` + 
   { "address": "alberto.hernandez@avvale.com" }
 ]
 ```
+
+Si no hay destinatarios en copia, `ccRecipients` es `[]`. En el módulo Outlook, mapea **To** a `toRecipients` y **CC** a `ccRecipients` (no uses `recipientCc`, que es un array de strings).
+
+**v4:** mantiene esta forma `{ "address" }` y añade el campo `ccRecipients` (en v3 solo existía `toRecipients` con la misma forma).
 
 `recipientToCsv` se mantiene como string CSV por compatibilidad retroactiva.
 
@@ -103,7 +107,7 @@ Requiere `MAKE_CALLBACK_SECRET` configurado en el backend. Si no está definido,
 1. **Trigger:** Webhooks → **Custom webhook** (método POST). Copia la URL a `MAKE_WEBHOOK_URL`.
 2. **Parser:** El cuerpo del body suele ser el JSON enviado por Nest (o un objeto `data` según la configuración del webhook); usa el módulo *JSON* / *Parse JSON* si hace falta.
 3. **Validación (opcional):** Si usas `MAKE_WEBHOOK_SECRET`, comprobar que la cabecera `X-Webhook-Secret` coincide.
-4. **Envío:** Conector de correo (Gmail, Outlook, etc.). Usa `body`, `emailSignature`, `subject`, `activationCode`, etc., según tu plantilla de correo.
+4. **Envío:** Conector **Microsoft 365 Email (Outlook)** o similar. Para Outlook, enlaza `toRecipients` y `ccRecipients` del JSON del webhook. Usa `body`, `emailSignature`, `subject`, `activationCode`, etc., según tu plantilla de correo.
 5. **Respuesta (opcional):** **Webhook response** con JSON que incluya `makeRunId` o `executionId`.
 6. **Callback (opcional):** Módulo **HTTP** → POST a `/api/webhooks/make/callback` con `secret`, `activationId`, `status` y opcionalmente `activationNumber` copiado del trigger.
 

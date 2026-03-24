@@ -10,6 +10,7 @@ import { ContactsModule } from './contacts/contacts.module';
 import { BillingAdminContactsModule } from './billing-admin-contacts/billing-admin-contacts.module';
 import { EmailTemplatesModule } from './email-templates/email-templates.module';
 import { EmailSignatureModule } from './email-signature/email-signature.module';
+import { UserConfigModule } from './user-config/user-config.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EmailSignatureModule } from './email-signature/email-signature.module';
     BillingAdminContactsModule,
     EmailTemplatesModule,
     EmailSignatureModule,
+    UserConfigModule,
   ],
 })
 export class AppModule {}

@@ -37,7 +37,10 @@ model User {
   enabled      Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
 
-  activations Activation[]
+  activations     Activation[]
+  ownedAreas      Area[]          @relation("UserOwnedAreas")
+  emailTemplates  EmailTemplate[]
+  emailSignature  EmailSignature? @relation("UserEmailSignature")
 
   @@map("users")
 }
@@ -48,10 +51,14 @@ model Area {
   directorName  String?       @map("director_name")
   directorEmail String?       @map("director_email")
   createdAt     DateTime      @default(now()) @map("created_at")
+  /** null = árbol del sistema (plantilla para clonar; solo admin edita). */
+  ownerUserId   String?       @map("owner_user_id")
 
+  ownerUser       User?            @relation("UserOwnedAreas", fields: [ownerUserId], references: [id], onDelete: Cascade)
   subAreas        SubArea[]
   activationAreas ActivationArea[]
 
+  @@index([ownerUserId])
   @@map("areas")
 }
 
@@ -178,15 +185,23 @@ model EmailTemplate {
   name      String
   content   String   @db.LongText
   createdAt DateTime @default(now()) @map("created_at")
+  /** null = plantilla del sistema (solo admin). */
+  userId    String?  @map("user_id")
 
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
   @@map("email_templates")
 }
 
-/** Firma global de correo (como máximo una fila gestionada por la aplicación). */
+/** Firma HTML por usuario (una fila por usuario; userId obligatorio tras script migrate-user-scoped-config). */
 model EmailSignature {
   id        String   @id @default(uuid())
+  userId    String?  @unique @map("user_id")
   content   String   @db.LongText
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User? @relation("UserEmailSignature", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("email_signature")
 }

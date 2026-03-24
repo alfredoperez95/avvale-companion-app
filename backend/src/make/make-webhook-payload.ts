@@ -1,11 +1,12 @@
 /**
- * Contrato del cuerpo JSON enviado al webhook personalizado de Make (schema v3).
- * v3: añade emailSignature (HTML de la firma global de configuración).
+ * Contrato del cuerpo JSON enviado al webhook personalizado de Make (schema v4).
+ * v4: toRecipients / ccRecipients como { address } por ítem (validación del módulo Microsoft 365 Email en Make);
+ *     añade ccRecipients; v3 añadía emailSignature.
  */
 
 import { formatActivationCode } from '../activations/activation-code';
 
-export const MAKE_WEBHOOK_SCHEMA_VERSION = 3 as const;
+export const MAKE_WEBHOOK_SCHEMA_VERSION = 4 as const;
 
 export interface MakeWebhookAttachmentV1 {
   url: string;
@@ -30,6 +31,7 @@ export interface MakeWebhookCreatedByUserV1 {
   email: string;
 }
 
+/** Un ítem de toRecipients / ccRecipients: Make Outlook exige el parámetro `address` en la raíz del objeto. */
 export interface MakeWebhookRecipientV1 {
   address: string;
 }
@@ -45,12 +47,14 @@ export interface MakeWebhookPayloadV1 {
   recipientTo: string[];
   /** String CSV legacy mantenido por compatibilidad hacia Make. */
   recipientToCsv: string;
-  /** Lista estructurada de destinatarios To para módulos de email en Make. */
+  /** Destinatarios To: un objeto `{ address }` por email (mapear a Outlook en Make). */
   toRecipients: MakeWebhookRecipientV1[];
   /** Lista de destinatarios Cc en formato array (recomendado para Make/Outlook). */
   recipientCc: string[];
   /** String CSV legacy mantenido por compatibilidad hacia Make. */
   recipientCcCsv: string | null;
+  /** Destinatarios CC: un objeto `{ address }` por email (mapear a Outlook en Make). */
+  ccRecipients: MakeWebhookRecipientV1[];
   subject: string;
   body: string | null;
   projectName: string;
@@ -163,6 +167,7 @@ export function buildMakeWebhookPayload(
     toRecipients: buildRecipientsList(activation.recipientTo),
     recipientCc: splitEmails(activation.recipientCc),
     recipientCcCsv: activation.recipientCc,
+    ccRecipients: buildRecipientsList(activation.recipientCc),
     subject: activation.subject,
     body: activation.body,
     projectName: activation.projectName,

@@ -49,6 +49,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           setTheme(nextTheme);
           setAppearanceCookie(nextTheme);
         }
+        if (data?.id) {
+          apiFetch('/api/user-config/bootstrap', { method: 'POST' }).catch(() => {});
+        }
       })
       .catch(() => {
         if (typeof window !== 'undefined') {

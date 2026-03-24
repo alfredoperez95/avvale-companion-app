@@ -6,16 +6,31 @@ import { UpdateEmailSignatureDto } from './dto/update-email-signature.dto';
 export class EmailSignatureService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Contenido HTML de la firma global; cadena vacía si no hay registro. */
-  async getContent(): Promise<string> {
-    const row = await this.prisma.emailSignature.findFirst();
+  /** Firma HTML del usuario; cadena vacía si no hay fila. */
+  async getContent(userId: string): Promise<string> {
+    const row = await this.prisma.emailSignature.findUnique({ where: { userId } });
     return row?.content ?? '';
   }
 
-  /** Crea o actualiza la única firma (admin). */
-  async upsert(dto: UpdateEmailSignatureDto) {
+  /** Plantilla de firma para clonados / bootstrap (fila userId null). */
+  async getSystemTemplateContent(): Promise<string> {
+    const row = await this.prisma.emailSignature.findFirst({ where: { userId: null } });
+    return row?.content ?? '';
+  }
+
+  async upsertForUser(userId: string, dto: UpdateEmailSignatureDto) {
     const content = dto.content ?? '';
-    const existing = await this.prisma.emailSignature.findFirst();
+    return this.prisma.emailSignature.upsert({
+      where: { userId },
+      create: { userId, content },
+      update: { content },
+      select: { id: true, content: true, updatedAt: true },
+    });
+  }
+
+  async upsertSystemTemplate(dto: UpdateEmailSignatureDto) {
+    const content = dto.content ?? '';
+    const existing = await this.prisma.emailSignature.findFirst({ where: { userId: null } });
     if (existing) {
       return this.prisma.emailSignature.update({
         where: { id: existing.id },
@@ -24,7 +39,7 @@ export class EmailSignatureService {
       });
     }
     return this.prisma.emailSignature.create({
-      data: { content },
+      data: { userId: null, content },
       select: { id: true, content: true, updatedAt: true },
     });
   }

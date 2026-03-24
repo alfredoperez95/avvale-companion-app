@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
@@ -18,7 +18,9 @@ type Area = {
 
 export default function AdminAreasPage() {
   const [loading, setLoading] = useState(true);
-  const [forbidden, setForbidden] = useState(false);
+  const [userReady, setUserReady] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [catalogMode, setCatalogMode] = useState<'system' | 'personal'>('system');
   const [areas, setAreas] = useState<Area[]>([]);
   const [error, setError] = useState('');
   const [newAreaName, setNewAreaName] = useState('');
@@ -44,21 +46,6 @@ export default function AdminAreasPage() {
   const [editContactIsProjectJp, setEditContactIsProjectJp] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ area?: string; subarea?: string; contact?: string } | null>(null);
 
-  const loadAreas = async () => {
-    const res = await apiFetch('/api/areas?admin=true');
-    if (res.status === 403 || res.status === 401) {
-      setForbidden(true);
-      if (res.status === 401) {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      }
-      return;
-    }
-    if (!res.ok) return;
-    const data = await res.json();
-    setAreas(Array.isArray(data) ? data : []);
-  };
-
   useEffect(() => {
     apiFetch('/api/auth/me')
       .then((r) => {
@@ -69,15 +56,37 @@ export default function AdminAreasPage() {
         return r.ok ? r.json() : null;
       })
       .then((user) => {
-        if (user?.role !== 'ADMIN') {
-          setForbidden(true);
-          setLoading(false);
-          return;
-        }
-        loadAreas().finally(() => setLoading(false));
+        if (user?.role === 'ADMIN') setIsAdmin(true);
+        setUserReady(true);
       })
-      .catch(() => setLoading(false));
+      .catch(() => setUserReady(true));
   }, []);
+
+  const refreshAreas = useCallback(async () => {
+    const params = new URLSearchParams({ admin: 'true' });
+    if (isAdmin && catalogMode === 'personal') params.set('personal', 'true');
+    const res = await apiFetch(`/api/areas?${params}`);
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      return;
+    }
+    if (!res.ok) return;
+    const data = await res.json();
+    setAreas(Array.isArray(data) ? data : []);
+  }, [isAdmin, catalogMode]);
+
+  useEffect(() => {
+    if (!userReady) return;
+    let cancelled = false;
+    setLoading(true);
+    refreshAreas().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userReady, refreshAreas]);
 
   const handleCreateArea = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +95,9 @@ export default function AdminAreasPage() {
     if (!name) return;
     setSavingAreaId('new');
     try {
-      const res = await apiFetch('/api/areas', {
+      const createUrl =
+        isAdmin && catalogMode === 'system' ? '/api/areas?system=true' : '/api/areas';
+      const res = await apiFetch(createUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -103,7 +114,7 @@ export default function AdminAreasPage() {
       setNewAreaName('');
       setNewAreaDirectorName('');
       setNewAreaDirectorEmail('');
-      await loadAreas();
+      await refreshAreas();
     } finally {
       setSavingAreaId(null);
     }
@@ -126,7 +137,7 @@ export default function AdminAreasPage() {
         return;
       }
       setEditingAreaId(null);
-      await loadAreas();
+      await refreshAreas();
     } finally {
       setSavingAreaId(null);
     }
@@ -150,7 +161,7 @@ export default function AdminAreasPage() {
         return;
       }
       setEditingDirectorAreaId(null);
-      await loadAreas();
+      await refreshAreas();
     } finally {
       setSavingAreaId(null);
     }
@@ -166,7 +177,7 @@ export default function AdminAreasPage() {
         return;
       }
       setConfirmDelete(null);
-      await loadAreas();
+      await refreshAreas();
     } catch {
       setError('Error de conexión');
     }
@@ -191,7 +202,7 @@ export default function AdminAreasPage() {
       }
       setAddingSubAreaAreaId(null);
       setNewSubAreaName('');
-      await loadAreas();
+      await refreshAreas();
     } finally {
       setSavingAreaId(null);
     }
@@ -214,7 +225,7 @@ export default function AdminAreasPage() {
         return;
       }
       setEditingSubAreaId(null);
-      await loadAreas();
+      await refreshAreas();
     } finally {
       setSavingAreaId(null);
     }
@@ -230,7 +241,7 @@ export default function AdminAreasPage() {
         return;
       }
       setConfirmDelete(null);
-      await loadAreas();
+      await refreshAreas();
     } catch {
       setError('Error de conexión');
     }
@@ -258,7 +269,7 @@ export default function AdminAreasPage() {
       setNewContactName('');
       setNewContactEmail('');
       setNewContactIsProjectJp(false);
-      await loadAreas();
+      await refreshAreas();
     } finally {
       setSavingAreaId(null);
     }
@@ -282,7 +293,7 @@ export default function AdminAreasPage() {
         return;
       }
       setEditingContactId(null);
-      await loadAreas();
+      await refreshAreas();
     } finally {
       setSavingAreaId(null);
     }
@@ -298,7 +309,7 @@ export default function AdminAreasPage() {
         return;
       }
       setConfirmDelete(null);
-      await loadAreas();
+      await refreshAreas();
     } catch {
       setError('Error de conexión');
     }
@@ -306,21 +317,36 @@ export default function AdminAreasPage() {
 
   if (loading) return null;
 
-  if (forbidden) {
-    return (
-      <div className={styles.page}>
-        <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
-        <p className={styles.forbidden}>No tienes permisos para acceder a esta sección.</p>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.page}>
       <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
       <h1 className={styles.h1}>Áreas</h1>
+      {isAdmin && (
+        <div className={styles.catalogModeTabs} role="tablist" aria-label="Ámbito de edición">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={catalogMode === 'system'}
+            className={catalogMode === 'system' ? styles.catalogModeTabActive : styles.catalogModeTab}
+            onClick={() => setCatalogMode('system')}
+          >
+            Catálogo sistema
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={catalogMode === 'personal'}
+            className={catalogMode === 'personal' ? styles.catalogModeTabActive : styles.catalogModeTab}
+            onClick={() => setCatalogMode('personal')}
+          >
+            Mis áreas (activaciones)
+          </button>
+        </div>
+      )}
       <p className={styles.sectionDesc}>
-        Áreas, directores y subáreas que definen los destinatarios de cada activación.
+        {isAdmin && catalogMode === 'system'
+          ? 'Define el árbol que se clona a usuarios nuevos al cargar la aplicación. Las activaciones usan siempre el árbol personal de cada quien (pestaña Mis áreas).'
+          : 'Áreas, directores y subáreas que definen los destinatarios en tus activaciones.'}
       </p>
       {error && <p className={styles.error}>{error}</p>}
 

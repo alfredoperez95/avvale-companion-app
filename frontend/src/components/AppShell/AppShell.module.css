@@ -163,6 +163,9 @@
 .avatarDropdownHeader {
   padding: var(--fiori-space-4);
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .avatarDropdownAvatar {
@@ -183,6 +186,11 @@
 .avatarDropdownAvatarImage {
   object-fit: cover;
   display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  max-width: 50px;
+  border: 1px solid #1c2d3e !important;
 }
 
 .avatarDropdownName {

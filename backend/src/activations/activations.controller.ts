@@ -83,6 +83,7 @@ export class ActivationsController {
 
   @Get('project-jp-preview')
   async projectJpPreview(
+    @CurrentUser() user: UserPayload,
     @Query('areaIds') areaIdsQuery?: string | string[],
     @Query('subAreaIds') subAreaIdsQuery?: string | string[],
     @Query('projectJpContactId') projectJpContactId?: string,
@@ -93,6 +94,7 @@ export class ActivationsController {
         .map((v) => v.trim())
         .filter(Boolean);
     return this.activationsService.previewProjectJp(
+      user.userId,
       toArray(areaIdsQuery),
       toArray(subAreaIdsQuery),
       projectJpContactId?.trim() || null,

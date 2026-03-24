@@ -200,7 +200,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                       .filter((tab) =>
                         pathname?.startsWith('/admin')
                           ? tab.href === '/launcher' || user?.role === 'ADMIN'
-                          : (tab.href !== '/launcher/activations/configuration') || user?.role === 'ADMIN'
+                          : tab.href !== '/launcher/activations/configuration' || !!user
                       )
                       .map((tab) => {
                         const { href, label, icon, iconOnly, isActive } = tab;
@@ -243,23 +243,21 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                   {label}
                 </Link>
               ))}
+              <Link
+                href={adminNavItem.href}
+                className={pathname === adminNavItem.href || pathname?.startsWith(adminNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
+              >
+                <Icon name={adminNavItem.icon} size={20} className={styles.navIcon} />
+                {adminNavItem.label}
+              </Link>
               {user?.role === 'ADMIN' && (
-                <>
-                  <Link
-                    href={adminNavItem.href}
-                    className={pathname === adminNavItem.href || pathname?.startsWith(adminNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
-                  >
-                    <Icon name={adminNavItem.icon} size={20} className={styles.navIcon} />
-                    {adminNavItem.label}
-                  </Link>
-                  <Link
-                    href={adminUsersNavItem.href}
-                    className={pathname === adminUsersNavItem.href || pathname?.startsWith(adminUsersNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
-                  >
-                    <Icon name={adminUsersNavItem.icon} size={20} className={styles.navIcon} />
-                    {adminUsersNavItem.label}
-                  </Link>
-                </>
+                <Link
+                  href={adminUsersNavItem.href}
+                  className={pathname === adminUsersNavItem.href || pathname?.startsWith(adminUsersNavItem.href + '/') ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink}
+                >
+                  <Icon name={adminUsersNavItem.icon} size={20} className={styles.navIcon} />
+                  {adminUsersNavItem.label}
+                </Link>
               )}
             </aside>
             <div className={styles.mainFooterWrap}>

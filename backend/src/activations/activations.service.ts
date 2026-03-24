@@ -102,6 +102,42 @@ export class ActivationsService {
     return resolved;
   }
 
+  /** Áreas y subáreas de una activación deben pertenecer al árbol personal del usuario (no al catálogo sistema). */
+  private async assertActivationAreasOwnedByUser(
+    userId: string,
+    areaIds: string[],
+    subAreaIds: string[],
+  ): Promise<void> {
+    if (areaIds.length > 0) {
+      const areas = await this.prisma.area.findMany({
+        where: { id: { in: areaIds } },
+        select: { id: true, ownerUserId: true },
+      });
+      if (areas.length !== areaIds.length) {
+        throw new BadRequestException('Una o más áreas no existen');
+      }
+      for (const a of areas) {
+        if (a.ownerUserId !== userId) {
+          throw new BadRequestException('Las áreas deben pertenecer a tu configuración personal');
+        }
+      }
+    }
+    if (subAreaIds.length > 0) {
+      const subAreas = await this.prisma.subArea.findMany({
+        where: { id: { in: subAreaIds } },
+        select: { id: true, area: { select: { ownerUserId: true } } },
+      });
+      if (subAreas.length !== subAreaIds.length) {
+        throw new BadRequestException('Una o más subáreas no existen');
+      }
+      for (const s of subAreas) {
+        if (s.area.ownerUserId !== userId) {
+          throw new BadRequestException('Las subáreas deben pertenecer a tu configuración personal');
+        }
+      }
+    }
+  }
+
   /** Obtiene emails: areaIds = área completa (director + todos contactos subáreas); subAreaIds = solo director del área + contactos de esas subáreas. */
   private async getRecipientsFromAreasAndSubAreas(
     areaIds: string[],
@@ -303,6 +339,7 @@ export class ActivationsService {
     if (areaIds.length === 0 && subAreaIds.length === 0) {
       throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
     }
+    await this.assertActivationAreasOwnedByUser(userId, areaIds, subAreaIds);
     const projectJp = await this.resolveProjectJp(
       areaIds,
       subAreaIds,
@@ -431,11 +468,15 @@ export class ActivationsService {
   }
 
   async previewProjectJp(
+    userId: string,
     areaIds: string[],
     subAreaIds: string[],
     projectJpContactId?: string | null,
     projectJpAutoSubAreaContactId?: string | null,
   ) {
+    if (areaIds.length > 0 || subAreaIds.length > 0) {
+      await this.assertActivationAreasOwnedByUser(userId, areaIds, subAreaIds);
+    }
     const projectJp = await this.resolveProjectJp(
       areaIds,
       subAreaIds,
@@ -580,7 +621,7 @@ export class ActivationsService {
     return { ...activation, manualCcEmails };
   }
 
-  /** Dispara el webhook de Make con el payload v3 (incl. firma global); si OK → READY_TO_SEND + makeRunId; si falla → ERROR + errorMessage. Solo DRAFT o ERROR. */
+  /** Dispara el webhook de Make con el payload v4 (incl. firma global); si OK → READY_TO_SEND + makeRunId; si falla → ERROR + errorMessage. Solo DRAFT o ERROR. */
   async requestSend(activationId: string, userId: string) {
     const activation = await this.findOneByIdAndUser(activationId, userId);
     if (activation.status !== ActivationStatus.DRAFT && activation.status !== ActivationStatus.ERROR) {
@@ -592,7 +633,7 @@ export class ActivationsService {
     await this.attachmentsService.publishForActivation(activationId);
     const refreshed = await this.findOneByIdAndUser(activationId, userId);
 
-    const signatureHtml = await this.emailSignatureService.getContent();
+    const signatureHtml = await this.emailSignatureService.getContent(userId);
     const emailSignature = signatureHtml.trim() ? signatureHtml : null;
     const attachmentsBaseUrl = await this.getBackendApiBaseUrl();
     const payload = buildMakeWebhookPayload(refreshed as ActivationForMakePayload, {

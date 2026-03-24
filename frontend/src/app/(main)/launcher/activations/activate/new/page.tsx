@@ -164,6 +164,27 @@ export default function NewActivationPage() {
   }, []);
 
   useEffect(() => {
+    if (!selectedTemplateId) return;
+    const t = emailTemplates.find((x) => x.id === selectedTemplateId);
+    if (!t) return;
+    setForm((prev) => ({
+      ...prev,
+      body: replaceTemplateVariables(t.content ?? '', prev),
+    }));
+  }, [
+    selectedTemplateId,
+    emailTemplates,
+    form.projectName,
+    form.client,
+    form.offerCode,
+    form.projectAmount,
+    form.projectType,
+    form.hubspotUrl,
+    form.projectJpName,
+    form.projectJpEmail,
+  ]);
+
+  useEffect(() => {
     const p = getActivationPayloadFromHash();
     if (!p) return;
     const projectTypeFromServiceType =
@@ -538,13 +559,7 @@ export default function NewActivationPage() {
                   return;
                 }
                 const t = emailTemplates.find((x) => x.id === id);
-                if (t) {
-                  setForm((prev) => ({
-                    ...prev,
-                    body: replaceTemplateVariables(t.content ?? '', prev),
-                  }));
-                  setAppliedTemplateName(t.name);
-                }
+                if (t) setAppliedTemplateName(t.name);
               }}
               style={{ maxWidth: '20rem' }}
             >
@@ -564,7 +579,7 @@ export default function NewActivationPage() {
           </div>
           {appliedTemplateName && (
             <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-              Cuerpo rellenado con la plantilla &quot;{appliedTemplateName}&quot;. Puedes modificarlo abajo.
+              Cuerpo generado desde la plantilla &quot;{appliedTemplateName}&quot;. Al cambiar datos del formulario se actualizan las variables; si editas el cuerpo a mano, esos cambios pueden perderse al modificar esos campos.
             </p>
           )}
         </div>

@@ -12,7 +12,7 @@ type EmailTemplateItem = { id: string; name: string; content: string; createdAt:
 
 export default function AdminEmailTemplatesPage() {
   const [loading, setLoading] = useState(true);
-  const [forbidden, setForbidden] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [templates, setTemplates] = useState<EmailTemplateItem[]>([]);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -21,9 +21,12 @@ export default function AdminEmailTemplatesPage() {
   const [formContent, setFormContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmRestoreOpen, setConfirmRestoreOpen] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
-  const loadTemplates = async () => {
-    const res = await apiFetch('/api/email-templates');
+  const loadTemplates = async (admin: boolean) => {
+    const url = admin ? '/api/email-templates?scope=system' : '/api/email-templates';
+    const res = await apiFetch(url);
     if (res.status === 401) {
       window.location.href = '/login';
       return;
@@ -43,13 +46,11 @@ export default function AdminEmailTemplatesPage() {
         return r.ok ? r.json() : null;
       })
       .then((user) => {
-        if (user?.role !== 'ADMIN') {
-          setForbidden(true);
-          setLoading(false);
-          return;
-        }
-        loadTemplates().finally(() => setLoading(false));
+        const admin = user?.role === 'ADMIN';
+        setIsAdmin(!!admin);
+        return loadTemplates(!!admin);
       })
+      .finally(() => setLoading(false))
       .catch(() => setLoading(false));
   }, []);
 
@@ -95,9 +96,10 @@ export default function AdminEmailTemplatesPage() {
           return;
         }
         closeForm();
-        await loadTemplates();
+        await loadTemplates(isAdmin);
       } else {
-        const res = await apiFetch('/api/email-templates', {
+        const createUrl = isAdmin ? '/api/email-templates?system=true' : '/api/email-templates';
+        const res = await apiFetch(createUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, content: formContent }),
@@ -108,10 +110,35 @@ export default function AdminEmailTemplatesPage() {
           return;
         }
         closeForm();
-        await loadTemplates();
+        await loadTemplates(isAdmin);
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRestoreFromSystem = async () => {
+    setError('');
+    setRestoring(true);
+    try {
+      const res = await apiFetch('/api/email-templates/restore-from-system', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+      if (!res.ok) {
+        setError(
+          Array.isArray(data.message) ? data.message.join(', ') : data.message ?? 'Error al restaurar',
+        );
+        return;
+      }
+      setConfirmRestoreOpen(false);
+      closeForm();
+      // El endpoint devuelve siempre las plantillas personales; la vista de administrador sigue listando el catálogo sistema.
+      await loadTemplates(isAdmin);
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -126,7 +153,7 @@ export default function AdminEmailTemplatesPage() {
       }
       setConfirmDeleteId(null);
       if (editingId === id) closeForm();
-      await loadTemplates();
+      await loadTemplates(isAdmin);
     } catch {
       setError('Error de conexión');
     }
@@ -134,22 +161,30 @@ export default function AdminEmailTemplatesPage() {
 
   if (loading) return null;
 
-  if (forbidden) {
-    return (
-      <div className={styles.page}>
-        <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
-        <p className={styles.forbidden}>No tienes permisos para acceder a esta sección.</p>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.page}>
       <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
       <h1 className={styles.h1}>Plantillas Email</h1>
       <p className={styles.sectionDesc}>
-        Crea y edita plantillas para el cuerpo del correo con el editor de texto enriquecido. Podrás elegirlas al crear o editar una activación.
+        {isAdmin
+          ? 'Estás editando las plantillas de sistema: se copian a cada usuario la primera vez que entra (bootstrap). En las activaciones cada persona usa su copia personal.'
+          : 'Crea y edita plantillas para el cuerpo del correo con el editor de texto enriquecido. Podrás elegirlas al crear o editar una activación.'}
       </p>
+      <p className={styles.sectionDesc} style={{ marginTop: 'var(--fiori-space-2)' }}>
+        {isAdmin
+          ? 'El botón «Restaurar mis plantillas personales» aplica a tus copias para activaciones (no modifica el catálogo de sistema de esta pantalla).'
+          : 'Puedes volver a las plantillas predefinidas del administrador en cualquier momento; se sustituirán tus plantillas actuales por copias del catálogo de sistema.'}
+      </p>
+      <div style={{ marginBottom: 'var(--fiori-space-4)' }}>
+        <button
+          type="button"
+          className={styles.btnSecondary}
+          disabled={restoring}
+          onClick={() => setConfirmRestoreOpen(true)}
+        >
+          {isAdmin ? 'Restaurar mis plantillas personales' : 'Restaurar plantillas predefinidas'}
+        </button>
+      </div>
       {error && <p className={styles.error}>{error}</p>}
 
       <section className={styles.templateCard} aria-labelledby="create-template-heading">
@@ -255,6 +290,19 @@ export default function AdminEmailTemplatesPage() {
         variant="danger"
         onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
         onCancel={() => setConfirmDeleteId(null)}
+      />
+      <ConfirmDialog
+        open={confirmRestoreOpen}
+        title={isAdmin ? 'Restaurar plantillas personales' : 'Restaurar plantillas predefinidas'}
+        message={
+          isAdmin
+            ? 'Se eliminarán tus plantillas personales (para activaciones) y se crearán de nuevo copiando el catálogo de sistema actual. El listado de arriba (plantillas de sistema) no cambia.'
+            : 'Se eliminarán tus plantillas actuales y se volverán a crear copiando las plantillas predefinidas del administrador. Esta acción no se puede deshacer.'
+        }
+        confirmLabel="Restaurar"
+        variant="danger"
+        onConfirm={() => void handleRestoreFromSystem()}
+        onCancel={() => setConfirmRestoreOpen(false)}
       />
     </div>
   );
