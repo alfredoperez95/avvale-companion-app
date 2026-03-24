@@ -19,8 +19,6 @@ export default function AdminContactsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [newIsProjectJp, setNewIsProjectJp] = useState(false);
-  const [editIsProjectJp, setEditIsProjectJp] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const loadContacts = async () => {
@@ -65,7 +63,7 @@ export default function AdminContactsPage() {
       const res = await apiFetch('/api/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, isProjectJp: newIsProjectJp }),
+        body: JSON.stringify({ name, email }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -74,7 +72,6 @@ export default function AdminContactsPage() {
       }
       setNewName('');
       setNewEmail('');
-      setNewIsProjectJp(false);
       await loadContacts();
     } finally {
       setSavingId(null);
@@ -91,7 +88,7 @@ export default function AdminContactsPage() {
       const res = await apiFetch(`/api/contacts/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, isProjectJp: editIsProjectJp }),
+        body: JSON.stringify({ name, email }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -177,14 +174,6 @@ export default function AdminContactsPage() {
         <button type="submit" disabled={savingId === 'new'} className={styles.btnPrimary}>
           {savingId === 'new' ? 'Guardando…' : 'Añadir'}
         </button>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-          <input
-            type="checkbox"
-            checked={newIsProjectJp}
-            onChange={(e) => setNewIsProjectJp(e.target.checked)}
-          />
-          JP Proyecto
-        </label>
       </form>
 
       <div className={styles.contactsScrollWrap}>
@@ -194,21 +183,20 @@ export default function AdminContactsPage() {
               <tr>
                 <th scope="col">Nombre</th>
                 <th scope="col">Email</th>
-                <th scope="col">JP</th>
                 <th scope="col" className={styles.contactsColActions}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {contacts.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className={styles.contactsEmpty}>
+                  <td colSpan={3} className={styles.contactsEmpty}>
                     No hay contactos. Añade uno con el formulario de arriba.
                   </td>
                 </tr>
               ) : (
                 contactGroups.flatMap((g) => [
                   <tr key={`letter-${g.letter}`}>
-                    <td colSpan={4} className={styles.contactsLetterRow}>
+                    <td colSpan={3} className={styles.contactsLetterRow}>
                       {g.letter === '#' ? 'Otros' : g.letter}
                     </td>
                   </tr>,
@@ -237,15 +225,6 @@ export default function AdminContactsPage() {
                             />
                           </td>
                           <td>
-                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <input
-                                type="checkbox"
-                                checked={editIsProjectJp}
-                                onChange={(e) => setEditIsProjectJp(e.target.checked)}
-                              />
-                              JP
-                            </label>
-                          </td>
                           <td className={styles.contactsColActions}>
                             <button
                               type="button"
@@ -268,7 +247,6 @@ export default function AdminContactsPage() {
                         <>
                           <td className={styles.contactsCellName}>{c.name}</td>
                           <td className={styles.contactsCellEmail}>{c.email}</td>
-                          <td>{c.isProjectJp ? 'Sí' : 'No'}</td>
                           <td className={styles.contactsColActions}>
                             <button
                               type="button"
@@ -277,7 +255,6 @@ export default function AdminContactsPage() {
                                 setEditingId(c.id);
                                 setEditName(c.name);
                                 setEditEmail(c.email);
-                                setEditIsProjectJp(Boolean(c.isProjectJp));
                               }}
                             >
                               Editar
