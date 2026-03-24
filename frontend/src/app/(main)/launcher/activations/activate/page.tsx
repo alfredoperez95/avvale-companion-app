@@ -14,6 +14,7 @@ import styles from './activations.module.css';
 
 export default function ActivationsPage() {
   const [list, setList] = useState<Activation[]>([]);
+  const [sendStartedMap, setSendStartedMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchValue, setSearchValue] = useState('');
@@ -23,6 +24,34 @@ export default function ActivationsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const tableLoading = useSmoothLoading(loading, { delayMs: 150, minVisibleMs: 250 });
 
+  useEffect(() => {
+    const map: Record<string, number> = {};
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (!key?.startsWith('activation-send-started:')) continue;
+        const activationId = key.replace('activation-send-started:', '');
+        const ts = Number(sessionStorage.getItem(key));
+        if (activationId && Number.isFinite(ts) && ts > 0) {
+          map[activationId] = ts;
+        }
+      }
+    } catch {}
+    setSendStartedMap(map);
+  }, []);
+
+  const shouldSimulateSending = useCallback(
+    (activation: Activation) => {
+      const startedAt = sendStartedMap[activation.id];
+      if (!startedAt) return false;
+      if (activation.status === 'SENT' || activation.status === 'ERROR') return false;
+      const elapsedMs = Date.now() - startedAt;
+      if (elapsedMs < 5000) return true;
+      return true;
+    },
+    [sendStartedMap],
+  );
+
   const fetchActivations = useCallback(async () => {
     const response = await apiFetch('/api/activations');
     if (response.status === 401) {
@@ -31,8 +60,28 @@ export default function ActivationsPage() {
     }
     if (!response.ok) return;
     const data = await response.json();
+    if (Array.isArray(data)) {
+      setSendStartedMap((prev) => {
+        const next = { ...prev };
+        const now = Date.now();
+        for (const activation of data as Activation[]) {
+          const startedAt = next[activation.id];
+          if (!startedAt) continue;
+          const elapsedMs = now - startedAt;
+          const isTerminal = activation.status === 'SENT' || activation.status === 'ERROR';
+          const canClear = activation.status === 'ERROR' || (activation.status === 'SENT' && elapsedMs >= 5000);
+          if (isTerminal && canClear) {
+            delete next[activation.id];
+            try {
+              sessionStorage.removeItem(`activation-send-started:${activation.id}`);
+            } catch {}
+          }
+        }
+        return next;
+      });
+    }
     setList(Array.isArray(data) ? data : []);
-  }, []);
+  }, [sendStartedMap]);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,14 +106,16 @@ export default function ActivationsPage() {
   }, []);
 
   useEffect(() => {
-    if (!list.some((a) => a.status === 'READY_TO_SEND')) return;
+    const hasReadyToSend = list.some((a) => a.status === 'READY_TO_SEND');
+    const hasSimulatedSending = list.some((a) => shouldSimulateSending(a));
+    if (!hasReadyToSend && !hasSimulatedSending) return;
     const intervalId = window.setInterval(() => {
       void fetchActivations().catch(() => {
         // Ignora errores puntuales de red; siguiente ciclo reintenta.
       });
     }, 5000);
     return () => window.clearInterval(intervalId);
-  }, [list, fetchActivations]);
+  }, [list, fetchActivations, shouldSimulateSending]);
 
   useEffect(() => {
     apiFetch('/api/auth/me')
@@ -152,7 +203,13 @@ export default function ActivationsPage() {
     { key: 'client', header: 'Cliente', render: (row) => row.client ?? '—' },
     { key: 'offerCode', header: 'Oferta', render: (row) => row.offerCode },
     { key: 'createdByUser', header: 'Solicitante', render: (row) => getRequesterName(row) },
-    { key: 'status', header: 'Estado', render: (row) => <StatusTag status={row.status} /> },
+    {
+      key: 'status',
+      header: 'Estado',
+      render: (row) => (
+        <StatusTag status={shouldSimulateSending(row) ? 'READY_TO_SEND' : row.status} />
+      ),
+    },
     {
       key: 'createdAt',
       header: 'Fecha',

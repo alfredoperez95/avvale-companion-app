@@ -18,12 +18,12 @@ function buildSubjectWithoutCode(projectName: string, client: string | null): st
   return `Activación AEP - ${clientPart} - ${projectPart}`;
 }
 
-/** Asunto con código visible: Activación AEP [ACT-000124] - CLIENTE - Proyecto */
+/** Asunto con código visible al final: Activación AEP - CLIENTE - Proyecto [ACT-000124] */
 function buildSubject(projectName: string, client: string | null, activationNumber: number): string {
   const clientPart = (client ?? '').trim().toUpperCase();
   const projectPart = (projectName ?? '').trim();
   const code = formatActivationCode(activationNumber);
-  return `Activación AEP [${code}] - ${clientPart} - ${projectPart}`;
+  return `Activación AEP - ${clientPart} - ${projectPart} [${code}]`;
 }
 
 const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
@@ -98,27 +98,6 @@ export class ActivationsService {
         // fallback a localhost si ngrok no está disponible
       }
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'd7e201' },
-      body: JSON.stringify({
-        sessionId: 'd7e201',
-        runId: 'post-fix',
-        hypothesisId: 'A_B',
-        location: 'activations.service.ts:getBackendApiBaseUrl',
-        message: 'Resolved backend api base URL',
-        data: {
-          hasBackendPublicUrl: Boolean(this.config.get<string>('BACKEND_PUBLIC_URL')),
-          hasNextPublicApiUrl: Boolean(this.config.get<string>('NEXT_PUBLIC_API_URL')),
-          raw,
-          resolved,
-          source,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     return resolved;
   }
 
@@ -508,26 +487,6 @@ export class ActivationsService {
       emailSignature,
       attachmentsBaseUrl,
     });
-    // #region agent log
-    fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'd7e201' },
-      body: JSON.stringify({
-        sessionId: 'd7e201',
-        runId: 'post-fix',
-        hypothesisId: 'C_D',
-        location: 'activations.service.ts:requestSend',
-        message: 'Attachment URL selected for Make payload',
-        data: {
-          activationId,
-          attachmentsBaseUrl,
-          attachmentsCount: payload.attachments.length,
-          firstAttachmentUrl: payload.attachments[0]?.url ?? null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     const normalizedPayload = {
       ...payload,
       body: normalizeEmailHtmlSpacing(payload.body, { preserveTrailingBreaks: true }),

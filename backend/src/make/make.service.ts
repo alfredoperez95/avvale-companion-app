@@ -4,6 +4,8 @@ import {
   ServiceUnavailableException,
   NotFoundException,
   BadRequestException,
+  OnModuleInit,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,6 +16,8 @@ import { MakeCallbackDto } from './dto/make-callback.dto';
 import { formatActivationCode } from '../activations/activation-code';
 
 const WEBHOOK_TIMEOUT_MS = 30_000;
+const READY_TO_SEND_WATCHDOG_INTERVAL_MS = 5_000;
+const READY_TO_SEND_TIMEOUT_DEFAULT_MS = 30_000;
 
 export interface MakeWebhookResult {
   success: boolean;
@@ -22,12 +26,42 @@ export interface MakeWebhookResult {
 }
 
 @Injectable()
-export class MakeService {
+export class MakeService implements OnModuleInit, OnModuleDestroy {
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null;
+
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly attachmentsService: AttachmentsService,
   ) {}
+
+  onModuleInit() {
+    this.watchdogTimer = setInterval(() => {
+      void this.markStaleReadyToSendAsError();
+    }, READY_TO_SEND_WATCHDOG_INTERVAL_MS);
+  }
+
+  onModuleDestroy() {
+    if (this.watchdogTimer) clearInterval(this.watchdogTimer);
+    this.watchdogTimer = null;
+  }
+
+  private async markStaleReadyToSendAsError() {
+    const timeoutMs =
+      this.config.get<number>('MAKE_READY_TO_SEND_TIMEOUT_MS') ?? READY_TO_SEND_TIMEOUT_DEFAULT_MS;
+    const cutoff = new Date(Date.now() - timeoutMs);
+    const result = await this.prisma.activation.updateMany({
+      where: {
+        status: ActivationStatus.READY_TO_SEND,
+        lastStatusAt: { lt: cutoff },
+      },
+      data: {
+        status: ActivationStatus.ERROR,
+        errorMessage: 'Timeout esperando confirmación de Make',
+        lastStatusAt: new Date(),
+      },
+    });
+  }
 
   /**
    * POST JSON al webhook de Make. No lanza: devuelve resultado para que la capa de dominio actualice estado.

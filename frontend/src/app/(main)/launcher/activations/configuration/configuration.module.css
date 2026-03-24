@@ -289,6 +289,45 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
+.areaAccordion {
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.5rem;
+  background: var(--fiori-surface);
+  margin-bottom: var(--fiori-space-3);
+  overflow: hidden;
+}
+
+.areaAccordionSummary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fiori-space-3);
+  padding: var(--fiori-space-3) var(--fiori-space-4);
+  background: var(--fiori-nav-bg);
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.areaAccordionSummary::-webkit-details-marker {
+  display: none;
+}
+
+.areaAccordionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+}
+
+.areaAccordionMeta {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+}
+
+.areaAccordion[open] .areaAccordionSummary {
+  border-bottom-color: var(--fiori-border);
+}
+
 .areaHeader {
   display: flex;
   align-items: center;
@@ -428,8 +467,13 @@
 }
 
 .btnSmall {
-  padding: 0.125rem 0.5rem;
-  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  padding: 0 var(--fiori-space-3);
+  font-size: 0.8125rem;
+  font-weight: 500;
   border: 1px solid var(--fiori-border);
   border-radius: 0.25rem;
   background: var(--fiori-surface);
@@ -438,7 +482,7 @@
 }
 
 .btnSmall:hover {
-  background: var(--fiori-border-light);
+  background: var(--fiori-nav-item-hover);
 }
 
 .btnSmallDanger:hover {

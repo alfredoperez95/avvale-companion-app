@@ -359,55 +359,62 @@ export default function AdminAreasPage() {
 
       <h2 className={styles.areasListTitle}>Áreas configuradas</h2>
       {areas.map((area) => (
-        <div key={area.id} className={styles.areaCard}>
-          <div className={styles.areaHeader}>
-            {editingAreaId === area.id ? (
-              <>
-                <input
-                  type="text"
-                  className={styles.areaNameInput}
-                  value={editingAreaName}
-                  onChange={(e) => setEditingAreaName(e.target.value)}
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  className={styles.btnSmall}
-                  onClick={() => handleUpdateAreaName(area.id)}
-                  disabled={savingAreaId === area.id}
-                >
-                  Guardar
-                </button>
-                <button
-                  type="button"
-                  className={styles.btnSmall}
-                  onClick={() => { setEditingAreaId(null); setEditingAreaName(''); }}
-                >
-                  Cancelar
-                </button>
-              </>
-            ) : (
-              <>
-                <span className={styles.areaName}>{area.name}</span>
-                <button
-                  type="button"
-                  className={styles.btnSmall}
-                  onClick={() => { setEditingAreaId(area.id); setEditingAreaName(area.name); }}
-                >
-                  Editar nombre
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.btnSmall} ${styles.btnSmallDanger}`}
-                  onClick={() => setConfirmDelete({ area: area.id })}
-                >
-                  Eliminar área
-                </button>
-              </>
-            )}
-          </div>
+        <details key={area.id} className={styles.areaAccordion}>
+          <summary className={styles.areaAccordionSummary}>
+            <span className={styles.areaAccordionTitle}>{area.name}</span>
+            <span className={styles.areaAccordionMeta}>
+              {(area.subAreas ?? []).length} subárea{(area.subAreas ?? []).length === 1 ? '' : 's'}
+            </span>
+          </summary>
+          <div className={styles.areaCard}>
+            <div className={styles.areaHeader}>
+              {editingAreaId === area.id ? (
+                <>
+                  <input
+                    type="text"
+                    className={styles.areaNameInput}
+                    value={editingAreaName}
+                    onChange={(e) => setEditingAreaName(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className={styles.btnSmall}
+                    onClick={() => handleUpdateAreaName(area.id)}
+                    disabled={savingAreaId === area.id}
+                  >
+                    Guardar
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnSmall}
+                    onClick={() => { setEditingAreaId(null); setEditingAreaName(''); }}
+                  >
+                    Cancelar
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className={styles.areaName}>{area.name}</span>
+                  <button
+                    type="button"
+                    className={styles.btnSmall}
+                    onClick={() => { setEditingAreaId(area.id); setEditingAreaName(area.name); }}
+                  >
+                    Editar nombre
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.btnSmall} ${styles.btnSmallDanger}`}
+                    onClick={() => setConfirmDelete({ area: area.id })}
+                  >
+                    Eliminar área
+                  </button>
+                </>
+              )}
+            </div>
 
-          <div className={styles.areaBody}>
+            <div className={styles.areaBody}>
           <div className={styles.directorBlock}>
             <span className={styles.directorLabel}>Director del área</span>
             {editingDirectorAreaId === area.id ? (
@@ -666,9 +673,10 @@ export default function AdminAreasPage() {
                 + Nueva subárea
               </button>
             )}
+            </div>
           </div>
           </div>
-        </div>
+        </details>
       ))}
 
       <ConfirmDialog

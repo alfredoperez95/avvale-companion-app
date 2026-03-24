@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, apiUpload } from '@/lib/api';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
@@ -63,6 +63,7 @@ export default function EditActivationPage() {
   });
   const [attachments, setAttachments] = useState<{ id: string; fileName: string; originalUrl: string; contentType: string | null; createdAt: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
   const [addingUrl, setAddingUrl] = useState(false);
   const [newUrl, setNewUrl] = useState('');
@@ -71,7 +72,7 @@ export default function EditActivationPage() {
 
   const computedSubject =
     activationNumber != null
-      ? `Activación AEP [${formatActivationCode(activationNumber)}] - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`
+      ? `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()} [${formatActivationCode(activationNumber)}]`
       : `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
 
   useEffect(() => {
@@ -208,18 +209,28 @@ export default function EditActivationPage() {
     if (!id || !files?.length) return;
     setUploadError('');
     setUploading(true);
+    setUploadProgress(0);
     let failed = false;
+    const allFiles = Array.from(files);
+    const totalBytes = allFiles.reduce((acc, file) => acc + Math.max(file.size, 1), 0);
+    let uploadedBytes = 0;
     try {
-      for (let i = 0; i < files.length; i++) {
+      for (let i = 0; i < allFiles.length; i++) {
         const formData = new FormData();
-        formData.append('file', files[i]);
-        const res = await apiFetch(`/api/activations/${id}/attachments/upload`, { method: 'POST', body: formData });
+        const file = allFiles[i];
+        formData.append('file', file);
+        const res = await apiUpload(`/api/activations/${id}/attachments/upload`, formData, (loaded) => {
+          const current = uploadedBytes + loaded;
+          setUploadProgress(Math.min(100, Math.round((current / totalBytes) * 100)));
+        });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           setUploadError(data.message ?? 'Error al subir archivo');
           failed = true;
           break;
         }
+        uploadedBytes += Math.max(file.size, 1);
+        setUploadProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
       }
       if (!failed) {
         const r = await apiFetch(`/api/activations/${id}`);
@@ -627,6 +638,12 @@ export default function EditActivationPage() {
             <input type="file" multiple disabled={uploading} onChange={handleFileUploadEdit} style={{ display: 'none' }} />
             {uploading ? 'Subiendo…' : 'Añadir archivos'}
           </label>
+          {uploading && (
+            <div className={styles.uploadProgressWrap} aria-live="polite">
+              <div className={styles.uploadProgressBar} style={{ width: `${uploadProgress}%` }} />
+              <span className={styles.uploadProgressText}>{uploadProgress}%</span>
+            </div>
+          )}
           {uploadError && <p className={styles.error} style={{ marginTop: 'var(--fiori-space-1)' }}>{uploadError}</p>}
         </div>
         {error && <p className={styles.error}>{error}</p>}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, apiUpload } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
@@ -26,6 +26,7 @@ export default function ActivationDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
   const [sanitizedBody, setSanitizedBody] = useState<string | null>(null);
 
@@ -61,9 +62,13 @@ export default function ActivationDetailPage() {
     if (!id) return;
     setError('');
     setSending(true);
+    try {
+      sessionStorage.setItem(`activation-send-started:${id}`, String(Date.now()));
+    } catch {}
     router.push('/launcher/activations/activate');
     router.refresh();
-    void apiFetch(`/api/activations/${id}/send`, { method: 'POST' }).catch(() => {});
+    void apiFetch(`/api/activations/${id}/send`, { method: 'POST' })
+      .catch(() => {});
   };
 
   const canSend = activation && (activation.status === 'DRAFT' || activation.status === 'ERROR');
@@ -80,19 +85,28 @@ export default function ActivationDetailPage() {
     if (!id || !files?.length) return;
     setUploadError('');
     setUploading(true);
+    setUploadProgress(0);
     let failed = false;
+    const allFiles = Array.from(files);
+    const totalBytes = allFiles.reduce((acc, file) => acc + Math.max(file.size, 1), 0);
+    let uploadedBytes = 0;
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (let i = 0; i < allFiles.length; i++) {
+        const file = allFiles[i];
         const formData = new FormData();
         formData.append('file', file);
-        const res = await apiFetch(`/api/activations/${id}/attachments/upload`, { method: 'POST', body: formData });
+        const res = await apiUpload(`/api/activations/${id}/attachments/upload`, formData, (loaded) => {
+          const current = uploadedBytes + loaded;
+          setUploadProgress(Math.min(100, Math.round((current / totalBytes) * 100)));
+        });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           setUploadError(data.message ?? 'Error al subir archivo');
           failed = true;
           break;
         }
+        uploadedBytes += Math.max(file.size, 1);
+        setUploadProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
       }
       if (!failed) refetchActivation();
     } finally {
@@ -259,6 +273,12 @@ export default function ActivationDetailPage() {
             <input type="file" multiple disabled={uploading} onChange={handleFileUpload} style={{ display: 'none' }} />
             {uploading ? 'Subiendo…' : 'Seleccionar archivos'}
           </label>
+          {uploading && (
+            <div className={styles.uploadProgressWrap} aria-live="polite">
+              <div className={styles.uploadProgressBar} style={{ width: `${uploadProgress}%` }} />
+              <span className={styles.uploadProgressText}>{uploadProgress}%</span>
+            </div>
+          )}
           {uploadError && <p className={styles.errorMsg} style={{ marginTop: 'var(--fiori-space-1)' }}>{uploadError}</p>}
         </>
       )}
