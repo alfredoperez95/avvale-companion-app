@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import styles from './FilterBar.module.css';
 
 export type SolicitanteOption = { id: string; name?: string | null; lastName?: string | null; email: string };
@@ -33,16 +32,6 @@ export function FilterBar({
 }: FilterBarProps) {
   const showSolicitante = Boolean(onSolicitanteFilterChange);
   const hasSolicitanteOptions = solicitanteOptions.length > 0;
-
-  useEffect(() => {
-    const solicitanteEl = document.getElementById('filter-solicitante') as HTMLSelectElement | null;
-    const barEl = solicitanteEl?.closest('[role="search"]') as HTMLElement | null;
-    const style = solicitanteEl ? window.getComputedStyle(solicitanteEl) : null;
-    const barStyle = barEl ? window.getComputedStyle(barEl) : null;
-    // #region agent log
-    fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e790b2'},body:JSON.stringify({sessionId:'e790b2',runId:'pre-fix',hypothesisId:'H1',location:'FilterBar.tsx:38',message:'solicitante-width-snapshot',data:{showSolicitante,solicitanteLoading,optionsCount:solicitanteOptions.length,disabled:solicitanteEl?.disabled ?? null,theme:document.documentElement.getAttribute('data-appearance'),offsetWidth:solicitanteEl?.offsetWidth ?? null,clientWidth:solicitanteEl?.clientWidth ?? null,computedWidth:style?.width ?? null,minWidth:style?.minWidth ?? null,flexBasis:style?.flexBasis ?? null,barGap:barStyle?.gap ?? null,barWrap:barStyle?.flexWrap ?? null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-  }, [showSolicitante, solicitanteLoading, solicitanteOptions.length]);
 
   return (
     <div className={styles.bar} role="search">

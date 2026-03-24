@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { AreasService } from './areas.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
 import { CreateAreaDto } from './dto/create-area.dto';
@@ -26,35 +27,28 @@ export class AreasController {
   constructor(private readonly areasService: AreasService) {}
 
   /**
-   * ?admin=true: vista gestión (ADMIN → árbol sistema; USER → árbol propio con contactos).
-   * ?withSubareas=true: áreas del usuario con subáreas para el formulario de activaciones.
+   * ?admin=true: solo ADMIN — vista gestión (árbol sistema con contactos).
+   * ?withSubareas=true: catálogo sistema para formulario de activaciones (todos).
    */
   @Get()
   async list(
     @CurrentUser() user: UserPayload,
     @Query('admin') admin?: string,
     @Query('withSubareas') withSubareas?: string,
-    /** Solo ADMIN: con admin=true, lista el árbol personal enriquecido en lugar del catálogo sistema. */
-    @Query('personal') personal?: string,
   ) {
     const withDetails = admin === 'true';
     const withSubareasList = withSubareas === 'true';
-    const personalCatalog = personal === 'true';
-    return this.areasService.findAll(user, withDetails, withSubareasList, personalCatalog);
+    return this.areasService.findAll(user, withDetails, withSubareasList);
   }
 
-  /** ?system=true solo ADMIN: crea área en catálogo sistema (owner null). */
   @Post()
-  async create(
-    @CurrentUser() user: UserPayload,
-    @Body() dto: CreateAreaDto,
-    @Query('system') system?: string,
-  ) {
-    const systemCatalog = system === 'true';
-    return this.areasService.create(user, dto, systemCatalog);
+  @UseGuards(AdminGuard)
+  async create(@CurrentUser() user: UserPayload, @Body() dto: CreateAreaDto) {
+    return this.areasService.create(user, dto);
   }
 
   @Get('subareas/:subAreaId/contacts')
+  @UseGuards(AdminGuard)
   async listSubAreaContacts(
     @CurrentUser() user: UserPayload,
     @Param('subAreaId') subAreaId: string,
@@ -63,6 +57,7 @@ export class AreasController {
   }
 
   @Post('subareas/:subAreaId/contacts')
+  @UseGuards(AdminGuard)
   async addSubAreaContact(
     @CurrentUser() user: UserPayload,
     @Param('subAreaId') subAreaId: string,
@@ -72,6 +67,7 @@ export class AreasController {
   }
 
   @Patch('subareas/contacts/:contactId')
+  @UseGuards(AdminGuard)
   async updateSubAreaContact(
     @CurrentUser() user: UserPayload,
     @Param('contactId') contactId: string,
@@ -81,6 +77,7 @@ export class AreasController {
   }
 
   @Delete('subareas/contacts/:contactId')
+  @UseGuards(AdminGuard)
   async removeSubAreaContact(
     @CurrentUser() user: UserPayload,
     @Param('contactId') contactId: string,
@@ -89,6 +86,7 @@ export class AreasController {
   }
 
   @Patch('subareas/:subAreaId')
+  @UseGuards(AdminGuard)
   async updateSubArea(
     @CurrentUser() user: UserPayload,
     @Param('subAreaId') subAreaId: string,
@@ -98,6 +96,7 @@ export class AreasController {
   }
 
   @Delete('subareas/:subAreaId')
+  @UseGuards(AdminGuard)
   async removeSubArea(
     @CurrentUser() user: UserPayload,
     @Param('subAreaId') subAreaId: string,
@@ -106,11 +105,13 @@ export class AreasController {
   }
 
   @Get(':id/subareas')
+  @UseGuards(AdminGuard)
   async listSubAreas(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.areasService.findSubAreasByAreaId(user, id);
   }
 
   @Post(':id/subareas')
+  @UseGuards(AdminGuard)
   async addSubArea(
     @CurrentUser() user: UserPayload,
     @Param('id') id: string,
@@ -120,6 +121,7 @@ export class AreasController {
   }
 
   @Patch(':id')
+  @UseGuards(AdminGuard)
   async update(
     @CurrentUser() user: UserPayload,
     @Param('id') id: string,
@@ -129,6 +131,7 @@ export class AreasController {
   }
 
   @Delete(':id')
+  @UseGuards(AdminGuard)
   async remove(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     await this.areasService.remove(user, id);
   }

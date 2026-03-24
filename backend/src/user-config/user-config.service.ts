@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
- * Clona plantillas de sistema, árbol de áreas y firma plantilla para usuarios sin datos propios.
+ * Clona plantillas de sistema y firma plantilla para usuarios sin datos propios.
+ * El catálogo de áreas es global (solo administradores); no se clonan árboles por usuario.
  */
 @Injectable()
 export class UserConfigService {
@@ -35,47 +36,6 @@ export class UserConfigService {
         });
       }
       if (systemTemplates.length > 0) didClone = true;
-    }
-
-    const myAreas = await this.prisma.area.count({ where: { ownerUserId: userId } });
-    if (myAreas === 0) {
-      const systemAreas = await this.prisma.area.findMany({
-        where: { ownerUserId: null },
-        include: {
-          subAreas: {
-            orderBy: { createdAt: 'asc' },
-            include: { contacts: true },
-          },
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-
-      for (const a of systemAreas) {
-        const newArea = await this.prisma.area.create({
-          data: {
-            name: a.name,
-            directorName: a.directorName,
-            directorEmail: a.directorEmail,
-            ownerUserId: userId,
-          },
-        });
-        for (const s of a.subAreas) {
-          const newSub = await this.prisma.subArea.create({
-            data: { areaId: newArea.id, name: s.name },
-          });
-          for (const c of s.contacts) {
-            await this.prisma.subAreaContact.create({
-              data: {
-                subAreaId: newSub.id,
-                name: c.name,
-                email: c.email,
-                isProjectJp: c.isProjectJp,
-              },
-            });
-          }
-        }
-      }
-      if (systemAreas.length > 0) didClone = true;
     }
 
     return { didClone };

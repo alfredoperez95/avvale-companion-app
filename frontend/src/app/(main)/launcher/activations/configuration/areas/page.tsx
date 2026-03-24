@@ -19,8 +19,7 @@ type Area = {
 export default function AdminAreasPage() {
   const [loading, setLoading] = useState(true);
   const [userReady, setUserReady] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [catalogMode, setCatalogMode] = useState<'system' | 'personal'>('system');
+  const [forbidden, setForbidden] = useState(false);
   const [areas, setAreas] = useState<Area[]>([]);
   const [error, setError] = useState('');
   const [newAreaName, setNewAreaName] = useState('');
@@ -56,16 +55,14 @@ export default function AdminAreasPage() {
         return r.ok ? r.json() : null;
       })
       .then((user) => {
-        if (user?.role === 'ADMIN') setIsAdmin(true);
+        if (user?.role !== 'ADMIN') setForbidden(true);
         setUserReady(true);
       })
       .catch(() => setUserReady(true));
   }, []);
 
   const refreshAreas = useCallback(async () => {
-    const params = new URLSearchParams({ admin: 'true' });
-    if (isAdmin && catalogMode === 'personal') params.set('personal', 'true');
-    const res = await apiFetch(`/api/areas?${params}`);
+    const res = await apiFetch('/api/areas?admin=true');
     if (res.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';
@@ -74,10 +71,10 @@ export default function AdminAreasPage() {
     if (!res.ok) return;
     const data = await res.json();
     setAreas(Array.isArray(data) ? data : []);
-  }, [isAdmin, catalogMode]);
+  }, []);
 
   useEffect(() => {
-    if (!userReady) return;
+    if (!userReady || forbidden) return;
     let cancelled = false;
     setLoading(true);
     refreshAreas().finally(() => {
@@ -86,7 +83,7 @@ export default function AdminAreasPage() {
     return () => {
       cancelled = true;
     };
-  }, [userReady, refreshAreas]);
+  }, [userReady, forbidden, refreshAreas]);
 
   const handleCreateArea = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,9 +92,7 @@ export default function AdminAreasPage() {
     if (!name) return;
     setSavingAreaId('new');
     try {
-      const createUrl =
-        isAdmin && catalogMode === 'system' ? '/api/areas?system=true' : '/api/areas';
-      const res = await apiFetch(createUrl, {
+      const res = await apiFetch('/api/areas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -317,36 +312,21 @@ export default function AdminAreasPage() {
 
   if (loading) return null;
 
+  if (forbidden) {
+    return (
+      <div className={styles.page}>
+        <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
+        <p className={styles.forbidden}>No tienes permisos para acceder a esta sección.</p>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.page}>
       <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
       <h1 className={styles.h1}>Áreas</h1>
-      {isAdmin && (
-        <div className={styles.catalogModeTabs} role="tablist" aria-label="Ámbito de edición">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={catalogMode === 'system'}
-            className={catalogMode === 'system' ? styles.catalogModeTabActive : styles.catalogModeTab}
-            onClick={() => setCatalogMode('system')}
-          >
-            Catálogo sistema
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={catalogMode === 'personal'}
-            className={catalogMode === 'personal' ? styles.catalogModeTabActive : styles.catalogModeTab}
-            onClick={() => setCatalogMode('personal')}
-          >
-            Mis áreas (activaciones)
-          </button>
-        </div>
-      )}
       <p className={styles.sectionDesc}>
-        {isAdmin && catalogMode === 'system'
-          ? 'Define el árbol que se clona a usuarios nuevos al cargar la aplicación. Las activaciones usan siempre el árbol personal de cada quien (pestaña Mis áreas).'
-          : 'Áreas, directores y subáreas que definen los destinatarios en tus activaciones.'}
+        Catálogo global: áreas, directores y subáreas que usan todos los usuarios al crear activaciones.
       </p>
       {error && <p className={styles.error}>{error}</p>}
 

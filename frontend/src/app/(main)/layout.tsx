@@ -34,7 +34,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }, [theme]);
 
   useEffect(() => {
-    apiFetch('/api/auth/me')
+    const AUTH_MS = 20000;
+    const ctrl = new AbortController();
+    const timeoutId = window.setTimeout(() => ctrl.abort(), AUTH_MS);
+
+    apiFetch('/api/auth/me', { signal: ctrl.signal })
       .then((r) => {
         if (r.status === 401) {
           window.location.href = '/login';
@@ -43,6 +47,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         return r.ok ? r.json() : null;
       })
       .then((data) => {
+        if (data == null || typeof data !== 'object' || !('id' in data)) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('token');
+            clearAppearanceCookie();
+            window.location.href = '/login';
+          }
+          return;
+        }
         setUser(data);
         if (data?.appearance != null) {
           const nextTheme = data.appearance === 'fiori' ? 'fiori' : 'microsoft';
@@ -60,7 +72,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           window.location.href = '/login';
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        window.clearTimeout(timeoutId);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {

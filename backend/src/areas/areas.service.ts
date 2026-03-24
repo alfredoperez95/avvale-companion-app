@@ -14,16 +14,15 @@ export class AreasService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * admin=true: árbol enriquecido (ADMIN → catálogo sistema salvo personal=true → copia propia; USER → copia personal).
-   * withSubareas=true: áreas del usuario con subáreas id+name (formulario activaciones).
-   * Sin flags: lista plana (USER → propias; ADMIN → sistema).
+   * admin=true: solo ADMIN — árbol enriquecido del catálogo sistema (ownerUserId null).
+   * withSubareas=true: catálogo sistema para formulario de activaciones (todos los usuarios).
+   * Sin flags: lista plana del catálogo sistema (misma visibilidad que withSubareas en práctica).
    */
-  async findAll(
-    user: UserPayload,
-    withDetails: boolean,
-    withSubareas: boolean,
-    personalCatalog = false,
-  ) {
+  async findAll(user: UserPayload, withDetails: boolean, withSubareas: boolean) {
+    if (withDetails && user.role !== 'ADMIN') {
+      throw new ForbiddenException('Solo los administradores pueden gestionar el catálogo de áreas');
+    }
+
     const include =
       withDetails
         ? {
@@ -47,39 +46,37 @@ export class AreasService {
 
     if (withSubareas) {
       return this.prisma.area.findMany({
-        where: { ownerUserId: user.userId },
+        where: { ownerUserId: null },
         orderBy: { name: Prisma.SortOrder.asc },
         include,
       });
     }
 
     if (withDetails) {
-      const ownerUserId =
-        user.role === 'ADMIN' ? (personalCatalog ? user.userId : null) : user.userId;
       return this.prisma.area.findMany({
-        where: { ownerUserId },
+        where: { ownerUserId: null },
         orderBy: { name: Prisma.SortOrder.asc },
         include,
       });
     }
 
     return this.prisma.area.findMany({
-      where: { ownerUserId: user.role === 'ADMIN' ? null : user.userId },
+      where: { ownerUserId: null },
       orderBy: { name: Prisma.SortOrder.asc },
     });
   }
 
-  async create(user: UserPayload, dto: CreateAreaDto, systemCatalog: boolean) {
-    if (systemCatalog && user.role !== 'ADMIN') {
-      throw new ForbiddenException('Solo administradores pueden crear áreas de catálogo sistema');
+  /** Solo ADMIN: crea área en catálogo sistema. */
+  async create(user: UserPayload, dto: CreateAreaDto) {
+    if (user.role !== 'ADMIN') {
+      throw new ForbiddenException('Solo los administradores pueden crear áreas');
     }
-    const ownerUserId = systemCatalog ? null : user.userId;
     return this.prisma.area.create({
       data: {
         name: dto.name.trim(),
         directorName: dto.directorName?.trim() ?? null,
         directorEmail: dto.directorEmail?.trim().toLowerCase() ?? null,
-        ownerUserId,
+        ownerUserId: null,
       },
     });
   }
@@ -182,10 +179,11 @@ export class AreasService {
   }
 
   private assertAreaMutableBy(area: Pick<Area, 'ownerUserId'>, user: UserPayload) {
-    if (area.ownerUserId === null) {
-      if (user.role !== 'ADMIN') throw new ForbiddenException('No puedes modificar el catálogo sistema');
-    } else if (area.ownerUserId !== user.userId) {
-      throw new ForbiddenException('No puedes modificar áreas de otro usuario');
+    if (user.role !== 'ADMIN') {
+      throw new ForbiddenException('Solo los administradores pueden modificar áreas');
+    }
+    if (area.ownerUserId !== null) {
+      throw new ForbiddenException('Solo se puede gestionar el catálogo de áreas global');
     }
   }
 

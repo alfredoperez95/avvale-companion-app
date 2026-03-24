@@ -53,17 +53,17 @@ export default function ConfigurationHubPage() {
                 <span className={styles.tileCta}>Gestionar contactos →</span>
               </article>
             </Link>
+            <Link href="/launcher/activations/configuration/areas" className={styles.tileLink} aria-labelledby="tile-areas-heading" role="listitem">
+              <article className={styles.tile}>
+                <h2 id="tile-areas-heading" className={styles.tileTitle}>Áreas</h2>
+                <p className={styles.tileDesc}>
+                  Catálogo global de áreas, directores y subáreas; todos los usuarios lo usan al crear activaciones.
+                </p>
+                <span className={styles.tileCta}>Gestionar áreas →</span>
+              </article>
+            </Link>
           </>
         )}
-        <Link href="/launcher/activations/configuration/areas" className={styles.tileLink} aria-labelledby="tile-areas-heading" role="listitem">
-          <article className={styles.tile}>
-            <h2 id="tile-areas-heading" className={styles.tileTitle}>Áreas</h2>
-            <p className={styles.tileDesc}>
-              Áreas, directores y subáreas que definen los destinatarios de cada activación (tu copia personal; el administrador puede además editar el catálogo sistema).
-            </p>
-            <span className={styles.tileCta}>Gestionar áreas →</span>
-          </article>
-        </Link>
         <Link href="/launcher/activations/configuration/email-templates" className={styles.tileLink} aria-labelledby="tile-templates-heading" role="listitem">
           <article className={styles.tile}>
             <h2 id="tile-templates-heading" className={styles.tileTitle}>Plantillas Email</h2>

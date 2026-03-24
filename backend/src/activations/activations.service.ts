@@ -117,8 +117,12 @@ export class ActivationsService {
         throw new BadRequestException('Una o más áreas no existen');
       }
       for (const a of areas) {
-        if (a.ownerUserId !== userId) {
-          throw new BadRequestException('Las áreas deben pertenecer a tu configuración personal');
+        const allowed =
+          a.ownerUserId === null || a.ownerUserId === userId; /* legado: copias personales antiguas */
+        if (!allowed) {
+          throw new BadRequestException(
+            'Las áreas deben ser del catálogo global o de tu configuración anterior',
+          );
         }
       }
     }
@@ -131,8 +135,12 @@ export class ActivationsService {
         throw new BadRequestException('Una o más subáreas no existen');
       }
       for (const s of subAreas) {
-        if (s.area.ownerUserId !== userId) {
-          throw new BadRequestException('Las subáreas deben pertenecer a tu configuración personal');
+        const allowed =
+          s.area.ownerUserId === null || s.area.ownerUserId === userId; /* legado */
+        if (!allowed) {
+          throw new BadRequestException(
+            'Las subáreas deben ser del catálogo global o de tu configuración anterior',
+          );
         }
       }
     }

@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { TEMPLATE_SHORTCODES } from '@/lib/replace-template-variables';
+import { LoadingScreen } from '@/components/LoadingScreen/LoadingScreen';
 import styles from '../configuration.module.css';
 
 type EmailTemplateItem = { id: string; name: string; content: string; createdAt: string };
@@ -25,15 +26,27 @@ export default function AdminEmailTemplatesPage() {
   const [restoring, setRestoring] = useState(false);
 
   const loadTemplates = async (admin: boolean) => {
-    const url = admin ? '/api/email-templates?scope=system' : '/api/email-templates';
-    const res = await apiFetch(url);
-    if (res.status === 401) {
-      window.location.href = '/login';
-      return;
+    try {
+      const url = admin ? '/api/email-templates?scope=system' : '/api/email-templates';
+      const res = await apiFetch(url);
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+        setError(msg ?? `Error al cargar plantillas (${res.status})`);
+        setTemplates([]);
+        return;
+      }
+      const data = await res.json();
+      setTemplates(Array.isArray(data) ? data : []);
+      setError('');
+    } catch {
+      setError('Error de conexión al cargar plantillas');
+      setTemplates([]);
     }
-    if (!res.ok) return;
-    const data = await res.json();
-    setTemplates(Array.isArray(data) ? data : []);
   };
 
   useEffect(() => {
@@ -159,7 +172,9 @@ export default function AdminEmailTemplatesPage() {
     }
   };
 
-  if (loading) return null;
+  if (loading) {
+    return <LoadingScreen message="Cargando plantillas…" fullPage={false} />;
+  }
 
   return (
     <div className={styles.page}>
@@ -170,21 +185,6 @@ export default function AdminEmailTemplatesPage() {
           ? 'Estás editando las plantillas de sistema: se copian a cada usuario la primera vez que entra (bootstrap). En las activaciones cada persona usa su copia personal.'
           : 'Crea y edita plantillas para el cuerpo del correo con el editor de texto enriquecido. Podrás elegirlas al crear o editar una activación.'}
       </p>
-      <p className={styles.sectionDesc} style={{ marginTop: 'var(--fiori-space-2)' }}>
-        {isAdmin
-          ? 'El botón «Restaurar mis plantillas personales» aplica a tus copias para activaciones (no modifica el catálogo de sistema de esta pantalla).'
-          : 'Puedes volver a las plantillas predefinidas del administrador en cualquier momento; se sustituirán tus plantillas actuales por copias del catálogo de sistema.'}
-      </p>
-      <div style={{ marginBottom: 'var(--fiori-space-4)' }}>
-        <button
-          type="button"
-          className={styles.btnSecondary}
-          disabled={restoring}
-          onClick={() => setConfirmRestoreOpen(true)}
-        >
-          {isAdmin ? 'Restaurar mis plantillas personales' : 'Restaurar plantillas predefinidas'}
-        </button>
-      </div>
       {error && <p className={styles.error}>{error}</p>}
 
       <section className={styles.templateCard} aria-labelledby="create-template-heading">
@@ -281,6 +281,29 @@ export default function AdminEmailTemplatesPage() {
           ))}
         </ul>
       )}
+
+      <section
+        className={styles.templateCard}
+        aria-labelledby="restore-templates-heading"
+        style={{ marginTop: 'var(--fiori-space-6)' }}
+      >
+        <h2 id="restore-templates-heading" className={styles.templateCardTitle}>
+          {isAdmin ? 'Restaurar copias personales' : 'Restaurar desde el catálogo de sistema'}
+        </h2>
+        <p className={styles.sectionDesc} style={{ marginTop: 0 }}>
+          {isAdmin
+            ? 'El botón aplica a tus copias para activaciones (no modifica el catálogo de sistema de esta pantalla).'
+            : 'Puedes volver a las plantillas predefinidas del administrador en cualquier momento; se sustituirán tus plantillas actuales por copias del catálogo de sistema.'}
+        </p>
+        <button
+          type="button"
+          className={styles.btnPrimary}
+          disabled={restoring}
+          onClick={() => setConfirmRestoreOpen(true)}
+        >
+          {isAdmin ? 'Restaurar mis plantillas personales' : 'Restaurar plantillas predefinidas'}
+        </button>
+      </section>
 
       <ConfirmDialog
         open={confirmDeleteId != null}
