@@ -69,10 +69,11 @@ model SubArea {
 }
 
 model SubAreaContact {
-  id       String  @id @default(uuid())
-  subAreaId String @map("sub_area_id")
-  name     String
-  email    String
+  id          String  @id @default(uuid())
+  subAreaId   String  @map("sub_area_id")
+  name        String
+  email       String
+  isProjectJp Boolean @default(false) @map("is_project_jp")
 
   subArea SubArea @relation(fields: [subAreaId], references: [id], onDelete: Cascade)
 
@@ -95,6 +96,9 @@ model Activation {
   projectAmount    String?          @map("project_amount")
   projectType      ProjectType?     @map("project_type")
   hubspotUrl       String?          @map("hubspot_url")
+  projectJpName    String?          @map("project_jp_name")
+  projectJpEmail   String?          @map("project_jp_email")
+  projectJpSource  String?          @map("project_jp_source")
   body             String?          @map("body") @db.Text
   attachmentUrls   String?          @map("attachment_urls") @db.Text
   attachmentNames  String?          @map("attachment_names") @db.Text
@@ -151,10 +155,11 @@ model ActivationSubArea {
 }
 
 model CcContact {
-  id        String   @id @default(uuid())
-  name      String
-  email     String
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  name        String
+  email       String
+  isProjectJp Boolean  @default(false) @map("is_project_jp")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("cc_contacts")
 }

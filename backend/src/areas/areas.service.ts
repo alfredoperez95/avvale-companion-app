@@ -21,7 +21,7 @@ export class AreasService {
               subAreas: {
                 orderBy: { name: 'asc' },
                 include: {
-                  contacts: { orderBy: { name: 'asc' } },
+                  contacts: { orderBy: [{ isProjectJp: 'desc' }, { name: 'asc' }] },
                 },
               },
             }
@@ -72,7 +72,7 @@ export class AreasService {
     return this.prisma.subArea.findMany({
       where: { areaId },
       orderBy: { name: 'asc' },
-      include: { contacts: { orderBy: { name: 'asc' } } },
+      include: { contacts: { orderBy: [{ isProjectJp: 'desc' }, { name: 'asc' }] } },
     });
   }
 
@@ -116,6 +116,7 @@ export class AreasService {
         subAreaId,
         name: dto.name.trim(),
         email: dto.email.trim().toLowerCase(),
+        isProjectJp: dto.isProjectJp ?? false,
       },
     });
   }
@@ -124,9 +125,10 @@ export class AreasService {
   async updateSubAreaContact(contactId: string, dto: UpdateSubAreaContactDto) {
     const contact = await this.prisma.subAreaContact.findFirst({ where: { id: contactId } });
     if (!contact) throw new NotFoundException('Contacto no encontrado');
-    const data: { name?: string; email?: string } = {};
+    const data: { name?: string; email?: string; isProjectJp?: boolean } = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.email !== undefined) data.email = dto.email.trim().toLowerCase();
+    if (dto.isProjectJp !== undefined) data.isProjectJp = dto.isProjectJp;
     return this.prisma.subAreaContact.update({
       where: { id: contactId },
       data,

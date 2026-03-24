@@ -27,6 +27,7 @@ function buildSubject(projectName: string, client: string | null, activationNumb
 }
 
 const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
+type ProjectJpResolution = { name: string; email: string; source: 'AUTO' | 'MANUAL' } | null;
 
 function normalizeEmailHtmlSpacing(
   html: string | null,
@@ -191,6 +192,81 @@ export class ActivationsService {
     return list.length > 0 ? list.join(', ') : areaRecipientTo;
   }
 
+  private mergeEmailIntoRecipientTo(baseRecipientTo: string, email: string | null | undefined): string {
+    const normalized = (email ?? '').trim().toLowerCase();
+    if (!normalized) return baseRecipientTo;
+    const seed = baseRecipientTo
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+      .filter((e) => e !== PLACEHOLDER_RECIPIENT);
+    const merged = new Set<string>([...seed, normalized]);
+    const list = [...merged];
+    return list.length > 0 ? list.join(', ') : PLACEHOLDER_RECIPIENT;
+  }
+
+  private async resolveProjectJp(
+    areaIds: string[],
+    subAreaIds: string[],
+    projectJpContactId?: string | null,
+  ): Promise<ProjectJpResolution> {
+    if (projectJpContactId) {
+      const manual = await this.prisma.ccContact.findUnique({
+        where: { id: projectJpContactId },
+        select: { name: true, email: true },
+      });
+      if (!manual) {
+        throw new BadRequestException('El contacto manual de JP no existe');
+      }
+      return { name: manual.name, email: manual.email.trim().toLowerCase(), source: 'MANUAL' };
+    }
+
+    if (subAreaIds.length > 0) {
+      const firstSubAreaId = subAreaIds[0];
+      const firstSubArea = await this.prisma.subArea.findUnique({
+        where: { id: firstSubAreaId },
+        select: {
+          contacts: {
+            where: { isProjectJp: true },
+            orderBy: [{ name: 'asc' }, { email: 'asc' }],
+            select: { name: true, email: true },
+          },
+        },
+      });
+      const winner = firstSubArea?.contacts[0];
+      if (winner) {
+        return { name: winner.name, email: winner.email.trim().toLowerCase(), source: 'AUTO' };
+      }
+    }
+
+    if (areaIds.length > 0) {
+      const firstAreaId = areaIds[0];
+      const firstArea = await this.prisma.area.findUnique({
+        where: { id: firstAreaId },
+        select: {
+          subAreas: {
+            select: {
+              contacts: {
+                where: { isProjectJp: true },
+                select: { name: true, email: true },
+              },
+            },
+          },
+        },
+      });
+      const candidates =
+        firstArea?.subAreas
+          .flatMap((s) => s.contacts)
+          .sort((a, b) => a.name.localeCompare(b.name) || a.email.localeCompare(b.email)) ?? [];
+      if (candidates.length > 0) {
+        const winner = candidates[0];
+        return { name: winner.name, email: winner.email.trim().toLowerCase(), source: 'AUTO' };
+      }
+    }
+
+    return null;
+  }
+
   /** Crea una activación en estado DRAFT para el usuario. */
   async create(userId: string, createdByLabel: string, dto: CreateActivationDto) {
     const areaIds = dto.areaIds ?? [];
@@ -199,7 +275,9 @@ export class ActivationsService {
       throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
     }
     const { recipientTo: areaRecipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
-    const recipientTo = await this.mergeBillingAdminIntoRecipientTo(areaRecipientTo);
+    const projectJp = await this.resolveProjectJp(areaIds, subAreaIds, dto.projectJpContactId);
+    const recipientToWithJp = this.mergeEmailIntoRecipientTo(areaRecipientTo, projectJp?.email);
+    const recipientTo = await this.mergeBillingAdminIntoRecipientTo(recipientToWithJp);
 
     const activation = await this.prisma.$transaction(async (tx) => {
       const created = await tx.activation.create({
@@ -213,6 +291,9 @@ export class ActivationsService {
           projectAmount: dto.projectAmount.trim() || null,
           projectType: dto.projectType,
           hubspotUrl: dto.hubspotUrl ?? null,
+          projectJpName: projectJp?.name ?? null,
+          projectJpEmail: projectJp?.email ?? null,
+          projectJpSource: projectJp?.source ?? null,
           recipientTo,
           recipientCc: dto.recipientCc?.trim() || null,
           subject: buildSubjectWithoutCode(dto.projectName, dto.client ?? null),
@@ -304,6 +385,15 @@ export class ActivationsService {
     return activation;
   }
 
+  async previewProjectJp(areaIds: string[], subAreaIds: string[], projectJpContactId?: string | null) {
+    const projectJp = await this.resolveProjectJp(areaIds, subAreaIds, projectJpContactId);
+    return {
+      projectJpName: projectJp?.name ?? null,
+      projectJpEmail: projectJp?.email ?? null,
+      projectJpSource: projectJp?.source ?? null,
+    };
+  }
+
   /** Actualiza una activación solo si es DRAFT y pertenece al usuario. */
   async update(activationId: string, userId: string, dto: UpdateActivationDto) {
     const activation = await this.findOneByIdAndUser(activationId, userId);
@@ -332,26 +422,37 @@ export class ActivationsService {
     if (dto.attachmentNames !== undefined) {
       data.attachmentNames = dto.attachmentNames?.length ? JSON.stringify(dto.attachmentNames) : null;
     }
-    if (dto.areaIds !== undefined || dto.subAreaIds !== undefined) {
+    if (
+      dto.areaIds !== undefined ||
+      dto.subAreaIds !== undefined ||
+      dto.projectJpContactId !== undefined
+    ) {
       const areaIds = dto.areaIds ?? activation.activationAreas?.map((a) => a.areaId) ?? [];
       const subAreaIds = dto.subAreaIds ?? activation.activationSubAreas?.map((a) => a.subAreaId) ?? [];
       if (areaIds.length === 0 && subAreaIds.length === 0) {
         throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
       }
-      await this.prisma.activationArea.deleteMany({ where: { activationId } });
-      await this.prisma.activationSubArea.deleteMany({ where: { activationId } });
-      if (areaIds.length > 0) {
-        await this.prisma.activationArea.createMany({
-          data: areaIds.map((areaId) => ({ activationId, areaId })),
-        });
+      if (dto.areaIds !== undefined || dto.subAreaIds !== undefined) {
+        await this.prisma.activationArea.deleteMany({ where: { activationId } });
+        await this.prisma.activationSubArea.deleteMany({ where: { activationId } });
+        if (areaIds.length > 0) {
+          await this.prisma.activationArea.createMany({
+            data: areaIds.map((areaId) => ({ activationId, areaId })),
+          });
+        }
+        if (subAreaIds.length > 0) {
+          await this.prisma.activationSubArea.createMany({
+            data: subAreaIds.map((subAreaId) => ({ activationId, subAreaId })),
+          });
+        }
       }
-      if (subAreaIds.length > 0) {
-        await this.prisma.activationSubArea.createMany({
-          data: subAreaIds.map((subAreaId) => ({ activationId, subAreaId })),
-        });
-      }
+      const projectJp = await this.resolveProjectJp(areaIds, subAreaIds, dto.projectJpContactId);
       const { recipientTo: areaRecipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
-      data.recipientTo = await this.mergeBillingAdminIntoRecipientTo(areaRecipientTo);
+      const recipientToWithJp = this.mergeEmailIntoRecipientTo(areaRecipientTo, projectJp?.email);
+      data.recipientTo = await this.mergeBillingAdminIntoRecipientTo(recipientToWithJp);
+      data.projectJpName = projectJp?.name ?? null;
+      data.projectJpEmail = projectJp?.email ?? null;
+      data.projectJpSource = projectJp?.source ?? null;
     }
     await this.prisma.activation.update({ where: { id: activationId }, data });
     return this.findOneByIdAndUser(activationId, userId);

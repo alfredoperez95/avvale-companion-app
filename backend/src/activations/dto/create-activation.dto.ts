@@ -57,4 +57,8 @@ export class CreateActivationDto {
   @IsArray()
   @IsString({ each: true })
   attachmentNames?: string[];
+
+  @IsOptional()
+  @IsString()
+  projectJpContactId?: string | null;
 }

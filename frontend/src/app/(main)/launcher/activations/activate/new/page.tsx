@@ -12,7 +12,7 @@ import styles from './form.module.css';
 
 type SubAreaOption = { id: string; name: string };
 type AreaWithSubareas = { id: string; name: string; subAreas?: SubAreaOption[] };
-type CcContact = { id: string; name: string; email: string };
+type CcContact = { id: string; name: string; email: string; isProjectJp: boolean };
 type EmailTemplateItem = { id: string; name: string; content: string };
 type SelectedArea = { type: 'area'; areaId: string; areaName: string };
 type SelectedSubarea = { type: 'subarea'; subAreaId: string; subAreaName: string; areaId: string; areaName: string };
@@ -35,6 +35,12 @@ export default function NewActivationPage() {
   const [selectedCcEmail, setSelectedCcEmail] = useState('');
   const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [projectJpContactId, setProjectJpContactId] = useState<string>('');
+  const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null }>({
+    projectJpName: null,
+    projectJpEmail: null,
+    projectJpSource: null,
+  });
   const [bodySectionVisible, setBodySectionVisible] = useState(false);
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [scannedAttachments, setScannedAttachments] = useState<{ url: string; name: string }[]>([]);
@@ -49,6 +55,8 @@ export default function NewActivationPage() {
     projectType: '' as '' | 'CONSULTORIA' | 'SW',
     hubspotUrl: '',
     body: '',
+    projectJpName: '',
+    projectJpEmail: '',
   });
 
   const computedSubject = `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
@@ -59,6 +67,31 @@ export default function NewActivationPage() {
       .then((data) => setAreas(Array.isArray(data) ? data : []))
       .catch(() => setAreas([]));
   }, []);
+
+  useEffect(() => {
+    const areaIds = selected.filter((s): s is SelectedArea => s.type === 'area').map((s) => s.areaId);
+    const subAreaIds = selected.filter((s): s is SelectedSubarea => s.type === 'subarea').map((s) => s.subAreaId);
+    if (areaIds.length === 0 && subAreaIds.length === 0) {
+      setProjectJpPreview({ projectJpName: null, projectJpEmail: null, projectJpSource: null });
+      return;
+    }
+    const params = new URLSearchParams();
+    areaIds.forEach((id) => params.append('areaIds', id));
+    subAreaIds.forEach((id) => params.append('subAreaIds', id));
+    if (projectJpContactId) params.set('projectJpContactId', projectJpContactId);
+    apiFetch(`/api/activations/project-jp-preview?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setProjectJpPreview(data);
+        setForm((prev) => ({
+          ...prev,
+          projectJpName: data.projectJpName ?? '',
+          projectJpEmail: data.projectJpEmail ?? '',
+        }));
+      })
+      .catch(() => {});
+  }, [selected, projectJpContactId]);
   useEffect(() => {
     apiFetch('/api/contacts')
       .then((r) => (r.ok ? r.json() : []))
@@ -180,6 +213,7 @@ export default function NewActivationPage() {
         areaIds,
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
         recipientCc: selectedCcEmail.trim() || undefined,
+        projectJpContactId: projectJpContactId || undefined,
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
         attachmentNames: attachmentUrls.length ? attachmentNames : undefined,
@@ -316,6 +350,25 @@ export default function NewActivationPage() {
                 <option key={c.id} value={c.email}>{c.name} ({c.email})</option>
               ))}
             </datalist>
+          </div>
+          <div id="form-group-project-jp" className={styles.formGroup}>
+            <label className={styles.label} htmlFor="projectJpContactId"><span className={styles.labelText}>JP del Proyecto</span></label>
+            <select
+              id="projectJpContactId"
+              value={projectJpContactId}
+              onChange={(e) => setProjectJpContactId(e.target.value)}
+              className={styles.input}
+            >
+              <option value="">Automático (según área/subárea)</option>
+              {ccContacts.filter((c) => c.isProjectJp).map((c) => (
+                <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
+              ))}
+            </select>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
+              {projectJpPreview.projectJpEmail
+                ? `Seleccionado: ${projectJpPreview.projectJpName} (${projectJpPreview.projectJpEmail}) [${projectJpPreview.projectJpSource}]`
+                : 'Sin JP asignado. Marca contactos JP en áreas/subáreas o elige uno manual.'}
+            </p>
           </div>
         </div>
         <div id="form-group-template" className={`${styles.formGroup} ${styles.formGroupFull}`}>

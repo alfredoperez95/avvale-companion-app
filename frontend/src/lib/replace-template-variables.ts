@@ -10,6 +10,7 @@ export const TEMPLATE_SHORTCODES = [
   { value: '{{tipoOportunidad}}', label: 'Tipo de oportunidad' },
   { value: '{{urlHubSpot}}', label: 'URL HubSpot' },
   { value: '{{Saludo}}', label: 'Saludo' },
+  { value: '{{JP de Proyecto}}', label: 'JP de Proyecto (@"Nombre" con enlace email)' },
 ] as const;
 
 export type TemplateVariables = {
@@ -20,6 +21,8 @@ export type TemplateVariables = {
   projectType: '' | 'CONSULTORIA' | 'SW';
   hubspotUrl: string;
   saludo?: string;
+  projectJpName?: string;
+  projectJpEmail?: string;
 };
 
 const SHORTCODE_MAP: Record<string, keyof TemplateVariables> = {
@@ -46,6 +49,12 @@ function projectTypeLabel(projectType: '' | 'CONSULTORIA' | 'SW'): string {
   return '';
 }
 
+function buildProjectJpHtml(name: string, email: string): string {
+  const safeName = escapeForHtml(name.trim());
+  const safeEmail = escapeForHtml(email.trim());
+  return `<a href="mailto:${safeEmail}">@"${safeName}"</a>`;
+}
+
 /**
  * Saludo según hora: 4:01–12:30 días, 12:31–20:00 tardes, 20:01–4:00 noches.
  */
@@ -70,6 +79,8 @@ export function replaceTemplateVariables(html: string, values: TemplateVariables
     projectType: projectTypeLabel(values.projectType),
     hubspotUrl: values.hubspotUrl ?? '',
     saludo: values.saludo ?? getTimeBasedGreeting(),
+    projectJpName: values.projectJpName ?? '',
+    projectJpEmail: values.projectJpEmail ?? '',
   };
   let result = html;
   for (const [shortcodeKey, formKey] of Object.entries(SHORTCODE_MAP)) {
@@ -77,6 +88,11 @@ export function replaceTemplateVariables(html: string, values: TemplateVariables
     const value = raw[formKey];
     result = result.split(placeholder).join(escapeForHtml(value));
   }
+  const jpHtml =
+    raw.projectJpName.trim() && raw.projectJpEmail.trim()
+      ? buildProjectJpHtml(raw.projectJpName, raw.projectJpEmail)
+      : '';
+  result = result.split('{{JP de Proyecto}}').join(jpHtml);
   // Cualquier {{cualquierCosa}} restante → vacío
   result = result.replace(/\{\{[^}]+\}\}/g, '');
   return result;

@@ -7,11 +7,11 @@ import { UpdateContactDto } from './dto/update-contact.dto';
 export class ContactsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Lista contactos ordenados por nombre (id, name, email). */
+  /** Lista contactos ordenados por nombre (id, name, email, isProjectJp). */
   findAll() {
     return this.prisma.ccContact.findMany({
       orderBy: { name: 'asc' },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, isProjectJp: true },
     });
   }
 
@@ -21,8 +21,9 @@ export class ContactsService {
       data: {
         name: dto.name.trim(),
         email: dto.email.trim().toLowerCase(),
+        isProjectJp: dto.isProjectJp ?? false,
       },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, isProjectJp: true },
     });
   }
 
@@ -34,8 +35,9 @@ export class ContactsService {
       data: {
         ...(dto.name !== undefined && { name: dto.name.trim() }),
         ...(dto.email !== undefined && { email: dto.email.trim().toLowerCase() }),
+        ...(dto.isProjectJp !== undefined && { isProjectJp: dto.isProjectJp }),
       },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, isProjectJp: true },
     });
   }
 

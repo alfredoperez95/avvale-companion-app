@@ -81,6 +81,23 @@ export class ActivationsController {
     return { ok: true };
   }
 
+  @Get('project-jp-preview')
+  async projectJpPreview(
+    @Query('areaIds') areaIdsQuery?: string | string[],
+    @Query('subAreaIds') subAreaIdsQuery?: string | string[],
+    @Query('projectJpContactId') projectJpContactId?: string,
+  ) {
+    const toArray = (value?: string | string[]) =>
+      (Array.isArray(value) ? value : value ? value.split(',') : [])
+        .map((v) => v.trim())
+        .filter(Boolean);
+    return this.activationsService.previewProjectJp(
+      toArray(areaIdsQuery),
+      toArray(subAreaIdsQuery),
+      projectJpContactId?.trim() || null,
+    );
+  }
+
   @Get(':id')
   async getOne(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     if (user.role === 'ADMIN') {

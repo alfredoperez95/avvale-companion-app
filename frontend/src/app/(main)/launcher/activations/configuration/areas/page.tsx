@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import styles from '../configuration.module.css';
 
-type SubAreaContact = { id: string; name: string; email: string };
+type SubAreaContact = { id: string; name: string; email: string; isProjectJp: boolean };
 type SubArea = { id: string; name: string; contacts: SubAreaContact[] };
 type Area = {
   id: string;
@@ -37,9 +37,11 @@ export default function AdminAreasPage() {
   const [addingContactSubAreaId, setAddingContactSubAreaId] = useState<string | null>(null);
   const [newContactName, setNewContactName] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
+  const [newContactIsProjectJp, setNewContactIsProjectJp] = useState(false);
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [editContactName, setEditContactName] = useState('');
   const [editContactEmail, setEditContactEmail] = useState('');
+  const [editContactIsProjectJp, setEditContactIsProjectJp] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ area?: string; subarea?: string; contact?: string } | null>(null);
 
   const loadAreas = async () => {
@@ -245,7 +247,7 @@ export default function AdminAreasPage() {
       const res = await apiFetch(`/api/areas/subareas/${subAreaId}/contacts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({ name, email, isProjectJp: newContactIsProjectJp }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -255,6 +257,7 @@ export default function AdminAreasPage() {
       setAddingContactSubAreaId(null);
       setNewContactName('');
       setNewContactEmail('');
+      setNewContactIsProjectJp(false);
       await loadAreas();
     } finally {
       setSavingAreaId(null);
@@ -271,7 +274,7 @@ export default function AdminAreasPage() {
       const res = await apiFetch(`/api/areas/subareas/contacts/${contactId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({ name, email, isProjectJp: editContactIsProjectJp }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -528,6 +531,14 @@ export default function AdminAreasPage() {
                             placeholder="Email"
                             size={20}
                           />
+                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <input
+                              type="checkbox"
+                              checked={editContactIsProjectJp}
+                              onChange={(e) => setEditContactIsProjectJp(e.target.checked)}
+                            />
+                            JP
+                          </label>
                           <button
                             type="button"
                             className={styles.btnSmall}
@@ -546,7 +557,10 @@ export default function AdminAreasPage() {
                         </>
                       ) : (
                         <>
-                          <span className={styles.contactText}>{c.name}, {c.email}</span>
+                          <span className={styles.contactText}>
+                            {c.name}, {c.email}
+                            {c.isProjectJp ? ' (JP)' : ''}
+                          </span>
                           <span className={styles.contactActions}>
                             <button
                               type="button"
@@ -555,6 +569,7 @@ export default function AdminAreasPage() {
                                 setEditingContactId(c.id);
                                 setEditContactName(c.name);
                                 setEditContactEmail(c.email);
+                                setEditContactIsProjectJp(Boolean(c.isProjectJp));
                               }}
                             >
                               Editar
@@ -588,6 +603,14 @@ export default function AdminAreasPage() {
                       placeholder="Email"
                       required
                     />
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={newContactIsProjectJp}
+                        onChange={(e) => setNewContactIsProjectJp(e.target.checked)}
+                      />
+                      JP
+                    </label>
                     <button type="submit" disabled={savingAreaId === sub.id} className={styles.btnPrimary}>
                       Añadir
                     </button>

@@ -1,4 +1,4 @@
-import { IsString, MinLength, IsEmail, IsOptional } from 'class-validator';
+import { IsString, MinLength, IsEmail, IsOptional, IsBoolean } from 'class-validator';
 
 export class UpdateSubAreaContactDto {
   @IsOptional()
@@ -9,4 +9,8 @@ export class UpdateSubAreaContactDto {
   @IsOptional()
   @IsEmail({}, { message: 'El email no es válido' })
   email?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isProjectJp?: boolean;
 }

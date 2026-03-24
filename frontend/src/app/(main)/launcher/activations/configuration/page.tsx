@@ -82,7 +82,7 @@ export default function AdminPage() {
           <article className={styles.tile}>
             <h2 id="tile-signature-heading" className={styles.tileTitle}>Firma</h2>
             <p className={styles.tileDesc}>
-              Firma HTML que se incluye en el envío hacia Make para añadirla al correo (una sola firma global).
+              Firma HTML que se incluye en el envío del email de activación. Solo se permite una por cuenta.
             </p>
             <span className={styles.tileCta}>Editar firma →</span>
           </article>

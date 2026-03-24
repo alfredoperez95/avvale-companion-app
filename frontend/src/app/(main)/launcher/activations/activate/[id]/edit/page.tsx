@@ -13,7 +13,7 @@ import styles from '../../new/form.module.css';
 
 type SubAreaOption = { id: string; name: string };
 type AreaWithSubareas = { id: string; name: string; subAreas?: SubAreaOption[] };
-type CcContact = { id: string; name: string; email: string };
+type CcContact = { id: string; name: string; email: string; isProjectJp: boolean };
 type EmailTemplateItem = { id: string; name: string; content: string };
 type SelectedArea = { type: 'area'; areaId: string; areaName: string };
 type SelectedSubarea = { type: 'subarea'; subAreaId: string; subAreaName: string; areaId: string; areaName: string };
@@ -38,6 +38,12 @@ export default function EditActivationPage() {
   const [ccContacts, setCcContacts] = useState<CcContact[]>([]);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplateItem[]>([]);
   const [selectedCcEmail, setSelectedCcEmail] = useState('');
+  const [projectJpContactId, setProjectJpContactId] = useState<string>('');
+  const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null }>({
+    projectJpName: null,
+    projectJpEmail: null,
+    projectJpSource: null,
+  });
   const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [form, setForm] = useState({
@@ -48,6 +54,8 @@ export default function EditActivationPage() {
     projectType: '' as '' | 'CONSULTORIA' | 'SW',
     hubspotUrl: '',
     body: '',
+    projectJpName: '',
+    projectJpEmail: '',
     attachmentUrlsText: '',
     attachmentNames: [] as string[],
   });
@@ -132,8 +140,15 @@ export default function EditActivationPage() {
           projectType: (data.projectType === 'CONSULTORIA' || data.projectType === 'SW' ? data.projectType : '') as '' | 'CONSULTORIA' | 'SW',
           hubspotUrl: data.hubspotUrl ?? '',
           body: data.body ?? '',
+          projectJpName: data.projectJpName ?? '',
+          projectJpEmail: data.projectJpEmail ?? '',
           attachmentUrlsText: urlsText,
           attachmentNames: namesArr,
+        });
+        setProjectJpPreview({
+          projectJpName: data.projectJpName ?? null,
+          projectJpEmail: data.projectJpEmail ?? null,
+          projectJpSource: data.projectJpSource ?? null,
         });
         setSelectedCcEmail((data.recipientCc ?? '').trim());
         const items: SelectedItem[] = [];
@@ -156,6 +171,28 @@ export default function EditActivationPage() {
       .catch(() => setLoadError('Error al cargar'))
       .finally(() => setFetchLoading(false));
   }, [id, router]);
+
+  useEffect(() => {
+    const areaIds = selected.filter((s): s is SelectedArea => s.type === 'area').map((s) => s.areaId);
+    const subAreaIds = selected.filter((s): s is SelectedSubarea => s.type === 'subarea').map((s) => s.subAreaId);
+    if (areaIds.length === 0 && subAreaIds.length === 0) return;
+    const params = new URLSearchParams();
+    areaIds.forEach((x) => params.append('areaIds', x));
+    subAreaIds.forEach((x) => params.append('subAreaIds', x));
+    if (projectJpContactId) params.set('projectJpContactId', projectJpContactId);
+    apiFetch(`/api/activations/project-jp-preview?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setProjectJpPreview(data);
+        setForm((prev) => ({
+          ...prev,
+          projectJpName: data.projectJpName ?? '',
+          projectJpEmail: data.projectJpEmail ?? '',
+        }));
+      })
+      .catch(() => {});
+  }, [selected, projectJpContactId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const name = e.target.name;
@@ -269,6 +306,7 @@ export default function EditActivationPage() {
         areaIds,
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
         recipientCc: selectedCcEmail.trim() || undefined,
+        projectJpContactId: projectJpContactId || undefined,
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
         attachmentNames: attachmentUrls.length ? attachmentNames : undefined,
@@ -306,6 +344,25 @@ export default function EditActivationPage() {
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>
           <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} onBlur={handleProjectNameBlur} required className={styles.input} placeholder="Implementación S/4HANA Public" />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label} htmlFor="projectJpContactId">JP del Proyecto</label>
+          <select
+            id="projectJpContactId"
+            value={projectJpContactId}
+            onChange={(e) => setProjectJpContactId(e.target.value)}
+            className={styles.input}
+          >
+            <option value="">Automático (según área/subárea)</option>
+            {ccContacts.filter((c) => c.isProjectJp).map((c) => (
+              <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
+            ))}
+          </select>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
+            {projectJpPreview.projectJpEmail
+              ? `Seleccionado: ${projectJpPreview.projectJpName} (${projectJpPreview.projectJpEmail}) [${projectJpPreview.projectJpSource}]`
+              : 'Sin JP asignado. Marca contactos JP en áreas/subáreas o elige uno manual.'}
+          </p>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="client">Cliente</label>
