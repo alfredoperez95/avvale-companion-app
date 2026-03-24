@@ -20,25 +20,38 @@ type SelectedArea = { type: 'area'; areaId: string; areaName: string };
 type SelectedSubarea = { type: 'subarea'; subAreaId: string; subAreaName: string; areaId: string; areaName: string };
 type SelectedItem = SelectedArea | SelectedSubarea;
 
+type ManualCcEntry = { email: string; name: string; id?: string };
+
+function manualCcKey(e: ManualCcEntry): string {
+  return e.email.trim().toLowerCase();
+}
+
+const SIMPLE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+
+function buildManualCcEntriesFromDraft(draft: string, ccContacts: CcContact[]): ManualCcEntry[] {
+  const parts = draft
+    .split(/[,;\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const out: ManualCcEntry[] = [];
+  for (const part of parts) {
+    const c = ccContacts.find((x) => x.email.trim().toLowerCase() === part.toLowerCase());
+    const emailRaw = (c?.email ?? part).trim();
+    if (!SIMPLE_EMAIL_RE.test(emailRaw)) continue;
+    if (c) {
+      out.push({ id: c.id, name: c.name, email: emailRaw });
+    } else {
+      out.push({ name: emailRaw, email: emailRaw });
+    }
+  }
+  return out;
+}
+
 function selectedKey(item: SelectedItem): string {
   return item.type === 'area' ? `area:${item.areaId}` : `subarea:${item.subAreaId}`;
 }
 function selectedLabel(item: SelectedItem): string {
   return item.type === 'area' ? item.areaName : `${item.areaName} › ${item.subAreaName}`;
-}
-
-function normalizeEmailList(raw: string): string {
-  const unique = new Set(
-    raw
-      .split(/[,\n;]+/)
-      .map((v) => v.trim())
-      .filter(Boolean),
-  );
-  return [...unique].join(', ');
-}
-
-function appendEmailToList(base: string, email: string): string {
-  return normalizeEmailList([base, email].filter(Boolean).join(', '));
 }
 
 export default function EditActivationPage() {
@@ -52,7 +65,10 @@ export default function EditActivationPage() {
   const [areas, setAreas] = useState<AreaWithSubareas[]>([]);
   const [ccContacts, setCcContacts] = useState<CcContact[]>([]);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplateItem[]>([]);
-  const [selectedCcEmail, setSelectedCcEmail] = useState('');
+  const [manualCcEntries, setManualCcEntries] = useState<ManualCcEntry[]>([]);
+  const [ccDraft, setCcDraft] = useState('');
+  /** Fuerza reconciliación con el directorio CC tras cargar la activación (evita cierre stale de ccContacts). */
+  const [manualCcHydrateKey, setManualCcHydrateKey] = useState(0);
   const [projectJpMode, setProjectJpMode] = useState<'auto' | 'custom'>('auto');
   const [projectJpContactId, setProjectJpContactId] = useState<string>('');
   const [projectJpAutoSubAreaContactId, setProjectJpAutoSubAreaContactId] = useState<string>('');
@@ -87,20 +103,28 @@ export default function EditActivationPage() {
   const [newUrlName, setNewUrlName] = useState('');
   const [activationNumber, setActivationNumber] = useState<number | null>(null);
 
-  const handleCcChange = (value: string) => {
-    const normalized = value.trim().toLowerCase();
-    const selectedContact = ccContacts.find((c) => c.email.trim().toLowerCase() === normalized);
-    if (selectedContact) {
-      setSelectedCcEmail((prev) => appendEmailToList(prev, selectedContact.email));
-      return;
-    }
-    setSelectedCcEmail(value);
-  };
-
   const computedSubject =
     activationNumber != null
       ? `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()} [${formatActivationCode(activationNumber)}]`
       : `Activación AEP - ${(form.client || '').trim().toUpperCase()} - ${(form.projectName || '').trim()}`;
+
+  const commitCcDraft = () => {
+    const newOnes = buildManualCcEntriesFromDraft(ccDraft, ccContacts);
+    if (newOnes.length === 0) return;
+    setManualCcEntries((prev) => {
+      const seen = new Set(prev.map(manualCcKey));
+      const merged = [...prev];
+      for (const e of newOnes) {
+        const k = manualCcKey(e);
+        if (!seen.has(k)) {
+          seen.add(k);
+          merged.push(e);
+        }
+      }
+      return merged;
+    });
+    setCcDraft('');
+  };
 
   useEffect(() => {
     apiFetch('/api/areas?withSubareas=true')
@@ -114,6 +138,24 @@ export default function EditActivationPage() {
       .then((data) => setCcContacts(Array.isArray(data) ? data : []))
       .catch(() => setCcContacts([]));
   }, []);
+
+  useEffect(() => {
+    if (ccContacts.length === 0) return;
+    setManualCcEntries((prev) => {
+      let changed = false;
+      const next = prev.map((entry) => {
+        const c = ccContacts.find(
+          (x) => x.email.trim().toLowerCase() === entry.email.trim().toLowerCase(),
+        );
+        if (c && (entry.id !== c.id || entry.name !== c.name || entry.email !== c.email.trim())) {
+          changed = true;
+          return { id: c.id, name: c.name, email: c.email.trim() };
+        }
+        return entry;
+      });
+      return changed ? next : prev;
+    });
+  }, [ccContacts, manualCcHydrateKey]);
   useEffect(() => {
     apiFetch('/api/email-templates')
       .then((r) => (r.ok ? r.json() : []))
@@ -181,7 +223,17 @@ export default function EditActivationPage() {
           projectJpSource: data.projectJpSource ?? null,
           autoCandidates: [],
         });
-        setSelectedCcEmail((data.recipientCc ?? '').trim());
+        const rawManual = Array.isArray(data.manualCcEmails) ? data.manualCcEmails : [];
+        setManualCcEntries(
+          rawManual
+            .map((em: string) => {
+              const email = String(em).trim();
+              if (!email) return null;
+              return { name: email, email };
+            })
+            .filter((x: ManualCcEntry | null): x is ManualCcEntry => x != null),
+        );
+        setManualCcHydrateKey((k) => k + 1);
         const items: SelectedItem[] = [];
         (data.activationAreas ?? []).forEach((aa: { area: { id: string; name: string } }) => {
           items.push({ type: 'area', areaId: aa.area.id, areaName: aa.area.name });
@@ -352,7 +404,10 @@ export default function EditActivationPage() {
         hubspotUrl: form.hubspotUrl.trim() || undefined,
         areaIds,
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
-        recipientCc: normalizeEmailList(selectedCcEmail) || undefined,
+        recipientCc:
+          manualCcEntries.length > 0
+            ? manualCcEntries.map((e) => e.email.trim()).filter(Boolean).join(', ')
+            : undefined,
         projectJpContactId: projectJpContactId || undefined,
         projectJpAutoSubAreaContactId: projectJpAutoSubAreaContactId || undefined,
         body: form.body.trim() || undefined,
@@ -458,10 +513,69 @@ export default function EditActivationPage() {
             </select>
           )}
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            {projectJpPreview.projectJpEmail
-              ? `Seleccionado: ${projectJpPreview.projectJpName} (${projectJpPreview.projectJpEmail}) [${projectJpPreview.projectJpSource}]`
-              : 'Sin JP asignado. Marca contactos JP en áreas/subáreas o elige uno manual.'}
+            {projectJpPreview.projectJpEmail ? (
+              <strong>
+                {`Seleccionado: ${projectJpPreview.projectJpName} (${projectJpPreview.projectJpEmail}) [${projectJpPreview.projectJpSource ?? ''}]`}
+              </strong>
+            ) : (
+              'Sin JP asignado. Marca contactos JP en áreas/subáreas o elige uno manual.'
+            )}
           </p>
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label} htmlFor="cc-input-edit">CC (opcional)</label>
+          <div className={styles.areaTagsRow}>
+            <div style={{ display: 'flex', flex: '1 1 14rem', gap: 'var(--fiori-space-2)', alignItems: 'center', minWidth: '12rem' }}>
+              <input
+                id="cc-input-edit"
+                type="text"
+                value={ccDraft}
+                onChange={(e) => setCcDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitCcDraft();
+                  }
+                }}
+                list={ccDraft.trim().length >= 3 ? 'contacts-datalist-cc-edit' : undefined}
+                className={styles.input}
+                placeholder="Email (varios: separa por coma)"
+                aria-label="Escribir email en copia"
+                autoComplete="off"
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <button type="button" className={styles.btnSecondary} onClick={commitCcDraft}>
+                Añadir
+              </button>
+            </div>
+            <datalist id="contacts-datalist-cc-edit">
+              {ccContacts.map((c) => (
+                <option key={c.id} value={c.email}>
+                  {c.name}
+                </option>
+              ))}
+            </datalist>
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
+            Escribe un email y pulsa Añadir o Enter; puedes encadenar varios. Director y subárea van en copia automáticamente.
+          </p>
+          <div className={styles.areaTagsRow} style={{ marginTop: 'var(--fiori-space-2)' }}>
+            {manualCcEntries.map((entry) => (
+              <span key={manualCcKey(entry)} className={styles.areaTag}>
+                {entry.name} ({entry.email})
+                <button
+                  type="button"
+                  className={styles.areaTagRemove}
+                  onClick={() =>
+                    setManualCcEntries((prev) => prev.filter((p) => manualCcKey(p) !== manualCcKey(entry)))
+                  }
+                  aria-label={`Quitar ${entry.email} de copia`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="client">Cliente</label>
@@ -473,7 +587,7 @@ export default function EditActivationPage() {
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectAmount">Importe del proyecto *</label>
-          <input id="projectAmount" name="projectAmount" type="text" value={form.projectAmount} onChange={handleChange} required className={styles.input} placeholder="Ej. 150000" />
+          <input id="projectAmount" name="projectAmount" type="text" value={form.projectAmount} onChange={handleChange} required className={styles.input} placeholder="Ej. 150.000,00€" />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectType">Tipo de oportunidad *</label>
@@ -537,29 +651,6 @@ export default function EditActivationPage() {
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="subject">Asunto</label>
           <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="cc">CC (opcional)</label>
-          <input
-            id="cc"
-            type="text"
-            value={selectedCcEmail}
-            onChange={(e) => handleCcChange(e.target.value)}
-            onBlur={(e) => setSelectedCcEmail(normalizeEmailList(e.target.value))}
-            list={selectedCcEmail.trim().length > 2 ? 'contacts-datalist-edit' : undefined}
-            className={styles.input}
-            placeholder="Escribe uno o varios emails (separados por coma)"
-            aria-label="Email en copia (autocompletado desde contactos)"
-            autoComplete="off"
-          />
-          <datalist id="contacts-datalist-edit">
-            {ccContacts.map((c) => (
-              <option key={c.id} value={c.email}>{c.name} ({c.email})</option>
-            ))}
-          </datalist>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Este campo añade los contactos manuales seleccionados a los CC automáticos.
-          </p>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="template-select-edit">Usar plantilla</label>

@@ -186,6 +186,25 @@ export class ActivationsService {
     return [...merged];
   }
 
+  /** Emails de CC automáticos: directores de práctica + contactos de subárea involucrados. */
+  private async getAutoCcEmails(areaIds: string[], subAreaIds: string[]): Promise<string[]> {
+    const { directors, subAreaContacts } = await this.getRecipientsFromAreasAndSubAreas(
+      areaIds,
+      subAreaIds,
+    );
+    return this.mergeEmailLists(directors, subAreaContacts);
+  }
+
+  /** Parte de CC introducida manualmente (excluye auto), para rellenar el formulario de edición. */
+  private async computeManualCcEmails(
+    recipientCc: string | null | undefined,
+    areaIds: string[],
+    subAreaIds: string[],
+  ): Promise<string[]> {
+    const autoSet = new Set(await this.getAutoCcEmails(areaIds, subAreaIds));
+    return this.splitEmails(recipientCc).filter((e) => !autoSet.has(e));
+  }
+
   private async buildRecipients(
     areaIds: string[],
     subAreaIds: string[],
@@ -401,7 +420,14 @@ export class ActivationsService {
       },
     });
     if (!activation) throw new NotFoundException('Activation no encontrada');
-    return activation;
+    const areaIds = activation.activationAreas.map((a) => a.areaId);
+    const subAreaIds = activation.activationSubAreas.map((a) => a.subAreaId);
+    const manualCcEmails = await this.computeManualCcEmails(
+      activation.recipientCc,
+      areaIds,
+      subAreaIds,
+    );
+    return { ...activation, manualCcEmails };
   }
 
   async previewProjectJp(
@@ -544,7 +570,14 @@ export class ActivationsService {
       },
     });
     if (!activation) throw new NotFoundException('Activation no encontrada');
-    return activation;
+    const areaIds = activation.activationAreas.map((a) => a.areaId);
+    const subAreaIds = activation.activationSubAreas.map((a) => a.subAreaId);
+    const manualCcEmails = await this.computeManualCcEmails(
+      activation.recipientCc,
+      areaIds,
+      subAreaIds,
+    );
+    return { ...activation, manualCcEmails };
   }
 
   /** Dispara el webhook de Make con el payload v3 (incl. firma global); si OK → READY_TO_SEND + makeRunId; si falla → ERROR + errorMessage. Solo DRAFT o ERROR. */
