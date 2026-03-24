@@ -61,23 +61,9 @@ export default function ActivationDetailPage() {
     if (!id) return;
     setError('');
     setSending(true);
-    try {
-      const res = await apiFetch(`/api/activations/${id}/send`, { method: 'POST' });
-      if (res.status === 401) {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-        return;
-      }
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.message ?? 'Error al solicitar envío');
-        return;
-      }
-      setActivation(data);
-      router.refresh();
-    } finally {
-      setSending(false);
-    }
+    router.push('/launcher/activations/activate');
+    router.refresh();
+    void apiFetch(`/api/activations/${id}/send`, { method: 'POST' }).catch(() => {});
   };
 
   const canSend = activation && (activation.status === 'DRAFT' || activation.status === 'ERROR');

@@ -52,7 +52,7 @@ function projectTypeLabel(projectType: '' | 'CONSULTORIA' | 'SW'): string {
 function buildProjectJpHtml(name: string, email: string): string {
   const safeName = escapeForHtml(name.trim());
   const safeEmail = escapeForHtml(email.trim());
-  return `<a href="mailto:${safeEmail}">@"${safeName}"</a>`;
+  return `<a href="mailto:${safeEmail}">@${safeName}</a>`;
 }
 
 /**

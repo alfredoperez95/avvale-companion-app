@@ -1,10 +1,27 @@
 .tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   padding: var(--fiori-space-1) var(--fiori-space-2);
   font-size: 0.75rem;
   font-weight: 500;
   border-radius: 0.25rem;
   border: 1px solid transparent;
+}
+
+.spinner {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: statusTagSpin 0.8s linear infinite;
+}
+
+@keyframes statusTagSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .draft {

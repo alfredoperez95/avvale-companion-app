@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { FilterBar, type SolicitanteOption } from '@/components/FilterBar/FilterBar';
@@ -23,18 +23,48 @@ export default function ActivationsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const tableLoading = useSmoothLoading(loading, { delayMs: 150, minVisibleMs: 250 });
 
-  useEffect(() => {
-    apiFetch('/api/activations')
-      .then((r) => {
-        if (r.status === 401) {
-          window.location.href = '/login';
-          return [];
-        }
-        return r.json();
-      })
-      .then(setList)
-      .finally(() => setLoading(false));
+  const fetchActivations = useCallback(async () => {
+    const response = await apiFetch('/api/activations');
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+    if (!response.ok) return;
+    const data = await response.json();
+    setList(Array.isArray(data) ? data : []);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await apiFetch('/api/activations');
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled) setList(Array.isArray(data) ? data : []);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!list.some((a) => a.status === 'READY_TO_SEND')) return;
+    const intervalId = window.setInterval(() => {
+      void fetchActivations().catch(() => {
+        // Ignora errores puntuales de red; siguiente ciclo reintenta.
+      });
+    }, 5000);
+    return () => window.clearInterval(intervalId);
+  }, [list, fetchActivations]);
 
   useEffect(() => {
     apiFetch('/api/auth/me')

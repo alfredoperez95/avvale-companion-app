@@ -38,7 +38,9 @@ export default function EditActivationPage() {
   const [ccContacts, setCcContacts] = useState<CcContact[]>([]);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplateItem[]>([]);
   const [selectedCcEmail, setSelectedCcEmail] = useState('');
+  const [projectJpMode, setProjectJpMode] = useState<'auto' | 'custom'>('auto');
   const [projectJpContactId, setProjectJpContactId] = useState<string>('');
+  const [projectJpSearch, setProjectJpSearch] = useState('');
   const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null }>({
     projectJpName: null,
     projectJpEmail: null,
@@ -346,18 +348,46 @@ export default function EditActivationPage() {
           <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} onBlur={handleProjectNameBlur} required className={styles.input} placeholder="Implementación S/4HANA Public" />
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="projectJpContactId">JP del Proyecto</label>
+          <label className={styles.label} htmlFor="projectJpMode">JP del Proyecto</label>
           <select
-            id="projectJpContactId"
-            value={projectJpContactId}
-            onChange={(e) => setProjectJpContactId(e.target.value)}
+            id="projectJpMode"
+            value={projectJpMode}
+            onChange={(e) => {
+              const mode = e.target.value as 'auto' | 'custom';
+              setProjectJpMode(mode);
+              if (mode === 'auto') {
+                setProjectJpContactId('');
+                setProjectJpSearch('');
+              }
+            }}
             className={styles.input}
           >
-            <option value="">Automático (según área/subárea)</option>
-            {ccContacts.filter((c) => c.isProjectJp).map((c) => (
-              <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
-            ))}
+            <option value="auto">Automático (según área/subárea)</option>
+            <option value="custom">Personalizado (buscar contacto)</option>
           </select>
+          {projectJpMode === 'custom' && (
+            <>
+              <input
+                id="projectJpCustomSearchEdit"
+                list="project-jp-contacts-edit"
+                value={projectJpSearch}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProjectJpSearch(value);
+                  const selectedContact = ccContacts.find((c) => `${c.name} (${c.email})` === value);
+                  setProjectJpContactId(selectedContact?.id ?? '');
+                }}
+                className={styles.input}
+                placeholder="Busca y selecciona un contacto"
+                style={{ marginTop: 'var(--fiori-space-2)' }}
+              />
+              <datalist id="project-jp-contacts-edit">
+                {ccContacts.map((c) => (
+                  <option key={c.id} value={`${c.name} (${c.email})`} />
+                ))}
+              </datalist>
+            </>
+          )}
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
             {projectJpPreview.projectJpEmail
               ? `Seleccionado: ${projectJpPreview.projectJpName} (${projectJpPreview.projectJpEmail}) [${projectJpPreview.projectJpSource}]`

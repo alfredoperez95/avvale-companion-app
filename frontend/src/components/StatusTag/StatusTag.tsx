@@ -17,6 +17,7 @@ export function StatusTag({ status }: StatusTagProps) {
   const config = statusMap[status] ?? { label: status, style: styles.draft };
   return (
     <span className={`${styles.tag} ${config.style}`} role="status">
+      {status === 'READY_TO_SEND' && <span className={styles.spinner} aria-hidden="true" />}
       {config.label}
     </span>
   );
