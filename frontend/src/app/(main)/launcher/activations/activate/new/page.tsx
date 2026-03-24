@@ -13,6 +13,7 @@ import styles from './form.module.css';
 type SubAreaOption = { id: string; name: string };
 type AreaWithSubareas = { id: string; name: string; subAreas?: SubAreaOption[] };
 type CcContact = { id: string; name: string; email: string; isProjectJp: boolean };
+type ProjectJpAutoCandidate = { id: string; name: string; email: string };
 type EmailTemplateItem = { id: string; name: string; content: string };
 type SelectedArea = { type: 'area'; areaId: string; areaName: string };
 type SelectedSubarea = { type: 'subarea'; subAreaId: string; subAreaName: string; areaId: string; areaName: string };
@@ -37,11 +38,13 @@ export default function NewActivationPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [projectJpMode, setProjectJpMode] = useState<'auto' | 'custom'>('auto');
   const [projectJpContactId, setProjectJpContactId] = useState<string>('');
+  const [projectJpAutoSubAreaContactId, setProjectJpAutoSubAreaContactId] = useState<string>('');
   const [projectJpSearch, setProjectJpSearch] = useState('');
-  const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null }>({
+  const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null; autoCandidates: ProjectJpAutoCandidate[] }>({
     projectJpName: null,
     projectJpEmail: null,
     projectJpSource: null,
+    autoCandidates: [],
   });
   const [bodySectionVisible, setBodySectionVisible] = useState(false);
   const [selected, setSelected] = useState<SelectedItem[]>([]);
@@ -74,18 +77,24 @@ export default function NewActivationPage() {
     const areaIds = selected.filter((s): s is SelectedArea => s.type === 'area').map((s) => s.areaId);
     const subAreaIds = selected.filter((s): s is SelectedSubarea => s.type === 'subarea').map((s) => s.subAreaId);
     if (areaIds.length === 0 && subAreaIds.length === 0) {
-      setProjectJpPreview({ projectJpName: null, projectJpEmail: null, projectJpSource: null });
+      setProjectJpPreview({ projectJpName: null, projectJpEmail: null, projectJpSource: null, autoCandidates: [] });
       return;
     }
     const params = new URLSearchParams();
     areaIds.forEach((id) => params.append('areaIds', id));
     subAreaIds.forEach((id) => params.append('subAreaIds', id));
     if (projectJpContactId) params.set('projectJpContactId', projectJpContactId);
+    if (projectJpAutoSubAreaContactId) params.set('projectJpAutoSubAreaContactId', projectJpAutoSubAreaContactId);
     apiFetch(`/api/activations/project-jp-preview?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
-        setProjectJpPreview(data);
+        setProjectJpPreview({
+          projectJpName: data.projectJpName ?? null,
+          projectJpEmail: data.projectJpEmail ?? null,
+          projectJpSource: data.projectJpSource ?? null,
+          autoCandidates: Array.isArray(data.autoCandidates) ? data.autoCandidates : [],
+        });
         setForm((prev) => ({
           ...prev,
           projectJpName: data.projectJpName ?? '',
@@ -93,7 +102,7 @@ export default function NewActivationPage() {
         }));
       })
       .catch(() => {});
-  }, [selected, projectJpContactId]);
+  }, [selected, projectJpContactId, projectJpAutoSubAreaContactId]);
   useEffect(() => {
     apiFetch('/api/contacts')
       .then((r) => (r.ok ? r.json() : []))
@@ -216,6 +225,7 @@ export default function NewActivationPage() {
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
         recipientCc: selectedCcEmail.trim() || undefined,
         projectJpContactId: projectJpContactId || undefined,
+        projectJpAutoSubAreaContactId: projectJpAutoSubAreaContactId || undefined,
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
         attachmentNames: attachmentUrls.length ? attachmentNames : undefined,
@@ -364,6 +374,8 @@ export default function NewActivationPage() {
                 if (mode === 'auto') {
                   setProjectJpContactId('');
                   setProjectJpSearch('');
+                } else {
+                  setProjectJpAutoSubAreaContactId('');
                 }
               }}
               className={styles.input}
@@ -399,6 +411,21 @@ export default function NewActivationPage() {
                     ))}
                 </datalist>
               </>
+            )}
+            {projectJpMode === 'auto' && projectJpPreview.autoCandidates.length > 1 && (
+              <select
+                className={styles.input}
+                value={projectJpAutoSubAreaContactId}
+                onChange={(e) => setProjectJpAutoSubAreaContactId(e.target.value)}
+                style={{ marginTop: 'var(--fiori-space-2)' }}
+              >
+                <option value="">Seleccionar JP de la subcategoría…</option>
+                {projectJpPreview.autoCandidates.map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>
+                    {candidate.name} ({candidate.email})
+                  </option>
+                ))}
+              </select>
             )}
             <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
               {projectJpPreview.projectJpEmail

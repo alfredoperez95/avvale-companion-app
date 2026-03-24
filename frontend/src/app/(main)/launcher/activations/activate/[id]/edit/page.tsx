@@ -14,6 +14,7 @@ import styles from '../../new/form.module.css';
 type SubAreaOption = { id: string; name: string };
 type AreaWithSubareas = { id: string; name: string; subAreas?: SubAreaOption[] };
 type CcContact = { id: string; name: string; email: string; isProjectJp: boolean };
+type ProjectJpAutoCandidate = { id: string; name: string; email: string };
 type EmailTemplateItem = { id: string; name: string; content: string };
 type SelectedArea = { type: 'area'; areaId: string; areaName: string };
 type SelectedSubarea = { type: 'subarea'; subAreaId: string; subAreaName: string; areaId: string; areaName: string };
@@ -40,11 +41,13 @@ export default function EditActivationPage() {
   const [selectedCcEmail, setSelectedCcEmail] = useState('');
   const [projectJpMode, setProjectJpMode] = useState<'auto' | 'custom'>('auto');
   const [projectJpContactId, setProjectJpContactId] = useState<string>('');
+  const [projectJpAutoSubAreaContactId, setProjectJpAutoSubAreaContactId] = useState<string>('');
   const [projectJpSearch, setProjectJpSearch] = useState('');
-  const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null }>({
+  const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null; autoCandidates: ProjectJpAutoCandidate[] }>({
     projectJpName: null,
     projectJpEmail: null,
     projectJpSource: null,
+    autoCandidates: [],
   });
   const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedItem[]>([]);
@@ -152,6 +155,7 @@ export default function EditActivationPage() {
           projectJpName: data.projectJpName ?? null,
           projectJpEmail: data.projectJpEmail ?? null,
           projectJpSource: data.projectJpSource ?? null,
+          autoCandidates: [],
         });
         setSelectedCcEmail((data.recipientCc ?? '').trim());
         const items: SelectedItem[] = [];
@@ -183,11 +187,17 @@ export default function EditActivationPage() {
     areaIds.forEach((x) => params.append('areaIds', x));
     subAreaIds.forEach((x) => params.append('subAreaIds', x));
     if (projectJpContactId) params.set('projectJpContactId', projectJpContactId);
+    if (projectJpAutoSubAreaContactId) params.set('projectJpAutoSubAreaContactId', projectJpAutoSubAreaContactId);
     apiFetch(`/api/activations/project-jp-preview?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
-        setProjectJpPreview(data);
+        setProjectJpPreview({
+          projectJpName: data.projectJpName ?? null,
+          projectJpEmail: data.projectJpEmail ?? null,
+          projectJpSource: data.projectJpSource ?? null,
+          autoCandidates: Array.isArray(data.autoCandidates) ? data.autoCandidates : [],
+        });
         setForm((prev) => ({
           ...prev,
           projectJpName: data.projectJpName ?? '',
@@ -195,7 +205,7 @@ export default function EditActivationPage() {
         }));
       })
       .catch(() => {});
-  }, [selected, projectJpContactId]);
+  }, [selected, projectJpContactId, projectJpAutoSubAreaContactId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const name = e.target.name;
@@ -320,6 +330,7 @@ export default function EditActivationPage() {
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
         recipientCc: selectedCcEmail.trim() || undefined,
         projectJpContactId: projectJpContactId || undefined,
+        projectJpAutoSubAreaContactId: projectJpAutoSubAreaContactId || undefined,
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
         attachmentNames: attachmentUrls.length ? attachmentNames : undefined,
@@ -369,6 +380,8 @@ export default function EditActivationPage() {
               if (mode === 'auto') {
                 setProjectJpContactId('');
                 setProjectJpSearch('');
+              } else {
+                setProjectJpAutoSubAreaContactId('');
               }
             }}
             className={styles.input}
@@ -380,7 +393,7 @@ export default function EditActivationPage() {
             <>
               <input
                 id="projectJpCustomSearchEdit"
-                list="project-jp-contacts-edit"
+                list={projectJpSearch.trim().length >= 3 ? 'project-jp-contacts-edit' : undefined}
                 value={projectJpSearch}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -393,11 +406,32 @@ export default function EditActivationPage() {
                 style={{ marginTop: 'var(--fiori-space-2)' }}
               />
               <datalist id="project-jp-contacts-edit">
-                {ccContacts.map((c) => (
+                {ccContacts
+                  .filter((c) =>
+                    projectJpSearch.trim().length >= 3
+                      ? `${c.name} ${c.email}`.toLowerCase().includes(projectJpSearch.trim().toLowerCase())
+                      : false,
+                  )
+                  .map((c) => (
                   <option key={c.id} value={`${c.name} (${c.email})`} />
-                ))}
+                  ))}
               </datalist>
             </>
+          )}
+          {projectJpMode === 'auto' && projectJpPreview.autoCandidates.length > 1 && (
+            <select
+              className={styles.input}
+              value={projectJpAutoSubAreaContactId}
+              onChange={(e) => setProjectJpAutoSubAreaContactId(e.target.value)}
+              style={{ marginTop: 'var(--fiori-space-2)' }}
+            >
+              <option value="">Seleccionar JP de la subcategoría…</option>
+              {projectJpPreview.autoCandidates.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.name} ({candidate.email})
+                </option>
+              ))}
+            </select>
           )}
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
             {projectJpPreview.projectJpEmail

@@ -60,4 +60,8 @@ export class UpdateActivationDto {
   @IsOptional()
   @IsString()
   projectJpContactId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  projectJpAutoSubAreaContactId?: string | null;
 }

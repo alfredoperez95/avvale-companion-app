@@ -188,6 +188,7 @@ export class ActivationsService {
     areaIds: string[],
     subAreaIds: string[],
     projectJpContactId?: string | null,
+    projectJpAutoSubAreaContactId?: string | null,
   ): Promise<ProjectJpResolution> {
     if (projectJpContactId) {
       const manual = await this.prisma.ccContact.findUnique({
@@ -208,11 +209,13 @@ export class ActivationsService {
           contacts: {
             where: { isProjectJp: true },
             orderBy: [{ name: 'asc' }, { email: 'asc' }],
-            select: { name: true, email: true },
+            select: { id: true, name: true, email: true },
           },
         },
       });
-      const winner = firstSubArea?.contacts[0];
+      const winner =
+        firstSubArea?.contacts.find((c) => c.id === projectJpAutoSubAreaContactId) ??
+        firstSubArea?.contacts[0];
       if (winner) {
         return { name: winner.name, email: winner.email.trim().toLowerCase(), source: 'AUTO' };
       }
@@ -254,7 +257,12 @@ export class ActivationsService {
       throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
     }
     const { recipientTo: areaRecipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
-    const projectJp = await this.resolveProjectJp(areaIds, subAreaIds, dto.projectJpContactId);
+    const projectJp = await this.resolveProjectJp(
+      areaIds,
+      subAreaIds,
+      dto.projectJpContactId,
+      dto.projectJpAutoSubAreaContactId,
+    );
     const recipientToWithJp = this.mergeEmailIntoRecipientTo(areaRecipientTo, projectJp?.email);
     const recipientTo = await this.mergeBillingAdminIntoRecipientTo(recipientToWithJp);
 
@@ -364,12 +372,38 @@ export class ActivationsService {
     return activation;
   }
 
-  async previewProjectJp(areaIds: string[], subAreaIds: string[], projectJpContactId?: string | null) {
-    const projectJp = await this.resolveProjectJp(areaIds, subAreaIds, projectJpContactId);
+  async previewProjectJp(
+    areaIds: string[],
+    subAreaIds: string[],
+    projectJpContactId?: string | null,
+    projectJpAutoSubAreaContactId?: string | null,
+  ) {
+    const projectJp = await this.resolveProjectJp(
+      areaIds,
+      subAreaIds,
+      projectJpContactId,
+      projectJpAutoSubAreaContactId,
+    );
+    let autoCandidates: { id: string; name: string; email: string }[] = [];
+    if (!projectJpContactId && subAreaIds.length > 0) {
+      const firstSubArea = await this.prisma.subArea.findUnique({
+        where: { id: subAreaIds[0] },
+        select: {
+          contacts: {
+            where: { isProjectJp: true },
+            orderBy: [{ name: 'asc' }, { email: 'asc' }],
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+      autoCandidates =
+        firstSubArea?.contacts.map((c) => ({ id: c.id, name: c.name, email: c.email })) ?? [];
+    }
     return {
       projectJpName: projectJp?.name ?? null,
       projectJpEmail: projectJp?.email ?? null,
       projectJpSource: projectJp?.source ?? null,
+      autoCandidates,
     };
   }
 
@@ -425,7 +459,12 @@ export class ActivationsService {
           });
         }
       }
-      const projectJp = await this.resolveProjectJp(areaIds, subAreaIds, dto.projectJpContactId);
+      const projectJp = await this.resolveProjectJp(
+        areaIds,
+        subAreaIds,
+        dto.projectJpContactId,
+        dto.projectJpAutoSubAreaContactId,
+      );
       const { recipientTo: areaRecipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
       const recipientToWithJp = this.mergeEmailIntoRecipientTo(areaRecipientTo, projectJp?.email);
       data.recipientTo = await this.mergeBillingAdminIntoRecipientTo(recipientToWithJp);

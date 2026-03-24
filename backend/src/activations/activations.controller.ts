@@ -86,6 +86,7 @@ export class ActivationsController {
     @Query('areaIds') areaIdsQuery?: string | string[],
     @Query('subAreaIds') subAreaIdsQuery?: string | string[],
     @Query('projectJpContactId') projectJpContactId?: string,
+    @Query('projectJpAutoSubAreaContactId') projectJpAutoSubAreaContactId?: string,
   ) {
     const toArray = (value?: string | string[]) =>
       (Array.isArray(value) ? value : value ? value.split(',') : [])
@@ -95,6 +96,7 @@ export class ActivationsController {
       toArray(areaIdsQuery),
       toArray(subAreaIdsQuery),
       projectJpContactId?.trim() || null,
+      projectJpAutoSubAreaContactId?.trim() || null,
     );
   }
 
