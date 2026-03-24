@@ -28,6 +28,7 @@ function buildSubject(projectName: string, client: string | null, activationNumb
 
 const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
 type ProjectJpResolution = { name: string; email: string; source: 'AUTO' | 'MANUAL' } | null;
+type ActivationRecipients = { recipientTo: string; recipientCc: string | null };
 
 function normalizeEmailHtmlSpacing(
   html: string | null,
@@ -105,8 +106,9 @@ export class ActivationsService {
   private async getRecipientsFromAreasAndSubAreas(
     areaIds: string[],
     subAreaIds: string[] = [],
-  ): Promise<{ recipientTo: string; recipientCc: string | null }> {
-    const emails = new Set<string>();
+  ): Promise<{ subAreaContacts: string[]; directors: string[] }> {
+    const subAreaContactEmails = new Set<string>();
+    const directorEmails = new Set<string>();
 
     if (areaIds.length > 0) {
       const areas = await this.prisma.area.findMany({
@@ -121,10 +123,10 @@ export class ActivationsService {
         },
       });
       for (const area of areas) {
-        if (area.directorEmail?.trim()) emails.add(area.directorEmail.trim().toLowerCase());
+        if (area.directorEmail?.trim()) directorEmails.add(area.directorEmail.trim().toLowerCase());
         for (const sub of area.subAreas) {
           for (const c of sub.contacts) {
-            if (c.email?.trim()) emails.add(c.email.trim().toLowerCase());
+            if (c.email?.trim()) subAreaContactEmails.add(c.email.trim().toLowerCase());
           }
         }
       }
@@ -143,45 +145,80 @@ export class ActivationsService {
       for (const areaId of areaIdsFromSubAreas) {
         const areaRow = subAreas.find((s) => s.areaId === areaId);
         if (areaRow?.area.directorEmail?.trim()) {
-          emails.add(areaRow.area.directorEmail.trim().toLowerCase());
+          directorEmails.add(areaRow.area.directorEmail.trim().toLowerCase());
         }
       }
       for (const sub of subAreas) {
         for (const c of sub.contacts) {
-          if (c.email?.trim()) emails.add(c.email.trim().toLowerCase());
+          if (c.email?.trim()) subAreaContactEmails.add(c.email.trim().toLowerCase());
         }
       }
     }
 
-    const list = [...emails].filter(Boolean);
-    const recipientTo = list.length > 0 ? list.join(', ') : PLACEHOLDER_RECIPIENT;
-    return { recipientTo, recipientCc: null };
+    return {
+      subAreaContacts: [...subAreaContactEmails].filter(Boolean),
+      directors: [...directorEmails].filter(Boolean),
+    };
   }
 
-  /** Añade los emails de Facturación y Administración al destinatario Para (To), sin duplicados. */
-  private async mergeBillingAdminIntoRecipientTo(areaRecipientTo: string): Promise<string> {
+  /** Obtiene los emails de Facturación y Administración (To). */
+  private async getBillingAdminEmails(): Promise<string[]> {
     const billingEmails = await this.billingAdminContactsService.findAllEmails();
-    if (billingEmails.length === 0) return areaRecipientTo;
-    const areaEmails = areaRecipientTo
-      .split(',')
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const combined = new Set<string>([...areaEmails, ...billingEmails]);
-    const list = [...combined].filter(Boolean);
-    return list.length > 0 ? list.join(', ') : areaRecipientTo;
+    return billingEmails.filter(Boolean);
   }
 
-  private mergeEmailIntoRecipientTo(baseRecipientTo: string, email: string | null | undefined): string {
-    const normalized = (email ?? '').trim().toLowerCase();
-    if (!normalized) return baseRecipientTo;
-    const seed = baseRecipientTo
-      .split(',')
+  private async getGlobalCcEmails(): Promise<string[]> {
+    const contacts = await this.prisma.ccContact.findMany({ select: { email: true } });
+    return contacts
+      .map((c) => c.email?.trim().toLowerCase())
+      .filter((e): e is string => Boolean(e));
+  }
+
+  private splitEmails(raw: string | null | undefined): string[] {
+    return (raw ?? '')
+      .split(/[,\n;]+/)
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean)
       .filter((e) => e !== PLACEHOLDER_RECIPIENT);
-    const merged = new Set<string>([...seed, normalized]);
-    const list = [...merged];
-    return list.length > 0 ? list.join(', ') : PLACEHOLDER_RECIPIENT;
+  }
+
+  private mergeEmailLists(...lists: Array<string[] | null | undefined>): string[] {
+    const merged = new Set<string>();
+    for (const list of lists) {
+      for (const email of list ?? []) {
+        const normalized = email.trim().toLowerCase();
+        if (normalized) merged.add(normalized);
+      }
+    }
+    return [...merged];
+  }
+
+  private async buildRecipients(
+    areaIds: string[],
+    subAreaIds: string[],
+    createdByEmail: string | null | undefined,
+    projectJpEmail: string | null | undefined,
+    manualCcRaw: string | null | undefined,
+  ): Promise<ActivationRecipients> {
+    const areaRecipients = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
+    const billingAdminEmails = await this.getBillingAdminEmails();
+    const globalCcEmails = await this.getGlobalCcEmails();
+
+    const toList = this.mergeEmailLists(
+      billingAdminEmails,
+      this.splitEmails(createdByEmail),
+      this.splitEmails(projectJpEmail),
+    );
+    const ccList = this.mergeEmailLists(
+      areaRecipients.directors,
+      areaRecipients.subAreaContacts,
+      globalCcEmails,
+      this.splitEmails(manualCcRaw),
+    );
+
+    const recipientTo = toList.length > 0 ? toList.join(', ') : PLACEHOLDER_RECIPIENT;
+    const recipientCc = ccList.length > 0 ? ccList.join(', ') : null;
+    return { recipientTo, recipientCc };
   }
 
   private async resolveProjectJp(
@@ -256,15 +293,19 @@ export class ActivationsService {
     if (areaIds.length === 0 && subAreaIds.length === 0) {
       throw new BadRequestException('Selecciona al menos un área o subárea involucrada');
     }
-    const { recipientTo: areaRecipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
     const projectJp = await this.resolveProjectJp(
       areaIds,
       subAreaIds,
       dto.projectJpContactId,
       dto.projectJpAutoSubAreaContactId,
     );
-    const recipientToWithJp = this.mergeEmailIntoRecipientTo(areaRecipientTo, projectJp?.email);
-    const recipientTo = await this.mergeBillingAdminIntoRecipientTo(recipientToWithJp);
+    const { recipientTo, recipientCc } = await this.buildRecipients(
+      areaIds,
+      subAreaIds,
+      createdByLabel,
+      projectJp?.email,
+      dto.recipientCc,
+    );
 
     const activation = await this.prisma.$transaction(async (tx) => {
       const created = await tx.activation.create({
@@ -282,7 +323,7 @@ export class ActivationsService {
           projectJpEmail: projectJp?.email ?? null,
           projectJpSource: projectJp?.source ?? null,
           recipientTo,
-          recipientCc: dto.recipientCc?.trim() || null,
+          recipientCc,
           subject: buildSubjectWithoutCode(dto.projectName, dto.client ?? null),
           body: dto.body ?? null,
           attachmentUrls: dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null,
@@ -423,7 +464,7 @@ export class ActivationsService {
     const projectName = (dto.projectName !== undefined ? dto.projectName : activation.projectName) ?? '';
     const client = dto.client !== undefined ? dto.client : activation.client;
     data.subject = buildSubject(projectName, client, activation.activationNumber);
-    if (dto.recipientCc !== undefined) data.recipientCc = dto.recipientCc?.trim() || null;
+    const manualCcRaw = dto.recipientCc !== undefined ? dto.recipientCc : activation.recipientCc;
     if (dto.body !== undefined) data.body = dto.body || null;
     if (dto.attachmentUrls !== undefined) {
       data.attachmentUrls = dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null;
@@ -438,7 +479,9 @@ export class ActivationsService {
     if (
       dto.areaIds !== undefined ||
       dto.subAreaIds !== undefined ||
-      dto.projectJpContactId !== undefined
+      dto.projectJpContactId !== undefined ||
+      dto.projectJpAutoSubAreaContactId !== undefined ||
+      dto.recipientCc !== undefined
     ) {
       const areaIds = dto.areaIds ?? activation.activationAreas?.map((a) => a.areaId) ?? [];
       const subAreaIds = dto.subAreaIds ?? activation.activationSubAreas?.map((a) => a.subAreaId) ?? [];
@@ -465,9 +508,15 @@ export class ActivationsService {
         dto.projectJpContactId,
         dto.projectJpAutoSubAreaContactId,
       );
-      const { recipientTo: areaRecipientTo } = await this.getRecipientsFromAreasAndSubAreas(areaIds, subAreaIds);
-      const recipientToWithJp = this.mergeEmailIntoRecipientTo(areaRecipientTo, projectJp?.email);
-      data.recipientTo = await this.mergeBillingAdminIntoRecipientTo(recipientToWithJp);
+      const { recipientTo, recipientCc } = await this.buildRecipients(
+        areaIds,
+        subAreaIds,
+        activation.createdByUser?.email,
+        projectJp?.email,
+        manualCcRaw,
+      );
+      data.recipientTo = recipientTo;
+      data.recipientCc = recipientCc;
       data.projectJpName = projectJp?.name ?? null;
       data.projectJpEmail = projectJp?.email ?? null;
       data.projectJpSource = projectJp?.source ?? null;

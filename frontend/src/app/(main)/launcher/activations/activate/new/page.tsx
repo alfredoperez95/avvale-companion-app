@@ -26,6 +26,16 @@ function selectedLabel(item: SelectedItem): string {
   return item.type === 'area' ? item.areaName : `${item.areaName} › ${item.subAreaName}`;
 }
 
+function normalizeEmailList(raw: string): string {
+  const unique = new Set(
+    raw
+      .split(/[,\n;]+/)
+      .map((v) => v.trim())
+      .filter(Boolean),
+  );
+  return [...unique].join(', ');
+}
+
 export default function NewActivationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -223,7 +233,7 @@ export default function NewActivationPage() {
         hubspotUrl: form.hubspotUrl.trim() || undefined,
         areaIds,
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
-        recipientCc: selectedCcEmail.trim() || undefined,
+        recipientCc: normalizeEmailList(selectedCcEmail) || undefined,
         projectJpContactId: projectJpContactId || undefined,
         projectJpAutoSubAreaContactId: projectJpAutoSubAreaContactId || undefined,
         body: form.body.trim() || undefined,
@@ -336,7 +346,7 @@ export default function NewActivationPage() {
             </p>
           )}
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-2)' }}>
-            Los contactos de Facturación y Administración se incluyen siempre en Para.
+            En Para se incluyen siempre Facturación/Administración, creador y JP. En CC se añaden automáticamente director, contactos de subárea y contactos globales de CC.
           </p>
         </div>
         <div className={styles.formGroupRow2}>
@@ -351,9 +361,10 @@ export default function NewActivationPage() {
               type="text"
               value={selectedCcEmail}
               onChange={(e) => setSelectedCcEmail(e.target.value)}
+              onBlur={(e) => setSelectedCcEmail(normalizeEmailList(e.target.value))}
               list={selectedCcEmail.trim().length > 2 ? 'contacts-datalist' : undefined}
               className={styles.input}
-              placeholder="Escribe o elige un email en copia"
+              placeholder="Escribe uno o varios emails (separados por coma)"
               aria-label="Email en copia (autocompletado desde contactos)"
               autoComplete="off"
             />
@@ -362,6 +373,9 @@ export default function NewActivationPage() {
                 <option key={c.id} value={c.email}>{c.name} ({c.email})</option>
               ))}
             </datalist>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
+              Este campo añade CC manuales adicionales a los que el sistema ya incluye automáticamente.
+            </p>
           </div>
           <div id="form-group-project-jp" className={styles.formGroup}>
             <label className={styles.label} htmlFor="projectJpMode"><span className={styles.labelText}>JP del Proyecto</span></label>

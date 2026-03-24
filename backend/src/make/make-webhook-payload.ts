@@ -47,7 +47,10 @@ export interface MakeWebhookPayloadV1 {
   recipientToCsv: string;
   /** Lista estructurada de destinatarios To para módulos de email en Make. */
   toRecipients: MakeWebhookRecipientV1[];
-  recipientCc: string | null;
+  /** Lista de destinatarios Cc en formato array (recomendado para Make/Outlook). */
+  recipientCc: string[];
+  /** String CSV legacy mantenido por compatibilidad hacia Make. */
+  recipientCcCsv: string | null;
   subject: string;
   body: string | null;
   projectName: string;
@@ -108,12 +111,15 @@ function parseStoredJsonArray(raw: string | null): string[] {
   }
 }
 
-function buildRecipientsList(recipientToRaw: string): MakeWebhookRecipientV1[] {
-  return recipientToRaw
-    .split(',')
+function splitEmails(raw: string | null | undefined): string[] {
+  return (raw ?? '')
+    .split(/[,\n;]+/)
     .map((part) => part.trim())
-    .filter(Boolean)
-    .map((address) => ({ address }));
+    .filter(Boolean);
+}
+
+function buildRecipientsList(raw: string | null | undefined): MakeWebhookRecipientV1[] {
+  return splitEmails(raw).map((address) => ({ address }));
 }
 
 export function buildMakeWebhookPayload(
@@ -152,10 +158,11 @@ export function buildMakeWebhookPayload(
     activationNumber: activation.activationNumber,
     activationCode: formatActivationCode(activation.activationNumber),
     emailSignature: options.emailSignature,
-    recipientTo: buildRecipientsList(activation.recipientTo).map((x) => x.address),
+    recipientTo: splitEmails(activation.recipientTo),
     recipientToCsv: activation.recipientTo,
     toRecipients: buildRecipientsList(activation.recipientTo),
-    recipientCc: activation.recipientCc,
+    recipientCc: splitEmails(activation.recipientCc),
+    recipientCcCsv: activation.recipientCc,
     subject: activation.subject,
     body: activation.body,
     projectName: activation.projectName,

@@ -224,7 +224,6 @@ export default function AdminContactsPage() {
                               aria-label="Email"
                             />
                           </td>
-                          <td>
                           <td className={styles.contactsColActions}>
                             <button
                               type="button"

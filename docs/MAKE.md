@@ -24,7 +24,7 @@ Campos principales:
 - `activationNumber`: entero secuencial único (humano / logs)
 - `activationCode`: string derivado, p. ej. `ACT-000124` (misma regla que en la app)
 - `emailSignature`: HTML de la firma global, o `null` si no hay firma guardada o solo espacios
-- `recipientTo` (array), `recipientToCsv`, `toRecipients`, `recipientCc`, `subject`, `body`
+- `recipientTo` (array), `recipientToCsv`, `toRecipients`, `recipientCc` (array), `recipientCcCsv`, `subject`, `body`
 - `projectName`, `client`, `offerCode`, `projectAmount`, `projectType`, `hubspotUrl`
 - `createdBy`, `createdByUser` (`name`, `lastName`, `email`)
 - `areas`, `subAreas` (ids y nombres)
