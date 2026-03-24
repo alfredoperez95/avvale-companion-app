@@ -37,6 +37,10 @@ function normalizeEmailList(raw: string): string {
   return [...unique].join(', ');
 }
 
+function appendEmailToList(base: string, email: string): string {
+  return normalizeEmailList([base, email].filter(Boolean).join(', '));
+}
+
 export default function EditActivationPage() {
   const params = useParams();
   const router = useRouter();
@@ -82,6 +86,16 @@ export default function EditActivationPage() {
   const [newUrl, setNewUrl] = useState('');
   const [newUrlName, setNewUrlName] = useState('');
   const [activationNumber, setActivationNumber] = useState<number | null>(null);
+
+  const handleCcChange = (value: string) => {
+    const normalized = value.trim().toLowerCase();
+    const selectedContact = ccContacts.find((c) => c.email.trim().toLowerCase() === normalized);
+    if (selectedContact) {
+      setSelectedCcEmail((prev) => appendEmailToList(prev, selectedContact.email));
+      return;
+    }
+    setSelectedCcEmail(value);
+  };
 
   const computedSubject =
     activationNumber != null
@@ -530,7 +544,7 @@ export default function EditActivationPage() {
             id="cc"
             type="text"
             value={selectedCcEmail}
-            onChange={(e) => setSelectedCcEmail(e.target.value)}
+            onChange={(e) => handleCcChange(e.target.value)}
             onBlur={(e) => setSelectedCcEmail(normalizeEmailList(e.target.value))}
             list={selectedCcEmail.trim().length > 2 ? 'contacts-datalist-edit' : undefined}
             className={styles.input}
