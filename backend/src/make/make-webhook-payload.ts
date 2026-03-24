@@ -30,6 +30,10 @@ export interface MakeWebhookCreatedByUserV1 {
   email: string;
 }
 
+export interface MakeWebhookRecipientV1 {
+  address: string;
+}
+
 export interface MakeWebhookPayloadV1 {
   schemaVersion: typeof MAKE_WEBHOOK_SCHEMA_VERSION;
   activationId: string;
@@ -37,7 +41,12 @@ export interface MakeWebhookPayloadV1 {
   activationCode: string;
   /** HTML de la firma global; null si no hay firma configurada. */
   emailSignature: string | null;
-  recipientTo: string;
+  /** Lista de destinatarios To en formato array (recomendado para Make/Outlook). */
+  recipientTo: string[];
+  /** String CSV legacy mantenido por compatibilidad hacia Make. */
+  recipientToCsv: string;
+  /** Lista estructurada de destinatarios To para módulos de email en Make. */
+  toRecipients: MakeWebhookRecipientV1[];
   recipientCc: string | null;
   subject: string;
   body: string | null;
@@ -99,6 +108,14 @@ function parseStoredJsonArray(raw: string | null): string[] {
   }
 }
 
+function buildRecipientsList(recipientToRaw: string): MakeWebhookRecipientV1[] {
+  return recipientToRaw
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((address) => ({ address }));
+}
+
 export function buildMakeWebhookPayload(
   activation: ActivationForMakePayload,
   options: MakeWebhookPayloadOptions,
@@ -135,7 +152,9 @@ export function buildMakeWebhookPayload(
     activationNumber: activation.activationNumber,
     activationCode: formatActivationCode(activation.activationNumber),
     emailSignature: options.emailSignature,
-    recipientTo: activation.recipientTo,
+    recipientTo: buildRecipientsList(activation.recipientTo).map((x) => x.address),
+    recipientToCsv: activation.recipientTo,
+    toRecipients: buildRecipientsList(activation.recipientTo),
     recipientCc: activation.recipientCc,
     subject: activation.subject,
     body: activation.body,

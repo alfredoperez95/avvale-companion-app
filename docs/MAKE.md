@@ -24,7 +24,7 @@ Campos principales:
 - `activationNumber`: entero secuencial único (humano / logs)
 - `activationCode`: string derivado, p. ej. `ACT-000124` (misma regla que en la app)
 - `emailSignature`: HTML de la firma global, o `null` si no hay firma guardada o solo espacios
-- `recipientTo`, `recipientCc`, `subject`, `body`
+- `recipientTo` (array), `recipientToCsv`, `toRecipients`, `recipientCc`, `subject`, `body`
 - `projectName`, `client`, `offerCode`, `projectAmount`, `projectType`, `hubspotUrl`
 - `createdBy`, `createdByUser` (`name`, `lastName`, `email`)
 - `areas`, `subAreas` (ids y nombres)
@@ -33,6 +33,26 @@ Campos principales:
 El asunto (`subject`) incluye el código visible, p. ej. `Activación AEP [ACT-000124] - CLIENTE - Proyecto`.
 
 En Make, suele concatenarse el cuerpo del mensaje con la firma, p. ej. `body` + `emailSignature` (respetando HTML).
+
+`recipientTo` se envía como array de emails (formato recomendado para mapear en Microsoft 365 Email / Outlook en Make), por ejemplo:
+
+```json
+[
+  "javier.llaguno@avvale.com",
+  "alberto.hernandez@avvale.com"
+]
+```
+
+`toRecipients` se envía como array estructurado de objetos con `address`, por ejemplo:
+
+```json
+[
+  { "address": "javier.llaguno@avvale.com" },
+  { "address": "alberto.hernandez@avvale.com" }
+]
+```
+
+`recipientToCsv` se mantiene como string CSV por compatibilidad retroactiva.
 
 ### Descarga de adjuntos desde Make
 
