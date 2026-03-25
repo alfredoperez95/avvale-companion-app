@@ -15,7 +15,7 @@ import { MakeWebhookPayloadV1 } from './make-webhook-payload';
 import { MakeCallbackDto } from './dto/make-callback.dto';
 import { formatActivationCode } from '../activations/activation-code';
 
-const WEBHOOK_TIMEOUT_MS = 30_000;
+const WEBHOOK_TIMEOUT_DEFAULT_MS = 30_000;
 const PENDING_CALLBACK_WATCHDOG_INTERVAL_MS = 5_000;
 const PENDING_CALLBACK_TIMEOUT_DEFAULT_MS = 30_000;
 
@@ -34,6 +34,18 @@ export class MakeService implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly attachmentsService: AttachmentsService,
   ) {}
+
+  /** Tiempo máximo de espera del POST saliente hacia `MAKE_WEBHOOK_URL` (Make). */
+  private makeWebhookTimeoutMs(): number {
+    const raw = this.config.get<string | number>('MAKE_WEBHOOK_TIMEOUT_MS');
+    const n =
+      typeof raw === 'number'
+        ? raw
+        : raw != null && String(raw).trim() !== ''
+          ? parseInt(String(raw), 10)
+          : NaN;
+    return Number.isFinite(n) && n > 0 ? n : WEBHOOK_TIMEOUT_DEFAULT_MS;
+  }
 
   onModuleInit() {
     this.watchdogTimer = setInterval(() => {
@@ -59,7 +71,8 @@ export class MakeService implements OnModuleInit, OnModuleDestroy {
       },
       data: {
         status: ActivationStatus.FAILED,
-        errorMessage: 'Timeout esperando confirmación de Make',
+        errorMessage:
+          'No hemos recibido respuesta del sistema de automatización a tiempo. Por favor, inténtalo de nuevo en unos segundos.',
         lastStatusAt: new Date(),
       },
     });
@@ -86,8 +99,9 @@ export class MakeService implements OnModuleInit, OnModuleDestroy {
       headers['X-Webhook-Secret'] = secret;
     }
 
+    const timeoutMs = this.makeWebhookTimeoutMs();
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const res = await fetch(url, {
@@ -115,7 +129,7 @@ export class MakeService implements OnModuleInit, OnModuleDestroy {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (e instanceof Error && e.name === 'AbortError') {
-        return { success: false, errorMessage: `Timeout al llamar a Make (${WEBHOOK_TIMEOUT_MS} ms)` };
+        return { success: false, errorMessage: `Timeout al llamar a Make (${timeoutMs} ms)` };
       }
       return { success: false, errorMessage: `Error de red al llamar a Make: ${msg}` };
     } finally {

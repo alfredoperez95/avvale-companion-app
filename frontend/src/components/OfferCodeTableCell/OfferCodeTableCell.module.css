@@ -1,0 +1,59 @@
+.headerRoot {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+.headerLabel {
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+.text {
+  min-width: 0;
+}
+
+.textExpanded {
+  composes: text;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  margin: -0.2rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: none;
+  color: var(--fiori-link);
+  cursor: pointer;
+  font-weight: 400;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.toggle:hover {
+  background: var(--fiori-nav-item-hover);
+}
+
+.toggleLabel {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.2;
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--fiori-link);
+  outline-offset: 2px;
+  border-radius: 2px;
+}

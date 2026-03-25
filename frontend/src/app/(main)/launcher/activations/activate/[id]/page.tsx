@@ -9,6 +9,7 @@ import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { formatActivationCode } from '@/lib/activation-code';
+import { displayActivationErrorMessage } from '@/lib/activation-error-message';
 import styles from './detail.module.css';
 
 function isHtmlBody(body: string | null | undefined): boolean {
@@ -173,6 +174,7 @@ export default function ActivationDetailPage() {
     }
   }
   const attachmentList = urls.map((url, i) => ({ url, name: names[i]?.trim() || url }));
+  const errorMessageDisplay = displayActivationErrorMessage(activation.errorMessage);
 
   return (
     <main className={styles.page}>
@@ -293,7 +295,11 @@ export default function ActivationDetailPage() {
           <p><strong>Creado por:</strong> {activation.createdBy}</p>
           {activation.makeSentAt && <p><strong>Enviado (Make):</strong> {new Date(activation.makeSentAt).toLocaleString('es')}</p>}
           {activation.makeRunId && <p><strong>Run ID:</strong> {activation.makeRunId}</p>}
-          {activation.errorMessage && <p className={styles.errorMsg}><strong>Error:</strong> {activation.errorMessage}</p>}
+          {errorMessageDisplay && (
+            <p className={styles.errorMsg}>
+              <strong>Error:</strong> {errorMessageDisplay}
+            </p>
+          )}
         </>
       )}
 

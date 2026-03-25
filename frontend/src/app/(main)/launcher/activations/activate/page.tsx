@@ -11,6 +11,9 @@ import { DetailDrawer } from '@/components/DetailDrawer/DetailDrawer';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useSmoothLoading } from '@/hooks/useSmoothLoading';
 import { formatActivationCode } from '@/lib/activation-code';
+import { offerCodeShortLabel } from '@/lib/offer-code-display';
+import { OfferCodeColumnHeader } from '@/components/OfferCodeTableCell/OfferCodeColumnHeader';
+import { OfferCodeTableCell } from '@/components/OfferCodeTableCell/OfferCodeTableCell';
 import styles from './activations.module.css';
 
 export default function ActivationsPage() {
@@ -23,6 +26,7 @@ export default function ActivationsPage() {
   const [solicitanteOptions, setSolicitanteOptions] = useState<SolicitanteOption[]>([]);
   const [solicitanteLoading, setSolicitanteLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [offerCodesExpanded, setOfferCodesExpanded] = useState(false);
   const tableLoading = useSmoothLoading(loading, { delayMs: 150, minVisibleMs: 250 });
 
   useEffect(() => {
@@ -166,6 +170,15 @@ export default function ActivationsPage() {
     return data;
   }, [list, statusFilter, solicitanteFilter, searchValue]);
 
+  const offerColumnShowToggle = useMemo(
+    () => filtered.some((a) => Boolean(offerCodeShortLabel(a.offerCode).fullTitle)),
+    [filtered],
+  );
+
+  useEffect(() => {
+    if (!offerColumnShowToggle) setOfferCodesExpanded(false);
+  }, [offerColumnShowToggle]);
+
   function getRequesterName(row: Activation): string {
     const u = row.createdByUser;
     if (u) {
@@ -176,48 +189,64 @@ export default function ActivationsPage() {
     return row.createdBy ?? '—';
   }
 
-  const columns: Column<Activation>[] = [
-    {
-      key: 'activationNumber',
-      header: 'Nº',
-      render: (row) => (
-        <span title={`${formatActivationCode(row.activationNumber)}`}>
-          {formatActivationCode(row.activationNumber)}
-        </span>
-      ),
-    },
-    {
-      key: 'projectName',
-      header: 'Proyecto',
-      render: (row) => (
-        <button
-          type="button"
-          className={styles.tableLink}
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedId(row.id);
-          }}
-        >
-          {row.projectName}
-        </button>
-      ),
-    },
-    { key: 'client', header: 'Cliente', render: (row) => row.client ?? '—' },
-    { key: 'offerCode', header: 'Oferta', render: (row) => row.offerCode },
-    { key: 'createdByUser', header: 'Solicitante', render: (row) => getRequesterName(row) },
-    {
-      key: 'status',
-      header: 'Estado',
-      render: (row) => (
-        <StatusTag status={shouldSimulateSending(row) ? 'QUEUED' : row.status} />
-      ),
-    },
-    {
-      key: 'createdAt',
-      header: 'Fecha',
-      render: (row) => new Date(row.createdAt).toLocaleDateString('es'),
-    },
-  ];
+  const columns = useMemo((): Column<Activation>[] => {
+    return [
+      {
+        key: 'activationNumber',
+        header: 'Nº',
+        render: (row) => (
+          <span title={`${formatActivationCode(row.activationNumber)}`}>
+            {formatActivationCode(row.activationNumber)}
+          </span>
+        ),
+      },
+      {
+        key: 'projectName',
+        header: 'Proyecto',
+        render: (row) => (
+          <button
+            type="button"
+            className={styles.tableLink}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedId(row.id);
+            }}
+          >
+            {row.projectName}
+          </button>
+        ),
+      },
+      { key: 'client', header: 'Cliente', render: (row) => row.client ?? '—' },
+      {
+        key: 'offerCode',
+        header: 'Oferta',
+        renderHeader: () => (
+          <OfferCodeColumnHeader
+            expanded={offerCodesExpanded}
+            onToggle={() => setOfferCodesExpanded((v) => !v)}
+            showToggle={offerColumnShowToggle}
+          />
+        ),
+        render: (row) => (
+          <OfferCodeTableCell offerCode={row.offerCode} expanded={offerCodesExpanded} />
+        ),
+      },
+      { key: 'createdByUser', header: 'Solicitante', render: (row) => getRequesterName(row) },
+      {
+        key: 'status',
+        header: 'Estado',
+        minWidthPx: 110,
+        render: (row) => (
+          <StatusTag status={shouldSimulateSending(row) ? 'QUEUED' : row.status} />
+        ),
+      },
+      {
+        key: 'createdAt',
+        header: 'Fecha',
+        render: (row) => new Date(row.createdAt).toLocaleDateString('es'),
+      },
+    ];
+  }, [offerCodesExpanded, offerColumnShowToggle, shouldSimulateSending]);
 
   const handleDrawerUpdated = (updated: Activation) => {
     setList((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));

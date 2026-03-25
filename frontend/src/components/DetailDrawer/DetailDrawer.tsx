@@ -8,6 +8,7 @@ import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { formatActivationCode } from '@/lib/activation-code';
+import { displayActivationErrorMessage } from '@/lib/activation-error-message';
 import styles from './DetailDrawer.module.css';
 
 interface DetailDrawerProps {
@@ -125,6 +126,8 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
   };
 
   if (!activationId) return null;
+
+  const errorMessageDisplay = displayActivationErrorMessage(activation?.errorMessage);
 
   const section = (title: string, children: React.ReactNode) => (
     <div className={styles.section}>
@@ -278,7 +281,11 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
                   <p><strong>Creado por:</strong> {activation.createdBy}</p>
                   {activation.makeSentAt && <p><strong>Enviado (Make):</strong> {new Date(activation.makeSentAt).toLocaleString('es')}</p>}
                   {activation.makeRunId && <p><strong>Run ID:</strong> {activation.makeRunId}</p>}
-                  {activation.errorMessage && <p className={styles.errorMsg}><strong>Error:</strong> {activation.errorMessage}</p>}
+                  {errorMessageDisplay && (
+                    <p className={styles.errorMsg}>
+                      <strong>Error:</strong> {errorMessageDisplay}
+                    </p>
+                  )}
                 </>
               )}
             </>

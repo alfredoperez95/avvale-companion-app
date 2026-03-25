@@ -52,7 +52,7 @@ export function FilterBar({
         <option value="RETRYING">Reintentando</option>
         <option value="PENDING_CALLBACK">Esperando Make</option>
         <option value="SENT">Enviado</option>
-        <option value="FAILED">Error</option>
+        <option value="FAILED">Error envío</option>
       </select>
       {showSolicitante && (
         <>

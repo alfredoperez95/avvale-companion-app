@@ -67,8 +67,19 @@ export class ActivationSendOrchestrator {
     const result = await this.makeService.triggerWebhook(normalizedPayload);
 
     if (result.success) {
-      await this.prisma.activation.update({
-        where: { id: activationId },
+      // No pisar SENT: si Make responde 200 y el callback "sent" llega antes que este update,
+      // el estado ya puede ser SENT (docs/ACTIVATION_STATE_MACHINE — condición de carrera).
+      const updated = await this.prisma.activation.updateMany({
+        where: {
+          id: activationId,
+          status: {
+            in: [
+              ActivationStatus.QUEUED,
+              ActivationStatus.PROCESSING,
+              ActivationStatus.RETRYING,
+            ],
+          },
+        },
         data: {
           status: ActivationStatus.PENDING_CALLBACK,
           makeRunId: result.makeRunId ?? null,
@@ -76,7 +87,25 @@ export class ActivationSendOrchestrator {
           lastStatusAt: new Date(),
         },
       });
-      this.logger.log(`Make aceptó el webhook para activación ${activationId}`);
+
+      if (updated.count === 0) {
+        const row = await this.prisma.activation.findUnique({
+          where: { id: activationId },
+          select: { status: true },
+        });
+        if (row?.status === ActivationStatus.SENT) {
+          this.logger.log(
+            `Activación ${activationId} ya estaba SENT (callback ganó la carrera); no se sobrescribe con PENDING_CALLBACK`,
+          );
+        } else {
+          this.logger.warn(
+            `Activación ${activationId}: webhook OK pero no se pudo pasar a PENDING_CALLBACK (estado=${row?.status})`,
+          );
+        }
+      } else {
+        this.logger.log(`Make aceptó el webhook para activación ${activationId}`);
+      }
+
       return;
     }
 

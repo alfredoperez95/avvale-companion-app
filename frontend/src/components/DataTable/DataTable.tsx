@@ -4,7 +4,12 @@ import styles from './DataTable.module.css';
 
 export interface Column<T> {
   key: string;
+  /** Texto por defecto del encabezado; se ignora en `<th>` si existe `renderHeader`. */
   header: string;
+  /** Si se define, sustituye el contenido del `<th>` (p. ej. título + control global). */
+  renderHeader?: () => React.ReactNode;
+  /** Ancho mínimo en píxeles para `<th>` y `<td>` de esta columna. */
+  minWidthPx?: number;
   render: (row: T) => React.ReactNode;
 }
 
@@ -65,8 +70,13 @@ export function DataTable<T>({
         <thead>
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className={styles.th} scope="col">
-                {col.header}
+              <th
+                key={col.key}
+                className={styles.th}
+                scope="col"
+                style={col.minWidthPx != null ? { minWidth: `${col.minWidthPx}px` } : undefined}
+              >
+                {col.renderHeader ? col.renderHeader() : col.header}
               </th>
             ))}
           </tr>
@@ -91,7 +101,11 @@ export function DataTable<T>({
               }
             >
               {columns.map((col) => (
-                <td key={col.key} className={styles.td}>
+                <td
+                  key={col.key}
+                  className={styles.td}
+                  style={col.minWidthPx != null ? { minWidth: `${col.minWidthPx}px` } : undefined}
+                >
                   {col.render(row)}
                 </td>
               ))}

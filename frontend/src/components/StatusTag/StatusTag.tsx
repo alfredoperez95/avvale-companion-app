@@ -9,7 +9,7 @@ const statusMap: Record<string, { label: string; style: string }> = {
   RETRYING: { label: 'Reintentando', style: styles.retrying },
   PENDING_CALLBACK: { label: 'Esperando Make', style: styles.pendingCallback },
   SENT: { label: 'Enviado', style: styles.sent },
-  FAILED: { label: 'Error', style: styles.failed },
+  FAILED: { label: 'Error envío', style: styles.failed },
 };
 
 interface StatusTagProps {

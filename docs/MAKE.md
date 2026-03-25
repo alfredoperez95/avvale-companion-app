@@ -9,6 +9,7 @@ La **firma HTML** global se configura en la app (Configuración → Firma) y se 
 | Variable | Obligatoria | Descripción |
 |----------|-------------|-------------|
 | `MAKE_WEBHOOK_URL` | Sí (para enviar) | URL del módulo *Custom webhook* en Make. |
+| `MAKE_WEBHOOK_TIMEOUT_MS` | No | Tiempo máximo (ms) del **POST saliente** del backend hacia esa URL. Por defecto `30000`. Si Make tarda en responder `200` (escenario pesado), el worker puede fallar, pasar a `RETRYING` y reintentar; sube este valor (p. ej. `60000`). |
 | `MAKE_WEBHOOK_SECRET` | No | Si se define, el backend envía cabecera `X-Webhook-Secret` con este valor. |
 | `MAKE_CALLBACK_SECRET` | Sí (para callback) | Secreto compartido en el cuerpo JSON del callback (ver abajo). |
 | `BACKEND_PUBLIC_URL` | Recomendada | URL pública del backend (con o sin `/api`) para construir `attachments[].url` públicos temporales. Si falta, se usa `NEXT_PUBLIC_API_URL` y luego `http://localhost:4000`. |
@@ -115,6 +116,17 @@ Requiere `MAKE_CALLBACK_SECRET` configurado en el backend. Si no está definido,
 
 - Tras **POST /activations/:id/send** (publicación de adjuntos): `QUEUED`; el worker pasa a `PROCESSING` y luego, si Make responde OK al webhook, `PENDING_CALLBACK` y opcionalmente `makeRunId`. Ver [ACTIVATION_STATE_MACHINE.md](./ACTIVATION_STATE_MACHINE.md).
 - Reintentos BullMQ: `RETRYING` con `errorMessage`; agotados los intentos: `FAILED`.
+
+### «Reintentando» pero en ngrok solo veo `POST .../callback` con éxito
+
+Son flujos distintos:
+
+1. **Saliente (worker → Make):** el backend hace `POST` a `MAKE_WEBHOOK_URL`. Si aquí hay **timeout**, **5xx**, red intermitente o Make no devuelve `2xx` a tiempo, Bull marca el intento como fallido → **`RETRYING`** (con detalle en `error_message` y en logs de Nest: `Fallo procesando envío` / `Make rechazó`). Ese tráfico **no** pasa por tu túnel ngrok (va directo a los dominios de Make).
+
+2. **Entrante (Make → tu API):** el callback `POST /api/webhooks/make/callback` es lo que suele exponerse con ngrok. Un **201 Created** aquí solo indica que el callback llegó bien; **no** invalida un fallo anterior en el paso (1).
+
+Para diagnosticar: revisa logs del backend en el momento del envío y el campo **`error_message`** de la activación en BD (o en el detalle). Si el mensaje es timeout, prueba `MAKE_WEBHOOK_TIMEOUT_MS` más alto.
+
 - Si el POST a Make falla sin más reintentos: `FAILED` y `errorMessage`.
 - Tras callback `sent`: `SENT` y `makeSentAt`.
 - Tras callback `error`: `FAILED` y `errorMessage`.
