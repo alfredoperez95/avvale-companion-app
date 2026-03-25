@@ -49,6 +49,18 @@ const fioriTabsAdmin: {
   { href: '/admin', label: 'Gestión de usuarios', isActive: (p) => p != null && p.startsWith('/admin') },
 ];
 
+/** Tabs en /profile (Fiori): Inicio + Mi perfil */
+const fioriTabsProfile: {
+  href: string;
+  label: string;
+  icon?: IconName;
+  iconOnly?: boolean;
+  isActive: (pathname: string | null) => boolean;
+}[] = [
+  fioriTabHome,
+  { href: '/profile', label: 'Mi perfil', isActive: (p) => p === '/profile' },
+];
+
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
   const n = (name ?? '').trim();
   const l = (lastName ?? '').trim();
@@ -65,6 +77,7 @@ function getInitials(name?: string | null, lastName?: string | null, email?: str
 function getPageHeader(pathname: string | null): { title: string } {
   if (!pathname) return { title: 'Inicio' };
   if (pathname === '/launcher') return { title: 'Inicio' };
+  if (pathname === '/profile') return { title: 'Mi cuenta' };
   if (pathname === '/launcher/activations/dashboard') return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/activate')) return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/configuration')) return { title: 'Configuración' };
@@ -83,6 +96,12 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
   const initials = user ? getInitials(user.name, user.lastName, user.email) : '';
   const avatarUrl = useAvatarUrl(user?.avatarPath ?? null);
   const pageHeader = getPageHeader(pathname);
+  const fioriTabs =
+    pathname === '/profile'
+      ? fioriTabsProfile
+      : pathname?.startsWith('/admin')
+        ? fioriTabsAdmin
+        : fioriTabsActivations;
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
 
@@ -187,7 +206,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
       <div className={styles.body}>
         {theme === 'fiori' ? (
           <>
-            {pathname !== '/launcher' && pathname !== '/profile' && (
+            {pathname !== '/launcher' && (
               <>
                 <div className={styles.pageHeader}>
                   <div className={styles.pageHeaderInner}>
@@ -196,11 +215,13 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                 </div>
                 <nav className={styles.tabsNav} aria-label="Navegación principal">
                   <div className={styles.tabsNavInner}>
-                    {(pathname?.startsWith('/admin') ? fioriTabsAdmin : fioriTabsActivations)
+                    {fioriTabs
                       .filter((tab) =>
-                        pathname?.startsWith('/admin')
-                          ? tab.href === '/launcher' || user?.role === 'ADMIN'
-                          : tab.href !== '/launcher/activations/configuration' || !!user
+                        pathname === '/profile'
+                          ? true
+                          : pathname?.startsWith('/admin')
+                            ? tab.href === '/launcher' || user?.role === 'ADMIN'
+                            : tab.href !== '/launcher/activations/configuration' || !!user
                       )
                       .map((tab) => {
                         const { href, label, icon, iconOnly, isActive } = tab;

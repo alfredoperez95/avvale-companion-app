@@ -50,7 +50,7 @@ export function FilterBar({
         <option value="QUEUED">En cola</option>
         <option value="PROCESSING">Procesando</option>
         <option value="RETRYING">Reintentando</option>
-        <option value="PENDING_CALLBACK">Esperando Make</option>
+        <option value="PENDING_CALLBACK">Esperando</option>
         <option value="SENT">Enviado</option>
         <option value="FAILED">Error envío</option>
       </select>

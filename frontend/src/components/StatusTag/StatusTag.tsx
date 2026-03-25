@@ -7,7 +7,7 @@ const statusMap: Record<string, { label: string; style: string }> = {
   QUEUED: { label: 'En cola', style: styles.queued },
   PROCESSING: { label: 'Procesando', style: styles.processing },
   RETRYING: { label: 'Reintentando', style: styles.retrying },
-  PENDING_CALLBACK: { label: 'Esperando Make', style: styles.pendingCallback },
+  PENDING_CALLBACK: { label: 'Esperando', style: styles.pendingCallback },
   SENT: { label: 'Enviado', style: styles.sent },
   FAILED: { label: 'Error envío', style: styles.failed },
 };

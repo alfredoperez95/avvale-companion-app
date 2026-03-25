@@ -1,6 +1,7 @@
 .page {
   max-width: 38rem;
   margin: 0 auto;
+  padding-top: var(--fiori-space-4);
 }
 
 .avatarBlock {
@@ -125,16 +126,6 @@
 .loading {
   padding: var(--fiori-space-8);
   color: var(--fiori-text-secondary);
-}
-
-.header {
-  margin-bottom: var(--fiori-space-6);
-}
-
-.title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--fiori-text);
 }
 
 .section {
