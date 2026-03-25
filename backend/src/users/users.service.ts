@@ -95,6 +95,19 @@ export class UsersService {
     return path.join(this.uploadsDir, 'avatars');
   }
 
+  private isPublicAvatarPath(avatarPath: string): boolean {
+    return avatarPath.replace(/\\/g, '/').startsWith('resources/avatar/');
+  }
+
+  private getAvatarFullPath(avatarPath: string): string {
+    if (this.isPublicAvatarPath(avatarPath)) {
+      // Compatibilidad con un formato anterior que guardó avatares en el frontend (/public).
+      // Mantener lectura/borrado, pero los nuevos avatares se guardan en uploads (privado).
+      return path.resolve(process.cwd(), '..', 'frontend', 'public', 'resources', 'avatar', path.basename(avatarPath));
+    }
+    return path.join(this.uploadsDir, avatarPath);
+  }
+
   private getExtensionFromMime(mimetype: string): string {
     const m = mimetype?.split(';')[0].trim().toLowerCase();
     if (m === 'image/jpeg' || m === 'image/jpg') return '.jpg';
@@ -122,7 +135,7 @@ export class UsersService {
     const fullPath = path.join(avatarDir, fileName);
 
     if (user.avatarPath) {
-      const oldPath = path.join(this.uploadsDir, user.avatarPath);
+      const oldPath = this.getAvatarFullPath(user.avatarPath);
       await fs.unlink(oldPath).catch(() => {});
     }
 
@@ -138,7 +151,7 @@ export class UsersService {
   async getAvatarBuffer(userId: string): Promise<{ buffer: Buffer; contentType: string } | null> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { avatarPath: true } });
     if (!user?.avatarPath) return null;
-    const fullPath = path.join(this.uploadsDir, user.avatarPath);
+    const fullPath = this.getAvatarFullPath(user.avatarPath);
     try {
       const buffer = await fs.readFile(fullPath);
       const ext = path.extname(user.avatarPath).toLowerCase();
@@ -153,7 +166,7 @@ export class UsersService {
   async removeAvatar(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { avatarPath: true } });
     if (user?.avatarPath) {
-      const fullPath = path.join(this.uploadsDir, user.avatarPath);
+      const fullPath = this.getAvatarFullPath(user.avatarPath);
       await fs.unlink(fullPath).catch(() => {});
     }
     await this.prisma.user.update({
