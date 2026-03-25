@@ -14,9 +14,12 @@ enum UserRole {
 
 enum ActivationStatus {
   DRAFT
-  READY_TO_SEND
+  PENDING_CALLBACK
   SENT
-  ERROR
+  QUEUED
+  PROCESSING
+  RETRYING
+  FAILED
 }
 
 enum ProjectType {
@@ -109,16 +112,21 @@ model Activation {
   body             String?          @map("body") @db.Text
   attachmentUrls   String?          @map("attachment_urls") @db.Text
   attachmentNames  String?          @map("attachment_names") @db.Text
-  makeSentAt       DateTime?        @map("make_sent_at")
-  makeRunId        String?          @map("make_run_id")
-  errorMessage     String?          @map("error_message")
-  lastStatusAt     DateTime?        @map("last_status_at")
+  makeSentAt          DateTime?        @map("make_sent_at")
+  makeRunId           String?          @map("make_run_id")
+  errorMessage        String?          @map("error_message") @db.Text
+  lastStatusAt        DateTime?        @map("last_status_at")
+  queuedAt            DateTime?        @map("queued_at")
+  processingStartedAt DateTime?        @map("processing_started_at")
+  sendAttemptCount    Int              @default(0) @map("send_attempt_count")
+  bullJobId           String?          @map("bull_job_id")
 
   createdByUser        User                 @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   activationAreas      ActivationArea[]
   activationSubAreas   ActivationSubArea[]
   attachments          ActivationAttachment[]
 
+  @@index([status])
   @@map("activations")
 }
 

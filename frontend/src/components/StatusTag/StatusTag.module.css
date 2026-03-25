@@ -30,7 +30,7 @@
   border-color: var(--fiori-border-light);
 }
 
-.readyToSend {
+.pendingCallback {
   background: var(--fiori-warning-bg);
   color: var(--fiori-warning);
   border-color: rgba(233, 115, 12, 0.3);
@@ -42,8 +42,26 @@
   border-color: rgba(16, 126, 62, 0.3);
 }
 
-.error {
+.failed {
   background: var(--fiori-error-bg);
   color: var(--fiori-error);
   border-color: rgba(176, 0, 0, 0.2);
+}
+
+.queued {
+  background: #e8eaf0;
+  color: var(--fiori-text-secondary);
+  border-color: var(--fiori-border-light);
+}
+
+.processing {
+  background: var(--fiori-warning-bg);
+  color: var(--fiori-warning);
+  border-color: rgba(233, 115, 12, 0.3);
+}
+
+.retrying {
+  background: #fff4e5;
+  color: #c45c00;
+  border-color: rgba(233, 115, 12, 0.25);
 }

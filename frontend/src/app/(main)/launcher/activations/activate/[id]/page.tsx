@@ -71,7 +71,11 @@ export default function ActivationDetailPage() {
       .catch(() => {});
   };
 
-  const canSend = activation && (activation.status === 'DRAFT' || activation.status === 'ERROR');
+  const canSend =
+    activation &&
+    (activation.status === 'DRAFT' ||
+      activation.status === 'FAILED' ||
+      activation.status === 'RETRYING');
 
   const refetchActivation = () => {
     if (!id) return;

@@ -1,4 +1,19 @@
-export type ActivationStatus = 'DRAFT' | 'READY_TO_SEND' | 'SENT' | 'ERROR';
+export type ActivationStatus =
+  | 'DRAFT'
+  | 'QUEUED'
+  | 'PROCESSING'
+  | 'RETRYING'
+  | 'PENDING_CALLBACK'
+  | 'SENT'
+  | 'FAILED';
+
+/** Estados en los que el envío a Make/cola puede completarse; conviene refrescar la lista periódicamente. */
+export const ACTIVATION_IN_FLIGHT_STATUSES: ActivationStatus[] = [
+  'QUEUED',
+  'PROCESSING',
+  'RETRYING',
+  'PENDING_CALLBACK',
+];
 
 export interface Activation {
   id: string;

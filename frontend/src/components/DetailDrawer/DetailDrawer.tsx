@@ -291,7 +291,9 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
                 Editar borrador
               </Link>
             )}
-            {(activation.status === 'DRAFT' || activation.status === 'ERROR') && (
+            {(activation.status === 'DRAFT' ||
+              activation.status === 'FAILED' ||
+              activation.status === 'RETRYING') && (
               <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleSend} disabled={sending}>
                 {sending ? 'Enviando…' : 'Enviar activación'}
               </button>

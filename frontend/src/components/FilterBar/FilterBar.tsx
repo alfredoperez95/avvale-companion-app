@@ -47,9 +47,12 @@ export function FilterBar({
       >
         <option value="">Todos</option>
         <option value="DRAFT">Borrador</option>
-        <option value="READY_TO_SEND">Envío iniciado</option>
+        <option value="QUEUED">En cola</option>
+        <option value="PROCESSING">Procesando</option>
+        <option value="RETRYING">Reintentando</option>
+        <option value="PENDING_CALLBACK">Esperando Make</option>
         <option value="SENT">Enviado</option>
-        <option value="ERROR">Error</option>
+        <option value="FAILED">Error</option>
       </select>
       {showSolicitante && (
         <>

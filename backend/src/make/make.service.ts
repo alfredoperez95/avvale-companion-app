@@ -16,8 +16,8 @@ import { MakeCallbackDto } from './dto/make-callback.dto';
 import { formatActivationCode } from '../activations/activation-code';
 
 const WEBHOOK_TIMEOUT_MS = 30_000;
-const READY_TO_SEND_WATCHDOG_INTERVAL_MS = 5_000;
-const READY_TO_SEND_TIMEOUT_DEFAULT_MS = 30_000;
+const PENDING_CALLBACK_WATCHDOG_INTERVAL_MS = 5_000;
+const PENDING_CALLBACK_TIMEOUT_DEFAULT_MS = 30_000;
 
 export interface MakeWebhookResult {
   success: boolean;
@@ -37,8 +37,8 @@ export class MakeService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     this.watchdogTimer = setInterval(() => {
-      void this.markStaleReadyToSendAsError();
-    }, READY_TO_SEND_WATCHDOG_INTERVAL_MS);
+      void this.markStalePendingCallbackAsFailed();
+    }, PENDING_CALLBACK_WATCHDOG_INTERVAL_MS);
   }
 
   onModuleDestroy() {
@@ -46,17 +46,19 @@ export class MakeService implements OnModuleInit, OnModuleDestroy {
     this.watchdogTimer = null;
   }
 
-  private async markStaleReadyToSendAsError() {
+  private async markStalePendingCallbackAsFailed() {
     const timeoutMs =
-      this.config.get<number>('MAKE_READY_TO_SEND_TIMEOUT_MS') ?? READY_TO_SEND_TIMEOUT_DEFAULT_MS;
+      this.config.get<number>('MAKE_PENDING_CALLBACK_TIMEOUT_MS') ??
+      this.config.get<number>('MAKE_READY_TO_SEND_TIMEOUT_MS') ??
+      PENDING_CALLBACK_TIMEOUT_DEFAULT_MS;
     const cutoff = new Date(Date.now() - timeoutMs);
-    const result = await this.prisma.activation.updateMany({
+    await this.prisma.activation.updateMany({
       where: {
-        status: ActivationStatus.READY_TO_SEND,
+        status: ActivationStatus.PENDING_CALLBACK,
         lastStatusAt: { lt: cutoff },
       },
       data: {
-        status: ActivationStatus.ERROR,
+        status: ActivationStatus.FAILED,
         errorMessage: 'Timeout esperando confirmación de Make',
         lastStatusAt: new Date(),
       },
@@ -169,7 +171,22 @@ export class MakeService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    const preSendStates: ActivationStatus[] = [
+      ActivationStatus.PENDING_CALLBACK,
+      ActivationStatus.PROCESSING,
+      ActivationStatus.QUEUED,
+      ActivationStatus.RETRYING,
+    ];
+
     if (dto.status === 'sent') {
+      if (activation.status === ActivationStatus.SENT) {
+        return;
+      }
+      if (!preSendStates.includes(activation.status)) {
+        throw new BadRequestException(
+          `Callback "sent" no aplicable en estado ${activation.status}`,
+        );
+      }
       await this.prisma.activation.update({
         where: { id: dto.activationId },
         data: {
@@ -183,10 +200,17 @@ export class MakeService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    const errStates = [...preSendStates, ActivationStatus.SENT];
+    if (!errStates.includes(activation.status)) {
+      throw new BadRequestException(
+        `Callback de error no aplicable en estado ${activation.status}`,
+      );
+    }
+
     await this.prisma.activation.update({
       where: { id: dto.activationId },
       data: {
-        status: ActivationStatus.ERROR,
+        status: ActivationStatus.FAILED,
         errorMessage: dto.errorMessage?.trim() || 'Error reportado por Make',
         lastStatusAt: new Date(),
       },

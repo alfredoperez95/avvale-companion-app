@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
+import { ACTIVATION_IN_FLIGHT_STATUSES } from '@/types/activation';
 import { FilterBar, type SolicitanteOption } from '@/components/FilterBar/FilterBar';
 import { DataTable, type Column } from '@/components/DataTable/DataTable';
 import { DetailDrawer } from '@/components/DetailDrawer/DetailDrawer';
@@ -44,10 +45,10 @@ export default function ActivationsPage() {
     (activation: Activation) => {
       const startedAt = sendStartedMap[activation.id];
       if (!startedAt) return false;
-      if (activation.status === 'SENT' || activation.status === 'ERROR') return false;
+      if (activation.status !== 'DRAFT') return false;
       const elapsedMs = Date.now() - startedAt;
-      if (elapsedMs < 5000) return true;
-      return true;
+      // Evita que el primer render vuelva a mostrar `DRAFT` durante navegación inmediata.
+      return elapsedMs < 10_000;
     },
     [sendStartedMap],
   );
@@ -68,8 +69,9 @@ export default function ActivationsPage() {
           const startedAt = next[activation.id];
           if (!startedAt) continue;
           const elapsedMs = now - startedAt;
-          const isTerminal = activation.status === 'SENT' || activation.status === 'ERROR';
-          const canClear = activation.status === 'ERROR' || (activation.status === 'SENT' && elapsedMs >= 5000);
+          const isTerminal = activation.status === 'SENT' || activation.status === 'FAILED';
+          const canClear =
+            activation.status === 'FAILED' || (activation.status === 'SENT' && elapsedMs >= 5000);
           if (isTerminal && canClear) {
             delete next[activation.id];
             try {
@@ -106,9 +108,9 @@ export default function ActivationsPage() {
   }, []);
 
   useEffect(() => {
-    const hasReadyToSend = list.some((a) => a.status === 'READY_TO_SEND');
+    const hasInFlight = list.some((a) => ACTIVATION_IN_FLIGHT_STATUSES.includes(a.status));
     const hasSimulatedSending = list.some((a) => shouldSimulateSending(a));
-    if (!hasReadyToSend && !hasSimulatedSending) return;
+    if (!hasInFlight && !hasSimulatedSending) return;
     const intervalId = window.setInterval(() => {
       void fetchActivations().catch(() => {
         // Ignora errores puntuales de red; siguiente ciclo reintenta.
@@ -207,7 +209,7 @@ export default function ActivationsPage() {
       key: 'status',
       header: 'Estado',
       render: (row) => (
-        <StatusTag status={shouldSimulateSending(row) ? 'READY_TO_SEND' : row.status} />
+        <StatusTag status={shouldSimulateSending(row) ? 'QUEUED' : row.status} />
       ),
     },
     {

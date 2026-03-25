@@ -11,10 +11,12 @@ import { BillingAdminContactsModule } from './billing-admin-contacts/billing-adm
 import { EmailTemplatesModule } from './email-templates/email-templates.module';
 import { EmailSignatureModule } from './email-signature/email-signature.module';
 import { UserConfigModule } from './user-config/user-config.module';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    QueueModule,
     PrismaModule,
     HealthModule,
     AuthModule,

@@ -113,7 +113,8 @@ Requiere `MAKE_CALLBACK_SECRET` configurado en el backend. Si no está definido,
 
 ## Estados en la BD
 
-- Tras disparo correcto al webhook: `READY_TO_SEND` y opcionalmente `makeRunId`.
-- Si el POST a Make falla: `ERROR` y `errorMessage`.
+- Tras **POST /activations/:id/send** (publicación de adjuntos): `QUEUED`; el worker pasa a `PROCESSING` y luego, si Make responde OK al webhook, `PENDING_CALLBACK` y opcionalmente `makeRunId`. Ver [ACTIVATION_STATE_MACHINE.md](./ACTIVATION_STATE_MACHINE.md).
+- Reintentos BullMQ: `RETRYING` con `errorMessage`; agotados los intentos: `FAILED`.
+- Si el POST a Make falla sin más reintentos: `FAILED` y `errorMessage`.
 - Tras callback `sent`: `SENT` y `makeSentAt`.
-- Tras callback `error`: `ERROR` y `errorMessage`.
+- Tras callback `error`: `FAILED` y `errorMessage`.

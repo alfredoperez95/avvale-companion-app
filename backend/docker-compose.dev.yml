@@ -1,0 +1,14 @@
+# Redis para BullMQ en desarrollo local.
+# Uso: docker compose -f docker-compose.dev.yml up -d
+# En producción/Coolify: añade un servicio Redis (o proveedor gestionado) e inyecta REDIS_URL en el backend.
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - avvale-redis-data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  avvale-redis-data:

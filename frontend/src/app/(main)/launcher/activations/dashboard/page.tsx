@@ -87,7 +87,7 @@ export default function DashboardPage() {
     const total = list.length;
     const draft = list.filter((a) => a.status === 'DRAFT').length;
     const sent = list.filter((a) => a.status === 'SENT').length;
-    const error = list.filter((a) => a.status === 'ERROR').length;
+    const error = list.filter((a) => a.status === 'FAILED').length;
     return { total, draft, sent, error };
   }, [list]);
 

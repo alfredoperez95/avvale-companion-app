@@ -31,4 +31,8 @@ async function bootstrap() {
   console.log(`Backend running at http://localhost:${port}/api`);
   console.log(`CORS allowed origins: ${merged.join(', ')}`);
 }
-bootstrap();
+
+bootstrap().catch((err: unknown) => {
+  console.error(err);
+  process.exit(1);
+});

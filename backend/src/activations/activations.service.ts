@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttachmentsService } from '../attachments/attachments.service';
@@ -6,10 +6,10 @@ import { BillingAdminContactsService } from '../billing-admin-contacts/billing-a
 import { ActivationStatus } from '@prisma/client';
 import { CreateActivationDto } from './dto/create-activation.dto';
 import { UpdateActivationDto } from './dto/update-activation.dto';
-import { MakeService } from '../make/make.service';
-import { buildMakeWebhookPayload, ActivationForMakePayload } from '../make/make-webhook-payload';
 import { EmailSignatureService } from '../email-signature/email-signature.service';
 import { formatActivationCode } from './activation-code';
+import { ActivationSendProducer } from '../queue/producers/activation-send-producer.service';
+import { ActivationLookupService } from './activation-lookup.service';
 
 /** Asunto provisional antes de conocer activationNumber (misma forma legacy sin código). */
 function buildSubjectWithoutCode(projectName: string, client: string | null): string {
@@ -30,31 +30,6 @@ const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
 type ProjectJpResolution = { name: string; email: string; source: 'AUTO' | 'MANUAL' } | null;
 type ActivationRecipients = { recipientTo: string; recipientCc: string | null };
 
-function normalizeEmailHtmlSpacing(
-  html: string | null,
-  options?: { preserveTrailingBreaks?: boolean },
-): string | null {
-  if (!html?.trim()) return html ?? null;
-  let out = html;
-  const preserveTrailingBreaks = options?.preserveTrailingBreaks ?? false;
-  // Normaliza párrafos vacíos a un salto explícito.
-  out = out.replace(
-    /<p\b[^>]*>\s*(?:&nbsp;|\s|<span>\s*&nbsp;\s*<\/span>|<span>\s*<\/span>|<br\s*\/?>)*\s*<\/p>/gi,
-    '<br>',
-  );
-  // Convierte estructura de párrafos a saltos <br> para que cada salto de línea sea explícito.
-  out = out.replace(/<p\b[^>]*>/gi, '');
-  out = out.replace(/<\/p>/gi, '<br>');
-  // Mantiene saltos simples o dobles; evita ráfagas largas.
-  out = out.replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>');
-  // Evita saltos sobrantes al principio/fin.
-  out = out.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
-  if (!preserveTrailingBreaks) {
-    out = out.replace(/(?:<br\s*\/?>\s*)+\s*$/i, '');
-  }
-  return out;
-}
-
 @Injectable()
 export class ActivationsService {
   constructor(
@@ -62,8 +37,10 @@ export class ActivationsService {
     private readonly config: ConfigService,
     private readonly attachmentsService: AttachmentsService,
     private readonly billingAdminContactsService: BillingAdminContactsService,
-    private readonly makeService: MakeService,
     private readonly emailSignatureService: EmailSignatureService,
+    private readonly activationLookup: ActivationLookupService,
+    @Inject(forwardRef(() => ActivationSendProducer))
+    private readonly activationSendProducer: ActivationSendProducer,
   ) {}
 
   /** Devuelve la base pública del backend con sufijo /api (exactamente una vez). */
@@ -228,25 +205,6 @@ export class ActivationsService {
       }
     }
     return [...merged];
-  }
-
-  /** Emails de CC automáticos: directores de práctica + contactos de subárea involucrados. */
-  private async getAutoCcEmails(areaIds: string[], subAreaIds: string[]): Promise<string[]> {
-    const { directors, subAreaContacts } = await this.getRecipientsFromAreasAndSubAreas(
-      areaIds,
-      subAreaIds,
-    );
-    return this.mergeEmailLists(directors, subAreaContacts);
-  }
-
-  /** Parte de CC introducida manualmente (excluye auto), para rellenar el formulario de edición. */
-  private async computeManualCcEmails(
-    recipientCc: string | null | undefined,
-    areaIds: string[],
-    subAreaIds: string[],
-  ): Promise<string[]> {
-    const autoSet = new Set(await this.getAutoCcEmails(areaIds, subAreaIds));
-    return this.splitEmails(recipientCc).filter((e) => !autoSet.has(e));
   }
 
   private async buildRecipients(
@@ -439,40 +397,7 @@ export class ActivationsService {
 
   /** Obtiene una activación por id sin filtrar por usuario (para ADMIN). */
   async findOneById(activationId: string) {
-    const activation = await this.prisma.activation.findFirst({
-      where: { id: activationId },
-      include: {
-        activationAreas: { include: { area: { select: { id: true, name: true } } } },
-        activationSubAreas: {
-          include: {
-            subArea: {
-              include: { area: { select: { id: true, name: true } } },
-            },
-          },
-        },
-        attachments: {
-          orderBy: { createdAt: 'asc' },
-          select: {
-            id: true,
-            fileName: true,
-            originalUrl: true,
-            contentType: true,
-            createdAt: true,
-            publicToken: true,
-          },
-        },
-        createdByUser: { select: { name: true, lastName: true, email: true } },
-      },
-    });
-    if (!activation) throw new NotFoundException('Activation no encontrada');
-    const areaIds = activation.activationAreas.map((a) => a.areaId);
-    const subAreaIds = activation.activationSubAreas.map((a) => a.subAreaId);
-    const manualCcEmails = await this.computeManualCcEmails(
-      activation.recipientCc,
-      areaIds,
-      subAreaIds,
-    );
-    return { ...activation, manualCcEmails };
+    return this.activationLookup.findOneById(activationId);
   }
 
   async previewProjectJp(
@@ -593,87 +518,61 @@ export class ActivationsService {
 
   /** Obtiene una activación solo si pertenece al usuario, con áreas, subáreas y adjuntos. */
   async findOneByIdAndUser(activationId: string, userId: string) {
-    const activation = await this.prisma.activation.findFirst({
-      where: { id: activationId, createdByUserId: userId },
-      include: {
-        activationAreas: { include: { area: { select: { id: true, name: true } } } },
-        activationSubAreas: {
-          include: {
-            subArea: {
-              include: { area: { select: { id: true, name: true } } },
-            },
-          },
-        },
-        attachments: {
-          orderBy: { createdAt: 'asc' },
-          select: {
-            id: true,
-            fileName: true,
-            originalUrl: true,
-            contentType: true,
-            createdAt: true,
-            publicToken: true,
-          },
-        },
-        createdByUser: { select: { name: true, lastName: true, email: true } },
-      },
-    });
-    if (!activation) throw new NotFoundException('Activation no encontrada');
-    const areaIds = activation.activationAreas.map((a) => a.areaId);
-    const subAreaIds = activation.activationSubAreas.map((a) => a.subAreaId);
-    const manualCcEmails = await this.computeManualCcEmails(
-      activation.recipientCc,
-      areaIds,
-      subAreaIds,
-    );
-    return { ...activation, manualCcEmails };
+    return this.activationLookup.findOneByIdAndUser(activationId, userId);
   }
 
-  /** Dispara el webhook de Make con el payload v4 (incl. firma global); si OK → READY_TO_SEND + makeRunId; si falla → ERROR + errorMessage. Solo DRAFT o ERROR. */
+  /**
+   * Publica adjuntos y encola el envío al webhook de Make (BullMQ). Respuesta rápida en QUEUED;
+   * el worker pasa a PROCESSING / PENDING_CALLBACK o FAILED / RETRYING.
+   */
   async requestSend(activationId: string, userId: string) {
     const activation = await this.findOneByIdAndUser(activationId, userId);
-    if (activation.status !== ActivationStatus.DRAFT && activation.status !== ActivationStatus.ERROR) {
+    const canSend =
+      activation.status === ActivationStatus.DRAFT ||
+      activation.status === ActivationStatus.FAILED ||
+      activation.status === ActivationStatus.RETRYING;
+    if (!canSend) {
       throw new BadRequestException(
-        `No se puede enviar: estado actual es ${activation.status}. Solo DRAFT o ERROR.`,
+        `No se puede enviar: estado actual es ${activation.status}. Solo DRAFT, FAILED o RETRYING.`,
       );
     }
 
+    const restorableStatus = activation.status;
+
     await this.attachmentsService.publishForActivation(activationId);
-    const refreshed = await this.findOneByIdAndUser(activationId, userId);
+    await this.findOneByIdAndUser(activationId, userId);
 
-    const signatureHtml = await this.emailSignatureService.getContent(userId);
-    const emailSignature = signatureHtml.trim() ? signatureHtml : null;
-    const attachmentsBaseUrl = await this.getBackendApiBaseUrl();
-    const payload = buildMakeWebhookPayload(refreshed as ActivationForMakePayload, {
-      emailSignature,
-      attachmentsBaseUrl,
+    await this.prisma.activation.update({
+      where: { id: activationId },
+      data: {
+        status: ActivationStatus.QUEUED,
+        queuedAt: new Date(),
+        processingStartedAt: null,
+        errorMessage: null,
+        lastStatusAt: new Date(),
+      },
     });
-    const normalizedPayload = {
-      ...payload,
-      body: normalizeEmailHtmlSpacing(payload.body, { preserveTrailingBreaks: true }),
-      emailSignature: normalizeEmailHtmlSpacing(payload.emailSignature),
-    };
-    const result = await this.makeService.triggerWebhook(normalizedPayload);
 
-    if (result.success) {
+    try {
+      const bullJobId = await this.activationSendProducer.enqueueSendActivation({
+        activationId,
+        userId,
+      });
+      await this.prisma.activation.update({
+        where: { id: activationId },
+        data: { bullJobId },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       await this.prisma.activation.update({
         where: { id: activationId },
         data: {
-          status: ActivationStatus.READY_TO_SEND,
-          makeRunId: result.makeRunId ?? null,
-          errorMessage: null,
+          status: restorableStatus,
+          errorMessage: `No se pudo encolar el envío (¿Redis caído?). ${msg}`.slice(0, 2000),
           lastStatusAt: new Date(),
         },
       });
-    } else {
-      await this.prisma.activation.update({
-        where: { id: activationId },
-        data: {
-          status: ActivationStatus.ERROR,
-          errorMessage: result.errorMessage ?? 'Error desconocido al contactar con Make',
-          lastStatusAt: new Date(),
-        },
-      });
+      throw err;
     }
 
     return this.findOneByIdAndUser(activationId, userId);
