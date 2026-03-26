@@ -79,7 +79,7 @@ export default function ConfigurationHubPage() {
           <article className={styles.tile}>
             <h2 id="tile-signature-heading" className={styles.tileTitle}>Firma</h2>
             <p className={styles.tileDesc}>
-              Se incluye en el envío de activación. Una firma por usuario; el administrador puede definir además la plantilla inicial para nuevas cuentas.
+              Se incluye en el envío del email de activación. El administrador puede definir además la plantilla inicial para nuevas cuentas.
             </p>
             <span className={styles.tileCta}>Editar firma →</span>
           </article>
