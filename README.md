@@ -1,22 +1,78 @@
-# Plataforma de Activaciones
+# Avvale Companion Apps — Plataforma de Activaciones
 
-Aplicación web para gestionar activaciones por email, con backend NestJS, frontend Next.js y orquestación de envíos vía Make.
+Aplicación web para **gestionar activaciones por correo**: borradores, destinatarios, áreas, plantillas, adjuntos, firma global y **envío orquestado vía Make.com** (webhook + callback). Incluye **App Launcher** (varias apps en un mismo front), tema **Microsoft-like** o **SAP Fiori-like**, y zona de **perfil / cuenta**.
 
-**En Mac:** Todos los comandos están pensados para Terminal (zsh o bash). Usa la misma terminal para todo el flujo.
+**Stack:** monorepo con **NestJS 10** (API REST, prefijo `/api`), **Prisma 6** + **MySQL/MariaDB**, **Next.js 15** (App Router, React 19), cola **BullMQ** sobre **Redis**, integración **Make** (HTTP webhook + callback opcional).
 
 ---
 
-## Requisitos en Mac
+## Contenido de este README
 
-- **Node.js 22+**  
-  Con Homebrew: `brew install node`  
-  O con nvm: `nvm install 22 && nvm use 22`
-- **npm** (viene con Node)
-- **Docker Desktop** (opcional, para MariaDB o para levantar todo en contenedores): [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
+1. [Arquitectura y módulos](#arquitectura-y-módulos)
+2. [Requisitos](#requisitos)
+3. [Estructura del repositorio](#estructura-del-repositorio)
+4. [Variables de entorno](#variables-de-entorno)
+5. [Paso 0 — Preparar `.env`](#paso-0--preparar-env)
+6. [Redis en desarrollo](#redis-en-desarrollo)
+7. [Desarrollo local](#desarrollo-local)
+8. [Docker (backend y frontend)](#docker-backend-y-frontend)
+9. [Producción — comprobaciones rápidas](#producción--comprobaciones-rápidas)
+10. [Flujo de envío y estados](#flujo-de-envío-y-estados)
+11. [Scripts útiles](#scripts-útiles)
+12. [Documentación adicional](#documentación-adicional)
+13. [API — resumen](#api--resumen)
 
-Funciona en Mac Intel y Apple Silicon (M1/M2/M3).
+---
 
-Comprueba en la terminal:
+## Arquitectura y módulos
+
+### Backend (`backend/`)
+
+| Área | Descripción |
+|------|-------------|
+| **Auth** | JWT (`POST /api/auth/register`, `login`, `GET/PATCH /api/auth/me`), avatar (`POST/DELETE …/me/avatar`), apariencia usuario. |
+| **Activaciones** | CRUD filtrado por usuario; numeración `activation_number`; envío asíncrono `POST …/send` (cola). |
+| **Cola BullMQ** | Worker procesa envío a Make; reintentos configurables (`ACTIVATION_SEND_QUEUE_*`). |
+| **Make** | `MakeService.triggerWebhook` (POST saliente a `MAKE_WEBHOOK_URL`); `POST /api/webhooks/make/callback` para cierre `SENT` / `FAILED`. |
+| **Áreas / subáreas** | Catálogo asociado a activaciones. |
+| **Contactos / billing CC** | Contactos para copias en facturación. |
+| **Plantillas email / firma** | Plantillas y firma HTML global (admin/configuración según rol). |
+| **User config** | Bootstrap de preferencias. |
+| **Users** | Gestión de usuarios (rutas protegidas **ADMIN**). |
+| **Health** | `GET /api/health` — comprueba base de datos. |
+
+**Roles:** `USER` | `ADMIN`. El registro público crea usuarios `USER`; el rol **ADMIN** se asigna en base de datos (u operaciones internas), según vuestra política.
+
+### Frontend (`frontend/`)
+
+| Ruta / concepto | Descripción |
+|-----------------|-------------|
+| **`/login`** | Autenticación; token en `localStorage`. |
+| **`/launcher`** | App Launcher (acceso a Activaciones y enlaces externos). |
+| **`/launcher/activations/*`** | Dashboard, listado, nueva activación, edición, detalle, configuración (Fiori: pestañas superiores). |
+| **`/admin`** | Gestión de usuarios (solo **ADMIN**). |
+| **`/profile`** | Mi cuenta: datos, foto, apariencia Microsoft/Fiori. |
+
+**Temas:** `AppShell` con navegación lateral (Microsoft) o cabecera + pestañas (Fiori). El front puede reescribir `/api/*` hacia el backend vía `next.config.ts` (`rewrites`) o llamar directamente a `NEXT_PUBLIC_API_URL`.
+
+**UI:** TipTap (editor rico), UI5 Web Components, Fluent icons, Tablas con columnas configurables, integración Make documentada en payloads JSON.
+
+### Datos
+
+- **MySQL/MariaDB** vía Prisma; migraciones en `backend/prisma/migrations/`.
+- **Adjuntos** en disco (`ATTACHMENTS_DIR`); URLs públicas temporales para que Make descargue; revocación tras callback `SENT` (documentado en `docs/MAKE.md`).
+
+---
+
+## Requisitos
+
+- **Node.js 22+** y **npm**
+- **MySQL o MariaDB** accesible desde el backend
+- **Redis** (necesario para encolar envíos a Make en tiempo real)
+- **Docker** (opcional: MariaDB, Redis de desarrollo, imágenes de despliegue)
+
+En Mac (Intel o Apple Silicon):
+
 ```bash
 node -v   # v22.x o superior
 npm -v
@@ -24,105 +80,100 @@ npm -v
 
 ---
 
-## Paso 0 — Preparar entorno
+## Estructura del repositorio
 
-Hazlo una sola vez antes de arrancar backend, frontend o base de datos.
+```
+├── backend/           # NestJS, Prisma, Dockerfile, docker-compose.dev.yml (solo Redis)
+├── frontend/          # Next.js, Dockerfile (output standalone)
+├── docs/              # MAKE, máquina de estados, verificación
+├── scripts/           # prepare-env.sh (copia .env raíz → backend y frontend)
+├── .env.example       # Plantilla principal de variables
+└── README.md          # Este archivo
+```
 
-1. **Copia el ejemplo de variables y edítalo con tus valores:**
-   ```bash
-   cp .env.example .env
-   open -e .env
-   ```
-   (En Mac, `open -e .env` abre `.env` en TextEdit. Si prefieres otro editor: `code .env`, `nano .env`, etc.)
-
-   Rellena en `.env` al menos:
-   - **DATABASE_URL**: `mysql://USER:PASSWORD@HOST:3306/DATABASE` (con tu MariaDB).
-   - **JWT_SECRET**: una cadena secreta larga y aleatoria (en producción no uses `change-me-in-production`).
-   - **NEXT_PUBLIC_API_URL**: en local suele ser `http://localhost:4000`; en producción, la URL pública del backend.
-
-2. **Propaga `.env` a backend y frontend** (desde la raíz del repo):
-   ```bash
-   chmod +x scripts/prepare-env.sh
-   ./scripts/prepare-env.sh
-   ```
-   Así `backend/` y `frontend/` tendrán su copia de `.env` y leerán las mismas variables. En Mac no hace falta `bash` delante: el shebang del script usa `sh`.
-
-3. **Comprueba:** Debe existir `backend/.env` y `frontend/.env` (no los subas a Git).
-
-Siguiente: **Paso 1 — MariaDB** (si aún no tienes la base de datos) o **Paso 2 — Backend** (si ya tienes MariaDB).
+Los **Dockerfiles operativos** del producto Node están en **`backend/`** y **`frontend/`**. El archivo `Dockerfile` en la **raíz** del repo no forma parte del flujo estándar de esta app Nest/Next.
 
 ---
 
-## Estructura del repositorio
+## Variables de entorno
 
-- `backend/` — API NestJS (Prisma, MariaDB, JWT). Incluye `Dockerfile`.
-- `frontend/` — Next.js (App Router). Incluye `Dockerfile`.
-- `docs/VERIFICACION.md` — Comprobación paso a paso (health, auth, frontend).
-- `docs/MAKE.md` — Webhook a Make, variables `MAKE_*` y callback opcional.
-- `.env.example` — Variables de entorno de ejemplo
+Origen único: **`.env` en la raíz**; luego [`scripts/prepare-env.sh`](scripts/prepare-env.sh) copia a `backend/.env` y `frontend/.env`. No subas `.env` a Git.
 
-Cada servicio se construye y ejecuta con su propio Dockerfile (sin docker-compose).
+| Variable | Uso |
+|----------|-----|
+| `DATABASE_URL` | MySQL/MariaDB (`mysql://USER:PASS@HOST:PORT/DB`) |
+| `JWT_SECRET` | Firma JWT (obligatorio; valor fuerte en producción) |
+| `JWT_EXPIRES_IN` | Caducidad del token (ej. `7d`) |
+| `CORS_ORIGIN` | Origen(es) del frontend en producción (separados por coma). Si en producción está vacío, el backend solo permite `localhost:3000` por defecto. |
+| `NEXT_PUBLIC_API_URL` | URL pública del API para el navegador (build del front). Vacío en cliente puede implicar mismo origen + rewrites. |
+| `BACKEND_PUBLIC_URL` | Recomendada si difiere: URL base del backend para payloads a Make (adjuntos, callback). Ver [docs/MAKE.md](docs/MAKE.md). |
+| `REDIS_URL` o `REDIS_HOST`/`REDIS_PORT`/… | BullMQ |
+| `BULL_PREFIX` | Prefijo Redis (default `avvale`) |
+| `ACTIVATION_SEND_QUEUE_ATTEMPTS` | Reintentos del job de envío (default 5) |
+| `ACTIVATION_SEND_QUEUE_BACKOFF_MS` | Backoff exponencial (default 5000) |
+| `MAKE_WEBHOOK_URL` | URL del Custom Webhook de Make |
+| `MAKE_WEBHOOK_TIMEOUT_MS` | Timeout del POST saliente al webhook (default 30000 ms) |
+| `MAKE_WEBHOOK_SECRET` | Opcional: cabecera `X-Webhook-Secret` |
+| `MAKE_CALLBACK_SECRET` | Secreto del cuerpo JSON del callback Make → `POST /api/webhooks/make/callback` |
+| `MAKE_PENDING_CALLBACK_TIMEOUT_MS` | Watchdog: tiempo máximo en `PENDING_CALLBACK` antes de `FAILED` (también compat. `MAKE_READY_TO_SEND_TIMEOUT_MS`) |
+| `ATTACHMENTS_DIR` | Directorio de ficheros subidos/descargados (en producción: volumen persistente) |
+| `PORT` | Backend (default 4000) |
 
-## Requisitos (resumen)
+Detalle de Make, payload **schema v4** y callback: **[docs/MAKE.md](docs/MAKE.md)**.  
+También existe **`backend/.env.example`** con comentarios alineados al despliegue del backend.
 
-- Node.js 22+ y npm (ver **Requisitos en Mac** arriba)
-- Docker (opcional; para MariaDB en contenedor o despliegue)
+---
 
-## Desarrollo local (sin contenedores)
-
-### 1. Variables de entorno
-
-Ya hecho en **Paso 0** (`.env` en la raíz y `./scripts/prepare-env.sh`). Si no, hazlo ahora.
-
-Para **envíos vía Make**, define al menos `MAKE_WEBHOOK_URL` (y opcionalmente `MAKE_WEBHOOK_SECRET`, `MAKE_CALLBACK_SECRET`). Detalle del payload JSON y del escenario en [docs/MAKE.md](docs/MAKE.md).
-
-### 2. Base de datos y tablas
-
-**Si ya tienes MariaDB en producción** (ej. Coolify/host con DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS):
-
-1. Crea `backend/.env` con la URL de conexión (usa tus variables reales):
-   ```env
-   DATABASE_URL="mysql://DB_USER:DB_PASS@DB_HOST:DB_PORT/DB_NAME"
-   ```
-2. Desde la carpeta `backend`, aplica las migraciones para crear las tablas:
-   ```bash
-   cd backend
-   npm install
-   npx prisma migrate deploy
-   ```
-   En Mac, si prefieres no usar `backend/.env`, puedes pasar la URL en la misma línea:
-   ```bash
-   DATABASE_URL="mysql://user:pass@host:3306/db" npx prisma migrate deploy
-   ```
-
-**MariaDB local** (contenedor):
+## Paso 0 — Preparar `.env`
 
 ```bash
-docker run -d --name mariadb \
-  -e MARIADB_ROOT_PASSWORD=root \
-  -e MARIADB_DATABASE=activation \
-  -e MARIADB_USER=app \
-  -e MARIADB_PASSWORD=app \
-  -p 3306:3306 \
-  mariadb:11
+cp .env.example .env
+# Edita .env (DATABASE_URL, JWT_SECRET, NEXT_PUBLIC_API_URL, REDIS_URL, MAKE_*, etc.)
+
+chmod +x scripts/prepare-env.sh
+./scripts/prepare-env.sh
 ```
 
-Define `DATABASE_URL` en `.env` (o en `backend/.env`), por ejemplo:
-`DATABASE_URL="mysql://app:app@localhost:3306/activation"`
+Debe existir `backend/.env` y `frontend/.env`.
 
-### 3. Backend
+---
+
+## Redis en desarrollo
+
+La cola de envío **requiere Redis**. En local:
+
+```bash
+cd backend
+npm run redis:dev    # docker compose -f docker-compose.dev.yml up -d
+# npm run redis:dev:down  # para parar
+```
+
+Asegúrate de que `REDIS_URL` en `.env` apunte a ese Redis (por ejemplo `redis://127.0.0.1:6379/0`).
+
+---
+
+## Desarrollo local
+
+### 1. Base de datos
+
+Aplica migraciones desde `backend/`:
 
 ```bash
 cd backend
 npm install
 npx prisma migrate deploy
-npx prisma generate   # regenera el cliente si cambias el schema (evita errores de tipos TS)
+npx prisma generate
+```
+
+### 2. Backend
+
+```bash
 npm run start:dev
 ```
 
-API en `http://localhost:4000` (prefijo `/api`). Si tras modificar `prisma/schema.prisma` el backend no compila (p. ej. "property X does not exist"), ejecuta `npx prisma generate` en `backend/`.
+Consola esperada: `Backend running at http://localhost:4000/api` y orígenes CORS.
 
-### 4. Frontend
+### 3. Frontend
 
 ```bash
 cd frontend
@@ -130,22 +181,26 @@ npm install
 npm run dev
 ```
 
-Frontend en `http://localhost:3000`. Ajusta `NEXT_PUBLIC_API_URL` si la API no está en `http://localhost:4000`.
+Abre `http://localhost:3000` (o el puerto que indique Next).
 
-### 5. Primer usuario
+### 4. Primer usuario
 
-En la terminal (Mac viene con `curl`):
 ```bash
 curl -X POST http://localhost:4000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"tu@email.com","password":"minimo6","name":"Tu Nombre"}'
 ```
 
-## Ejecución con Docker (solo Dockerfiles)
+### 5. Comprobación rápida
 
-Cada servicio se construye y ejecuta por separado.
+```bash
+curl -s http://localhost:4000/api/health
+# {"status":"ok","database":"connected"}
+```
 
-### 1. MariaDB
+Más pasos: **[docs/VERIFICACION.md](docs/VERIFICACION.md)**.
+
+### MariaDB en Docker (ejemplo)
 
 ```bash
 docker run -d --name mariadb \
@@ -157,77 +212,126 @@ docker run -d --name mariadb \
   mariadb:11
 ```
 
-Espera unos segundos a que la base esté lista.
+`DATABASE_URL="mysql://app:app@localhost:3306/activation"`
 
-### 2. Backend
+---
+
+## Docker (backend y frontend)
+
+El **entrypoint** del backend ejecuta **`npx prisma migrate deploy`** antes de arrancar ([`backend/scripts/entrypoint.sh`](backend/scripts/entrypoint.sh)).
+
+### Backend
 
 ```bash
 cd backend
 docker build -t activation-backend .
-docker run -d --name backend --link mariadb:mariadb \
-  -e DATABASE_URL="mysql://app:app@mariadb:3306/activation" \
-  -e JWT_SECRET=change-me-in-production \
+docker run -d --name backend \
+  -e DATABASE_URL="mysql://..." \
+  -e JWT_SECRET="..." \
+  -e REDIS_URL="redis://..." \
+  -e CORS_ORIGIN="https://tu-front.example.com" \
   -p 4000:4000 \
   activation-backend
 ```
 
-### 3. Frontend
+Inyecta también `MAKE_*`, `BACKEND_PUBLIC_URL` o `NEXT_PUBLIC_API_URL` según entorno.
+
+### Frontend
+
+`NEXT_PUBLIC_*` se resuelve en **build time**:
 
 ```bash
 cd frontend
-docker build -t activation-frontend .
-docker run -d --name frontend \
-  -e NEXT_PUBLIC_API_URL=http://localhost:4000 \
-  -p 3000:3000 \
-  activation-frontend
+docker build --build-arg NEXT_PUBLIC_API_URL=https://api.example.com -t activation-frontend .
+docker run -d -p 3000:3000 activation-frontend
 ```
 
-Desde el navegador, la API debe ser accesible en la URL que uses (por ejemplo `http://localhost:4000`). Si el frontend corre en otro host, ajusta `NEXT_PUBLIC_API_URL` en el build:  
-`docker build --build-arg NEXT_PUBLIC_API_URL=https://api.ejemplo.com -t activation-frontend .`
+Ajusta `next.config.ts` si usáis rewrites al mismo host.
 
-## Despliegue en Coolify
+### Coolify / PaaS
 
-En Coolify puedes desplegar cada servicio por separado usando:
-
-- **MariaDB**: imagen `mariadb:11` y variables de entorno como arriba.
-- **Backend**: build desde `backend/Dockerfile`, variables `DATABASE_URL`, `JWT_SECRET`, etc.
-- **Frontend**: build desde `frontend/Dockerfile`, variable `NEXT_PUBLIC_API_URL` apuntando a la URL pública del backend.
-
-No es necesario docker-compose; cada Dockerfile es independiente.
-
-## API (resumen)
-
-- `POST /api/auth/register` — Registro
-- `POST /api/auth/login` — Login (devuelve `accessToken`)
-- `GET /api/auth/me` — Usuario actual (Bearer token)
-- `GET /api/activations` — Lista de activaciones del usuario (Bearer token)
-- `GET /api/activations/:id` — Detalle (solo si es del usuario)
-
-Todos los datos de activaciones están filtrados por usuario autenticado en el backend.
+Patrón habitual: servicio MariaDB, servicio **Redis**, build del **backend** desde `backend/Dockerfile`, build del **frontend** desde `frontend/Dockerfile` con la URL pública correcta del API.
 
 ---
 
-## Resumen rápido (Mac)
+## Producción — comprobaciones rápidas
 
-Orden sugerido en una sola terminal (o una por servicio):
+1. **`CORS_ORIGIN`**: debe listar el/los dominios reales del front (no solo localhost).
+2. **`JWT_SECRET`**: largo y aleatorio.
+3. **Redis** estable y alcanzable desde el backend (sin Redis no hay envíos por cola fiables).
+4. **URLs públicas HTTPS**: `NEXT_PUBLIC_API_URL` / `BACKEND_PUBLIC_URL` y callback Make (`https://…/api/webhooks/make/callback`).
+5. **Volumen persistente** para `ATTACHMENTS_DIR` si usáis adjuntos.
+6. **`docker build`** del frontend con el `NEXT_PUBLIC_API_URL` definitivo (o mismo origen + proxy).
+
+El tráfico **entrante** en tu dominio (p. ej. ngrok) muestra callbacks; los fallos de **“Reintentando”** suelen ser del **POST saliente** a `MAKE_WEBHOOK_URL` (no aparecen en el túnel de callbacks). Aumentar `MAKE_WEBHOOK_TIMEOUT_MS` si Make tarda en responder 200.
+
+---
+
+## Flujo de envío y estados
+
+1. Usuario: **`POST /api/activations/:id/send`** → adjuntos publicados, estado **`QUEUED`**, job en Redis.
+2. Worker: **`PROCESSING`** → POST a Make → si OK, **`PENDING_CALLBACK`** (con protección de carrera frente al callback rápido).
+3. Make ejecuta el escenario y puede llamar **`POST /api/webhooks/make/callback`** → **`SENT`** o **`FAILED`**.
+4. Watchdog opcional si el callback no llega a tiempo.
+
+Tabla completa de estados y transiciones: **[docs/ACTIVATION_STATE_MACHINE.md](docs/ACTIVATION_STATE_MACHINE.md)**.
+
+---
+
+## Scripts útiles
+
+| Dónde | Comando | Descripción |
+|-------|---------|-------------|
+| Raíz | `./scripts/prepare-env.sh` | Propaga `.env` a backend y frontend |
+| `backend` | `npm run redis:dev` / `redis:dev:down` | Redis local (Docker) |
+| `backend` | `npm run reset:activations` | Borra todas las activaciones y reinicia `AUTO_INCREMENT` de numeración (ver script; MySQL) |
+| `backend` | `npm run import:cc-contacts` | Importación de contactos CC (script existente) |
+| `backend` | `npx prisma migrate deploy` | Migraciones (también en entrypoint Docker) |
+| `backend` | `npx prisma studio` | UI de datos |
+
+---
+
+## Documentación adicional
+
+| Archivo | Contenido |
+|---------|-----------|
+| [docs/MAKE.md](docs/MAKE.md) | Webhook Make, variables, payload v4, callback, adjuntos públicos |
+| [docs/ACTIVATION_STATE_MACHINE.md](docs/ACTIVATION_STATE_MACHINE.md) | Estados, BullMQ, orquestador, watchdog |
+| [docs/VERIFICACION.md](docs/VERIFICACION.md) | Health, auth y comprobaciones manuales |
+
+---
+
+## API — resumen
+
+Prefijo global: **`/api`**.
+
+| Método | Ruta | Notas |
+|--------|------|--------|
+| GET | `/api/health` | Estado y conexión BD |
+| POST | `/api/auth/register` | Alta usuario |
+| POST | `/api/auth/login` | Token JWT |
+| GET | `/api/auth/me` | Perfil (Bearer) |
+| PATCH | `/api/auth/me` | Actualizar perfil / apariencia |
+| POST/DELETE | `/api/auth/me/avatar` | Foto de perfil |
+| — | `/api/activations` | Lista, creación, detalle, edición (borrador), envío, adjuntos… (Bearer, filtrado por usuario) |
+| POST | `/api/webhooks/make/callback` | Cuerpo JSON con `secret` alineado a `MAKE_CALLBACK_SECRET` |
+
+Las **activaciones** visibles por API están **acotadas al usuario autenticado** salvo rutas de administración explícitas.
+
+---
+
+## Resumen de arranque local (una referencia)
 
 ```bash
-# Paso 0
-cp .env.example .env && open -e .env
-# (edita .env, guarda y cierra)
-chmod +x scripts/prepare-env.sh && ./scripts/prepare-env.sh
-
-# Paso 1 — Solo si usas MariaDB local en Docker
-docker run -d --name mariadb -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=activation -e MARIADB_USER=app -e MARIADB_PASSWORD=app -p 3306:3306 mariadb:11
-
-# Paso 2 — Backend (deja esta terminal abierta)
+cp .env.example .env && ./scripts/prepare-env.sh   # tras editar .env
+cd backend && npm run redis:dev    # Redis
 cd backend && npm install && npx prisma migrate deploy && npm run start:dev
-
-# En otra terminal: Paso 3 — Frontend
+# otra terminal:
 cd frontend && npm install && npm run dev
-
-# En otra terminal: Paso 4 — Primer usuario
-curl -X POST http://localhost:4000/api/auth/register -H "Content-Type: application/json" -d '{"email":"tu@email.com","password":"minimo6","name":"Tu Nombre"}'
 ```
 
-Luego abre en el navegador: `http://localhost:3000`
+Luego: `http://localhost:3000` y registro con `curl` o flujo de login.
+
+---
+
+*Proyecto: **Companion Apps** — aplicación de **Activaciones** dentro del ecosistema Avvale.*
