@@ -12,24 +12,27 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  const fromEnv = (process.env.CORS_ORIGIN ?? '')
+  const allowedOrigins = (process.env.CORS_ORIGIN || '')
     .split(',')
-    .map((s) => s.trim())
+    .map((origin) => origin.trim())
     .filter(Boolean);
-  const isDev = process.env.NODE_ENV !== 'production';
-  const merged = isDev
-    ? [...new Set([...fromEnv, 'http://localhost:3000', 'http://127.0.0.1:3000'])]
-    : fromEnv.length > 0
-      ? fromEnv
-      : ['http://localhost:3000'];
   app.enableCors({
-    origin: merged.length === 1 ? merged[0] : merged,
+    origin: (origin, callback) => {
+      // Permitir requests sin origin (ej: Postman, healthchecks)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS not allowed for origin: ${origin}`), false);
+    },
     credentials: true,
   });
   const port = process.env.PORT ?? 4000;
   await app.listen(port, '0.0.0.0');
   console.log(`Backend running at http://localhost:${port}/api`);
-  console.log(`CORS allowed origins: ${merged.join(', ')}`);
+  console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`);
 }
 
 bootstrap().catch((err: unknown) => {
