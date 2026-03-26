@@ -12,6 +12,7 @@ import { EmailTemplatesModule } from './email-templates/email-templates.module';
 import { EmailSignatureModule } from './email-signature/email-signature.module';
 import { UserConfigModule } from './user-config/user-config.module';
 import { QueueModule } from './queue/queue.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -29,5 +30,6 @@ import { QueueModule } from './queue/queue.module';
     EmailSignatureModule,
     UserConfigModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
