@@ -160,6 +160,7 @@ export default function ActivationsPage() {
         return (
           a.projectName.toLowerCase().includes(q) ||
           (a.client && a.client.toLowerCase().includes(q)) ||
+          a.offerCode.toLowerCase().includes(q) ||
           a.recipientTo.toLowerCase().includes(q) ||
           (a.recipientCc && a.recipientCc.toLowerCase().includes(q)) ||
           code.includes(q) ||
@@ -235,7 +236,7 @@ export default function ActivationsPage() {
       {
         key: 'status',
         header: 'Estado',
-        minWidthPx: 110,
+        minWidthPx: 120,
         render: (row) => (
           <StatusTag status={shouldSimulateSending(row) ? 'QUEUED' : row.status} />
         ),

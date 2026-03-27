@@ -69,9 +69,7 @@ export default function EditActivationPage() {
   const [ccDraft, setCcDraft] = useState('');
   /** Fuerza reconciliación con el directorio CC tras cargar la activación (evita cierre stale de ccContacts). */
   const [manualCcHydrateKey, setManualCcHydrateKey] = useState(0);
-  const [projectJpMode, setProjectJpMode] = useState<'auto' | 'custom'>('auto');
   const [projectJpContactId, setProjectJpContactId] = useState<string>('');
-  const [projectJpAutoSubAreaContactId, setProjectJpAutoSubAreaContactId] = useState<string>('');
   const [projectJpSearch, setProjectJpSearch] = useState('');
   const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null; autoCandidates: ProjectJpAutoCandidate[] }>({
     projectJpName: null,
@@ -286,7 +284,6 @@ export default function EditActivationPage() {
     areaIds.forEach((x) => params.append('areaIds', x));
     subAreaIds.forEach((x) => params.append('subAreaIds', x));
     if (projectJpContactId) params.set('projectJpContactId', projectJpContactId);
-    if (projectJpAutoSubAreaContactId) params.set('projectJpAutoSubAreaContactId', projectJpAutoSubAreaContactId);
     apiFetch(`/api/activations/project-jp-preview?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -304,7 +301,7 @@ export default function EditActivationPage() {
         }));
       })
       .catch(() => {});
-  }, [selected, projectJpContactId, projectJpAutoSubAreaContactId]);
+  }, [selected, projectJpContactId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const name = e.target.name;
@@ -432,7 +429,6 @@ export default function EditActivationPage() {
             ? manualCcEntries.map((e) => e.email.trim()).filter(Boolean).join(', ')
             : undefined,
         projectJpContactId: projectJpContactId || undefined,
-        projectJpAutoSubAreaContactId: projectJpAutoSubAreaContactId || undefined,
         body: form.body.trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
         attachmentNames: attachmentUrls.length ? attachmentNames : undefined,
@@ -473,69 +469,31 @@ export default function EditActivationPage() {
         </div>
         <div className={styles.formGroupRow2}>
         <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="projectJpMode">JP del Proyecto</label>
-          <select
-            id="projectJpMode"
-            value={projectJpMode}
+          <label className={styles.label} htmlFor="projectJpCustomSearchEdit">JP del Proyecto</label>
+          <input
+            id="projectJpCustomSearchEdit"
+            list={projectJpSearch.trim().length >= 3 ? 'project-jp-contacts-edit' : undefined}
+            value={projectJpSearch}
             onChange={(e) => {
-              const mode = e.target.value as 'auto' | 'custom';
-              setProjectJpMode(mode);
-              if (mode === 'auto') {
-                setProjectJpContactId('');
-                setProjectJpSearch('');
-              } else {
-                setProjectJpAutoSubAreaContactId('');
-              }
+              const value = e.target.value;
+              setProjectJpSearch(value);
+              const selectedContact = ccContacts.find((c) => `${c.name} (${c.email})` === value);
+              setProjectJpContactId(selectedContact?.id ?? '');
             }}
             className={styles.input}
-          >
-            <option value="auto">Automático (según área/subárea)</option>
-            <option value="custom">Personalizado (buscar contacto)</option>
-          </select>
-          {projectJpMode === 'custom' && (
-            <>
-              <input
-                id="projectJpCustomSearchEdit"
-                list={projectJpSearch.trim().length >= 3 ? 'project-jp-contacts-edit' : undefined}
-                value={projectJpSearch}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setProjectJpSearch(value);
-                  const selectedContact = ccContacts.find((c) => `${c.name} (${c.email})` === value);
-                  setProjectJpContactId(selectedContact?.id ?? '');
-                }}
-                className={styles.input}
-                placeholder="Busca y selecciona un contacto"
-                style={{ marginTop: 'var(--fiori-space-2)' }}
-              />
-              <datalist id="project-jp-contacts-edit">
-                {ccContacts
-                  .filter((c) =>
-                    projectJpSearch.trim().length >= 3
-                      ? `${c.name} ${c.email}`.toLowerCase().includes(projectJpSearch.trim().toLowerCase())
-                      : false,
-                  )
-                  .map((c) => (
-                  <option key={c.id} value={`${c.name} (${c.email})`} />
-                  ))}
-              </datalist>
-            </>
-          )}
-          {projectJpMode === 'auto' && projectJpPreview.autoCandidates.length > 1 && (
-            <select
-              className={styles.input}
-              value={projectJpAutoSubAreaContactId}
-              onChange={(e) => setProjectJpAutoSubAreaContactId(e.target.value)}
-              style={{ marginTop: 'var(--fiori-space-2)' }}
-            >
-              <option value="">Seleccionar JP de la subcategoría…</option>
-              {projectJpPreview.autoCandidates.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.name} ({candidate.email})
-                </option>
+            placeholder="Busca y selecciona un contacto (vacío = automático)"
+          />
+          <datalist id="project-jp-contacts-edit">
+            {ccContacts
+              .filter((c) =>
+                projectJpSearch.trim().length >= 3
+                  ? `${c.name} ${c.email}`.toLowerCase().includes(projectJpSearch.trim().toLowerCase())
+                  : false,
+              )
+              .map((c) => (
+              <option key={c.id} value={`${c.name} (${c.email})`} />
               ))}
-            </select>
-          )}
+          </datalist>
           <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
             {projectJpPreview.projectJpEmail ? (
               <strong>

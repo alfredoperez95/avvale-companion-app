@@ -77,6 +77,7 @@ export default function DashboardPage() {
         return (
           a.projectName.toLowerCase().includes(q) ||
           (a.client && a.client.toLowerCase().includes(q)) ||
+          a.offerCode.toLowerCase().includes(q) ||
           a.recipientTo.toLowerCase().includes(q) ||
           (a.recipientCc && a.recipientCc.toLowerCase().includes(q)) ||
           code.includes(q) ||

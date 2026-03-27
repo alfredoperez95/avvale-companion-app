@@ -89,7 +89,7 @@ export function FilterBar({
             id="filter-search"
             type="search"
             className={styles.input}
-            placeholder="Proyecto, cliente o destinatario..."
+            placeholder="Proyecto, cliente, destinatario u oferta..."
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             aria-label="Buscar"
