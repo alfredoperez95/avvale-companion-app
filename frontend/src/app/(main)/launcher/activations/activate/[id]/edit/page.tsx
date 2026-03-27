@@ -9,6 +9,7 @@ import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { replaceTemplateVariables } from '@/lib/replace-template-variables';
 import { formatActivationCode } from '@/lib/activation-code';
+import { getActivationPayloadFromHash } from '@/lib/activation-payload';
 import styles from '../../new/form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -64,6 +65,7 @@ export default function EditActivationPage() {
   const [error, setError] = useState('');
   const [areas, setAreas] = useState<AreaWithSubareas[]>([]);
   const [ccContacts, setCcContacts] = useState<CcContact[]>([]);
+  const [ccContactsLoaded, setCcContactsLoaded] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplateItem[]>([]);
   const [manualCcEntries, setManualCcEntries] = useState<ManualCcEntry[]>([]);
   const [ccDraft, setCcDraft] = useState('');
@@ -71,6 +73,8 @@ export default function EditActivationPage() {
   const [manualCcHydrateKey, setManualCcHydrateKey] = useState(0);
   const [projectJpContactId, setProjectJpContactId] = useState<string>('');
   const [projectJpSearch, setProjectJpSearch] = useState('');
+  const [pendingProjectManagerEmail, setPendingProjectManagerEmail] = useState('');
+  const [projectManagerEmailWarning, setProjectManagerEmailWarning] = useState('');
   const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null; autoCandidates: ProjectJpAutoCandidate[] }>({
     projectJpName: null,
     projectJpEmail: null,
@@ -136,8 +140,43 @@ export default function EditActivationPage() {
     apiFetch('/api/contacts')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setCcContacts(Array.isArray(data) ? data : []))
-      .catch(() => setCcContacts([]));
+      .catch(() => setCcContacts([]))
+      .finally(() => setCcContactsLoaded(true));
   }, []);
+
+  useEffect(() => {
+    const payload = getActivationPayloadFromHash();
+    const pmEmail = payload?.projectManagerEmail?.trim() || '';
+    if (!pmEmail) return;
+    setPendingProjectManagerEmail(pmEmail);
+    if (typeof history !== 'undefined' && typeof location !== 'undefined') {
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!ccContactsLoaded || !pendingProjectManagerEmail) return;
+    if (projectJpContactId || projectJpSearch.trim()) {
+      setPendingProjectManagerEmail('');
+      return;
+    }
+    const normalizedPendingEmail = pendingProjectManagerEmail.trim().toLowerCase();
+    const matchedContact = ccContacts.find(
+      (c) => c.email.trim().toLowerCase() === normalizedPendingEmail,
+    );
+    if (matchedContact) {
+      setProjectJpContactId(matchedContact.id);
+      setProjectJpSearch(`${matchedContact.name} (${matchedContact.email})`);
+      setProjectManagerEmailWarning('');
+    } else {
+      setProjectJpContactId('');
+      setProjectJpSearch(pendingProjectManagerEmail.trim());
+      setProjectManagerEmailWarning(
+        'El email de Project Manager recibido no coincide con un contacto. Si no seleccionas uno, JP quedará en automático.',
+      );
+    }
+    setPendingProjectManagerEmail('');
+  }, [ccContacts, ccContactsLoaded, pendingProjectManagerEmail, projectJpContactId, projectJpSearch]);
 
   useEffect(() => {
     if (ccContacts.length === 0) return;
@@ -479,6 +518,7 @@ export default function EditActivationPage() {
               setProjectJpSearch(value);
               const selectedContact = ccContacts.find((c) => `${c.name} (${c.email})` === value);
               setProjectJpContactId(selectedContact?.id ?? '');
+              setProjectManagerEmailWarning('');
             }}
             className={styles.input}
             placeholder="Busca y selecciona un contacto (vacío = automático)"
@@ -503,6 +543,11 @@ export default function EditActivationPage() {
               'Sin JP asignado. Marca contactos JP en áreas/subáreas o elige uno manual.'
             )}
           </p>
+          {projectManagerEmailWarning && (
+            <p style={{ fontSize: '0.8125rem', color: '#b71c1c', marginTop: 'var(--fiori-space-1)' }}>
+              {projectManagerEmailWarning}
+            </p>
+          )}
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="cc-input-edit">CC (opcional)</label>

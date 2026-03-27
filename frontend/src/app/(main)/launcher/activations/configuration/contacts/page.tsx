@@ -15,6 +15,7 @@ export default function AdminContactsPage() {
   const [error, setError] = useState('');
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -118,9 +119,19 @@ export default function AdminContactsPage() {
     }
   };
 
+  const filteredContacts = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return contacts;
+    return contacts.filter((c) => {
+      const name = c.name.toLowerCase();
+      const email = c.email.toLowerCase();
+      return name.includes(term) || email.includes(term);
+    });
+  }, [contacts, searchTerm]);
+
   const contactGroups = useMemo(() => {
     const map = new Map<string, ContactItem[]>();
-    for (const c of contacts) {
+    for (const c of filteredContacts) {
       const first = (c.name.trim() || c.email)[0]?.toUpperCase() ?? '#';
       const letter = /^[A-Z]$/.test(first) ? first : '#';
       if (!map.has(letter)) map.set(letter, []);
@@ -130,7 +141,7 @@ export default function AdminContactsPage() {
       a === '#' ? 1 : b === '#' ? -1 : a.localeCompare(b),
     );
     return keys.map((k) => ({ letter: k, contacts: map.get(k)! }));
-  }, [contacts]);
+  }, [filteredContacts]);
 
   if (loading) return null;
 
@@ -152,33 +163,68 @@ export default function AdminContactsPage() {
       </p>
       {error && <p className={styles.error}>{error}</p>}
 
-      <form onSubmit={handleCreate} className={styles.contactsAddRow}>
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nombre"
-          aria-label="Nombre del contacto"
-          className={styles.contactsInput}
-          required
-        />
-        <input
-          type="email"
-          value={newEmail}
-          onChange={(e) => setNewEmail(e.target.value)}
-          placeholder="Email"
-          aria-label="Email del contacto"
-          className={styles.contactsInput}
-          required
-        />
-        <button type="submit" disabled={savingId === 'new'} className={styles.btnPrimary}>
-          {savingId === 'new' ? 'Guardando…' : 'Añadir'}
-        </button>
-      </form>
+      <div className={styles.contactsTopRow}>
+        <form onSubmit={handleCreate} className={styles.contactsAddRow}>
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nombre"
+            aria-label="Nombre del contacto"
+            className={styles.contactsInput}
+            required
+          />
+          <input
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="Email"
+            aria-label="Email del contacto"
+            className={styles.contactsInput}
+            required
+          />
+          <button type="submit" disabled={savingId === 'new'} className={styles.btnPrimary}>
+            {savingId === 'new' ? 'Guardando…' : 'Añadir'}
+          </button>
+        </form>
+
+        <div className={styles.contactsSearchRow}>
+          <div className={styles.contactsSearchInputWrap}>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por nombre o email"
+              aria-label="Buscar contactos por nombre o email"
+              className={`${styles.contactsInput} ${styles.contactsSearchInput}`}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+            />
+            {searchTerm.trim().length > 0 && (
+              <button
+                type="button"
+                className={styles.contactsSearchClearBtn}
+                onClick={() => setSearchTerm('')}
+                aria-label="Limpiar búsqueda"
+                title="Limpiar búsqueda"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className={styles.contactsScrollWrap}>
         <div className={styles.contactsTableWrap}>
           <table className={styles.contactsTable}>
+            <colgroup>
+              <col className={styles.contactsColName} />
+              <col className={styles.contactsColEmail} />
+              <col className={styles.contactsColActionsCol} />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Nombre</th>
@@ -187,10 +233,12 @@ export default function AdminContactsPage() {
               </tr>
             </thead>
             <tbody>
-              {contacts.length === 0 ? (
+              {filteredContacts.length === 0 ? (
                 <tr>
                   <td colSpan={3} className={styles.contactsEmpty}>
-                    No hay contactos. Añade uno con el formulario de arriba.
+                    {contacts.length === 0
+                      ? 'No hay contactos. Añade uno con el formulario de arriba.'
+                      : 'No hay resultados para la búsqueda.'}
                   </td>
                 </tr>
               ) : (

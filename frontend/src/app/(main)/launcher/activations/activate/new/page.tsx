@@ -60,6 +60,7 @@ export default function NewActivationPage() {
   const [error, setError] = useState('');
   const [areas, setAreas] = useState<AreaWithSubareas[]>([]);
   const [ccContacts, setCcContacts] = useState<CcContact[]>([]);
+  const [ccContactsLoaded, setCcContactsLoaded] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplateItem[]>([]);
   const [manualCcEntries, setManualCcEntries] = useState<ManualCcEntry[]>([]);
   const [ccDraft, setCcDraft] = useState('');
@@ -67,6 +68,8 @@ export default function NewActivationPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [projectJpContactId, setProjectJpContactId] = useState<string>('');
   const [projectJpSearch, setProjectJpSearch] = useState('');
+  const [pendingProjectManagerEmail, setPendingProjectManagerEmail] = useState('');
+  const [projectManagerEmailWarning, setProjectManagerEmailWarning] = useState('');
   const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null; autoCandidates: ProjectJpAutoCandidate[] }>({
     projectJpName: null,
     projectJpEmail: null,
@@ -151,8 +154,29 @@ export default function NewActivationPage() {
     apiFetch('/api/contacts')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setCcContacts(Array.isArray(data) ? data : []))
-      .catch(() => setCcContacts([]));
+      .catch(() => setCcContacts([]))
+      .finally(() => setCcContactsLoaded(true));
   }, []);
+
+  useEffect(() => {
+    if (!ccContactsLoaded || !pendingProjectManagerEmail) return;
+    const normalizedPendingEmail = pendingProjectManagerEmail.trim().toLowerCase();
+    const matchedContact = ccContacts.find(
+      (c) => c.email.trim().toLowerCase() === normalizedPendingEmail,
+    );
+    if (matchedContact) {
+      setProjectJpContactId(matchedContact.id);
+      setProjectJpSearch(`${matchedContact.name} (${matchedContact.email})`);
+      setProjectManagerEmailWarning('');
+    } else {
+      setProjectJpContactId('');
+      setProjectJpSearch(pendingProjectManagerEmail.trim());
+      setProjectManagerEmailWarning(
+        'El email de Project Manager recibido no coincide con un contacto. Si no seleccionas uno, JP quedará en automático.',
+      );
+    }
+    setPendingProjectManagerEmail('');
+  }, [ccContacts, ccContactsLoaded, pendingProjectManagerEmail]);
   useEffect(() => {
     apiFetch('/api/email-templates')
       .then((r) => (r.ok ? r.json() : []))
@@ -184,6 +208,7 @@ export default function NewActivationPage() {
   useEffect(() => {
     const p = getActivationPayloadFromHash();
     if (!p) return;
+    const pmEmail = p.projectManagerEmail?.trim() || '';
     const projectTypeFromServiceType =
       p.serviceType === 'Consulting' ? 'CONSULTORIA' : p.serviceType === 'Software' ? 'SW' : '';
     const rawProjectName = p.projectName ?? '';
@@ -204,6 +229,9 @@ export default function NewActivationPage() {
       setScannedAttachments(
         p.attachmentUrls.map((url, i) => ({ url, name: (names[i] ?? '').trim() || url })),
       );
+    }
+    if (pmEmail) {
+      setPendingProjectManagerEmail(pmEmail);
     }
     if (typeof history !== 'undefined' && typeof location !== 'undefined') {
       history.replaceState(null, '', location.pathname + location.search);
@@ -422,6 +450,7 @@ export default function NewActivationPage() {
                 setProjectJpSearch(value);
                 const selectedContact = ccContacts.find((c) => `${c.name} (${c.email})` === value);
                 setProjectJpContactId(selectedContact?.id ?? '');
+                setProjectManagerEmailWarning('');
               }}
               className={styles.input}
               placeholder="Busca y selecciona un contacto (vacío = automático)"
@@ -446,6 +475,11 @@ export default function NewActivationPage() {
                 'Sin JP asignado. Marca contactos JP en áreas/subáreas o elige uno manual.'
               )}
             </p>
+            {projectManagerEmailWarning && (
+              <p style={{ fontSize: '0.8125rem', color: '#b71c1c', marginTop: 'var(--fiori-space-1)' }}>
+                {projectManagerEmailWarning}
+              </p>
+            )}
         </div>
         <div id="form-group-cc" className={styles.formGroup}>
           <label className={styles.label} htmlFor="cc-input"><span className={styles.labelText}>CC (opcional)</span></label>
