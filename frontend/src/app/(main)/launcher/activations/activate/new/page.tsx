@@ -68,6 +68,8 @@ export default function NewActivationPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [projectJpContactId, setProjectJpContactId] = useState<string>('');
   const [projectJpSearch, setProjectJpSearch] = useState('');
+  const [projectManagerEmailFromHash, setProjectManagerEmailFromHash] = useState('');
+  const [projectManagerSubareasChecked, setProjectManagerSubareasChecked] = useState(false);
   const [pendingProjectManagerEmail, setPendingProjectManagerEmail] = useState('');
   const [projectManagerEmailWarning, setProjectManagerEmailWarning] = useState('');
   const [projectJpPreview, setProjectJpPreview] = useState<{ projectJpName: string | null; projectJpEmail: string | null; projectJpSource: string | null; autoCandidates: ProjectJpAutoCandidate[] }>({
@@ -159,6 +161,41 @@ export default function NewActivationPage() {
   }, []);
 
   useEffect(() => {
+    if (!projectManagerEmailFromHash || projectManagerSubareasChecked) return;
+    if (selected.length > 0) {
+      setProjectManagerSubareasChecked(true);
+      return;
+    }
+    let cancelled = false;
+    apiFetch(`/api/areas/subareas/by-contact-email?email=${encodeURIComponent(projectManagerEmailFromHash)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => {
+        if (cancelled) return;
+        const items = Array.isArray(rows)
+          ? rows
+              .map((row) => ({
+                type: 'subarea' as const,
+                subAreaId: String(row?.subAreaId ?? ''),
+                subAreaName: String(row?.subAreaName ?? ''),
+                areaId: String(row?.areaId ?? ''),
+                areaName: String(row?.areaName ?? ''),
+              }))
+              .filter((item) => item.subAreaId && item.areaId && item.subAreaName && item.areaName)
+          : [];
+        if (items.length > 0) {
+          setSelected((prev) => (prev.length > 0 ? prev : items));
+        }
+        setProjectManagerSubareasChecked(true);
+      })
+      .catch(() => {
+        if (!cancelled) setProjectManagerSubareasChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectManagerEmailFromHash, projectManagerSubareasChecked, selected.length]);
+
+  useEffect(() => {
     if (!ccContactsLoaded || !pendingProjectManagerEmail) return;
     const normalizedPendingEmail = pendingProjectManagerEmail.trim().toLowerCase();
     const matchedContact = ccContacts.find(
@@ -231,6 +268,8 @@ export default function NewActivationPage() {
       );
     }
     if (pmEmail) {
+      setProjectManagerEmailFromHash(pmEmail);
+      setProjectManagerSubareasChecked(false);
       setPendingProjectManagerEmail(pmEmail);
     }
     if (typeof history !== 'undefined' && typeof location !== 'undefined') {
@@ -630,7 +669,7 @@ export default function NewActivationPage() {
         )}
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>
-          <button type="submit" disabled={loading || selected.length === 0 || !form.projectAmount.trim() || !form.projectType} className={styles.btnPrimary}>
+          <button type="submit" disabled={loading || selected.length === 0 || !form.projectAmount.trim() || !form.projectType || !selectedTemplateId} className={styles.btnPrimary}>
             {loading ? 'Guardando…' : 'Guardar borrador'}
           </button>
           <Link href="/launcher/activations/activate" className={styles.btnSecondary}>Cancelar</Link>

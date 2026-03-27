@@ -139,6 +139,47 @@ export class AreasService {
     });
   }
 
+  async findSubAreasByContactEmail(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return [];
+    const contacts = await this.prisma.subAreaContact.findMany({
+      where: {
+        email: normalizedEmail,
+        subArea: {
+          area: {
+            ownerUserId: null,
+          },
+        },
+      },
+      select: {
+        subArea: {
+          select: {
+            id: true,
+            name: true,
+            area: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ subArea: { area: { name: 'asc' } } }, { subArea: { name: 'asc' } }],
+    });
+
+    const unique = new Map<string, { subAreaId: string; subAreaName: string; areaId: string; areaName: string }>();
+    for (const row of contacts) {
+      unique.set(row.subArea.id, {
+        subAreaId: row.subArea.id,
+        subAreaName: row.subArea.name,
+        areaId: row.subArea.area.id,
+        areaName: row.subArea.area.name,
+      });
+    }
+    return [...unique.values()];
+  }
+
   async addSubAreaContact(user: UserPayload, subAreaId: string, dto: CreateSubAreaContactDto) {
     await this.getSubAreaForMutation(subAreaId, user);
     return this.prisma.subAreaContact.create({

@@ -56,6 +56,11 @@ export class AreasController {
     return this.areasService.findContactsBySubAreaId(user, subAreaId);
   }
 
+  @Get('subareas/by-contact-email')
+  async findSubAreasByContactEmail(@Query('email') email?: string) {
+    return this.areasService.findSubAreasByContactEmail(email ?? '');
+  }
+
   @Post('subareas/:subAreaId/contacts')
   @UseGuards(AdminGuard)
   async addSubAreaContact(
