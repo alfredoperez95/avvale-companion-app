@@ -41,7 +41,7 @@ export class AuthService {
 
   async updateProfile(
     userId: string,
-    dto: { name?: string; lastName?: string; position?: string; appearance?: string | null },
+    dto: { name?: string; lastName?: string; position?: string; phone?: string; appearance?: string | null },
   ) {
     const user = await this.usersService.updateProfile(userId, dto);
     if (!user) return null;

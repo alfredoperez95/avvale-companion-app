@@ -30,6 +30,7 @@ enum ProjectType {
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
+  phone        String?  @map("phone")
   name         String?
   lastName     String?  @map("last_name")
   position     String?  @map("position")

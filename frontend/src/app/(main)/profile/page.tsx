@@ -5,11 +5,14 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { clearAppearanceCookie, setAppearanceCookie } from '@/lib/appearance-cookie';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
+import { PhoneCountryPicker } from '@/components/PhoneCountryPicker/PhoneCountryPicker';
+import { buildStoredPhone, parseStoredPhone } from '@/lib/phone-country-codes';
 import styles from './profile.module.css';
 
 type Profile = {
   id: string;
   email: string;
+  phone?: string | null;
   name: string | null;
   lastName: string | null;
   position: string | null;
@@ -46,6 +49,8 @@ export default function PerfilPage() {
     name: '',
     lastName: '',
     position: '',
+    phoneCountryIso: 'ES',
+    phoneNational: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarUrl = useAvatarUrl(profile?.avatarPath ?? null);
@@ -63,10 +68,13 @@ export default function PerfilPage() {
       .then((data) => {
         if (data) {
           setProfile(data);
+          const parsed = parseStoredPhone(data.phone);
           setForm({
             name: data.name ?? '',
             lastName: data.lastName ?? '',
             position: data.position ?? '',
+            phoneCountryIso: parsed.iso,
+            phoneNational: parsed.national,
           });
           if (typeof document !== 'undefined' && data.appearance != null) {
             const appearanceValue = data.appearance === 'fiori' ? 'fiori' : 'microsoft';
@@ -79,7 +87,8 @@ export default function PerfilPage() {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
     setError('');
   };
 
@@ -102,6 +111,7 @@ export default function PerfilPage() {
           name,
           lastName,
           position,
+          phone: buildStoredPhone(form.phoneCountryIso, form.phoneNational),
         }),
       });
       if (res.status === 401) {
@@ -116,6 +126,15 @@ export default function PerfilPage() {
         return;
       }
       setProfile(data);
+      const parsed = parseStoredPhone(data.phone);
+      setForm((f) => ({
+        ...f,
+        name: data.name ?? '',
+        lastName: data.lastName ?? '',
+        position: data.position ?? '',
+        phoneCountryIso: parsed.iso,
+        phoneNational: parsed.national,
+      }));
     } finally {
       setSaving(false);
     }
@@ -328,18 +347,47 @@ export default function PerfilPage() {
               />
             </div>
           </div>
-          <div className={styles.formGroup}>
-            <label className={styles.label} htmlFor="email">
-              Email
-            </label>
-            <input
-              id="email"
-              type="text"
-              value={profile?.email ?? ''}
-              readOnly
-              className={styles.inputReadOnly}
-              aria-readonly="true"
-            />
+          <div className={styles.nameRow}>
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="email">
+                Email
+              </label>
+              <input
+                id="email"
+                type="text"
+                value={profile?.email ?? ''}
+                readOnly
+                className={styles.inputReadOnly}
+                aria-readonly="true"
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <span className={styles.label} id="phone-label">
+                Teléfono
+              </span>
+              <div className={styles.phoneRow} role="group" aria-labelledby="phone-label">
+                <PhoneCountryPicker
+                  value={form.phoneCountryIso}
+                  onChange={(iso) => {
+                    setForm((prev) => ({ ...prev, phoneCountryIso: iso }));
+                    setError('');
+                  }}
+                  aria-label="Prefijo internacional"
+                />
+                <input
+                  id="phone-national"
+                  name="phoneNational"
+                  type="tel"
+                  inputMode="tel"
+                  value={form.phoneNational}
+                  onChange={handleChange}
+                  className={`${styles.input} ${styles.phoneNationalInput}`}
+                  placeholder="600 000 000"
+                  autoComplete="tel-national"
+                  aria-label="Número de teléfono (sin prefijo)"
+                />
+              </div>
+            </div>
           </div>
           <div className={styles.formGroup}>
             <label className={styles.label} htmlFor="position">

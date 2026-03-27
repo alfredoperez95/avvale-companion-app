@@ -163,6 +163,17 @@
   min-width: 0;
 }
 
+.phoneRow {
+  display: flex;
+  gap: var(--fiori-space-2);
+  align-items: stretch;
+}
+
+.phoneNationalInput {
+  flex: 1;
+  min-width: 0;
+}
+
 .formGroup {
   margin-bottom: var(--fiori-space-4);
 }

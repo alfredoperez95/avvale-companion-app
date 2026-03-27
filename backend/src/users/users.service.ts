@@ -46,7 +46,7 @@ export class UsersService {
 
   async updateProfile(
     userId: string,
-    data: { name?: string; lastName?: string; position?: string; appearance?: string | null },
+    data: { name?: string; lastName?: string; position?: string; phone?: string; appearance?: string | null },
   ) {
     const hasAnyProfileField =
       data.name !== undefined || data.lastName !== undefined || data.position !== undefined;
@@ -60,6 +60,8 @@ export class UsersService {
     const normalizedName = data.name?.trim();
     const normalizedLastName = data.lastName?.trim();
     const normalizedPosition = data.position?.trim();
+    const normalizedPhone =
+      data.phone !== undefined ? (data.phone.trim() === '' ? null : data.phone.trim()) : undefined;
 
     if (
       hasAllProfileFields &&
@@ -74,6 +76,7 @@ export class UsersService {
         ...(data.name !== undefined && { name: normalizedName }),
         ...(data.lastName !== undefined && { lastName: normalizedLastName }),
         ...(data.position !== undefined && { position: normalizedPosition }),
+        ...(data.phone !== undefined && { phone: normalizedPhone }),
         ...(data.appearance !== undefined && { appearance: data.appearance || null }),
       },
     });

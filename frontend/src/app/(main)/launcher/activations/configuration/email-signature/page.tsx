@@ -12,9 +12,9 @@ export default function EmailSignaturePage() {
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [systemContent, setSystemContent] = useState('');
   const [systemError, setSystemError] = useState('');
-  const [systemSaving, setSystemSaving] = useState(false);
+  const [applyInitialSaving, setApplyInitialSaving] = useState(false);
+  const [resetFromInitialSaving, setResetFromInitialSaving] = useState(false);
 
   useEffect(() => {
     apiFetch('/api/auth/me')
@@ -35,13 +35,6 @@ export default function EmailSignaturePage() {
         }
         const data = res.ok ? await res.json() : {};
         if (typeof data?.content === 'string') setContent(data.content);
-        if (admin) {
-          const sr = await apiFetch('/api/email-signature?scope=system');
-          if (sr.ok) {
-            const sd = await sr.json();
-            if (typeof sd?.content === 'string') setSystemContent(sd.content);
-          }
-        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -72,15 +65,14 @@ export default function EmailSignaturePage() {
     }
   };
 
-  const handleSystemSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleApplyPersonalAsInitialTemplate = async () => {
     setSystemError('');
-    setSystemSaving(true);
+    setApplyInitialSaving(true);
     try {
       const res = await apiFetch('/api/email-signature?scope=system', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: systemContent }),
+        body: JSON.stringify({ content }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) {
@@ -91,11 +83,31 @@ export default function EmailSignaturePage() {
         setSystemError(
           Array.isArray(data.message) ? data.message.join(', ') : data.message ?? 'Error al guardar',
         );
+      }
+    } finally {
+      setApplyInitialSaving(false);
+    }
+  };
+
+  const handleResetSignatureFromInitialTemplate = async () => {
+    setSystemError('');
+    setResetFromInitialSaving(true);
+    try {
+      const res = await apiFetch('/api/email-signature?scope=system');
+      const data = res.ok ? await res.json().catch(() => ({})) : {};
+      if (res.status === 401) {
+        window.location.href = '/login';
         return;
       }
-      if (typeof data?.content === 'string') setSystemContent(data.content);
+      if (!res.ok) {
+        setSystemError(
+          Array.isArray(data.message) ? data.message.join(', ') : data.message ?? 'Error al cargar',
+        );
+        return;
+      }
+      if (typeof data?.content === 'string') setContent(data.content);
     } finally {
-      setSystemSaving(false);
+      setResetFromInitialSaving(false);
     }
   };
 
@@ -171,29 +183,30 @@ export default function EmailSignaturePage() {
       {isAdmin && (
         <section className={styles.templateCard} aria-labelledby="signature-system-heading" style={{ marginTop: 'var(--fiori-space-6)' }}>
           <h2 id="signature-system-heading" className={styles.templateCardTitle}>
-            Plantilla inicial (nuevos usuarios)
+            Restablecer firma predeterminada
           </h2>
           <p className={styles.sectionDesc} style={{ marginTop: 0 }}>
-            Contenido por defecto al ejecutar el arranque de configuración para cuentas que aún no tienen firma propia.
+            Puedes utilizar este contenido para restablecer la firma predeterminada si la cuenta no tiene una firma propia.
           </p>
           {systemError && <p className={styles.error}>{systemError}</p>}
-          <form onSubmit={handleSystemSubmit}>
-            <div style={{ marginBottom: 'var(--fiori-space-4)' }}>
-              <label className={styles.label} htmlFor="signature-system-content">Contenido (editor visual)</label>
-              <RichTextEditor
-                id="signature-system-content"
-                value={systemContent}
-                onChange={setSystemContent}
-                placeholder="Plantilla base para nuevos usuarios…"
-                minHeight={180}
-                aria-label="Plantilla de firma de sistema"
-                allowImages
-              />
-            </div>
-            <button type="submit" disabled={systemSaving} className={styles.btnSecondary}>
-              {systemSaving ? 'Guardando…' : 'Guardar plantilla de sistema'}
+          <div style={{ display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap', marginTop: 'var(--fiori-space-4)' }}>
+            <button
+              type="button"
+              disabled={applyInitialSaving}
+              className={styles.btnPrimary}
+              onClick={handleApplyPersonalAsInitialTemplate}
+            >
+              {applyInitialSaving ? 'Aplicando…' : 'Aplicar'}
             </button>
-          </form>
+            <button
+              type="button"
+              disabled={resetFromInitialSaving}
+              className={styles.btnSecondary}
+              onClick={handleResetSignatureFromInitialTemplate}
+            >
+              {resetFromInitialSaving ? 'Cargando…' : 'Restablecer firma'}
+            </button>
+          </div>
         </section>
       )}
     </div>

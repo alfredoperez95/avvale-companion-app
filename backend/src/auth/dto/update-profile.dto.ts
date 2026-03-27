@@ -24,6 +24,11 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(40)
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
   @IsIn(APPEARANCE_VALUES, { message: 'Apariencia debe ser "microsoft" o "fiori"' })
   appearance?: AppearanceValue;
 }
