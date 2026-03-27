@@ -61,6 +61,10 @@ export default function ActivationDetailPage() {
 
   const handleSend = async () => {
     if (!id) return;
+    if (!activation?.body?.trim()) {
+      setError('Debes seleccionar una plantilla (o definir el cuerpo del correo) antes de enviar.');
+      return;
+    }
     setError('');
     setSending(true);
     try {
@@ -74,6 +78,7 @@ export default function ActivationDetailPage() {
 
   const canSend =
     activation &&
+    Boolean(activation.body?.trim()) &&
     (activation.status === 'DRAFT' ||
       activation.status === 'FAILED' ||
       activation.status === 'RETRYING');
@@ -304,6 +309,15 @@ export default function ActivationDetailPage() {
       )}
 
       {error && <p className={styles.errorMsg}>{error}</p>}
+      {activation &&
+        (activation.status === 'DRAFT' ||
+          activation.status === 'FAILED' ||
+          activation.status === 'RETRYING') &&
+        !activation.body?.trim() && (
+          <p className={styles.errorMsg}>
+            Debes seleccionar una plantilla (o definir el cuerpo del correo) antes de enviar.
+          </p>
+        )}
       <div className={styles.actions}>
         {activation.status === 'DRAFT' && (
           <Link href={`/launcher/activations/activate/${id}/edit`} className={styles.btnSecondary}>

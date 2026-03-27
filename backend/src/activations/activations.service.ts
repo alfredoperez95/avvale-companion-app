@@ -536,6 +536,11 @@ export class ActivationsService {
         `No se puede enviar: estado actual es ${activation.status}. Solo DRAFT, FAILED o RETRYING.`,
       );
     }
+    if (!activation.body?.trim()) {
+      throw new BadRequestException(
+        'Debes seleccionar una plantilla (o definir el cuerpo del correo) antes de enviar la activación.',
+      );
+    }
 
     const restorableStatus = activation.status;
 
