@@ -115,6 +115,13 @@ function buildProjectJpHtml(name: string, email: string): string {
   return `<a href="mailto:${safeEmail}">@${safeName}</a>`;
 }
 
+function buildHubSpotUrlHtml(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  const safeUrl = escapeForHtml(trimmed);
+  return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeUrl}</a>`;
+}
+
 /**
  * Saludo según hora: 4:01–12:30 días, 12:31–20:00 tardes, 20:01–4:00 noches.
  */
@@ -145,6 +152,10 @@ export function replaceTemplateVariables(html: string, values: TemplateVariables
   let result = html;
   for (const [shortcodeKey, formKey] of Object.entries(SHORTCODE_MAP)) {
     const placeholder = `{{${shortcodeKey}}}`;
+    if (shortcodeKey === 'urlHubSpot') {
+      result = result.split(placeholder).join(buildHubSpotUrlHtml(raw[formKey]));
+      continue;
+    }
     const value =
       shortcodeKey === 'importeProyecto'
         ? formatImporteProyectoEs(values.projectAmount ?? '')

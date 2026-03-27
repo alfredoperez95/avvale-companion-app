@@ -172,8 +172,9 @@
   display: flex;
   gap: var(--fiori-space-2);
   align-items: center;
-  margin-bottom: 0;
   flex-wrap: wrap;
+  --fiori-space-3: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .contactsInput {
@@ -243,6 +244,30 @@
   table-layout: fixed;
 }
 
+.contactsTable thead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.contactsTable thead::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: #758ca4;
+}
+
+
+
+
+
+
+
+
+
 .contactsColName {
   width: 32%;
 }
@@ -261,7 +286,9 @@
   background: var(--fiori-nav-bg);
   font-weight: 600;
   color: var(--fiori-text);
-  border-bottom: 1px solid var(--fiori-border);
+  border-bottom: none;
+  height: 2.5rem;
+  position: static;
 }
 
 .contactsTable th:first-child {
@@ -323,8 +350,11 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: var(--fiori-space-2) var(--fiori-space-3);
-  border-top: 1px solid var(--fiori-border);
+  border-top: 2px solid var(--fiori-shell-bg);
   border-bottom: 1px solid var(--fiori-border);
+  position: sticky;
+  top: calc(2.5rem - 1px);
+  z-index: 1;
 }
 
 .contactsLetterRow:first-child {
