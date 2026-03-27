@@ -414,7 +414,8 @@ export default function NewActivationPage() {
           <label className={styles.label} htmlFor="subject"><span className={styles.labelText}>Asunto email</span></label>
           <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
         </div>
-        <div id="form-group-project-jp" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+        <div className={styles.formGroupRow2}>
+        <div id="form-group-project-jp" className={styles.formGroup}>
             <label className={styles.label} htmlFor="projectJpMode"><span className={styles.labelText}>JP del Proyecto</span></label>
             <select
               id="projectJpMode"
@@ -488,7 +489,7 @@ export default function NewActivationPage() {
               )}
             </p>
         </div>
-        <div id="form-group-cc" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+        <div id="form-group-cc" className={styles.formGroup}>
           <label className={styles.label} htmlFor="cc-input"><span className={styles.labelText}>CC (opcional)</span></label>
           <div className={styles.areaTagsRow}>
             <div style={{ display: 'flex', flex: '1 1 14rem', gap: 'var(--fiori-space-2)', alignItems: 'center', minWidth: '12rem' }}>
@@ -542,6 +543,7 @@ export default function NewActivationPage() {
               </span>
             ))}
           </div>
+        </div>
         </div>
         <div id="form-group-template" className={`${styles.formGroup} ${styles.formGroupFull}`}>
           <label className={styles.label} htmlFor="template-select"><span className={styles.labelText}>Usar plantilla</span></label>

@@ -471,6 +471,7 @@ export default function EditActivationPage() {
           <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>
           <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} onBlur={handleProjectNameBlur} required className={styles.input} placeholder="Implementación S/4HANA Public" />
         </div>
+        <div className={styles.formGroupRow2}>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectJpMode">JP del Proyecto</label>
           <select
@@ -599,6 +600,7 @@ export default function EditActivationPage() {
               </span>
             ))}
           </div>
+        </div>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="client">Cliente</label>
