@@ -76,7 +76,11 @@
 
 @media (min-width: 72rem) {
   .createFormGrid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .createFormRowHalf {
+    grid-column: span 2;
   }
 }
 

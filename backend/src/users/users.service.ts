@@ -48,12 +48,32 @@ export class UsersService {
     userId: string,
     data: { name?: string; lastName?: string; position?: string; appearance?: string | null },
   ) {
+    const hasAnyProfileField =
+      data.name !== undefined || data.lastName !== undefined || data.position !== undefined;
+    const hasAllProfileFields =
+      data.name !== undefined && data.lastName !== undefined && data.position !== undefined;
+
+    if (hasAnyProfileField && !hasAllProfileFields) {
+      throw new BadRequestException('Nombre, apellidos y puesto son obligatorios');
+    }
+
+    const normalizedName = data.name?.trim();
+    const normalizedLastName = data.lastName?.trim();
+    const normalizedPosition = data.position?.trim();
+
+    if (
+      hasAllProfileFields &&
+      (!normalizedName || !normalizedLastName || !normalizedPosition)
+    ) {
+      throw new BadRequestException('Nombre, apellidos y puesto son obligatorios');
+    }
+
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(data.name !== undefined && { name: data.name || null }),
-        ...(data.lastName !== undefined && { lastName: data.lastName || null }),
-        ...(data.position !== undefined && { position: data.position || null }),
+        ...(data.name !== undefined && { name: normalizedName }),
+        ...(data.lastName !== undefined && { lastName: normalizedLastName }),
+        ...(data.position !== undefined && { position: normalizedPosition }),
         ...(data.appearance !== undefined && { appearance: data.appearance || null }),
       },
     });
@@ -77,13 +97,19 @@ export class UsersService {
   async createByAdmin(dto: CreateUserByAdminDto) {
     const existing = await this.findByEmail(dto.email);
     if (existing) throw new ConflictException('El email ya está registrado');
+    const name = dto.name.trim();
+    const lastName = dto.lastName.trim();
+    const position = dto.position.trim();
+    if (!name || !lastName || !position) {
+      throw new BadRequestException('Nombre, apellidos y puesto son obligatorios');
+    }
     const passwordHash = await bcrypt.hash(dto.password, this.SALT_ROUNDS);
     const user = await this.prisma.user.create({
       data: {
         email: dto.email.toLowerCase(),
-        name: dto.name ?? null,
-        lastName: dto.lastName ?? null,
-        position: dto.position?.trim() || null,
+        name,
+        lastName,
+        position,
         passwordHash,
         role: dto.role ?? UserRole.USER,
       },

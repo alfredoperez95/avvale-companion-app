@@ -9,17 +9,17 @@ export class CreateUserByAdminDto {
   @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
   password: string;
 
-  @IsOptional()
   @IsString()
-  name?: string;
+  @MinLength(1, { message: 'El nombre es obligatorio' })
+  name: string;
 
-  @IsOptional()
   @IsString()
-  lastName?: string;
+  @MinLength(1, { message: 'Los apellidos son obligatorios' })
+  lastName: string;
 
-  @IsOptional()
   @IsString()
-  position?: string;
+  @MinLength(1, { message: 'El puesto es obligatorio' })
+  position: string;
 
   @IsOptional()
   @IsEnum(UserRole, { message: 'El rol debe ser USER o ADMIN' })

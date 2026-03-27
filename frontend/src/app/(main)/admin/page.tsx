@@ -26,6 +26,7 @@ export default function AdminUsersPage() {
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newName, setNewName] = useState('');
+  const [newLastName, setNewLastName] = useState('');
   const [newPosition, setNewPosition] = useState('');
   const [newRole, setNewRole] = useState<'USER' | 'ADMIN'>('USER');
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -74,8 +75,11 @@ export default function AdminUsersPage() {
     e.preventDefault();
     const email = newEmail.trim();
     const password = newPassword;
-    if (!email || !password || password.length < 6) {
-      setError('Email y contraseña (mín. 6 caracteres) son obligatorios.');
+    const name = newName.trim();
+    const lastName = newLastName.trim();
+    const position = newPosition.trim();
+    if (!email || !password || password.length < 6 || !name || !lastName || !position) {
+      setError('Nombre, apellidos, puesto, email y contraseña (mín. 6 caracteres) son obligatorios.');
       return;
     }
     setError('');
@@ -87,8 +91,9 @@ export default function AdminUsersPage() {
         body: JSON.stringify({
           email,
           password,
-          name: newName.trim() || undefined,
-          position: newPosition.trim() || undefined,
+          name,
+          lastName,
+          position,
           role: newRole,
         }),
       });
@@ -100,6 +105,7 @@ export default function AdminUsersPage() {
       setNewEmail('');
       setNewPassword('');
       setNewName('');
+      setNewLastName('');
       setNewPosition('');
       setNewRole('USER');
       setShowCreate(false);
@@ -174,7 +180,7 @@ export default function AdminUsersPage() {
       <div className={styles.card}>
         <h2 className={styles.cardTitle}>Crear usuario</h2>
         <p className={styles.cardDesc}>
-          Añade un nuevo usuario con email y contraseña. Opcionalmente asigna nombre, puesto y rol.
+          Añade un nuevo usuario con nombre, apellidos, puesto, email, contraseña y rol.
         </p>
         {!showCreate ? (
           <button type="button" className={styles.btnPrimary} onClick={() => setShowCreate(true)}>
@@ -216,10 +222,23 @@ export default function AdminUsersPage() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   className={styles.input}
-                  placeholder="Opcional"
+                  required
+                  placeholder="Nombre"
                 />
               </div>
               <div className={styles.createFormRow}>
+                <label htmlFor="new-lastname">Apellidos</label>
+                <input
+                  id="new-lastname"
+                  type="text"
+                  value={newLastName}
+                  onChange={(e) => setNewLastName(e.target.value)}
+                  className={styles.input}
+                  required
+                  placeholder="Apellidos"
+                />
+              </div>
+              <div className={`${styles.createFormRow} ${styles.createFormRowHalf}`}>
                 <label htmlFor="new-position">Puesto</label>
                 <input
                   id="new-position"
@@ -227,10 +246,11 @@ export default function AdminUsersPage() {
                   value={newPosition}
                   onChange={(e) => setNewPosition(e.target.value)}
                   className={styles.input}
-                  placeholder="Opcional"
+                  required
+                  placeholder="Ej. Consultor, Director..."
                 />
               </div>
-              <div className={styles.createFormRow}>
+              <div className={`${styles.createFormRow} ${styles.createFormRowHalf}`}>
                 <label htmlFor="new-role">Rol</label>
                 <select
                   id="new-role"

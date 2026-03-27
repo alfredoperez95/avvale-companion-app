@@ -86,15 +86,22 @@ export default function PerfilPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const name = form.name.trim();
+    const lastName = form.lastName.trim();
+    const position = form.position.trim();
+    if (!name || !lastName || !position) {
+      setError('Nombre, apellidos y puesto son obligatorios.');
+      return;
+    }
     setSaving(true);
     try {
       const res = await apiFetch('/api/auth/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: form.name.trim() || undefined,
-          lastName: form.lastName.trim() || undefined,
-          position: form.position.trim() || undefined,
+          name,
+          lastName,
+          position,
         }),
       });
       if (res.status === 401) {
@@ -301,6 +308,7 @@ export default function PerfilPage() {
                 value={form.name}
                 onChange={handleChange}
                 className={styles.input}
+                required
                 placeholder="Tu nombre"
               />
             </div>
@@ -315,6 +323,7 @@ export default function PerfilPage() {
                 value={form.lastName}
                 onChange={handleChange}
                 className={styles.input}
+                required
                 placeholder="Tus apellidos"
               />
             </div>
@@ -343,6 +352,7 @@ export default function PerfilPage() {
               value={form.position}
               onChange={handleChange}
               className={styles.input}
+              required
               placeholder="Ej. Consultor, Analista..."
             />
           </div>
