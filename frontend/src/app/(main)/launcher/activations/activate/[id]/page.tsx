@@ -76,12 +76,12 @@ export default function ActivationDetailPage() {
       .catch(() => {});
   };
 
-  const canSend =
+  const canSendByStatus =
     activation &&
-    Boolean(activation.body?.trim()) &&
     (activation.status === 'DRAFT' ||
       activation.status === 'FAILED' ||
       activation.status === 'RETRYING');
+  const hasTemplateOrBody = Boolean(activation?.body?.trim());
 
   const refetchActivation = () => {
     if (!id) return;
@@ -324,8 +324,13 @@ export default function ActivationDetailPage() {
             Editar borrador
           </Link>
         )}
-        {canSend && (
-          <button type="button" onClick={handleSend} disabled={sending} className={styles.btnPrimary}>
+        {canSendByStatus && (
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={sending || !hasTemplateOrBody}
+            className={styles.btnPrimary}
+          >
             {sending ? 'Enviando…' : 'Enviar activación'}
           </button>
         )}
