@@ -1,7 +1,7 @@
 /** Si está vacío en el cliente, las peticiones van al mismo origen del Next (p. ej. /api → rewrite) y evitas problemas de CORS con 127.0.0.1 vs localhost. */
 const getBaseUrl = () =>
   typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_URL ?? '')
+    ? (process.env.NODE_ENV === 'development' ? '' : (process.env.NEXT_PUBLIC_API_URL ?? ''))
     : process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 export function getToken(): string | null {

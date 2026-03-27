@@ -9,7 +9,7 @@ type Appearance = 'microsoft' | 'fiori';
 
 const getApiBase = () =>
   typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000')
+    ? (process.env.NODE_ENV === 'development' ? '' : (process.env.NEXT_PUBLIC_API_URL ?? ''))
     : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 
 export default function LoginPage() {
@@ -33,7 +33,11 @@ export default function LoginPage() {
       }
     };
 
-    fetch(`${apiBase}/api/auth/branding`)
+    const brandingUrl = `${apiBase}/api/auth/branding`;
+    if (process.env.NODE_ENV === 'development') {
+      console.info('[login] Branding URL:', brandingUrl, 'apiBase=', apiBase || '(same-origin)');
+    }
+    fetch(brandingUrl)
       .then(async (res) => {
         if (!res.ok) return null;
         return (await res.json()) as { appearance?: string };
@@ -63,12 +67,19 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/api/auth/login`, {
+      const loginUrl = `${apiBase}/api/auth/login`;
+      if (process.env.NODE_ENV === 'development') {
+        console.info('[login] Login URL:', loginUrl, 'apiBase=', apiBase || '(same-origin)');
+      }
+      const res = await fetch(loginUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json().catch(() => ({}));
+      if (process.env.NODE_ENV === 'development') {
+        console.info('[login] Login response:', res.status, data);
+      }
       if (!res.ok) {
         setError(data.message ?? 'Error al iniciar sesión');
         return;
