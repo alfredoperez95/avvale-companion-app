@@ -58,6 +58,16 @@
   background: var(--fiori-nav-item-hover);
 }
 
+.btnPrimary {
+  border-color: var(--fiori-shell-bg);
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-text-inverse);
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
 .btnDanger {
   border-color: var(--fiori-error);
   color: var(--fiori-error);

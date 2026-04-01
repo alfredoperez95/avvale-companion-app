@@ -9,6 +9,8 @@ import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { formatActivationCode } from '@/lib/activation-code';
 import { displayActivationErrorMessage } from '@/lib/activation-error-message';
+import { parseAttachmentNames, parseAttachmentUrls } from '@/lib/activation-attachment-urls';
+import { shouldWarnScannedUrlsOnly } from '@/lib/activation-attachment-warning';
 import styles from './DetailDrawer.module.css';
 
 interface DetailDrawerProps {
@@ -18,32 +20,13 @@ interface DetailDrawerProps {
   onDeleted?: () => void;
 }
 
-function parseAttachmentUrls(attachmentUrls: string | null): string[] {
-  if (!attachmentUrls) return [];
-  try {
-    const parsed = JSON.parse(attachmentUrls);
-    return Array.isArray(parsed) ? parsed : [attachmentUrls];
-  } catch {
-    return attachmentUrls.split(/[\n,]/).map((u) => u.trim()).filter(Boolean);
-  }
-}
-
-function parseAttachmentNames(attachmentNames: string | null): string[] {
-  if (!attachmentNames) return [];
-  try {
-    const parsed = JSON.parse(attachmentNames);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: DetailDrawerProps) {
   const [activation, setActivation] = useState<Activation | null>(null);
   const [loading, setLoading] = useState(!!activationId);
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSendAttachmentWarning, setShowSendAttachmentWarning] = useState(false);
   const [showEmailBody, setShowEmailBody] = useState(false);
   const [error, setError] = useState('');
 
@@ -70,7 +53,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
       .finally(() => setLoading(false));
   }, [activationId]);
 
-  const handleSend = async () => {
+  const performSend = async () => {
     if (!activationId) return;
     setError('');
     setSending(true);
@@ -91,6 +74,14 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
     } finally {
       setSending(false);
     }
+  };
+  const handleSend = async () => {
+    if (!activationId || !activation) return;
+    if (shouldWarnScannedUrlsOnly(activation)) {
+      setShowSendAttachmentWarning(true);
+      return;
+    }
+    return performSend();
   };
 
   const handleDeleteClick = () => setShowDeleteConfirm(true);
@@ -321,6 +312,19 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
+      />
+      <ConfirmDialog
+        open={showSendAttachmentWarning}
+        title="No se han añadido adjuntos"
+        message="No se han añadido adjuntos. Las URLs escaneadas solo serán accesibles por usuarios con acceso a HubSpot."
+        confirmLabel="Enviar de todas formas"
+        cancelLabel="Cancelar"
+        confirmVariant="primary"
+        onConfirm={() => {
+          setShowSendAttachmentWarning(false);
+          void performSend();
+        }}
+        onCancel={() => setShowSendAttachmentWarning(false)}
       />
     </>
   );

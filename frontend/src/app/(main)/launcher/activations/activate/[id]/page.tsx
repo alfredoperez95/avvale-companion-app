@@ -10,6 +10,8 @@ import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { formatActivationCode } from '@/lib/activation-code';
 import { displayActivationErrorMessage } from '@/lib/activation-error-message';
+import { parseAttachmentNames, parseAttachmentUrls } from '@/lib/activation-attachment-urls';
+import { shouldWarnScannedUrlsOnly } from '@/lib/activation-attachment-warning';
 import styles from './detail.module.css';
 
 function isHtmlBody(body: string | null | undefined): boolean {
@@ -25,6 +27,7 @@ export default function ActivationDetailPage() {
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSendAttachmentWarning, setShowSendAttachmentWarning] = useState(false);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -59,7 +62,7 @@ export default function ActivationDetailPage() {
     return () => { cancelled = true; };
   }, [activation?.body]);
 
-  const handleSend = async () => {
+  const performSend = async () => {
     if (!id) return;
     if (!activation?.body?.trim()) {
       setError('Debes seleccionar una plantilla (o definir el cuerpo del correo) antes de enviar.');
@@ -74,6 +77,18 @@ export default function ActivationDetailPage() {
     router.refresh();
     void apiFetch(`/api/activations/${id}/send`, { method: 'POST' })
       .catch(() => {});
+  };
+  const handleSend = async () => {
+    if (!id || !activation) return;
+    if (!activation.body?.trim()) {
+      setError('Debes seleccionar una plantilla (o definir el cuerpo del correo) antes de enviar.');
+      return;
+    }
+    if (shouldWarnScannedUrlsOnly(activation)) {
+      setShowSendAttachmentWarning(true);
+      return;
+    }
+    return performSend();
   };
 
   const canSendByStatus =
@@ -161,23 +176,8 @@ export default function ActivationDetailPage() {
     </div>
   );
 
-  let urls: string[] = [];
-  if (activation.attachmentUrls) {
-    try {
-      urls = JSON.parse(activation.attachmentUrls);
-    } catch {
-      urls = activation.attachmentUrls.split(/[\n,]/).map((u) => u.trim()).filter(Boolean);
-    }
-  }
-  let names: string[] = [];
-  if (activation.attachmentNames) {
-    try {
-      const parsed = JSON.parse(activation.attachmentNames);
-      names = Array.isArray(parsed) ? parsed : [];
-    } catch {
-      names = [];
-    }
-  }
+  const urls = parseAttachmentUrls(activation.attachmentUrls);
+  const names = parseAttachmentNames(activation.attachmentNames);
   const attachmentList = urls.map((url, i) => ({ url, name: names[i]?.trim() || url }));
   const errorMessageDisplay = displayActivationErrorMessage(activation.errorMessage);
 
@@ -347,6 +347,19 @@ export default function ActivationDetailPage() {
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+      <ConfirmDialog
+        open={showSendAttachmentWarning}
+        title="No se han añadido adjuntos"
+        message="No se han añadido adjuntos. Las URLs escaneadas solo serán accesibles por usuarios con acceso a HubSpot."
+        confirmLabel="Enviar de todas formas"
+        cancelLabel="Cancelar"
+        confirmVariant="primary"
+        onConfirm={() => {
+          setShowSendAttachmentWarning(false);
+          void performSend();
+        }}
+        onCancel={() => setShowSendAttachmentWarning(false)}
       />
     </main>
   );
