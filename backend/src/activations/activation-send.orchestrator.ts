@@ -64,6 +64,13 @@ export class ActivationSendOrchestrator {
       emailSignature: normalizeEmailHtmlSpacing(payload.emailSignature),
     };
 
+    // Si no hay adjuntos, omitir el campo para que Make pueda rutear sin Iterator.
+    // (Make suele tratar distinto [] vs campo ausente.)
+    if (normalizedPayload.attachments.length === 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (normalizedPayload as any).attachments;
+    }
+
     const result = await this.makeService.triggerWebhook(normalizedPayload);
 
     if (result.success) {

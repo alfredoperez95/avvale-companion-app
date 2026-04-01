@@ -7,7 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
-import { replaceTemplateVariables } from '@/lib/replace-template-variables';
+import { replaceTemplateVariables, replaceUrlsEscaneadasPlaceholder } from '@/lib/replace-template-variables';
 import styles from './form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -227,7 +227,13 @@ export default function NewActivationPage() {
     if (!t) return;
     setForm((prev) => ({
       ...prev,
-      body: replaceTemplateVariables(t.content ?? '', prev),
+      body: replaceTemplateVariables(t.content ?? '', {
+        ...prev,
+        scannedUrls: scannedAttachments
+          .filter((a) => a.url.trim())
+          .map((a) => ({ url: a.url.trim(), name: (a.name || a.url).trim() })),
+        hasUploadedAttachments: false,
+      }),
     }));
   }, [
     selectedTemplateId,
@@ -240,6 +246,7 @@ export default function NewActivationPage() {
     form.hubspotUrl,
     form.projectJpName,
     form.projectJpEmail,
+    scannedAttachments,
   ]);
 
   useEffect(() => {
@@ -346,6 +353,10 @@ export default function NewActivationPage() {
       const attachmentNames = validAttachments.map((a) => (a.name || a.url).trim());
       const areaIds = selected.filter((s): s is SelectedArea => s.type === 'area').map((s) => s.areaId);
       const subAreaIds = selected.filter((s): s is SelectedSubarea => s.type === 'subarea').map((s) => s.subAreaId);
+      const scannedUrls = validAttachments.map((a) => ({
+        url: a.url.trim(),
+        name: (a.name || a.url).trim(),
+      }));
       const body = {
         projectName: form.projectName.trim(),
         client: form.client.trim() || undefined,
@@ -360,7 +371,12 @@ export default function NewActivationPage() {
             ? manualCcEntries.map((e) => e.email.trim()).filter(Boolean).join(', ')
             : undefined,
         projectJpContactId: projectJpContactId || undefined,
-        body: form.body.trim() || undefined,
+        body:
+          replaceUrlsEscaneadasPlaceholder(form.body.trim(), {
+            ...form,
+            scannedUrls,
+            hasUploadedAttachments: false,
+          }).trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
         attachmentNames: attachmentUrls.length ? attachmentNames : undefined,
       };

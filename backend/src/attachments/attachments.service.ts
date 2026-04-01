@@ -41,7 +41,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
   buildPublicUrl(baseUrl: string, token: string): string {
     const normalized = baseUrl.trim().replace(/\/+$/, '');
     const withoutApi = normalized.replace(/\/api$/i, '');
-    return `${withoutApi}/api/public/attachments/${token}`;
+    return `${withoutApi}/public/attachments/${token}`;
   }
 
   private async ensureDir(dirPath: string): Promise<void> {
@@ -167,7 +167,9 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
     for (const originalUrl of urls) {
       const trimmed = originalUrl.trim();
       if (!trimmed) continue;
-      if (this.isHubSpotUrl(trimmed)) continue;
+      if (this.isHubSpotUrl(trimmed)) {
+        continue;
+      }
       try {
         const { buffer, contentType, suggestedName } = await this.downloadFromUrl(trimmed);
         let ext = this.getExtensionFromUrl(trimmed);

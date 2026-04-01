@@ -11,6 +11,10 @@ export const TEMPLATE_SHORTCODES = [
   { value: '{{urlHubSpot}}', label: 'URL HubSpot' },
   { value: '{{Saludo}}', label: 'Saludo' },
   { value: '{{JP de Proyecto}}', label: 'JP de Proyecto (@"Nombre" con enlace email)' },
+  {
+    value: '{{urlsEscaneadas}}',
+    label: 'URLs escaneadas (solo si no hay adjuntos; lista con enlaces)',
+  },
 ] as const;
 
 export type TemplateVariables = {
@@ -23,6 +27,10 @@ export type TemplateVariables = {
   saludo?: string;
   projectJpName?: string;
   projectJpEmail?: string;
+  /** URLs escaneadas (HubSpot, etc.); se imprimen en plantilla solo sin adjuntos. */
+  scannedUrls?: { url: string; name?: string }[];
+  /** Si true, `{{urlsEscaneadas}}` se sustituye por vacío. */
+  hasUploadedAttachments?: boolean;
 };
 
 const SHORTCODE_MAP: Record<string, keyof TemplateVariables> = {
@@ -122,6 +130,35 @@ function buildHubSpotUrlHtml(url: string): string {
   return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeUrl}</a>`;
 }
 
+function buildUrlsEscaneadasHtml(values: TemplateVariables): string {
+  if (values.hasUploadedAttachments === true) return '';
+  const items = (values.scannedUrls ?? [])
+    .map((x) => ({
+      url: (x.url ?? '').trim(),
+      name: (x.name ?? '').trim(),
+    }))
+    .filter((x) => x.url);
+  if (items.length === 0) return '';
+  const title =
+    '<p><strong>URLs escaneadas</strong> (Solo accesibles con Usuario HubSpot)</p>';
+  const lis = items
+    .map(({ url, name }) => {
+      const safeUrl = escapeForHtml(url);
+      const label = escapeForHtml(name || url);
+      return `<li><a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${label}</a></li>`;
+    })
+    .join('');
+  return `${title}<ul>${lis}</ul>`;
+}
+
+/**
+ * Sustituye solo `{{urlsEscaneadas}}` (incluye variantes con espacios).
+ * Útil al guardar el borrador para que el cuerpo almacenado coincida con lo enviado a Make.
+ */
+export function replaceUrlsEscaneadasPlaceholder(html: string, values: TemplateVariables): string {
+  return html.replace(/\{\{\s*urlsEscaneadas\s*\}\}/gi, () => buildUrlsEscaneadasHtml(values));
+}
+
 /**
  * Saludo según hora: 4:01–12:30 días, 12:31–20:00 tardes, 20:01–4:00 noches.
  */
@@ -138,7 +175,7 @@ export function getTimeBasedGreeting(date?: Date): string {
  * Shortcodes no definidos se reemplazan por cadena vacía.
  */
 export function replaceTemplateVariables(html: string, values: TemplateVariables): string {
-  const raw: Record<keyof TemplateVariables, string> = {
+  const stringVals = {
     projectName: values.projectName ?? '',
     client: values.client ?? '',
     offerCode: values.offerCode ?? '',
@@ -150,23 +187,27 @@ export function replaceTemplateVariables(html: string, values: TemplateVariables
     projectJpEmail: values.projectJpEmail ?? '',
   };
   let result = html;
-  for (const [shortcodeKey, formKey] of Object.entries(SHORTCODE_MAP)) {
+  for (const [shortcodeKey, formKey] of Object.entries(SHORTCODE_MAP) as [
+    string,
+    keyof typeof stringVals,
+  ][]) {
     const placeholder = `{{${shortcodeKey}}}`;
     if (shortcodeKey === 'urlHubSpot') {
-      result = result.split(placeholder).join(buildHubSpotUrlHtml(raw[formKey]));
+      result = result.split(placeholder).join(buildHubSpotUrlHtml(stringVals[formKey]));
       continue;
     }
     const value =
       shortcodeKey === 'importeProyecto'
         ? formatImporteProyectoEs(values.projectAmount ?? '')
-        : raw[formKey];
+        : stringVals[formKey];
     result = result.split(placeholder).join(escapeForHtml(value));
   }
   const jpHtml =
-    raw.projectJpName.trim() && raw.projectJpEmail.trim()
-      ? buildProjectJpHtml(raw.projectJpName, raw.projectJpEmail)
+    stringVals.projectJpName.trim() && stringVals.projectJpEmail.trim()
+      ? buildProjectJpHtml(stringVals.projectJpName, stringVals.projectJpEmail)
       : '';
   result = result.split('{{JP de Proyecto}}').join(jpHtml);
+  result = replaceUrlsEscaneadasPlaceholder(result, values);
   // Cualquier {{cualquierCosa}} restante → vacío
   result = result.replace(/\{\{[^}]+\}\}/g, '');
   return result;

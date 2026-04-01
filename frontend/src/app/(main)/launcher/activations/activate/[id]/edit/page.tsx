@@ -7,7 +7,7 @@ import { apiFetch, apiUpload } from '@/lib/api';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
-import { replaceTemplateVariables } from '@/lib/replace-template-variables';
+import { replaceTemplateVariables, replaceUrlsEscaneadasPlaceholder } from '@/lib/replace-template-variables';
 import { formatActivationCode } from '@/lib/activation-code';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
 import styles from '../../new/form.module.css';
@@ -206,10 +206,24 @@ export default function EditActivationPage() {
     if (!appliedTemplateId) return;
     const t = emailTemplates.find((x) => x.id === appliedTemplateId);
     if (!t) return;
-    setForm((prev) => ({
-      ...prev,
-      body: replaceTemplateVariables(t.content ?? '', prev),
-    }));
+    setForm((prev) => {
+      const urlList = prev.attachmentUrlsText
+        .split(/[\n,]/)
+        .map((u) => u.trim())
+        .filter(Boolean);
+      const scannedUrls = urlList.map((url, i) => ({
+        url,
+        name: (prev.attachmentNames[i] ?? '').trim() || url,
+      }));
+      return {
+        ...prev,
+        body: replaceTemplateVariables(t.content ?? '', {
+          ...prev,
+          scannedUrls,
+          hasUploadedAttachments: attachments.length > 0,
+        }),
+      };
+    });
   }, [
     appliedTemplateId,
     emailTemplates,
@@ -221,6 +235,9 @@ export default function EditActivationPage() {
     form.hubspotUrl,
     form.projectJpName,
     form.projectJpEmail,
+    form.attachmentUrlsText,
+    form.attachmentNames,
+    attachments.length,
   ]);
 
   useEffect(() => {
@@ -452,6 +469,10 @@ export default function EditActivationPage() {
         .map((u) => u.trim())
         .filter(Boolean);
       const attachmentNames = attachmentUrls.map((_, i) => form.attachmentNames[i] ?? '');
+      const scannedUrls = attachmentUrls.map((url, i) => ({
+        url,
+        name: (form.attachmentNames[i] ?? '').trim() || url,
+      }));
       const areaIds = selected.filter((s): s is SelectedArea => s.type === 'area').map((s) => s.areaId);
       const subAreaIds = selected.filter((s): s is SelectedSubarea => s.type === 'subarea').map((s) => s.subAreaId);
       const body = {
@@ -468,7 +489,12 @@ export default function EditActivationPage() {
             ? manualCcEntries.map((e) => e.email.trim()).filter(Boolean).join(', ')
             : undefined,
         projectJpContactId: projectJpContactId || undefined,
-        body: form.body.trim() || undefined,
+        body:
+          replaceUrlsEscaneadasPlaceholder(form.body.trim(), {
+            ...form,
+            scannedUrls,
+            hasUploadedAttachments: attachments.length > 0,
+          }).trim() || undefined,
         attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
         attachmentNames: attachmentUrls.length ? attachmentNames : undefined,
       };

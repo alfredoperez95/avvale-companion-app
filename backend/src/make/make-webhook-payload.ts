@@ -68,6 +68,8 @@ export interface MakeWebhookPayloadV1 {
   areas: MakeWebhookAreaV1[];
   subAreas: MakeWebhookSubAreaV1[];
   attachments: MakeWebhookAttachmentV1[];
+  /** Indica si el payload incluye adjuntos descargables por Make (archivos reales subidos). */
+  hasAttachments?: boolean;
 }
 
 /** Tipo mínimo de activación + relaciones necesarias para armar el payload (coincide con findOneByIdAndUser). */
@@ -105,7 +107,16 @@ export type MakeWebhookPayloadOptions = {
   attachmentsBaseUrl: string;
 };
 
-function parseStoredJsonArray(raw: string | null): string[] {
+/**
+ * Origen del backend sin sufijo `/api`. Las rutas Nest están en la raíz (`/public/attachments`, …);
+ * el prefijo `/api` solo aplica en el rewrite del frontend Next, no en el servidor Nest al que Make llama directamente.
+ */
+function backendOriginForAttachmentUrls(attachmentsBaseUrl: string): string {
+  return attachmentsBaseUrl.trim().replace(/\/+$/, '').replace(/\/api$/i, '');
+}
+
+/** JSON almacenado en `attachment_urls` / `attachment_names` (arrays serializados). */
+function parseStoredJsonStringArray(raw: string | null): string[] {
   if (!raw?.trim()) return [];
   try {
     const v = JSON.parse(raw) as unknown;
@@ -113,6 +124,105 @@ function parseStoredJsonArray(raw: string | null): string[] {
   } catch {
     return [];
   }
+}
+
+function escapeForHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Misma lógica que el frontend (`replaceTemplateVariables`): listado solo si hay URLs en BD
+ * y no hay adjuntos reales; enlaces a `attachment_urls` escaneadas.
+ */
+function buildUrlsEscaneadasHtml(activation: ActivationForMakePayload): string {
+  if (activation.attachments.length > 0) return '';
+  const urls = parseStoredJsonStringArray(activation.attachmentUrls);
+  const names = parseStoredJsonStringArray(activation.attachmentNames);
+  const items = urls
+    .map((url, i) => ({
+      url: url.trim(),
+      name: (names[i] ?? '').trim() || url.trim(),
+    }))
+    .filter((x) => x.url);
+  if (items.length === 0) return '';
+  const title =
+    '<p><strong>URLs escaneadas</strong> (Solo accesibles con Usuario HubSpot)</p>';
+  const lis = items
+    .map(({ url, name }) => {
+      const safeUrl = escapeForHtml(url);
+      const label = escapeForHtml(name || url);
+      return `<li><a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${label}</a></li>`;
+    })
+    .join('');
+  return `${title}<ul>${lis}</ul>`;
+}
+
+/**
+ * Si el marcador `{{urlsEscaneadas}}` ya no está en el HTML pero hay URLs en BD, inserta el
+ * bloque en el hueco de la plantilla estándar: entre "Adjunto propuesta…" y "Cualquier cosa comentamos".
+ */
+function insertFallbackUrlsBlockIntoTemplateSlot(body: string, html: string): string {
+  // 1) Tras </p> del párrafo anterior, antes del <p> que abre "Cualquier cosa comentamos"
+  const withBetweenParagraphs = body.replace(
+    /(<\/p>\s*(?:<br\s*\/?>\s*)*)(<p[^>]*>\s*Cualquier\s+cosa\s+comentamos)/gi,
+    (_all, gap, openP) => `${gap}${html}${openP}`,
+  );
+  if (withBetweenParagraphs !== body) {
+    return withBetweenParagraphs;
+  }
+
+  // 2) Justo antes del texto "Cualquier cosa comentamos" (p. ej. sin segundo <p> explícito)
+  const cualquierMatch = /\bCualquier\s+cosa\s+comentamos\b/i.exec(body);
+  if (cualquierMatch && cualquierMatch.index !== undefined) {
+    const i = cualquierMatch.index;
+    return `${body.slice(0, i)}${html}${body.slice(i)}`;
+  }
+
+  // 3) Tras el párrafo que contiene "Adjunto propuesta"
+  const afterAdjunto = body.replace(
+    /(<p[^>]*>[\s\S]*?Adjunto\s+propuesta[\s\S]*?<\/p>)/i,
+    (_all, paragraph) => `${paragraph}${html}`,
+  );
+  if (afterAdjunto !== body) {
+    return afterAdjunto;
+  }
+
+  // 4) Último recurso: al final del cuerpo
+  const trimmed = body.trimEnd();
+  const needsBr = trimmed.length > 0 && !/<br\s*\/?>\s*$/i.test(trimmed);
+  return `${trimmed}${needsBr ? '<br>' : ''}${html}`;
+}
+
+function injectUrlsEscaneadasInBody(
+  body: string | null,
+  activation: ActivationForMakePayload,
+): string | null {
+  if (body == null || body === '') return body;
+  const html = buildUrlsEscaneadasHtml(activation);
+  // Acepta `{{urlsEscaneadas}}` y variantes con espacios (p. ej. al pegar desde Word).
+  let out = body.replace(/\{\{\s*urlsEscaneadas\s*\}\}/gi, () => html);
+
+  if (!html) {
+    return out;
+  }
+
+  // Si el cuerpo ya contiene el bloque generado (p. ej. guardado desde el frontend), no duplicar.
+  if (out.includes(html)) {
+    return out;
+  }
+
+  // El frontend puede haber sustituido el marcador por vacío cuando aún no había URLs en el
+  // formulario; en BD siguen `attachment_urls` — colocar el bloque donde iba el shortcode en la plantilla.
+  const markerHtml = '<strong>URLs escaneadas</strong>';
+  if (out.includes(markerHtml)) {
+    return out;
+  }
+
+  return insertFallbackUrlsBlockIntoTemplateSlot(out, html);
 }
 
 function splitEmails(raw: string | null | undefined): string[] {
@@ -141,20 +251,14 @@ export function buildMakeWebhookPayload(
     areaName: a.subArea.area.name,
   }));
 
-  let attachmentList: MakeWebhookAttachmentV1[] = activation.attachments.map((a) => ({
+  // Solo adjuntos reales en BD; las URLs escaneadas van en el cuerpo ({{urlsEscaneadas}}), no como descargas en Make.
+  const origin = backendOriginForAttachmentUrls(options.attachmentsBaseUrl);
+  const attachmentList: MakeWebhookAttachmentV1[] = activation.attachments.map((a) => ({
     url: a.publicToken
-      ? `${options.attachmentsBaseUrl}/public/attachments/${a.publicToken}`
-      : `${options.attachmentsBaseUrl}/activations/${activation.id}/attachments/${a.id}`,
+      ? `${origin}/public/attachments/${a.publicToken}`
+      : `${origin}/activations/${activation.id}/attachments/${a.id}`,
     fileName: a.fileName,
   }));
-  if (attachmentList.length === 0) {
-    const urls = parseStoredJsonArray(activation.attachmentUrls);
-    const names = parseStoredJsonArray(activation.attachmentNames);
-    attachmentList = urls.map((url, i) => ({
-      url,
-      fileName: (names[i] ?? url).trim() || url,
-    }));
-  }
 
   return {
     schemaVersion: MAKE_WEBHOOK_SCHEMA_VERSION,
@@ -169,7 +273,7 @@ export function buildMakeWebhookPayload(
     recipientCcCsv: activation.recipientCc,
     ccRecipients: buildRecipientsList(activation.recipientCc),
     subject: activation.subject,
-    body: activation.body,
+    body: injectUrlsEscaneadasInBody(activation.body, activation),
     projectName: activation.projectName,
     client: activation.client,
     offerCode: activation.offerCode,
@@ -185,5 +289,6 @@ export function buildMakeWebhookPayload(
     areas,
     subAreas,
     attachments: attachmentList,
+    hasAttachments: attachmentList.length > 0,
   };
 }
