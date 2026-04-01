@@ -107,14 +107,6 @@ export type MakeWebhookPayloadOptions = {
   attachmentsBaseUrl: string;
 };
 
-/**
- * Origen del backend sin sufijo `/api`. Las rutas Nest están en la raíz (`/public/attachments`, …);
- * el prefijo `/api` solo aplica en el rewrite del frontend Next, no en el servidor Nest al que Make llama directamente.
- */
-function backendOriginForAttachmentUrls(attachmentsBaseUrl: string): string {
-  return attachmentsBaseUrl.trim().replace(/\/+$/, '').replace(/\/api$/i, '');
-}
-
 /** JSON almacenado en `attachment_urls` / `attachment_names` (arrays serializados). */
 function parseStoredJsonStringArray(raw: string | null): string[] {
   if (!raw?.trim()) return [];
@@ -252,11 +244,12 @@ export function buildMakeWebhookPayload(
   }));
 
   // Solo adjuntos reales en BD; las URLs escaneadas van en el cuerpo ({{urlsEscaneadas}}), no como descargas en Make.
-  const origin = backendOriginForAttachmentUrls(options.attachmentsBaseUrl);
+  // `attachmentsBaseUrl` viene de resolveBackendPublicBaseUrl: con Next suele ser …/api → …/api/public/attachments/…
+  const base = options.attachmentsBaseUrl.trim().replace(/\/+$/, '');
   const attachmentList: MakeWebhookAttachmentV1[] = activation.attachments.map((a) => ({
     url: a.publicToken
-      ? `${origin}/public/attachments/${a.publicToken}`
-      : `${origin}/activations/${activation.id}/attachments/${a.id}`,
+      ? `${base}/public/attachments/${a.publicToken}`
+      : `${base}/activations/${activation.id}/attachments/${a.id}`,
     fileName: a.fileName,
   }));
 

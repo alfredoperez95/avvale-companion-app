@@ -43,42 +43,6 @@ export class ActivationsService {
     private readonly activationSendProducer: ActivationSendProducer,
   ) {}
 
-  /** Devuelve la base pública del backend con sufijo /api (exactamente una vez). */
-  private async getBackendApiBaseUrl(): Promise<string> {
-    const raw =
-      this.config.get<string>('BACKEND_PUBLIC_URL') ??
-      this.config.get<string>('NEXT_PUBLIC_API_URL') ??
-      'http://localhost:4000';
-    const clean = raw.trim().replace(/\/+$/, '');
-    const withoutApiSuffix = clean.replace(/\/api$/i, '');
-    let resolved = `${withoutApiSuffix}/api`;
-    let source: 'env' | 'ngrok' = 'env';
-    const looksLocalhost =
-      /^https?:\/\/localhost(?::\d+)?(\/|$)/i.test(withoutApiSuffix) ||
-      /^https?:\/\/127\.0\.0\.1(?::\d+)?(\/|$)/i.test(withoutApiSuffix);
-    if (looksLocalhost) {
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 1200);
-        const res = await fetch('http://127.0.0.1:4040/api/tunnels', { signal: controller.signal });
-        clearTimeout(timer);
-        if (res.ok) {
-          const data = (await res.json()) as {
-            tunnels?: { public_url?: string; proto?: string }[];
-          };
-          const tunnel = data.tunnels?.find((t) => t.public_url?.startsWith('https://'));
-          if (tunnel?.public_url) {
-            resolved = `${tunnel.public_url.replace(/\/+$/, '')}/api`;
-            source = 'ngrok';
-          }
-        }
-      } catch {
-        // fallback a localhost si ngrok no está disponible
-      }
-    }
-    return resolved;
-  }
-
   /** Áreas y subáreas de una activación deben pertenecer al árbol personal del usuario (no al catálogo sistema). */
   private async assertActivationAreasOwnedByUser(
     userId: string,

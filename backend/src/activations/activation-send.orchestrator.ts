@@ -8,6 +8,7 @@ import { EmailSignatureService } from '../email-signature/email-signature.servic
 import { buildMakeWebhookPayload, type ActivationForMakePayload } from '../make/make-webhook-payload';
 import { ActivationLookupService } from './activation-lookup.service';
 import { normalizeEmailHtmlSpacing } from './email-html.util';
+import { resolveBackendPublicBaseUrl } from '../config/backend-public-base-url';
 
 @Injectable()
 export class ActivationSendOrchestrator {
@@ -51,7 +52,7 @@ export class ActivationSendOrchestrator {
 
     const signatureHtml = await this.emailSignatureService.getContent(userId);
     const emailSignature = signatureHtml.trim() ? signatureHtml : null;
-    const attachmentsBaseUrl = await this.getBackendApiBaseUrl();
+    const attachmentsBaseUrl = await resolveBackendPublicBaseUrl(this.config);
 
     const payload = buildMakeWebhookPayload(activation as ActivationForMakePayload, {
       emailSignature,
@@ -121,37 +122,4 @@ export class ActivationSendOrchestrator {
     throw new Error(errMsg);
   }
 
-  /** Igual que en ActivationsService: URL pública del backend con sufijo /api (una sola vez). */
-  private async getBackendApiBaseUrl(): Promise<string> {
-    const raw =
-      this.config.get<string>('BACKEND_PUBLIC_URL') ??
-      this.config.get<string>('NEXT_PUBLIC_API_URL') ??
-      'http://localhost:4000';
-    const clean = raw.trim().replace(/\/+$/, '');
-    const withoutApiSuffix = clean.replace(/\/api$/i, '');
-    let resolved = `${withoutApiSuffix}/api`;
-    const looksLocalhost =
-      /^https?:\/\/localhost(?::\d+)?(\/|$)/i.test(withoutApiSuffix) ||
-      /^https?:\/\/127\.0\.0\.1(?::\d+)?(\/|$)/i.test(withoutApiSuffix);
-    if (looksLocalhost) {
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 1200);
-        const res = await fetch('http://127.0.0.1:4040/api/tunnels', { signal: controller.signal });
-        clearTimeout(timer);
-        if (res.ok) {
-          const data = (await res.json()) as {
-            tunnels?: { public_url?: string; proto?: string }[];
-          };
-          const tunnel = data.tunnels?.find((t) => t.public_url?.startsWith('https://'));
-          if (tunnel?.public_url) {
-            resolved = `${tunnel.public_url.replace(/\/+$/, '')}/api`;
-          }
-        }
-      } catch {
-        // fallback localhost
-      }
-    }
-    return resolved;
-  }
 }

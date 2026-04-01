@@ -40,8 +40,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
 
   buildPublicUrl(baseUrl: string, token: string): string {
     const normalized = baseUrl.trim().replace(/\/+$/, '');
-    const withoutApi = normalized.replace(/\/api$/i, '');
-    return `${withoutApi}/public/attachments/${token}`;
+    return `${normalized}/public/attachments/${token}`;
   }
 
   private async ensureDir(dirPath: string): Promise<void> {
