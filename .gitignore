@@ -27,3 +27,7 @@ backend/prisma/*.db-journal
 
 # Adjuntos descargados (URLs escaneadas)
 backend/uploads/
+
+# Exportes locales de contactos (datos sensibles)
+backend/cc-contacts-export.tsv
+backend/cc-contacts-emails-only.txt
