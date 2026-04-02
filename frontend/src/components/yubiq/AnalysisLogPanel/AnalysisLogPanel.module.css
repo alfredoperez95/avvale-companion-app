@@ -1,0 +1,142 @@
+.console {
+  margin: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #30363d;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 25%),
+    0 8px 24px rgb(0 0 0 / 18%);
+  font-family: ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+.consoleChrome {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  background: linear-gradient(180deg, #2d333b 0%, #22272e 100%);
+  border-bottom: 1px solid #30363d;
+}
+
+.consoleDots {
+  display: inline-flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #484f58;
+}
+
+.dot:nth-child(1) {
+  background: #ff5f57;
+}
+
+.dot:nth-child(2) {
+  background: #febc2e;
+}
+
+.dot:nth-child(3) {
+  background: #28c840;
+}
+
+.consoleTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #8b949e;
+  text-transform: lowercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.consoleBadge {
+  flex-shrink: 0;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7ee787;
+  background: rgb(46 160 67 / 12%);
+  border: 1px solid rgb(63 185 80 / 35%);
+}
+
+.consoleBody {
+  margin: 0;
+  padding: 0.65rem 0.75rem 0.85rem;
+  max-height: min(22rem, 50vh);
+  min-height: 8.5rem;
+  overflow: auto;
+  background: #0d1117;
+  scrollbar-color: #30363d #0d1117;
+  scrollbar-width: thin;
+}
+
+.consoleBody::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.consoleBody::-webkit-scrollbar-track {
+  background: #0d1117;
+  border-radius: 4px;
+}
+
+.consoleBody::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+.consoleLine,
+.emptyLine {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1.35rem;
+  min-height: 1.35rem;
+}
+
+.lineNo {
+  flex-shrink: 0;
+  width: 1.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #8b949e;
+  user-select: none;
+}
+
+.prompt {
+  flex-shrink: 0;
+  width: 0.65rem;
+  color: #58a6ff;
+  font-weight: 700;
+}
+
+.lineText {
+  flex: 1;
+  min-width: 0;
+  color: #7ee787;
+  text-shadow: 0 0 20px rgb(126 231 135 / 12%);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.emptyLine .prompt {
+  color: #6e7681;
+}
+
+.emptyHint {
+  flex: 1;
+  color: #6e7681;
+  font-style: italic;
+  line-height: 1.45;
+}

@@ -78,6 +78,23 @@ export default function LauncherPage() {
             <span className={`${styles.tileIcon} ${styles.tileIconPipeline}`} aria-hidden="true" />
           </article>
         </Link>
+        <Link
+          href="/launcher/yubiq/approve-seal-filler"
+          className={styles.tileLink}
+          aria-labelledby="tile-yubiq-approve-seal-heading"
+          role="listitem"
+        >
+          <article className={styles.tile}>
+            <h2 id="tile-yubiq-approve-seal-heading" className={styles.tileTitle}>
+              Yubiq Approve &amp; Seal Filler
+            </h2>
+            <p className={styles.tileDesc}>
+              Sube una oferta comercial en PDF, analízala con IA y obtén campos estructurados (título, cliente, importe, área Avvale y resumen).
+            </p>
+            <span className={styles.tileCta}>Abrir módulo →</span>
+            <span className={styles.tileIcon} aria-hidden="true" />
+          </article>
+        </Link>
       </div>
     </div>
   );

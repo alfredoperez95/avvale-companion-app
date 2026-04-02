@@ -45,8 +45,23 @@ model User {
   ownedAreas      Area[]          @relation("UserOwnedAreas")
   emailTemplates  EmailTemplate[]
   emailSignature  EmailSignature? @relation("UserEmailSignature")
+  anthropicCredential UserAnthropicCredential?
 
   @@map("users")
+}
+
+model UserAnthropicCredential {
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  apiKeyCiphertext String   @map("api_key_ciphertext") @db.Text
+  apiKeyIv         String   @map("api_key_iv") @db.Text
+  apiKeyTag        String   @map("api_key_tag") @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_anthropic_credentials")
 }
 
 model Area {

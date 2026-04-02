@@ -7,6 +7,7 @@ import { clearAppearanceCookie, setAppearanceCookie } from '@/lib/appearance-coo
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { PhoneCountryPicker } from '@/components/PhoneCountryPicker/PhoneCountryPicker';
 import { buildStoredPhone, parseStoredPhone } from '@/lib/phone-country-codes';
+import { CredentialsForm } from '@/components/profile/CredentialsForm/CredentialsForm';
 import styles from './profile.module.css';
 
 type Profile = {
@@ -440,6 +441,13 @@ export default function PerfilPage() {
           </button>
         </div>
         {error && <p className={styles.error}>{error}</p>}
+      </section>
+
+      <section className={styles.section} aria-labelledby="perfil-ai-credentials">
+        <h2 id="perfil-ai-credentials" className={styles.sectionTitle}>
+          AI Credentials
+        </h2>
+        <CredentialsForm />
       </section>
 
       {profile?.role === 'ADMIN' && (
