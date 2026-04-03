@@ -16,6 +16,8 @@ type AnalyzeOfferResponse = {
   fileName: string;
   cleanTitleFromFilename: string;
   extractedTextLength: number;
+  /** Prompt completo enviado a Claude (incluye texto extraído del PDF). */
+  promptPreview: string;
   result: unknown;
   rawClaudeJson: string;
   modelUsed: string;
@@ -89,6 +91,7 @@ export class ApproveSealFillerController {
         fileName,
         cleanTitleFromFilename,
         extractedTextLength: extractedText.length,
+        promptPreview: prompt,
         result: normalized,
         rawClaudeJson: recoveredJson,
         modelUsed: modelId,

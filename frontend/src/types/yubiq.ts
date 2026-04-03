@@ -29,6 +29,8 @@ export type AnalyzeOfferResponse = {
   fileName: string;
   cleanTitleFromFilename: string;
   extractedTextLength: number;
+  /** Prompt completo enviado a Claude (incluye texto del PDF). */
+  promptPreview?: string;
   result: ClaudeOfferExtraction;
   rawClaudeJson: string;
   modelUsed: string;

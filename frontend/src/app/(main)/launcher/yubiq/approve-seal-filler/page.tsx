@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { DropzoneUploader } from '@/components/yubiq/DropzoneUploader/DropzoneUploader';
 import { AnalysisLogPanel } from '@/components/yubiq/AnalysisLogPanel/AnalysisLogPanel';
 import { ExtractionResultCard } from '@/components/yubiq/ExtractionResultCard/ExtractionResultCard';
 import type { AnalyzeOfferResponse, AnthropicModelChoice, ClaudeOfferExtraction, UserAnthropicCredentialStatus } from '@/types/yubiq';
+import { buildYubiqPayload, dispatchYubiqToExtensionAndWait } from '@/lib/yubiq';
 import styles from './page.module.css';
 
 function ChevronBackIcon() {
@@ -77,6 +79,7 @@ function StatusBadge({
 }
 
 export default function YubiqApproveSealFillerPage() {
+  const router = useRouter();
   const [credentialStatus, setCredentialStatus] = useState<UserAnthropicCredentialStatus | null>(null);
   const [credLoading, setCredLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
@@ -86,6 +89,10 @@ export default function YubiqApproveSealFillerPage() {
   const [result, setResult] = useState<ClaudeOfferExtraction | null>(null);
   const [rawClaudeJson, setRawClaudeJson] = useState<string>('');
   const [error, setError] = useState('');
+  const [lastFileName, setLastFileName] = useState('');
+  const [promptPreview, setPromptPreview] = useState('');
+  const [yubiqBridge, setYubiqBridge] = useState<'idle' | 'pending' | 'success' | 'error' | 'no_extension'>('idle');
+  const [yubiqBridgeMessage, setYubiqBridgeMessage] = useState('');
   const resultsSectionRef = useRef<HTMLElement | null>(null);
 
   const canAnalyze = Boolean(file) && Boolean(credentialStatus?.configured) && phase !== 'uploading' && phase !== 'extracting' && phase !== 'analyzing';
@@ -125,6 +132,8 @@ export default function YubiqApproveSealFillerPage() {
     setError('');
     setResult(null);
     setRawClaudeJson('');
+    setLastFileName('');
+    setPromptPreview('');
     setLog([]);
 
     if (!credentialStatus?.configured) {
@@ -158,11 +167,43 @@ export default function YubiqApproveSealFillerPage() {
       setLog(data.log ?? []);
       setResult(data.result);
       setRawClaudeJson(data.rawClaudeJson ?? '');
+      setLastFileName(data.fileName ?? file?.name ?? 'document.pdf');
+      setPromptPreview(data.promptPreview ?? '');
       setPhase('done');
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
       setPhase('error');
+    }
+  };
+
+  const sendToYubiq = async () => {
+    if (!result) return;
+    setYubiqBridge('pending');
+    setYubiqBridgeMessage('');
+    try {
+      const { payload } = buildYubiqPayload({
+        extraction: result,
+        fileName: lastFileName || file?.name || 'document.pdf',
+      });
+      const detail = await dispatchYubiqToExtensionAndWait(payload, { timeoutMs: 8000 });
+      if (detail.ok) {
+        setYubiqBridge('success');
+        setYubiqBridgeMessage('Solicitud enviada a la extensión. Se abrirá Yubiq en una pestaña nueva.');
+        return;
+      }
+      if (detail.error === 'extension_timeout') {
+        setYubiqBridge('no_extension');
+        setYubiqBridgeMessage(
+          'No se detectó la extensión Avvale Companion. Instálala en Chrome y recarga esta página, o usa el popup de la extensión para pegar el JSON.',
+        );
+        return;
+      }
+      setYubiqBridge('error');
+      setYubiqBridgeMessage(detail.error ?? 'No se pudo completar el envío.');
+    } catch (e) {
+      setYubiqBridge('error');
+      setYubiqBridgeMessage(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -244,30 +285,55 @@ export default function YubiqApproveSealFillerPage() {
                 </select>
               </div>
 
-              <div className={styles.actions}>
-                <button type="button" className={styles.btnPrimary} onClick={runAnalyze} disabled={!canAnalyze}>
-                  {phase === 'analyzing' ? 'Analizando…' : 'Analizar PDF'}
-                </button>
+              <div className={styles.actionsRow}>
+                <div className={styles.actionsMain}>
+                  <button type="button" className={styles.btnPrimary} onClick={runAnalyze} disabled={!canAnalyze}>
+                    {phase === 'analyzing' ? 'Analizando…' : 'Analizar PDF'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={() => {
+                      setFile(null);
+                      setResult(null);
+                      setRawClaudeJson('');
+                      setLastFileName('');
+                      setPromptPreview('');
+                      setLog([]);
+                      setError('');
+                      setYubiqBridge('idle');
+                      setYubiqBridgeMessage('');
+                      setPhase('idle');
+                    }}
+                    disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
+                  >
+                    Limpiar
+                  </button>
+                </div>
                 <button
                   type="button"
-                  className={styles.btnSecondary}
-                  onClick={() => {
-                    setFile(null);
-                    setResult(null);
-                    setRawClaudeJson('');
-                    setLog([]);
-                    setError('');
-                    setPhase('idle');
-                  }}
-                  disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
+                  className={styles.profileLink}
+                  onClick={() => router.push('/profile')}
+                  aria-label="Abrir perfil: credenciales API"
                 >
-                  Limpiar
+                  Credenciales API
                 </button>
-                <Link href="/profile" className={styles.profileLink}>
-                  Perfil · credenciales
-                </Link>
               </div>
             </div>
+
+            <details className={styles.promptPreview}>
+              <summary className={styles.promptSummary}>Vista previa del prompt (Claude)</summary>
+              {promptPreview ? (
+                <pre className={styles.promptPre} tabIndex={0}>
+                  {promptPreview}
+                </pre>
+              ) : (
+                <p className={styles.promptEmpty}>
+                  Tras un análisis correcto, aquí verás el prompt completo enviado al modelo (incluye el texto extraído del
+                  PDF).
+                </p>
+              )}
+            </details>
 
             {!credLoading && !credentialStatus?.configured && (
               <p className={styles.notice}>
@@ -326,13 +392,26 @@ export default function YubiqApproveSealFillerPage() {
             <button
               type="button"
               className={styles.btnSendYubiq}
-              disabled={!result}
-              onClick={() => {
-                /* Pendiente: lógica de envío a Yubiq */
-              }}
+              data-avvale-action="send-yubiq"
+              disabled={!result || yubiqBridge === 'pending'}
+              onClick={() => void sendToYubiq()}
             >
-              Enviar a Yubiq
+              {yubiqBridge === 'pending' ? 'Enviando…' : 'Enviar a Yubiq'}
             </button>
+            {yubiqBridgeMessage && (
+              <p
+                className={
+                  yubiqBridge === 'success'
+                    ? styles.bridgeOk
+                    : yubiqBridge === 'no_extension'
+                      ? styles.bridgeWarn
+                      : styles.bridgeErr
+                }
+                role="status"
+              >
+                {yubiqBridgeMessage}
+              </p>
+            )}
           </div>
         </article>
       </section>
