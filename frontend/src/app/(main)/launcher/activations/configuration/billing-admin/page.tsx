@@ -132,7 +132,13 @@ export default function AdminBillingAdminPage() {
     return keys.map((k) => ({ letter: k, contacts: map.get(k)! }));
   }, [contacts]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p className={styles.loadingState}>Cargando contactos…</p>
+      </div>
+    );
+  }
 
   if (forbidden) {
     return (
@@ -152,10 +158,11 @@ export default function AdminBillingAdminPage() {
       </PageBreadcrumb>
       <PageHero
         title="Facturación y Administración"
-        subtitle="Contactos que se incluyen siempre en todas las activaciones, de índole administrativo y/o de facturación."
+        subtitle="Estos contactos se añaden siempre en el envío de cada activación (ámbito administrativo y de facturación)."
       />
-      {error && <p className={styles.error}>{error}</p>}
+      {error ? <p className={`${styles.error} ${styles.errorBanner}`}>{error}</p> : null}
 
+      <div className={styles.configWorkArea}>
       <form onSubmit={handleCreate} className={styles.contactsAddRow}>
         <input
           type="text"
@@ -279,6 +286,7 @@ export default function AdminBillingAdminPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
 
       <ConfirmDialog

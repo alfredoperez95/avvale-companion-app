@@ -6,6 +6,8 @@ import styles from './FilterBar.module.css';
 export type SolicitanteOption = { id: string; name?: string | null; lastName?: string | null; email: string };
 
 interface FilterBarProps {
+  /** Clase adicional en el contenedor (p. ej. anidado en una tarjeta). */
+  className?: string;
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
   searchValue?: string;
@@ -22,6 +24,7 @@ function getSolicitanteLabel(u: SolicitanteOption): string {
 }
 
 export function FilterBar({
+  className,
   statusFilter,
   onStatusFilterChange,
   searchValue = '',
@@ -36,7 +39,7 @@ export function FilterBar({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   return (
-    <div className={styles.root}>
+    <div className={[styles.root, className].filter(Boolean).join(' ')}>
       <button
         type="button"
         className={styles.mobileToggle}

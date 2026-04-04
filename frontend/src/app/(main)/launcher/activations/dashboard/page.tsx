@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import type { Activation } from '@/types/activation';
@@ -186,35 +187,80 @@ export default function DashboardPage() {
             App Launcher
           </PageBackLink>
         </PageBreadcrumb>
-        <PageHero title="Dashboard" subtitle="Resumen y listado de activaciones." />
-
-        <section className={styles.kpiSection} aria-label="Resumen">
-          <KpiCard title="Activaciones" value={kpis.total} icon="total" loading={loading} />
-          <KpiCard title="Borradores" value={kpis.draft} icon="draft" loading={loading} />
-          <KpiCard title="Enviadas" value={kpis.sent} icon="sent" loading={loading} />
-          <KpiCard title="Errores" value={kpis.error} icon="error" loading={loading} />
-        </section>
-
-        <FilterBar
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          searchValue={searchValue}
-          onSearchChange={setSearchValue}
-          solicitanteFilter={solicitanteFilter}
-          onSolicitanteFilterChange={setSolicitanteFilter}
-          solicitanteOptions={solicitanteOptions}
-          solicitanteLoading={solicitanteLoading}
+        <PageHero
+          title="Dashboard"
+          subtitle="Indicadores globales, filtros y tabla. Pulsa una fila o el nombre del proyecto para ver el detalle en el panel lateral."
+          actions={
+            <div className={styles.heroActions}>
+              <Link href="/launcher/activations/activate" className={styles.btnSecondary}>
+                Mis activaciones
+              </Link>
+              <Link href="/launcher/activations/activate/new" className={styles.btnPrimary}>
+                <span className={styles.btnPrimaryIcon} aria-hidden>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </span>
+                Nueva activación
+              </Link>
+            </div>
+          }
         />
 
-        <section className={styles.tableSection}>
-          <DataTable<Activation>
-            columns={columns}
-            data={filtered}
-            loading={tableLoading}
-            emptyMessage="No hay activaciones que coincidan con los filtros."
-            getRowId={(row) => row.id}
-            onRowClick={(row) => setSelectedId(row.id)}
+        <section className={styles.kpiBlock} aria-labelledby="dashboard-kpis-title">
+          <h2 id="dashboard-kpis-title" className={styles.kpiHeading}>
+            Indicadores
+          </h2>
+          <div className={styles.kpiSection} role="group" aria-label="Totales por estado">
+            <KpiCard title="Activaciones" value={kpis.total} icon="total" loading={loading} />
+            <KpiCard title="Borradores" value={kpis.draft} icon="draft" loading={loading} />
+            <KpiCard title="Enviadas" value={kpis.sent} icon="sent" loading={loading} />
+            <KpiCard title="Errores" value={kpis.error} icon="error" loading={loading} />
+          </div>
+        </section>
+
+        <div className={styles.filtersCard}>
+          <FilterBar
+            className={styles.filterBarEmbed}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            solicitanteFilter={solicitanteFilter}
+            onSolicitanteFilterChange={setSolicitanteFilter}
+            solicitanteOptions={solicitanteOptions}
+            solicitanteLoading={solicitanteLoading}
           />
+        </div>
+
+        <div className={styles.resultsToolbar} aria-live="polite">
+          <h2 className={styles.resultsTitle}>Listado</h2>
+          <p className={styles.resultsMeta}>
+            {loading && list.length === 0 ? (
+              'Obteniendo datos…'
+            ) : filtered.length === list.length ? (
+              <>
+                <strong>{list.length}</strong> {list.length === 1 ? 'registro' : 'registros'}
+              </>
+            ) : (
+              <>
+                Mostrando <strong>{filtered.length}</strong> de <strong>{list.length}</strong>
+              </>
+            )}
+          </p>
+        </div>
+
+        <section className={styles.tableSection} aria-label="Tabla de activaciones">
+          <div className={styles.tableBlock}>
+            <DataTable<Activation>
+              columns={columns}
+              data={filtered}
+              loading={tableLoading}
+              emptyMessage="No hay activaciones que coincidan con los filtros. Prueba a limpiar la búsqueda o crea una nueva activación."
+              getRowId={(row) => row.id}
+              onRowClick={(row) => setSelectedId(row.id)}
+            />
+          </div>
         </section>
       </div>
 

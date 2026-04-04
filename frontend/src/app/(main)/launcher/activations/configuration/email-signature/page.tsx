@@ -111,7 +111,13 @@ export default function EmailSignaturePage() {
     }
   };
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p className={styles.loadingState}>Cargando firma…</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -126,14 +132,14 @@ export default function EmailSignaturePage() {
             : 'Firma HTML que se envía en el webhook a Make junto con el cuerpo del correo. Una firma por usuario.'
         }
       />
-      {error && <p className={styles.error}>{error}</p>}
+      {error ? <p className={`${styles.error} ${styles.errorBanner}`}>{error}</p> : null}
 
       <section className={styles.templateCard} aria-labelledby="signature-form-heading">
         <h2 id="signature-form-heading" className={styles.templateCardTitle}>
           {isAdmin ? 'Tu firma (activaciones)' : 'Firma de correo'}
         </h2>
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 'var(--fiori-space-4)' }}>
+          <div className={styles.formFieldStack}>
             <label className={styles.label} htmlFor="signature-content">Contenido (editor visual)</label>
             <RichTextEditor
               id="signature-content"
@@ -185,15 +191,15 @@ export default function EmailSignaturePage() {
       </section>
 
       {isAdmin && (
-        <section className={styles.templateCard} aria-labelledby="signature-system-heading" style={{ marginTop: 'var(--fiori-space-6)' }}>
+        <section className={styles.templateCard} aria-labelledby="signature-system-heading">
           <h2 id="signature-system-heading" className={styles.templateCardTitle}>
             Restablecer firma predeterminada
           </h2>
-          <p className={styles.sectionDesc} style={{ marginTop: 0 }}>
+          <p className={styles.sectionDesc}>
             Puedes utilizar este contenido para restablecer la firma predeterminada si la cuenta no tiene una firma propia.
           </p>
-          {systemError && <p className={styles.error}>{systemError}</p>}
-          <div style={{ display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap', marginTop: 'var(--fiori-space-4)' }}>
+          {systemError ? <p className={`${styles.error} ${styles.errorBanner}`}>{systemError}</p> : null}
+          <div className={styles.adminActionsRow}>
             <button
               type="button"
               disabled={applyInitialSaving}

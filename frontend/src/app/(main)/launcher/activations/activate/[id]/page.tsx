@@ -167,14 +167,26 @@ export default function ActivationDetailPage() {
     }
   };
 
-  if (loading) return null;
-  if (!activation) return <p className={styles.error}>Activation no encontrada.</p>;
+  if (loading) {
+    return (
+      <main className={styles.page}>
+        <p className={styles.loadingState}>Cargando activación…</p>
+      </main>
+    );
+  }
+  if (!activation) {
+    return (
+      <main className={styles.page}>
+        <p className={styles.notFound}>Activación no encontrada.</p>
+      </main>
+    );
+  }
 
   const section = (title: string, children: React.ReactNode) => (
-    <div className={styles.section}>
-      <h3 className={styles.sectionTitle}>{title}</h3>
-      <div className={styles.sectionContent}>{children}</div>
-    </div>
+    <section className={styles.sectionCard} aria-label={title}>
+      <h3 className={styles.sectionHeading}>{title}</h3>
+      <div className={styles.sectionBody}>{children}</div>
+    </section>
   );
 
   const urls = parseAttachmentUrls(activation.attachmentUrls);
@@ -195,145 +207,218 @@ export default function ActivationDetailPage() {
 
       {section(
         'Proyecto y oferta',
-        <>
-          <p><strong>Proyecto:</strong> {activation.projectName}</p>
-          {activation.client && <p><strong>Cliente:</strong> {activation.client}</p>}
-          <p><strong>Código oferta:</strong> {activation.offerCode}</p>
-          {activation.projectAmount != null && activation.projectAmount !== '' && (
-            <p><strong>Importe:</strong> {activation.projectAmount}</p>
-          )}
-          {activation.projectType && (
-            <p><strong>Tipo:</strong> {activation.projectType === 'CONSULTORIA' ? 'Consultoría' : 'Software'}</p>
-          )}
-          {activation.hubspotUrl && (
-            <p><strong>HubSpot:</strong> <a href={activation.hubspotUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>{activation.hubspotUrl}</a></p>
-          )}
-        </>
+        <dl className={styles.kvList}>
+          <div className={styles.kvRow}>
+            <dt className={styles.kvDt}>Proyecto</dt>
+            <dd className={styles.kvDd}>{activation.projectName}</dd>
+          </div>
+          {activation.client ? (
+            <div className={styles.kvRow}>
+              <dt className={styles.kvDt}>Cliente</dt>
+              <dd className={styles.kvDd}>{activation.client}</dd>
+            </div>
+          ) : null}
+          <div className={styles.kvRow}>
+            <dt className={styles.kvDt}>Código oferta</dt>
+            <dd className={styles.kvDd}>{activation.offerCode}</dd>
+          </div>
+          {activation.projectAmount != null && activation.projectAmount !== '' ? (
+            <div className={styles.kvRow}>
+              <dt className={styles.kvDt}>Importe</dt>
+              <dd className={styles.kvDd}>{activation.projectAmount}</dd>
+            </div>
+          ) : null}
+          {activation.projectType ? (
+            <div className={styles.kvRow}>
+              <dt className={styles.kvDt}>Tipo</dt>
+              <dd className={styles.kvDd}>{activation.projectType === 'CONSULTORIA' ? 'Consultoría' : 'Software'}</dd>
+            </div>
+          ) : null}
+          {activation.hubspotUrl ? (
+            <div className={styles.kvRow}>
+              <dt className={styles.kvDt}>HubSpot</dt>
+              <dd className={styles.kvDd}>
+                <a href={activation.hubspotUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                  {activation.hubspotUrl}
+                </a>
+              </dd>
+            </div>
+          ) : null}
+        </dl>,
       )}
       {section(
         'Destinatarios',
-        <>
-          <p><strong>To:</strong> {activation.recipientTo}</p>
-          {activation.recipientCc && <p><strong>CC:</strong> {activation.recipientCc}</p>}
-        </>
+        <dl className={styles.kvList}>
+          <div className={styles.kvRow}>
+            <dt className={styles.kvDt}>Para</dt>
+            <dd className={styles.kvDd}>{activation.recipientTo}</dd>
+          </div>
+          {activation.recipientCc ? (
+            <div className={styles.kvRow}>
+              <dt className={styles.kvDt}>CC</dt>
+              <dd className={styles.kvDd}>{activation.recipientCc}</dd>
+            </div>
+          ) : null}
+        </dl>,
       )}
-      {section('Asunto', <p><strong>{activation.subject}</strong></p>)}
+      {section(
+        'Asunto',
+        <p className={styles.subjectLine}>{activation.subject}</p>,
+      )}
       {section(
         'Áreas involucradas',
-        (activation.activationAreas?.length || activation.activationSubAreas?.length) ? (
-          <ul className={styles.list}>
+        activation.activationAreas?.length || activation.activationSubAreas?.length ? (
+          <ul className={styles.areaList}>
             {activation.activationAreas?.map((aa) => (
               <li key={`area-${aa.area.id}`}>{aa.area.name}</li>
             ))}
             {activation.activationSubAreas?.map((asa) => (
-              <li key={`sub-${asa.subArea.id}`}>{asa.subArea.area.name} › {asa.subArea.name}</li>
+              <li key={`sub-${asa.subArea.id}`}>
+                {asa.subArea.area.name} › {asa.subArea.name}
+              </li>
             ))}
           </ul>
         ) : (
-          <p style={{ color: 'var(--fiori-text-secondary)', margin: 0 }}>Sin áreas asignadas</p>
-        )
+          <p className={styles.emptyHint}>Sin áreas asignadas.</p>
+        ),
       )}
-      {activation.body && section(
-        'Cuerpo del correo',
-        isHtmlBody(activation.body) ? (
-          sanitizedBody != null ? (
-            <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: sanitizedBody }} />
-          ) : (
-            <p style={{ color: 'var(--fiori-text-secondary)', margin: 0 }}>Cargando…</p>
+      {activation.body
+        ? section(
+            'Cuerpo del correo',
+            isHtmlBody(activation.body) ? (
+              sanitizedBody != null ? (
+                <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: sanitizedBody }} />
+              ) : (
+                <p className={styles.bodyLoading}>Cargando vista previa…</p>
+              )
+            ) : (
+              <pre className={styles.pre}>{activation.body}</pre>
+            ),
           )
-        ) : (
-          <pre className={styles.pre}>{activation.body}</pre>
-        )
-      )}
-      {attachmentList.length > 0 &&
-        section(
-          'URLs escaneadas',
-          <>
-            <ul className={styles.list}>
-              {attachmentList.map(({ url, name }, i) => (
-                <li key={i}>
-                  <a href={url} target="_blank" rel="noopener noreferrer" className={styles.link}>{name}</a>
-                </li>
-              ))}
-            </ul>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', margin: 'var(--fiori-space-1) 0 0' }}>
-              Los enlaces de HubSpot no se pueden descargar automáticamente desde esta app (restricción del navegador). Usa &quot;Descargar todos los adjuntos&quot; para abrir los enlaces y descargar con tu sesión, luego súbelos abajo.
-            </p>
-            <div style={{ marginTop: 'var(--fiori-space-1)', display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
-              <button type="button" className={styles.linkButton} onClick={() => attachmentList.forEach(({ url }) => window.open(url, '_blank', 'noopener'))}>
+        : null}
+      {attachmentList.length > 0
+        ? section(
+            'URLs escaneadas',
+            <>
+              <ul className={styles.urlList}>
+                {attachmentList.map(({ url, name }, i) => (
+                  <li key={i}>
+                    <a href={url} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                      {name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className={styles.hint}>
+                Los enlaces de HubSpot no se abren automáticamente con tu sesión desde aquí. Usa el botón siguiente para abrirlos en pestañas, descarga con tu usuario y luego súbelos en &quot;Añadir archivos&quot;.
+              </p>
+              <button
+                type="button"
+                className={styles.linkButton}
+                onClick={() => attachmentList.forEach(({ url }) => window.open(url, '_blank', 'noopener'))}
+              >
                 Descargar todos los adjuntos
               </button>
-            </div>
-          </>
-        )}
-      {activation.attachments && activation.attachments.length > 0 &&
-        section(
-          'Archivos adjuntos',
-          <AttachmentGrid attachments={activation.attachments} activationId={activation.id} apiFetch={apiFetch} onDeleted={refetchActivation} />
-        )}
+            </>,
+          )
+        : null}
+      {activation.attachments && activation.attachments.length > 0
+        ? section(
+            'Archivos adjuntos',
+            <AttachmentGrid
+              attachments={activation.attachments}
+              activationId={activation.id}
+              apiFetch={apiFetch}
+              onDeleted={refetchActivation}
+            />,
+          )
+        : null}
       {section(
         'Añadir archivos',
-        <>
-          <p style={{ margin: '0 0 var(--fiori-space-2)', fontSize: '0.875rem', color: 'var(--fiori-text-secondary)' }}>
-            Para enlaces de HubSpot: usa &quot;Descargar todos los adjuntos&quot; arriba, descarga los archivos en tu ordenador (con tu sesión) y súbelos aquí.
+        <div className={styles.uploadZone}>
+          <p className={styles.hint}>
+            Para documentos detrás de HubSpot: primero ábrelos desde &quot;URLs escaneadas&quot;, guárdalos en tu equipo y súbelos aquí.
           </p>
-          <label className={styles.linkButton} style={{ display: 'inline-block', cursor: uploading ? 'not-allowed' : 'pointer' }}>
+          <label className={styles.linkButton} style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
             <input type="file" multiple disabled={uploading} onChange={handleFileUpload} style={{ display: 'none' }} />
             {uploading ? 'Subiendo…' : 'Seleccionar archivos'}
           </label>
-          {uploading && (
+          {uploading ? (
             <div className={styles.uploadProgressWrap} aria-live="polite">
               <div className={styles.uploadProgressBar} style={{ width: `${uploadProgress}%` }} />
               <span className={styles.uploadProgressText}>{uploadProgress}%</span>
             </div>
-          )}
-          {uploadError && <p className={styles.errorMsg} style={{ marginTop: 'var(--fiori-space-1)' }}>{uploadError}</p>}
-        </>
+          ) : null}
+          {uploadError ? <p className={styles.errorMsg}>{uploadError}</p> : null}
+        </div>,
       )}
       {section(
         'Metadatos',
-        <>
-          <p><strong>Creado:</strong> {new Date(activation.createdAt).toLocaleString('es')}</p>
-          <p><strong>Creado por:</strong> {activation.createdBy}</p>
-          {activation.makeSentAt && <p><strong>Enviado (Make):</strong> {new Date(activation.makeSentAt).toLocaleString('es')}</p>}
-          {activation.makeRunId && <p><strong>Run ID:</strong> {activation.makeRunId}</p>}
-          {errorMessageDisplay && (
-            <p className={styles.errorMsg}>
-              <strong>Error:</strong> {errorMessageDisplay}
-            </p>
-          )}
-        </>
+        <dl className={styles.kvList}>
+          <div className={styles.kvRow}>
+            <dt className={styles.kvDt}>Creado</dt>
+            <dd className={styles.kvDd}>{new Date(activation.createdAt).toLocaleString('es')}</dd>
+          </div>
+          <div className={styles.kvRow}>
+            <dt className={styles.kvDt}>Creado por</dt>
+            <dd className={styles.kvDd}>{activation.createdBy}</dd>
+          </div>
+          {activation.makeSentAt ? (
+            <div className={styles.kvRow}>
+              <dt className={styles.kvDt}>Enviado (Make)</dt>
+              <dd className={styles.kvDd}>{new Date(activation.makeSentAt).toLocaleString('es')}</dd>
+            </div>
+          ) : null}
+          {activation.makeRunId ? (
+            <div className={styles.kvRow}>
+              <dt className={styles.kvDt}>Run ID</dt>
+              <dd className={styles.kvDd}>{activation.makeRunId}</dd>
+            </div>
+          ) : null}
+          {errorMessageDisplay ? (
+            <div className={styles.kvRow}>
+              <dt className={styles.kvDt}>Error</dt>
+              <dd className={styles.kvDd}>
+                <span className={styles.metadataErrorText}>{errorMessageDisplay}</span>
+              </dd>
+            </div>
+          ) : null}
+        </dl>,
       )}
 
-      {error && <p className={styles.errorMsg}>{error}</p>}
-      {activation &&
-        (activation.status === 'DRAFT' ||
-          activation.status === 'FAILED' ||
-          activation.status === 'RETRYING') &&
-        !activation.body?.trim() && (
-          <p className={styles.errorMsg}>
-            Debes seleccionar una plantilla (o definir el cuerpo del correo) antes de enviar.
+      <div className={styles.stackErrors}>
+        {error ? <p className={styles.errorMsg}>{error}</p> : null}
+        {activation &&
+        (activation.status === 'DRAFT' || activation.status === 'FAILED' || activation.status === 'RETRYING') &&
+        !activation.body?.trim() ? (
+          <p className={styles.inlineAlert}>
+            Debes elegir una plantilla o definir el cuerpo del correo en el borrador antes de poder enviar.
           </p>
-        )}
-      <div className={styles.actions}>
-        {activation.status === 'DRAFT' && (
-          <Link href={`/launcher/activations/activate/${id}/edit`} className={styles.btnSecondary}>
-            Editar borrador
-          </Link>
-        )}
-        {canSendByStatus && (
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={sending || !hasTemplateOrBody}
-            className={styles.btnPrimary}
-          >
-            {sending ? 'Enviando…' : 'Enviar activación'}
+        ) : null}
+      </div>
+      <div className={styles.actionsBar}>
+        <div className={styles.actionsPrimary}>
+          {activation.status === 'DRAFT' ? (
+            <Link href={`/launcher/activations/activate/${id}/edit`} className={styles.btnSecondary}>
+              Editar borrador
+            </Link>
+          ) : null}
+          {canSendByStatus ? (
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={sending || !hasTemplateOrBody}
+              className={styles.btnPrimary}
+            >
+              {sending ? 'Enviando…' : 'Enviar activación'}
+            </button>
+          ) : null}
+        </div>
+        <div className={styles.actionsDanger}>
+          <button type="button" onClick={handleDeleteClick} disabled={deleting} className={styles.btnDanger}>
+            {deleting ? 'Eliminando…' : 'Eliminar'}
           </button>
-        )}
-        <button type="button" onClick={handleDeleteClick} disabled={deleting} className={styles.btnDanger}>
-          {deleting ? 'Eliminando…' : 'Eliminar'}
-        </button>
+        </div>
       </div>
       <ConfirmDialog
         open={showDeleteConfirm}

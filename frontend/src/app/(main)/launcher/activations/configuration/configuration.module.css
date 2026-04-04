@@ -1,13 +1,32 @@
 .page {
   max-width: 90rem;
   margin: 0 auto;
+  padding-bottom: var(--fiori-space-8);
+}
+
+.loadingState {
+  padding: var(--fiori-space-10) var(--fiori-space-4);
+  text-align: center;
+  font-size: 0.9375rem;
+  color: var(--fiori-text-secondary);
+}
+
+.configWorkArea {
+  margin-top: var(--fiori-space-4);
+  padding: var(--fiori-space-5);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.75rem;
+  background: var(--fiori-surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .tilesGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--fiori-space-6);
-  margin-bottom: var(--fiori-space-6);
+  gap: var(--fiori-space-5);
+  margin: 0 0 var(--fiori-space-6);
+  padding: 0;
+  list-style: none;
 }
 
 @media (min-width: 52rem) {
@@ -23,19 +42,27 @@
 }
 
 .tile {
+  position: relative;
+  min-height: 10.5rem;
   background: var(--fiori-surface);
   border: 1px solid var(--fiori-border-light);
-  border-radius: 0.5rem;
+  border-top: 3px solid var(--fiori-shell-bg);
+  border-radius: 0.625rem;
   padding: var(--fiori-space-4);
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .tileTitle {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0 0 var(--fiori-space-1);
+  font-family: '72Black', '72Blackfull', '72', '72full', Arial, Helvetica, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--fiori-space-2);
   color: var(--fiori-text);
 }
 
@@ -43,7 +70,8 @@
   font-size: 0.8125rem;
   color: var(--fiori-text-secondary);
   margin: 0 0 var(--fiori-space-4);
-  line-height: 1.4;
+  line-height: 1.45;
+  flex: 1 1 auto;
 }
 
 .tileLink {
@@ -51,6 +79,7 @@
   color: inherit;
   display: block;
   user-select: none;
+  height: 100%;
 }
 
 .tileLink:hover {
@@ -64,8 +93,12 @@
 }
 
 .tileLink:hover .tile {
-  border-color: var(--fiori-shell-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 35%, var(--fiori-border-light));
+  border-top-color: var(--fiori-shell-bg);
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 7%),
+    0 1px 3px rgb(0 0 0 / 5%);
+  transform: translateY(-2px);
 }
 
 .tileLink:hover .tileTitle,
@@ -76,15 +109,22 @@
 .tileLink:hover .tileCta {
   color: var(--fiori-link);
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .tileCta {
   text-decoration: none;
   font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fiori-text-secondary);
+  font-weight: 600;
+  color: var(--fiori-shell-bg);
   margin-top: auto;
   padding-top: var(--fiori-space-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tileLink:hover .tile {
+    transform: none;
+  }
 }
 
 .h2 {
@@ -111,10 +151,11 @@
 /* ——— Áreas: bloque "Añadir área" ——— */
 .areasAddCard {
   background: var(--fiori-surface);
-  border: 1px solid var(--fiori-border);
-  border-radius: 0.5rem;
-  padding: var(--fiori-space-4);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.75rem;
+  padding: var(--fiori-space-5);
   margin-bottom: var(--fiori-space-6);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .areasAddTitle {
@@ -201,12 +242,13 @@
 }
 
 .contactsScrollWrap {
-  max-height: 20rem;
+  max-height: 22rem;
   overflow-y: auto;
   overflow-x: auto;
-  border: 1px solid var(--fiori-border);
-  border-radius: 0.375rem;
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.75rem;
   background: var(--fiori-surface);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 4%);
 }
 
 .contactsTableWrap {
@@ -345,19 +387,25 @@
 }
 
 .forbidden {
-  padding: var(--fiori-space-8);
+  margin: var(--fiori-space-6) 0;
+  padding: var(--fiori-space-6);
   text-align: center;
   color: var(--fiori-text-secondary);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--fiori-nav-bg) 45%, var(--fiori-surface));
+  max-width: 28rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .areaCard {
   background: var(--fiori-surface);
-  border: 1px solid var(--fiori-border);
-  border-radius: 0.5rem;
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.75rem;
   margin-bottom: var(--fiori-space-4);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  margin: 10px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 5%);
 }
 
 .areaAccordion {
@@ -385,9 +433,10 @@
 }
 
 .areaAccordionTitle {
-  font-size: 1.24rem;
-  font-weight: bold;
+  font-size: 1.125rem;
+  font-weight: 700;
   color: var(--fiori-text);
+  letter-spacing: -0.01em;
 }
 
 .areaAccordionMeta {
@@ -583,53 +632,85 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 2.5rem;
-  padding: 0 var(--fiori-space-4);
+  min-height: 2.5rem;
+  padding: 0 var(--fiori-space-5);
   font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.25rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
   border: none;
   background: var(--fiori-shell-bg);
   color: var(--fiori-text-inverse);
   cursor: pointer;
   box-sizing: border-box;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 12%);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
 }
 
 .btnPrimary:hover:not(:disabled) {
   background: #0854a0;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  transform: translateY(-1px);
+}
+
+.btnPrimary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btnPrimary:disabled {
   cursor: not-allowed;
-  opacity: 0.8;
+  opacity: 0.65;
+  box-shadow: none;
+}
+
+.btnPrimary:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
 }
 
 .btnSecondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 2.5rem;
+  min-height: 2.5rem;
   padding: 0 var(--fiori-space-4);
   font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.25rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
   border: 1px solid var(--fiori-border);
   background: var(--fiori-surface);
   color: var(--fiori-text);
   text-decoration: none;
   box-sizing: border-box;
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .btnSecondary:hover:not(:disabled) {
   background: var(--fiori-nav-item-hover);
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 25%, var(--fiori-border));
   color: var(--fiori-text);
   text-decoration: none;
 }
 
 .btnSecondary:disabled {
   cursor: not-allowed;
-  opacity: 0.8;
+  opacity: 0.65;
+}
+
+.btnSecondary:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btnPrimary:hover:not(:disabled) {
+    transform: none;
+  }
 }
 
 .addContactRow {
@@ -649,9 +730,17 @@
 }
 
 .error {
-  color: #b71c1c;
+  color: var(--fiori-error);
   font-size: 0.875rem;
   margin-bottom: var(--fiori-space-2);
+}
+
+.errorBanner {
+  padding: var(--fiori-space-3) var(--fiori-space-4);
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--fiori-error) 35%, var(--fiori-border));
+  background: color-mix(in srgb, var(--fiori-surface) 94%, var(--fiori-error));
+  font-weight: 500;
 }
 
 .label {
@@ -663,12 +752,61 @@
 /* ——— Plantillas Email: bloque destacado y ayuda de variables ——— */
 .templateCard {
   background: var(--fiori-surface);
-  border: 1px solid var(--fiori-border);
-  border-radius: 0.5rem;
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.75rem;
   padding: var(--fiori-space-5);
   margin-bottom: var(--fiori-space-6);
-  border-left: 0.25rem solid var(--fiori-shell-bg);
-  box-shadow: var(--fiori-shadow-1);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+}
+
+.templateCard + .templateCard {
+  margin-top: var(--fiori-space-6);
+}
+
+.formFieldStack {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.adminActionsRow {
+  display: flex;
+  gap: var(--fiori-space-2);
+  flex-wrap: wrap;
+  margin-top: var(--fiori-space-4);
+}
+
+.templateList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.templateListItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fiori-space-3);
+  padding: var(--fiori-space-3) var(--fiori-space-4);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+  margin-bottom: var(--fiori-space-2);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 38%, var(--fiori-surface));
+}
+
+.templateListName {
+  font-weight: 600;
+  color: var(--fiori-text);
+}
+
+.templateListActions {
+  display: flex;
+  gap: var(--fiori-space-2);
+  flex-shrink: 0;
+}
+
+.templateNameInput {
+  display: block;
+  margin-bottom: var(--fiori-space-3);
+  min-width: min(100%, 20rem);
 }
 
 .templateCardTitle {

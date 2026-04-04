@@ -262,28 +262,58 @@ export default function ActivationsPage() {
         </PageBreadcrumb>
         <PageHero
           title="Mis activaciones"
-          subtitle="Listado, filtros y seguimiento de tus solicitudes."
-          actions={<Link href="/launcher/activations/activate/new" className={styles.btnNew}>Nueva activación</Link>}
+          subtitle="Filtra por estado, busca por proyecto, cliente, oferta o destinatario y abre el detalle en el panel lateral."
+          actions={
+            <Link href="/launcher/activations/activate/new" className={styles.btnNew}>
+              <span className={styles.btnNewIcon} aria-hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </span>
+              Nueva activación
+            </Link>
+          }
         />
-        <FilterBar
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          searchValue={searchValue}
-          onSearchChange={setSearchValue}
-          solicitanteFilter={solicitanteFilter}
-          onSolicitanteFilterChange={setSolicitanteFilter}
-          solicitanteOptions={solicitanteOptions}
-          solicitanteLoading={solicitanteLoading}
-        />
-        <section className={styles.tableSection}>
-          <DataTable<Activation>
-            columns={columns}
-            data={filtered}
-            loading={tableLoading}
-            emptyMessage="No hay activaciones. Crea una desde el Dashboard o Nueva activación."
-            getRowId={(row) => row.id}
-            onRowClick={(row) => setSelectedId(row.id)}
+        <div className={styles.filtersCard}>
+          <FilterBar
+            className={styles.filterBarEmbed}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            solicitanteFilter={solicitanteFilter}
+            onSolicitanteFilterChange={setSolicitanteFilter}
+            solicitanteOptions={solicitanteOptions}
+            solicitanteLoading={solicitanteLoading}
           />
+        </div>
+        <div className={styles.resultsToolbar} aria-live="polite">
+          <h2 className={styles.resultsTitle}>Resultados</h2>
+          <p className={styles.resultsMeta}>
+            {loading && list.length === 0 ? (
+              'Obteniendo activaciones…'
+            ) : filtered.length === list.length ? (
+              <>
+                <strong>{list.length}</strong> {list.length === 1 ? 'activación' : 'activaciones'}
+              </>
+            ) : (
+              <>
+                Mostrando <strong>{filtered.length}</strong> de <strong>{list.length}</strong>
+              </>
+            )}
+          </p>
+        </div>
+        <section className={styles.tableSection} aria-label="Tabla de activaciones">
+          <div className={styles.tableBlock}>
+            <DataTable<Activation>
+              columns={columns}
+              data={filtered}
+              loading={tableLoading}
+              emptyMessage="No hay activaciones que coincidan con los filtros. Prueba a ampliar la búsqueda o crea una nueva activación."
+              getRowId={(row) => row.id}
+              onRowClick={(row) => setSelectedId(row.id)}
+            />
+          </div>
         </section>
       </div>
       <DetailDrawer

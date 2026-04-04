@@ -143,7 +143,13 @@ export default function AdminContactsPage() {
     return keys.map((k) => ({ letter: k, contacts: map.get(k)! }));
   }, [filteredContacts]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p className={styles.loadingState}>Cargando contactos…</p>
+      </div>
+    );
+  }
 
   if (forbidden) {
     return (
@@ -163,10 +169,11 @@ export default function AdminContactsPage() {
       </PageBreadcrumb>
       <PageHero
         title="Contactos"
-        subtitle="Destinatarios en copia que aparecen como sugerencias al crear o editar una activación."
+        subtitle="Directorio de sugerencias en copia al redactar activaciones. Añade, edita o elimina entradas; la búsqueda filtra al vuelo."
       />
-      {error && <p className={styles.error}>{error}</p>}
+      {error ? <p className={`${styles.error} ${styles.errorBanner}`}>{error}</p> : null}
 
+      <div className={styles.configWorkArea}>
       <div className={styles.contactsTopRow}>
         <form onSubmit={handleCreate} className={styles.contactsAddRow}>
           <input
@@ -221,7 +228,7 @@ export default function AdminContactsPage() {
         </div>
       </div>
 
-      <div className={styles.contactsScrollWrap}>
+        <div className={styles.contactsScrollWrap}>
         <div className={styles.contactsTableWrap}>
           <table className={styles.contactsTable}>
             <colgroup>
@@ -327,6 +334,7 @@ export default function AdminContactsPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
 
       <ConfirmDialog

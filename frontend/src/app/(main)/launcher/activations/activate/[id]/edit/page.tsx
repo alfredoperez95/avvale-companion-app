@@ -522,7 +522,7 @@ export default function EditActivationPage() {
   };
 
   if (fetchLoading) return null;
-  if (loadError) return <p className={styles.error} style={{ padding: '2rem' }}>{loadError}</p>;
+  if (loadError) return <p className={`${styles.error} ${styles.errorStandalone}`}>{loadError}</p>;
 
   return (
     <main className={styles.page}>
@@ -854,7 +854,7 @@ export default function EditActivationPage() {
               <span className={styles.uploadProgressText}>{uploadProgress}%</span>
             </div>
           )}
-          {uploadError && <p className={styles.error} style={{ marginTop: 'var(--fiori-space-1)' }}>{uploadError}</p>}
+          {uploadError && <p className={`${styles.error} ${styles.errorMarginTop}`}>{uploadError}</p>}
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.actions}>

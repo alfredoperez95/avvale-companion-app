@@ -74,7 +74,11 @@ export default function AdminAreasPage() {
   }, []);
 
   useEffect(() => {
-    if (!userReady || forbidden) return;
+    if (!userReady) return;
+    if (forbidden) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     refreshAreas().finally(() => {
@@ -310,7 +314,13 @@ export default function AdminAreasPage() {
     }
   };
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p className={styles.loadingState}>Cargando áreas…</p>
+      </div>
+    );
+  }
 
   if (forbidden) {
     return (
@@ -330,9 +340,9 @@ export default function AdminAreasPage() {
       </PageBreadcrumb>
       <PageHero
         title="Áreas"
-        subtitle="Catálogo global: áreas, directores y subáreas que usan todos los usuarios al crear activaciones."
+        subtitle="Estructura global de áreas, directores y subáreas con contactos. Los usuarios la seleccionan al crear activaciones."
       />
-      {error && <p className={styles.error}>{error}</p>}
+      {error ? <p className={`${styles.error} ${styles.errorBanner}`}>{error}</p> : null}
 
       <section className={styles.areasAddCard} aria-labelledby="areas-add-heading">
         <h2 id="areas-add-heading" className={styles.areasAddTitle}>Añadir área</h2>

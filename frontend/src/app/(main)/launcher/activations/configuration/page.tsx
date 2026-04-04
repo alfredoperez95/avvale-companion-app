@@ -26,67 +26,108 @@ export default function ConfigurationHubPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p className={styles.loadingState}>Cargando configuración…</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
       <PageBreadcrumb>
         <PageBackLink href="/launcher/activations/dashboard">← Dashboard</PageBackLink>
       </PageBreadcrumb>
-      <PageHero title="Configuración" subtitle="Elige qué quieres configurar:" />
-      <div className={styles.tilesGrid} role="list">
+      <PageHero
+        title="Configuración"
+        subtitle="Administra contactos, áreas, plantillas y firma según tus permisos. Cada tarjeta lleva a una sección concreta."
+      />
+      <ul className={styles.tilesGrid}>
         {isAdmin && (
           <>
-            <Link href="/launcher/activations/configuration/contacts" className={styles.tileLink} aria-labelledby="tile-contacts-heading" role="listitem">
-              <article className={styles.tile}>
-                <h2 id="tile-contacts-heading" className={styles.tileTitle}>Contactos</h2>
-                <p className={styles.tileDesc}>
-                  Destinatarios en copia que aparecen como sugerencias al crear o editar una activación.
-                </p>
-                <span className={styles.tileCta}>Gestionar contactos →</span>
-              </article>
-            </Link>
-            <Link href="/launcher/activations/configuration/billing-admin" className={styles.tileLink} aria-labelledby="tile-billing-heading" role="listitem">
-              <article className={styles.tile}>
-                <h2 id="tile-billing-heading" className={styles.tileTitle}>Facturación y Administración</h2>
-                <p className={styles.tileDesc}>
-                  Contactos que se incluyen siempre en todas las activaciones, de índole administrativo y/o de facturación.
-                </p>
-                <span className={styles.tileCta}>Gestionar contactos →</span>
-              </article>
-            </Link>
-            <Link href="/launcher/activations/configuration/areas" className={styles.tileLink} aria-labelledby="tile-areas-heading" role="listitem">
-              <article className={styles.tile}>
-                <h2 id="tile-areas-heading" className={styles.tileTitle}>Áreas</h2>
-                <p className={styles.tileDesc}>
-                  Catálogo global de áreas, directores y subáreas; todos los usuarios lo usan al crear activaciones.
-                </p>
-                <span className={styles.tileCta}>Gestionar áreas →</span>
-              </article>
-            </Link>
+            <li>
+              <Link
+                href="/launcher/activations/configuration/contacts"
+                className={styles.tileLink}
+                aria-labelledby="tile-contacts-heading"
+              >
+                <article className={styles.tile}>
+                  <h2 id="tile-contacts-heading" className={styles.tileTitle}>
+                    Contactos
+                  </h2>
+                  <p className={styles.tileDesc}>
+                    Destinatarios en copia que aparecen como sugerencias al crear o editar una activación.
+                  </p>
+                  <span className={styles.tileCta}>Gestionar contactos →</span>
+                </article>
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/launcher/activations/configuration/billing-admin"
+                className={styles.tileLink}
+                aria-labelledby="tile-billing-heading"
+              >
+                <article className={styles.tile}>
+                  <h2 id="tile-billing-heading" className={styles.tileTitle}>
+                    Facturación y Administración
+                  </h2>
+                  <p className={styles.tileDesc}>
+                    Contactos que se incluyen siempre en todas las activaciones, de índole administrativo y/o de facturación.
+                  </p>
+                  <span className={styles.tileCta}>Gestionar contactos →</span>
+                </article>
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/launcher/activations/configuration/areas"
+                className={styles.tileLink}
+                aria-labelledby="tile-areas-heading"
+              >
+                <article className={styles.tile}>
+                  <h2 id="tile-areas-heading" className={styles.tileTitle}>
+                    Áreas
+                  </h2>
+                  <p className={styles.tileDesc}>
+                    Catálogo global de áreas, directores y subáreas; todos los usuarios lo usan al crear activaciones.
+                  </p>
+                  <span className={styles.tileCta}>Gestionar áreas →</span>
+                </article>
+              </Link>
+            </li>
           </>
         )}
-        <Link href="/launcher/activations/configuration/email-templates" className={styles.tileLink} aria-labelledby="tile-templates-heading" role="listitem">
-          <article className={styles.tile}>
-            <h2 id="tile-templates-heading" className={styles.tileTitle}>Plantillas Email</h2>
-            <p className={styles.tileDesc}>
-              {isAdmin
-                ? 'Plantillas de sistema: base que se clona a cada usuario al entrar por primera vez. Para el envío en activaciones cada uno usa su copia personal.'
-                : 'Plantillas predefinidas para el cuerpo del correo. Crear y editar con el editor de texto enriquecido.'}
-            </p>
-            <span className={styles.tileCta}>Gestionar plantillas →</span>
-          </article>
-        </Link>
-        <Link href="/launcher/activations/configuration/email-signature" className={styles.tileLink} aria-labelledby="tile-signature-heading" role="listitem">
-          <article className={styles.tile}>
-            <h2 id="tile-signature-heading" className={styles.tileTitle}>Firma</h2>
-            <p className={styles.tileDesc}>
-              Se incluye en el envío del email de activación. El administrador puede definir además la plantilla inicial para nuevas cuentas.
-            </p>
-            <span className={styles.tileCta}>Editar firma →</span>
-          </article>
-        </Link>
-      </div>
+        <li>
+          <Link href="/launcher/activations/configuration/email-templates" className={styles.tileLink} aria-labelledby="tile-templates-heading">
+            <article className={styles.tile}>
+              <h2 id="tile-templates-heading" className={styles.tileTitle}>
+                Plantillas Email
+              </h2>
+              <p className={styles.tileDesc}>
+                {isAdmin
+                  ? 'Plantillas de sistema: base que se clona a cada usuario al entrar por primera vez. Para el envío en activaciones cada uno usa su copia personal.'
+                  : 'Plantillas predefinidas para el cuerpo del correo. Crear y editar con el editor de texto enriquecido.'}
+              </p>
+              <span className={styles.tileCta}>Gestionar plantillas →</span>
+            </article>
+          </Link>
+        </li>
+        <li>
+          <Link href="/launcher/activations/configuration/email-signature" className={styles.tileLink} aria-labelledby="tile-signature-heading">
+            <article className={styles.tile}>
+              <h2 id="tile-signature-heading" className={styles.tileTitle}>
+                Firma
+              </h2>
+              <p className={styles.tileDesc}>
+                Se incluye en el envío del email de activación. El administrador puede definir además la plantilla inicial para nuevas cuentas.
+              </p>
+              <span className={styles.tileCta}>Editar firma →</span>
+            </article>
+          </Link>
+        </li>
+      </ul>
     </div>
   );
 }

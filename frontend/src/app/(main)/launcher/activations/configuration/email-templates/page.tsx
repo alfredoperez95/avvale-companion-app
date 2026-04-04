@@ -189,7 +189,7 @@ export default function AdminEmailTemplatesPage() {
             : 'Crea y edita plantillas para el cuerpo del correo con el editor de texto enriquecido. Podrás elegirlas al crear o editar una activación.'
         }
       />
-      {error && <p className={styles.error}>{error}</p>}
+      {error ? <p className={`${styles.error} ${styles.errorBanner}`}>{error}</p> : null}
 
       <section className={styles.templateCard} aria-labelledby="create-template-heading">
         <h2 id="create-template-heading" className={styles.templateCardTitle}>
@@ -197,20 +197,19 @@ export default function AdminEmailTemplatesPage() {
         </h2>
         {showForm ? (
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: 'var(--fiori-space-4)' }}>
+            <div className={styles.formFieldStack}>
               <label className={styles.label} htmlFor="template-name">Nombre</label>
               <input
                 id="template-name"
                 type="text"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                className={styles.contactsInput}
+                className={`${styles.contactsInput} ${styles.templateNameInput}`}
                 placeholder="Ej: Activación estándar"
                 required
-                style={{ display: 'block', marginBottom: 'var(--fiori-space-3)', minWidth: '20rem' }}
               />
             </div>
-            <div style={{ marginBottom: 'var(--fiori-space-4)' }}>
+            <div className={styles.formFieldStack}>
               <label className={styles.label} htmlFor="template-content">Contenido (editor)</label>
               <RichTextEditor
                 id="template-content"
@@ -226,7 +225,7 @@ export default function AdminEmailTemplatesPage() {
                 {TEMPLATE_SHORTCODES.map((s) => s.value).join(', ')}. Se sustituirán por los datos del formulario al elegir la plantilla en una activación.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
+            <div className={styles.adminActionsRow}>
               <button type="submit" disabled={saving} className={styles.btnPrimary}>
                 {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Crear plantilla'}
               </button>
@@ -253,23 +252,11 @@ export default function AdminEmailTemplatesPage() {
           No hay plantillas. Crea una con el botón &quot;Crear plantilla&quot;.
         </p>
       ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        <ul className={styles.templateList}>
           {templates.map((t) => (
-            <li
-              key={t.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: 'var(--fiori-space-2) var(--fiori-space-3)',
-                border: '1px solid var(--fiori-border-light)',
-                borderRadius: '0.375rem',
-                marginBottom: 'var(--fiori-space-2)',
-                background: 'var(--fiori-surface)',
-              }}
-            >
-              <span style={{ fontWeight: 500, color: 'var(--fiori-text)' }}>{t.name}</span>
-              <div style={{ display: 'flex', gap: 'var(--fiori-space-2)' }}>
+            <li key={t.id} className={styles.templateListItem}>
+              <span className={styles.templateListName}>{t.name}</span>
+              <div className={styles.templateListActions}>
                 <button type="button" className={styles.btnSmall} onClick={() => openEdit(t)}>
                   Editar
                 </button>
