@@ -1,10 +1,35 @@
+.root {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.mobileToggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--fiori-space-3) var(--fiori-space-4);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fiori-link);
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+}
+
+.mobileToggle:hover {
+  filter: brightness(0.97);
+}
+
 .bar {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--fiori-space-4);
   padding: var(--fiori-space-3) 0;
-  margin-bottom: var(--fiori-space-4);
   border-bottom: 1px solid var(--fiori-border-light);
 }
 
@@ -58,8 +83,28 @@
   box-sizing: border-box;
 }
 
-/* Tablet/desktop: fila con etiquetas al lado de los controles */
+/* Móvil: filtros colapsados salvo .barExpanded */
+@media (max-width: 47.99rem) {
+  .mobileToggle {
+    display: flex;
+    margin-bottom: 0;
+  }
+
+  .bar:not(.barExpanded) {
+    display: none !important;
+  }
+
+  .bar.barExpanded {
+    margin-top: var(--fiori-space-3);
+  }
+}
+
+/* Tablet/desktop: sin botón; filtros siempre visibles */
 @media (min-width: 48rem) {
+  .mobileToggle {
+    display: none !important;
+  }
+
   .bar {
     flex-direction: row;
     flex-wrap: wrap;
@@ -116,10 +161,18 @@
 }
 
 /* Tema Fiori */
+:global([data-theme="fiori"]) .root {
+  margin-bottom: var(--fiori-space-5);
+}
+
 :global([data-theme="fiori"]) .bar {
   padding: var(--fiori-space-4) 0;
-  margin-bottom: var(--fiori-space-5);
   border-bottom: 1px solid var(--fiori-border-light);
+}
+
+:global([data-theme="fiori"]) .mobileToggle {
+  border-radius: 0.25rem;
+  border: 0.0625rem solid var(--fiori-border);
 }
 
 :global([data-theme="fiori"]) .select,

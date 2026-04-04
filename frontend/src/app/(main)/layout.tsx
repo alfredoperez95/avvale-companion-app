@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import '@ui5/webcomponents/dist/BusyIndicator.js';
 import { apiFetch } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
 import { LoadingScreen } from '@/components/LoadingScreen/LoadingScreen';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { UserProvider } from '@/contexts/UserContext';
+import { UserProvider, type User } from '@/contexts/UserContext';
 import { useSmoothLoading } from '@/hooks/useSmoothLoading';
 import { clearAppearanceCookie, getAppearanceFromCookie, setAppearanceCookie } from '@/lib/appearance-cookie';
 import '@/styles/fonts-fiori.css';
@@ -14,16 +14,7 @@ import '@/styles/icons-fiori.css';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const cookieAppearance = getAppearanceFromCookie();
-  const [user, setUser] = useState<{
-    id: string;
-    email: string;
-    name?: string | null;
-    lastName?: string | null;
-    position?: string | null;
-    avatarPath?: string | null;
-    appearance?: string | null;
-    role?: string;
-  } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'microsoft' | 'fiori'>(cookieAppearance ?? 'microsoft');
   const showLoading = useSmoothLoading(loading, { delayMs: 150, minVisibleMs: 250 });
@@ -78,6 +69,23 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       });
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const r = await apiFetch('/api/auth/me');
+    if (r.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+    if (!r.ok) return;
+    const data = (await r.json()) as User | null;
+    if (data == null || typeof data !== 'object' || !('id' in data)) return;
+    setUser(data);
+    if (data.appearance != null) {
+      const nextTheme = data.appearance === 'fiori' ? 'fiori' : 'microsoft';
+      setTheme(nextTheme);
+      setAppearanceCookie(nextTheme);
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof document === 'undefined' || !user) return;
     const value = user.appearance === 'fiori' ? 'fiori' : 'microsoft';
@@ -122,7 +130,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const activeTheme = theme;
   return (
     <ThemeProvider theme={activeTheme}>
-      <UserProvider user={user}>
+      <UserProvider user={user} refreshUser={refreshUser}>
         <AppShell user={user} theme={activeTheme}>
           {children}
         </AppShell>

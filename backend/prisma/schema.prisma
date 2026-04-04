@@ -40,6 +40,8 @@ model User {
   role         UserRole @default(USER)
   enabled      Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
+  /** Orden de mosaicos en App Launcher: ["activations","pipeline","yubiq"] */
+  launcherTileOrder Json? @map("launcher_tile_order")
 
   activations     Activation[]
   ownedAreas      Area[]          @relation("UserOwnedAreas")

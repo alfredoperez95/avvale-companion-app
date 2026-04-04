@@ -1,6 +1,8 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
+
+export type LauncherTileId = 'activations' | 'pipeline' | 'yubiq';
 
 export type User = {
   id: string;
@@ -11,14 +13,38 @@ export type User = {
   avatarPath?: string | null;
   appearance?: string | null;
   role?: string;
+  /** Orden de mosaicos App Launcher; permutación de activations, pipeline, yubiq */
+  launcherTileOrder?: LauncherTileId[] | null;
 };
 
-const UserContext = createContext<User | null>(null);
+type UserContextValue = {
+  user: User | null;
+  refreshUser: () => Promise<void>;
+};
 
-export function UserProvider({ user, children }: { user: User | null; children: React.ReactNode }) {
-  return <UserContext.Provider value={user}>{children}</UserContext.Provider>;
+const UserContext = createContext<UserContextValue | null>(null);
+
+export function UserProvider({
+  user,
+  refreshUser,
+  children,
+}: {
+  user: User | null;
+  refreshUser: () => Promise<void>;
+  children: React.ReactNode;
+}) {
+  const value = useMemo(() => ({ user, refreshUser }), [user, refreshUser]);
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }
 
 export function useUser(): User | null {
-  return useContext(UserContext);
+  return useContext(UserContext)?.user ?? null;
+}
+
+export function useRefreshUser(): () => Promise<void> {
+  const ctx = useContext(UserContext);
+  if (!ctx) {
+    return async () => {};
+  }
+  return ctx.refreshUser;
 }

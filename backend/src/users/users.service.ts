@@ -46,7 +46,14 @@ export class UsersService {
 
   async updateProfile(
     userId: string,
-    data: { name?: string; lastName?: string; position?: string; phone?: string; appearance?: string | null },
+    data: {
+      name?: string;
+      lastName?: string;
+      position?: string;
+      phone?: string;
+      appearance?: string | null;
+      launcherTileOrder?: string[];
+    },
   ) {
     const hasAnyProfileField =
       data.name !== undefined || data.lastName !== undefined || data.position !== undefined;
@@ -78,6 +85,9 @@ export class UsersService {
         ...(data.position !== undefined && { position: normalizedPosition }),
         ...(data.phone !== undefined && { phone: normalizedPhone }),
         ...(data.appearance !== undefined && { appearance: data.appearance || null }),
+        ...(data.launcherTileOrder !== undefined && {
+          launcherTileOrder: data.launcherTileOrder,
+        }),
       },
     });
     return this.findById(userId);

@@ -1,25 +1,43 @@
 .page {
   max-width: 90rem;
   margin: 0 auto;
+  padding-bottom: var(--fiori-space-8);
+}
+
+.pageHeader {
+  margin-bottom: var(--fiori-space-5);
 }
 
 .welcomeTitle {
   font-family: "72Black", "72Blackfull", "72", "72full", Arial, Helvetica, sans-serif;
-  font-size: 1.25rem;
+  font-size: clamp(1.25rem, 2.5vw, 1.5rem);
   font-weight: 700;
   color: var(--fiori-text);
-  margin: 0 0 var(--fiori-space-4);
+  margin: 0 0 var(--fiori-space-2);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.welcomeLead {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+  max-width: 40rem;
 }
 
 .welcomeBanner {
   position: relative;
-  min-height: 20rem;
-  border-radius: 0.5rem;
+  min-height: 18rem;
+  border-radius: 0.75rem;
   background-image: url('/resources/banner-avvale-welcome-2.jpg');
   background-size: cover;
   background-position: center;
   margin-bottom: var(--fiori-space-6);
   overflow: hidden;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 12px 40px rgb(0 0 0 / 8%);
 }
 
 .welcomeBannerOverlay {
@@ -30,8 +48,9 @@
   align-items: center;
   justify-content: center;
   padding: var(--fiori-space-6);
-  background: rgb(28 45 62 / 85%);
+  background: linear-gradient(145deg, rgb(22 38 54 / 88%) 0%, rgb(28 45 62 / 82%) 100%);
   text-align: center;
+  backdrop-filter: blur(1px);
 }
 
 /* Microsoft: overlay del banner con azul corporativo */
@@ -66,20 +85,45 @@
 }
 
 .welcomeBannerBtnPrimary {
-  display: inline-block;
-  padding: 0.5rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.125rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: #fff;
   background: var(--fiori-shell-bg);
   border: none;
-  border-radius: 0.25rem;
+  border-radius: 0.375rem;
   text-decoration: none;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
 }
 
 .welcomeBannerBtnPrimary:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 22%);
+  transform: translateY(-1px);
+}
+
+.welcomeBannerBtnPrimary:active {
+  transform: translateY(0);
+}
+
+.welcomeBannerBtnPrimary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.bannerBtnIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  opacity: 0.95;
 }
 
 /* Microsoft: botón primario del banner con borde blanco */
@@ -88,18 +132,65 @@
 }
 
 .welcomeBannerBtnSecondary {
-  padding: 0.5rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 1.125rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--fiori-shell-bg);
   background: #fff;
-  border: 2px solid var(--fiori-shell-bg);
-  border-radius: 0.25rem;
+  border: 2px solid rgb(255 255 255 / 35%);
+  border-radius: 0.375rem;
   cursor: pointer;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 
 .welcomeBannerBtnSecondary:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgb(255 255 255 / 94%);
+  transform: translateY(-1px);
+}
+
+.welcomeBannerBtnSecondary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.launcherCustomizeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fiori-shell-bg);
+  background: color-mix(in srgb, var(--fiori-shell-bg) 8%, var(--fiori-surface));
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 28%, var(--fiori-border-light));
+  border-radius: 0.375rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.launcherCustomizeBtn:hover {
+  background: color-mix(in srgb, var(--fiori-shell-bg) 12%, var(--fiori-surface));
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 40%, var(--fiori-border-light));
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+}
+
+.launcherCustomizeBtn:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}
+
+.launcherCustomizeIcon {
+  display: inline-flex;
+  opacity: 0.9;
 }
 
 .tilesGrid {
@@ -125,13 +216,29 @@
   position: relative;
   flex: 1;
   width: 100%;
+  min-height: 11.5rem;
   background: var(--fiori-surface);
   border: 1px solid var(--fiori-border-light);
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
   padding: var(--fiori-space-4);
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.tileAccentActivations {
+  border-top: 3px solid var(--fiori-shell-bg);
+}
+
+.tileAccentPipeline {
+  border-top: 3px solid color-mix(in srgb, var(--fiori-shell-bg) 55%, #0d9488);
+}
+
+.tileAccentYubiq {
+  border-top: 3px solid color-mix(in srgb, var(--fiori-shell-bg) 45%, #7c3aed);
 }
 
 .tileTitle {
@@ -170,8 +277,28 @@
 }
 
 .tileLink:hover .tile {
-  border-color: var(--fiori-shell-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 35%, var(--fiori-border-light));
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 7%),
+    0 1px 3px rgb(0 0 0 / 5%);
+  transform: translateY(-3px);
+}
+
+.tileLink:hover .tileReorder {
+  transform: none;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 40%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tileLink:hover .tile {
+    transform: none;
+  }
+
+  .welcomeBannerBtnPrimary:hover,
+  .welcomeBannerBtnSecondary:hover,
+  .dragHandle:hover {
+    transform: none;
+  }
 }
 
 .tileLink:hover .tileTitle,
@@ -182,10 +309,12 @@
 .tileCta {
   text-decoration: none;
   font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fiori-text-secondary);
+  font-weight: 600;
+  color: var(--fiori-shell-bg);
   margin-top: auto;
   padding-top: var(--fiori-space-2);
+  letter-spacing: 0.01em;
+  transition: color 0.15s ease;
 }
 
 .tileIcon {
@@ -224,4 +353,220 @@
 .tileLink:hover .tileCta {
   color: var(--fiori-link);
   text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tileReorder {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 45%, var(--fiori-border-light));
+  background: color-mix(in srgb, var(--fiori-surface) 96%, var(--fiori-shell-bg));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 40%);
+}
+
+.tileLink:focus-visible .tile {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}
+
+/* Lista de mosaicos: sin viñetas en cualquier tema */
+.tilesGrid,
+.tilesGridReorder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Contexto de apilamiento para tiles durante el arrastre */
+.tilesGridReorder {
+  isolation: isolate;
+}
+
+.sortableItem,
+.sortableItemStatic {
+  position: relative;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sortableItemStatic {
+  height: 100%;
+}
+
+.tileLinkOuter,
+.tileLinkOuterStatic {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tileLinkOuter {
+  padding-top: 2rem;
+}
+
+.dragHandle {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 22%, var(--fiori-border-light));
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, rgb(255 255 255 / 95%) 0%, var(--fiori-surface) 100%);
+  color: var(--fiori-text-secondary);
+  cursor: grab;
+  line-height: 0;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 2px 8px rgb(0 0 0 / 4%);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.dragHandle:hover {
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 45%, var(--fiori-border-light));
+  color: var(--fiori-text);
+  transform: scale(1.04);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.dragHandle:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}
+
+.dragHandleSvg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.sortableItemDragging {
+  filter: drop-shadow(0 12px 28px rgb(0 0 0 / 14%));
+}
+
+.sortableItemDragging .tile {
+  transform: scale(1.01);
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 50%, var(--fiori-border-light));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sortableItemDragging .tile {
+    transform: none;
+  }
+
+  .dragHandle:hover {
+    transform: none;
+  }
+}
+
+.reorderStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--fiori-space-4);
+  margin: 0 0 var(--fiori-space-5);
+  padding: var(--fiori-space-4) var(--fiori-space-5);
+  background: color-mix(in srgb, var(--fiori-surface) 97%, var(--fiori-shell-bg));
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 18%, var(--fiori-border-light));
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+}
+
+.reorderStripIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--fiori-shell-bg) 12%, var(--fiori-surface));
+  color: var(--fiori-shell-bg);
+}
+
+.reorderStripBody {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.reorderStripTitle {
+  margin: 0 0 var(--fiori-space-1);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--fiori-text);
+  letter-spacing: -0.01em;
+}
+
+.reorderStripText {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+}
+
+.savingBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.125rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fiori-shell-bg);
+  background: rgb(255 255 255 / 80%);
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 20%, var(--fiori-border-light));
+  border-radius: 999px;
+  align-self: center;
+}
+
+@media (max-width: 36rem) {
+  .reorderStrip {
+    flex-direction: column;
+  }
+
+  .savingBadge {
+    align-self: flex-start;
+  }
+}
+
+.savingDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--fiori-shell-bg);
+  animation: launcherSavingPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes launcherSavingPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .savingDot {
+    animation: none;
+    opacity: 1;
+  }
 }
