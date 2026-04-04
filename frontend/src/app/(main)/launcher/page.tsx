@@ -20,8 +20,14 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useUser, useRefreshUser, type LauncherTileId } from '@/contexts/UserContext';
+import {
+  LauncherWalkthrough,
+  LAUNCHER_WALKTHROUGH_DISMISSED,
+  LAUNCHER_WALKTHROUGH_STORAGE_KEY,
+} from '@/components/launcher/LauncherWalkthrough';
 import { PageHero } from '@/components/page-hero';
 import { apiFetch } from '@/lib/api';
+import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './launcher.module.css';
 
 const DEFAULT_TILE_ORDER: LauncherTileId[] = ['activations', 'pipeline', 'yubiq'];
@@ -178,10 +184,45 @@ export default function LauncherPage() {
   const [reorderMode, setReorderMode] = useState(false);
   const [order, setOrder] = useState<LauncherTileId[]>(DEFAULT_TILE_ORDER);
   const [isSaving, setIsSaving] = useState(false);
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const [companionExtension, setCompanionExtension] = useState<'checking' | 'yes' | 'no'>('checking');
 
   useEffect(() => {
     setOrder(normalizeTileOrder(user?.launcherTileOrder));
   }, [user?.launcherTileOrder]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void probeCompanionExtension({ timeoutMs: 700 }).then((ok) => {
+      if (!cancelled) setCompanionExtension(ok ? 'yes' : 'no');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Abre el walkthrough al cargar solo si la extensión no responde al ping y el usuario no eligió "No volver a mostrar". */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (companionExtension !== 'no') return;
+    try {
+      if (localStorage.getItem(LAUNCHER_WALKTHROUGH_STORAGE_KEY) === LAUNCHER_WALKTHROUGH_DISMISSED) return;
+      setWalkthroughOpen(true);
+    } catch {
+      setWalkthroughOpen(true);
+    }
+  }, [companionExtension]);
+
+  const handleWalkthroughClose = (reason: 'later' | 'permanent') => {
+    if (reason === 'permanent') {
+      try {
+        localStorage.setItem(LAUNCHER_WALKTHROUGH_STORAGE_KEY, LAUNCHER_WALKTHROUGH_DISMISSED);
+      } catch {
+        /* ignore quota / private mode */
+      }
+    }
+    setWalkthroughOpen(false);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
@@ -281,35 +322,71 @@ export default function LauncherPage() {
         title="App Launcher"
         subtitle="Elige una aplicación para abrirla en esta sesión."
         actions={
-          !bannerVisible ? (
+          <>
             <button
               type="button"
-              className={styles.launcherCustomizeBtn}
-              onClick={() => setReorderMode((v) => !v)}
-              aria-pressed={reorderMode}
+              className={styles.walkthroughHelpBtn}
+              onClick={() => setWalkthroughOpen(true)}
+              aria-haspopup="dialog"
             >
-              {reorderMode ? (
-                <>
-                  <span className={styles.launcherCustomizeIcon} aria-hidden>
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 6L9 17l-5-5" />
-                    </svg>
-                  </span>
-                  Listo
-                </>
-              ) : (
-                <>
-                  <span className={styles.launcherCustomizeIcon} aria-hidden>
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                    </svg>
-                  </span>
-                  Ordenar mosaicos
-                </>
-              )}
+              <span className={styles.walkthroughHelpIcon} aria-hidden>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </span>
+              Cómo funciona
             </button>
-          ) : null
+            <span
+              className={`${styles.extensionStatusBadge} ${
+                companionExtension === 'yes'
+                  ? styles.extensionStatusBadgeOk
+                  : companionExtension === 'no'
+                    ? styles.extensionStatusBadgeNo
+                    : styles.extensionStatusBadgePending
+              }`}
+              role="status"
+              aria-live="polite"
+              title="Indica si Avvale Companion responde en esta pestaña (content script activo)."
+            >
+              <span className={styles.extensionStatusDot} aria-hidden />
+              {companionExtension === 'checking'
+                ? 'Comprobando extensión…'
+                : companionExtension === 'yes'
+                  ? 'Extensión instalada'
+                  : 'Extensión no detectada'}
+            </span>
+            {!bannerVisible ? (
+              <button
+                type="button"
+                className={styles.launcherCustomizeBtn}
+                onClick={() => setReorderMode((v) => !v)}
+                aria-pressed={reorderMode}
+              >
+                {reorderMode ? (
+                  <>
+                    <span className={styles.launcherCustomizeIcon} aria-hidden>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </span>
+                    Listo
+                  </>
+                ) : (
+                  <>
+                    <span className={styles.launcherCustomizeIcon} aria-hidden>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                      </svg>
+                    </span>
+                    Ordenar mosaicos
+                  </>
+                )}
+              </button>
+            ) : null}
+          </>
         }
       />
 
@@ -359,6 +436,8 @@ export default function LauncherPage() {
           ))}
         </ul>
       )}
+
+      <LauncherWalkthrough open={walkthroughOpen} onClose={handleWalkthroughClose} />
     </div>
   );
 }

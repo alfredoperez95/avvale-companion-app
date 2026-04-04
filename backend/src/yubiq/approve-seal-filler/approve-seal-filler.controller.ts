@@ -8,8 +8,11 @@ import { cleanOfferTitleFromFilename } from './offer-title.util';
 import { AnthropicCredentialsService } from '../../ai-credentials/anthropic/anthropic-credentials.service';
 import { AnthropicClientService, type AnthropicModelChoice } from './anthropic-client.service';
 import { buildOfferExtractionPrompt } from './prompts/offer-extraction-prompt';
-import type { ClaudeOfferExtractionInternal } from './offer-extraction.types';
+import { buildTranslateExtractionPrompt } from './prompts/translate-extraction-prompt';
+import type { ClaudeOfferExtraction, ClaudeOfferExtractionInternal } from './offer-extraction.types';
 import { normalizeClaudeExtraction } from './offer-extraction-normalizer';
+import { mergeTranslatedExtraction } from './merge-translated-extraction';
+import { TranslateExtractionDto } from './translate-extraction.dto';
 
 type AnalyzeOfferResponse = {
   success: boolean;
@@ -100,6 +103,48 @@ export class ApproveSealFillerController {
     } catch (e) {
       throw e;
     }
+  }
+
+  @Post('translate')
+  async translate(
+    @CurrentUser() user: UserPayload,
+    @Body() body: TranslateExtractionDto,
+  ): Promise<{ result: ClaudeOfferExtraction; rawClaudeJson: string; modelUsed: string }> {
+    const raw = body.extraction;
+    if (!raw || typeof raw !== 'object') {
+      throw new BadRequestException('Falta extraction');
+    }
+    const original = raw as unknown as ClaudeOfferExtraction;
+    if (typeof original.titulo !== 'string' || typeof original.nombreCliente !== 'string') {
+      throw new BadRequestException('extraction inválida');
+    }
+
+    const model: AnthropicModelChoice =
+      body.model === 'sonnet' || body.model === 'opus' || body.model === 'haiku' ? body.model : 'haiku';
+
+    const serialized = JSON.stringify(original);
+    const prompt = buildTranslateExtractionPrompt(serialized);
+    const apiKey = await this.creds.getApiKeyPlainOrThrow(user.userId);
+
+    const { text: claudeText, modelId } = await this.anthropic.extractJson({
+      apiKey,
+      model,
+      prompt,
+      maxTokens: 8192,
+    });
+
+    const recoveredJson = recoverJsonObjectString(claudeText);
+    const parsedObj = safeJsonParse(recoveredJson) as Record<string, unknown> | null;
+    if (!parsedObj || typeof parsedObj !== 'object') {
+      throw new BadRequestException('Claude no devolvió JSON válido para la traducción');
+    }
+
+    const merged = mergeTranslatedExtraction(original, parsedObj);
+    return {
+      result: merged,
+      rawClaudeJson: JSON.stringify(merged, null, 2),
+      modelUsed: modelId,
+    };
   }
 }
 

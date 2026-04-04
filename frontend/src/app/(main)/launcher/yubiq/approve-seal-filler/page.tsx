@@ -7,7 +7,13 @@ import { apiFetch } from '@/lib/api';
 import { DropzoneUploader } from '@/components/yubiq/DropzoneUploader/DropzoneUploader';
 import { AnalysisLogPanel } from '@/components/yubiq/AnalysisLogPanel/AnalysisLogPanel';
 import { ExtractionResultCard } from '@/components/yubiq/ExtractionResultCard/ExtractionResultCard';
-import type { AnalyzeOfferResponse, AnthropicModelChoice, ClaudeOfferExtraction, UserAnthropicCredentialStatus } from '@/types/yubiq';
+import type {
+  AnalyzeOfferResponse,
+  AnthropicModelChoice,
+  ClaudeOfferExtraction,
+  TranslateOfferResponse,
+  UserAnthropicCredentialStatus,
+} from '@/types/yubiq';
 import { buildYubiqPayload, dispatchYubiqToExtensionAndWait } from '@/lib/yubiq';
 import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
 import styles from './page.module.css';
@@ -21,6 +27,30 @@ function analysisBusyLabel(phase: 'uploading' | 'extracting' | 'analyzing'): str
     default:
       return 'Analizando con Claude…';
   }
+}
+
+/** Icono de idioma / traducción (trazo Fiori, coherente con el panel). */
+function TranslateToEnglishGlyph() {
+  return (
+    <span className={styles.translateBtnInner} aria-hidden>
+      <svg
+        className={styles.translateBtnIcon}
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M2 12h20" />
+        <ellipse cx="12" cy="12" rx="4" ry="10" />
+      </svg>
+      <span className={styles.translateBtnLabel}>EN</span>
+    </span>
+  );
 }
 
 function StatusBadge({
@@ -97,8 +127,15 @@ export default function YubiqApproveSealFillerPage() {
   const [yubiqBridgeMessage, setYubiqBridgeMessage] = useState('');
   const [yubiqMarginModal, setYubiqMarginModal] = useState<'closed' | 'ask' | 'input'>('closed');
   const [yubiqManualMarginInput, setYubiqManualMarginInput] = useState('');
+  const [translatedExtraction, setTranslatedExtraction] = useState<ClaudeOfferExtraction | null>(null);
+  const [translatedRawClaudeJson, setTranslatedRawClaudeJson] = useState('');
+  const [translateLoading, setTranslateLoading] = useState(false);
+  const [translateError, setTranslateError] = useState('');
   const resultsSectionRef = useRef<HTMLElement | null>(null);
   const yubiqMarginInputRef = useRef<HTMLInputElement | null>(null);
+
+  const displayResult = translatedExtraction ?? result;
+  const displayRawClaudeJson = translatedExtraction ? translatedRawClaudeJson : rawClaudeJson;
 
   const canAnalyze = Boolean(file) && Boolean(credentialStatus?.configured) && phase !== 'uploading' && phase !== 'extracting' && phase !== 'analyzing';
 
@@ -156,6 +193,9 @@ export default function YubiqApproveSealFillerPage() {
     setError('');
     setResult(null);
     setRawClaudeJson('');
+    setTranslatedExtraction(null);
+    setTranslatedRawClaudeJson('');
+    setTranslateError('');
     setLastFileName('');
     setPromptPreview('');
     setLog([]);
@@ -191,6 +231,9 @@ export default function YubiqApproveSealFillerPage() {
       setLog(data.log ?? []);
       setResult(data.result);
       setRawClaudeJson(data.rawClaudeJson ?? '');
+      setTranslatedExtraction(null);
+      setTranslatedRawClaudeJson('');
+      setTranslateError('');
       setLastFileName(data.fileName ?? file?.name ?? 'document.pdf');
       setPromptPreview(data.promptPreview ?? '');
       setPhase('done');
@@ -201,14 +244,45 @@ export default function YubiqApproveSealFillerPage() {
     }
   };
 
+  const runTranslate = async () => {
+    if (!result) return;
+    setTranslateError('');
+    setTranslateLoading(true);
+    try {
+      const res = await apiFetch('/api/yubiq/approve-seal-filler/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extraction: result, model }),
+      });
+      const data = (await res.json().catch(() => null)) as TranslateOfferResponse | { message?: string } | null;
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+      if (!res.ok || !data || !('result' in data)) {
+        const raw = (data as { message?: string | string[] })?.message;
+        const msg = Array.isArray(raw) ? raw.join('; ') : raw;
+        setTranslateError(msg ?? 'No se pudo traducir.');
+        return;
+      }
+      setTranslatedExtraction(data.result);
+      setTranslatedRawClaudeJson(data.rawClaudeJson);
+    } catch (e) {
+      setTranslateError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTranslateLoading(false);
+    }
+  };
+
   const sendToYubiq = async (manualMargin?: string) => {
     if (!result) return;
+    const extractionForYubiq = translatedExtraction ?? result;
     setYubiqMarginModal('closed');
     setYubiqBridge('pending');
     setYubiqBridgeMessage('');
     try {
       const { payload } = buildYubiqPayload({
-        extraction: result,
+        extraction: extractionForYubiq,
         fileName: lastFileName || file?.name || 'document.pdf',
         ...(manualMargin !== undefined ? { manualMargin } : {}),
       });
@@ -333,6 +407,9 @@ export default function YubiqApproveSealFillerPage() {
                       setYubiqBridgeMessage('');
                       setYubiqMarginModal('closed');
                       setYubiqManualMarginInput('');
+                      setTranslatedExtraction(null);
+                      setTranslatedRawClaudeJson('');
+                      setTranslateError('');
                       setPhase('idle');
                     }}
                     disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
@@ -406,18 +483,37 @@ export default function YubiqApproveSealFillerPage() {
       >
         <article className={styles.panel}>
           <div className={styles.panelHeader}>
-            <span className={styles.panelIcon} aria-hidden>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
-            </span>
-            <h2 className={styles.panelTitle}>Datos extraídos</h2>
+            <div className={styles.panelHeaderMain}>
+              <span className={styles.panelIcon} aria-hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+              </span>
+              <h2 className={styles.panelTitle}>Datos extraídos</h2>
+            </div>
+            <button
+              type="button"
+              className={styles.translateBtn}
+              aria-label="Traducir datos extraídos al inglés"
+              title="Traducir al inglés"
+              disabled={!result || translateLoading}
+              aria-busy={translateLoading}
+              aria-pressed={Boolean(translatedExtraction)}
+              onClick={() => void runTranslate()}
+            >
+              {translateLoading ? (
+                <span className={styles.translateBtnSpinner} aria-hidden />
+              ) : (
+                <TranslateToEnglishGlyph />
+              )}
+            </button>
           </div>
+          {translateError ? <p className={styles.translateError}>{translateError}</p> : null}
           {result ? (
-            <ExtractionResultCard result={result} rawClaudeJson={rawClaudeJson} />
+            <ExtractionResultCard result={displayResult} rawClaudeJson={displayRawClaudeJson} />
           ) : (
             <div className={styles.empty}>
               Aquí verás título, cliente, importe, área Avvale, resumen y observaciones cuando completes un análisis correctamente.

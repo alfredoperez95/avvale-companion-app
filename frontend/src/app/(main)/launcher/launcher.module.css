@@ -50,7 +50,6 @@
   padding: var(--fiori-space-6);
   background: linear-gradient(145deg, rgb(22 38 54 / 88%) 0%, rgb(28 45 62 / 82%) 100%);
   text-align: center;
-  backdrop-filter: blur(1px);
 }
 
 /* Microsoft: overlay del banner con azul corporativo */
@@ -156,6 +155,110 @@
 .welcomeBannerBtnSecondary:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 3px;
+}
+
+.walkthroughHelpBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  background: transparent;
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.walkthroughHelpBtn:hover {
+  color: var(--fiori-text);
+  background: color-mix(in srgb, var(--fiori-text) 5%, transparent);
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 25%, var(--fiori-border-light));
+}
+
+.walkthroughHelpBtn:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}
+
+.walkthroughHelpIcon {
+  display: inline-flex;
+  opacity: 0.85;
+}
+
+.extensionStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.375rem;
+  background: var(--fiori-surface);
+  color: var(--fiori-text-secondary);
+  white-space: nowrap;
+}
+
+.extensionStatusBadgeOk {
+  border-color: color-mix(in srgb, #188918 35%, var(--fiori-border-light));
+  color: #1a5c1a;
+  background: color-mix(in srgb, #188918 8%, var(--fiori-surface));
+}
+
+.extensionStatusBadgeNo {
+  border-color: color-mix(in srgb, #a15c00 35%, var(--fiori-border-light));
+  color: #7a4200;
+  background: color-mix(in srgb, #e76500 10%, var(--fiori-surface));
+}
+
+.extensionStatusBadgePending {
+  color: var(--fiori-text-secondary);
+}
+
+.extensionStatusDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--fiori-text-secondary);
+}
+
+.extensionStatusBadgeOk .extensionStatusDot {
+  background: #188918;
+}
+
+.extensionStatusBadgeNo .extensionStatusDot {
+  background: #e76500;
+}
+
+.extensionStatusBadgePending .extensionStatusDot {
+  animation: launcherExtensionPulse 1s ease-in-out infinite;
+}
+
+@keyframes launcherExtensionPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .extensionStatusBadgePending .extensionStatusDot {
+    animation: none;
+    opacity: 0.75;
+  }
 }
 
 .launcherCustomizeBtn {

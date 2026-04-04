@@ -93,6 +93,27 @@ describe('buildYubiqPayload', () => {
     expect(payload.companionMeta?.document).toEqual(payload.document);
   });
 
+  it('acepta textos en inglés en la extracción (mismo contrato que tras traducir)', () => {
+    const en: ClaudeOfferExtraction = {
+      ...sampleExtraction,
+      titulo: 'New Be2bar integration',
+      nombreCliente: 'Estrella Galicia',
+      resumen: 'MuleSoft implementation project.',
+      observaciones: 'Notes.',
+    };
+    const now = new Date('2026-04-02T14:32:01.234Z');
+    const { payload } = buildYubiqPayload({
+      extraction: en,
+      fileName: 'offer.pdf',
+      now,
+    });
+    expect(payload.document.title).toBe('New Be2bar integration');
+    expect(payload.document.summary).toBe('MuleSoft implementation project.');
+    expect(payload.prefill.title).toBe('New Be2bar integration - Estrella Galicia');
+    expect(payload.prefill.description).toBe('MuleSoft implementation project.');
+    expect(payload.prefill.customerName).toBe('Estrella Galicia');
+  });
+
   it('incluye manualMargin como entero 0–100 (quita %, redondea y acota)', () => {
     const { payload } = buildYubiqPayload({
       extraction: sampleExtraction,

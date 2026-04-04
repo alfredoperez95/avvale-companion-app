@@ -1,9 +1,12 @@
 export { buildPrefillTitle } from './build-prefill-title';
 export { buildYubiqPayload } from './build-yubiq-payload';
 export {
+  COMPANION_EXTENSION_PING,
+  COMPANION_EXTENSION_PONG,
   dispatchYubiqToExtension,
   dispatchYubiqToExtensionAndWait,
   onYubiqExtensionResult,
+  probeCompanionExtension,
   YUBIQ_EXTENSION_EVENT_RESULT,
   YUBIQ_EXTENSION_EVENT_START,
 } from './companion-app-dispatch';

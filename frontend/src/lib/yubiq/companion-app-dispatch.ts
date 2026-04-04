@@ -6,6 +6,44 @@ export const YUBIQ_EXTENSION_EVENT_START = 'avvale-companion-yubiq-start' as con
 /** La extensión responde cuando el pipeline termina o falla (opcional). */
 export const YUBIQ_EXTENSION_EVENT_RESULT = 'avvale-companion-yubiq-result' as const;
 
+/**
+ * Ping/Pong para saber si el content script de Avvale Companion está inyectado en esta pestaña.
+ * La web no puede usar `chrome.runtime`; el content script debe escuchar el ping y emitir el pong.
+ *
+ * En la extensión (content script), añadir:
+ * ```js
+ * document.addEventListener('avvale-companion-ping', () => {
+ *   document.dispatchEvent(new CustomEvent('avvale-companion-pong', { bubbles: true, composed: true }));
+ * });
+ * ```
+ */
+export const COMPANION_EXTENSION_PING = 'avvale-companion-ping' as const;
+export const COMPANION_EXTENSION_PONG = 'avvale-companion-pong' as const;
+
+/**
+ * @returns true si la extensión respondió al ping en `timeoutMs`, false si no hay listener o timeout.
+ */
+export function probeCompanionExtension(options?: { timeoutMs?: number }): Promise<boolean> {
+  if (typeof document === 'undefined') return Promise.resolve(false);
+  const timeoutMs = options?.timeoutMs ?? 600;
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      document.removeEventListener(COMPANION_EXTENSION_PONG, onPong);
+      resolve(ok);
+    };
+    const onPong = () => finish(true);
+    const timer = window.setTimeout(() => finish(false), timeoutMs);
+    document.addEventListener(COMPANION_EXTENSION_PONG, onPong);
+    document.dispatchEvent(
+      new CustomEvent(COMPANION_EXTENSION_PING, { bubbles: true, composed: true }),
+    );
+  });
+}
+
 export type YubiqExtensionResultDetail = {
   ok: boolean;
   tabId?: number;

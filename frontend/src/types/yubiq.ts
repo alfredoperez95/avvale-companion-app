@@ -48,6 +48,12 @@ export type AnalyzeOfferResponse = {
   log: AnalysisLogItem[];
 };
 
+export type TranslateOfferResponse = {
+  result: ClaudeOfferExtraction;
+  rawClaudeJson: string;
+  modelUsed: string;
+};
+
 export type UserAnthropicCredentialStatus = {
   configured: boolean;
   masked: string | null;
