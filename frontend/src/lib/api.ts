@@ -5,14 +5,29 @@ const getBaseUrl = () =>
     : process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 /**
+ * Si es true (por defecto), `/api/foo` con base `https://api.ejemplo.com` → `https://api.ejemplo.com/foo` (Nest en la raíz).
+ * Si es false, se mantiene el prefijo `/api` en la URL: `https://ejemplo.com/api/foo` (proxy / CDN que solo enruta `/api/*` al backend).
+ */
+function shouldStripApiPrefixFromPath(): boolean {
+  const v = process.env.NEXT_PUBLIC_API_STRIP_PREFIX;
+  if (v === undefined || v === '') return true;
+  return v === 'true' || v === '1';
+}
+
+/**
  * Construye la URL final. Las rutas del front usan prefijo `/api/...` para el rewrite de Next;
- * si `NEXT_PUBLIC_API_URL` apunta directo al Nest (sin proxy que duplique `/api`), hay que
- * pedir `/auth/...` y no `/api/auth/...` para alinear con el backend sin `setGlobalPrefix('api')`.
+ * con `NEXT_PUBLIC_API_URL` apuntando al API, el comportamiento depende de `NEXT_PUBLIC_API_STRIP_PREFIX`.
  */
 export function resolveApiUrl(path: string): string {
   const base = getBaseUrl();
   if (!base) return path;
   const b = base.replace(/\/$/, '');
+  const strip = shouldStripApiPrefixFromPath();
+
+  if (!strip) {
+    return `${b}${path.startsWith('/') ? path : `/${path}`}`;
+  }
+
   if (path === '/api' || path === '/api/') return b;
   if (path.startsWith('/api/')) {
     return `${b}/${path.slice(5)}`;

@@ -252,6 +252,8 @@ Ajusta `next.config.ts` si usáis rewrites al mismo host.
 
 Patrón habitual: servicio MariaDB, servicio **Redis**, build del **backend** desde `backend/Dockerfile`, build del **frontend** desde `frontend/Dockerfile` con la URL pública correcta del API.
 
+**Login en PRO:** si el reverse proxy solo enruta **`/api/*`** hacia Nest (mismo dominio que el front), define **`NEXT_PUBLIC_API_STRIP_PREFIX=false`** en el build del frontend (y el `NEXT_PUBLIC_API_URL` del dominio público). Si el API es un host tipo `https://api.tu-dominio.com` con Nest en la raíz, deja el valor por defecto (strip `true`) o no definas la variable.
+
 Si el despliegue falla con **`P3009`** o migración fallida `20260402090000_user_anthropic_credentials`, sigue **[docs/PRISMA_P3009_COOLIFY.md](docs/PRISMA_P3009_COOLIFY.md)** (resolver estado en MySQL y `prisma migrate resolve`).
 
 ---

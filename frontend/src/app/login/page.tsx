@@ -75,7 +75,11 @@ export default function LoginPage() {
         console.info('[login] Login response:', res.status, data);
       }
       if (!res.ok) {
-        setError(data.message ?? 'Error al iniciar sesión');
+        const msg =
+          typeof data?.message === 'string' && data.message.length > 0
+            ? data.message
+            : `Error al iniciar sesión (HTTP ${res.status})`;
+        setError(msg);
         return;
       }
       if (data.accessToken) {
