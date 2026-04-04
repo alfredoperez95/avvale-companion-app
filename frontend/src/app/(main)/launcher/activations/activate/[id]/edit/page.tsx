@@ -10,6 +10,7 @@ import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { replaceTemplateVariables, replaceUrlsEscaneadasPlaceholder } from '@/lib/replace-template-variables';
 import { formatActivationCode } from '@/lib/activation-code';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from '../../new/form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -525,8 +526,13 @@ export default function EditActivationPage() {
 
   return (
     <main className={styles.page}>
-      <Link href={`/launcher/activations/activate/${id}`} className={styles.back}>← Volver al detalle</Link>
-      <h1 className={styles.h1}>Editar activación</h1>
+      <PageBreadcrumb>
+        <PageBackLink href={`/launcher/activations/activate/${id}`}>← Volver al detalle</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title="Editar activación"
+        subtitle="Modifica los datos y guarda los cambios; el detalle reflejará la versión actualizada."
+      />
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>

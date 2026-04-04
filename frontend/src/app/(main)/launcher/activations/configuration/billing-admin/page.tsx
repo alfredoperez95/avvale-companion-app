@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from '../configuration.module.css';
 
 type ContactItem = { id: string; name: string; email: string };
@@ -137,7 +137,9 @@ export default function AdminBillingAdminPage() {
   if (forbidden) {
     return (
       <div className={styles.page}>
-        <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
+        <PageBreadcrumb>
+          <PageBackLink href="/launcher/activations/configuration">← Configuración</PageBackLink>
+        </PageBreadcrumb>
         <p className={styles.forbidden}>No tienes permisos para acceder a esta sección.</p>
       </div>
     );
@@ -145,11 +147,13 @@ export default function AdminBillingAdminPage() {
 
   return (
     <div className={styles.page}>
-      <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
-      <h1 className={styles.h1}>Facturación y Administración</h1>
-      <p className={styles.sectionDesc}>
-        Contactos que se incluyen siempre en todas las activaciones, de índole administrativo y/o de facturación.
-      </p>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/configuration">← Configuración</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title="Facturación y Administración"
+        subtitle="Contactos que se incluyen siempre en todas las activaciones, de índole administrativo y/o de facturación."
+      />
       {error && <p className={styles.error}>{error}</p>}
 
       <form onSubmit={handleCreate} className={styles.contactsAddRow}>

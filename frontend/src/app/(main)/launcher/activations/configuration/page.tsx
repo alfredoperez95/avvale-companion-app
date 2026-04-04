@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from './configuration.module.css';
 
 export default function ConfigurationHubPage() {
@@ -29,9 +30,10 @@ export default function ConfigurationHubPage() {
 
   return (
     <div className={styles.page}>
-      <Link href="/launcher" className={styles.back}>← Inicio</Link>
-      <h1 className={styles.h1}>Configuración</h1>
-      <p className={styles.menuDesc}>Elige qué quieres configurar:</p>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/dashboard">← Dashboard</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero title="Configuración" subtitle="Elige qué quieres configurar:" />
       <div className={styles.tilesGrid} role="list">
         {isAdmin && (
           <>

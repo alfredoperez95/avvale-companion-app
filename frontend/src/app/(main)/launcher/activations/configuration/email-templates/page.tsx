@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { TEMPLATE_SHORTCODES } from '@/lib/replace-template-variables';
 import { LoadingScreen } from '@/components/LoadingScreen/LoadingScreen';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from '../configuration.module.css';
 
 type EmailTemplateItem = { id: string; name: string; content: string; createdAt: string };
@@ -178,13 +178,17 @@ export default function AdminEmailTemplatesPage() {
 
   return (
     <div className={styles.page}>
-      <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
-      <h1 className={styles.h1}>Plantillas Email</h1>
-      <p className={styles.sectionDesc}>
-        {isAdmin
-          ? 'Estás editando las plantillas de sistema: se copian a cada usuario la primera vez que entra (bootstrap). En las activaciones cada persona usa su copia personal.'
-          : 'Crea y edita plantillas para el cuerpo del correo con el editor de texto enriquecido. Podrás elegirlas al crear o editar una activación.'}
-      </p>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/configuration">← Configuración</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title="Plantillas Email"
+        subtitle={
+          isAdmin
+            ? 'Estás editando las plantillas de sistema: se copian a cada usuario la primera vez que entra (bootstrap). En las activaciones cada persona usa su copia personal.'
+            : 'Crea y edita plantillas para el cuerpo del correo con el editor de texto enriquecido. Podrás elegirlas al crear o editar una activación.'
+        }
+      />
       {error && <p className={styles.error}>{error}</p>}
 
       <section className={styles.templateCard} aria-labelledby="create-template-heading">

@@ -35,27 +35,29 @@ export function FilterBar({
 
   return (
     <div className={styles.bar} role="search">
-      <label className={styles.label} htmlFor="filter-status">
-        Estado
-      </label>
-      <select
-        id="filter-status"
-        className={styles.select}
-        value={statusFilter}
-        onChange={(e) => onStatusFilterChange(e.target.value)}
-        aria-label="Filtrar por estado"
-      >
-        <option value="">Todos</option>
-        <option value="DRAFT">Borrador</option>
-        <option value="QUEUED">En cola</option>
-        <option value="PROCESSING">Procesando</option>
-        <option value="RETRYING">Reintentando</option>
-        <option value="PENDING_CALLBACK">Esperando</option>
-        <option value="SENT">Enviado</option>
-        <option value="FAILED">Error envío</option>
-      </select>
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="filter-status">
+          Estado
+        </label>
+        <select
+          id="filter-status"
+          className={styles.select}
+          value={statusFilter}
+          onChange={(e) => onStatusFilterChange(e.target.value)}
+          aria-label="Filtrar por estado"
+        >
+          <option value="">Todos</option>
+          <option value="DRAFT">Borrador</option>
+          <option value="QUEUED">En cola</option>
+          <option value="PROCESSING">Procesando</option>
+          <option value="RETRYING">Reintentando</option>
+          <option value="PENDING_CALLBACK">Esperando</option>
+          <option value="SENT">Enviado</option>
+          <option value="FAILED">Error envío</option>
+        </select>
+      </div>
       {showSolicitante && (
-        <>
+        <div className={styles.field}>
           <label className={styles.label} htmlFor="filter-solicitante">
             Solicitante
           </label>
@@ -78,10 +80,10 @@ export function FilterBar({
               </option>
             ))}
           </select>
-        </>
+        </div>
       )}
       {onSearchChange && (
-        <>
+        <div className={`${styles.field} ${styles.fieldSearch}`}>
           <label className={styles.label} htmlFor="filter-search">
             Buscar
           </label>
@@ -94,7 +96,7 @@ export function FilterBar({
             onChange={(e) => onSearchChange(e.target.value)}
             aria-label="Buscar"
           />
-        </>
+        </div>
       )}
     </div>
   );

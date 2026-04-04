@@ -3,24 +3,6 @@
   margin: 0 auto;
 }
 
-.back {
-  display: block;
-  margin-bottom: var(--fiori-space-4);
-  color: var(--fiori-link);
-  font-size: 0.875rem;
-}
-
-.back:hover {
-  text-decoration: underline;
-}
-
-.h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: var(--fiori-space-6);
-  color: var(--fiori-text);
-}
-
 .sectionDesc {
   font-size: 0.875rem;
   color: var(--fiori-text-secondary);

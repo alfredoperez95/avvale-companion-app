@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
@@ -9,17 +9,8 @@ import { AnalysisLogPanel } from '@/components/yubiq/AnalysisLogPanel/AnalysisLo
 import { ExtractionResultCard } from '@/components/yubiq/ExtractionResultCard/ExtractionResultCard';
 import type { AnalyzeOfferResponse, AnthropicModelChoice, ClaudeOfferExtraction, UserAnthropicCredentialStatus } from '@/types/yubiq';
 import { buildYubiqPayload, dispatchYubiqToExtensionAndWait } from '@/lib/yubiq';
+import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
 import styles from './page.module.css';
-
-function ChevronBackIcon() {
-  return (
-    <span className={styles.backIcon} aria-hidden>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M15 18l-6-6 6-6" />
-      </svg>
-    </span>
-  );
-}
 
 function analysisBusyLabel(phase: 'uploading' | 'extracting' | 'analyzing'): string {
   switch (phase) {
@@ -107,6 +98,7 @@ export default function YubiqApproveSealFillerPage() {
   const [yubiqMarginModal, setYubiqMarginModal] = useState<'closed' | 'ask' | 'input'>('closed');
   const [yubiqManualMarginInput, setYubiqManualMarginInput] = useState('');
   const resultsSectionRef = useRef<HTMLElement | null>(null);
+  const yubiqMarginInputRef = useRef<HTMLInputElement | null>(null);
 
   const canAnalyze = Boolean(file) && Boolean(credentialStatus?.configured) && phase !== 'uploading' && phase !== 'extracting' && phase !== 'analyzing';
 
@@ -138,6 +130,14 @@ export default function YubiqApproveSealFillerPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, [yubiqMarginModal]);
+
+  useLayoutEffect(() => {
+    if (yubiqMarginModal !== 'input') return;
+    const el = yubiqMarginInputRef.current;
+    if (!el) return;
+    el.focus();
+    el.select();
   }, [yubiqMarginModal]);
 
   useEffect(() => {
@@ -235,19 +235,17 @@ export default function YubiqApproveSealFillerPage() {
 
   return (
     <main className={styles.page}>
-      <nav className={styles.breadcrumb} aria-label="Migas de pan">
-        <Link href="/launcher" className={styles.back}>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher">
           <ChevronBackIcon />
           App Launcher
-        </Link>
-      </nav>
+        </PageBackLink>
+      </PageBreadcrumb>
 
-      <header className={styles.hero}>
-        <h1 className={styles.h1}>Yubiq Approve &amp; Seal Filler</h1>
-        <p className={styles.subtitle}>
-          Sube una oferta comercial en PDF, extráe texto y obtén con Claude un resumen estructurado: cliente, importe, área Avvale y más.
-        </p>
-      </header>
+      <PageHero
+        title="Yubiq Approve & Seal Filler"
+        subtitle="Sube una oferta comercial en PDF, extráe texto y obtén con Claude un resumen estructurado: cliente, importe, área Avvale y más."
+      />
 
       <div className={styles.statusRow}>
         <StatusBadge credLoading={credLoading} configured={Boolean(credentialStatus?.configured)} phase={phase} />
@@ -487,11 +485,11 @@ export default function YubiqApproveSealFillerPage() {
             {yubiqMarginModal === 'ask' && (
               <>
                 <h2 id="yubiq-margin-ask-title" className={styles.marginModalTitle}>
-                  ¿Deseas indicar el margen manualmente?
+                  ¿Quieres definir el margen manualmente?
                 </h2>
                 <p className={styles.marginModalDesc}>
-                  Si eliges <strong>No</strong>, se enviará el JSON a la extensión sin margen manual. Si eliges{' '}
-                  <strong>Sí</strong>, podrás escribir el valor antes de enviar.
+                  Si eliges <strong>No</strong>, se enviará sin margen a Yubiq A&amp;S. Si eliges <strong>Sí</strong>,
+                  podrás introducirlo antes de enviar.
                 </p>
                 <div className={styles.marginModalActions}>
                   <button
@@ -519,21 +517,28 @@ export default function YubiqApproveSealFillerPage() {
                   Margen manual
                 </h2>
                 <p className={styles.marginModalDesc}>
-                  Valor entre <strong>0</strong> y <strong>100</strong> (p. ej. porcentaje). Puedes usar <code>%</code> o
-                  decimales: se <strong>redondean</strong> al entero más cercano y se acotan al rango. En el JSON va como{' '}
-                  <code>manualMargin</code> (entero).
+                  Introduce un valor entre <strong>0</strong> y <strong>100</strong>. Puedes usar porcentaje o decimales; lo
+                  redondearemos automáticamente al valor válido más cercano, ya que Yubiq A&amp;S solo acepta valores enteros
+                  sin decimal.
                 </p>
                 <div className={styles.marginModalField}>
                   <label htmlFor="yubiq-manual-margin" className={styles.fieldLabel}>
                     Margen
                   </label>
                   <input
+                    ref={yubiqMarginInputRef}
                     id="yubiq-manual-margin"
                     type="text"
                     className={styles.marginModalInput}
                     value={yubiqManualMarginInput}
                     onChange={(e) => setYubiqManualMarginInput(e.target.value)}
-                    placeholder="Ej. 15, 15 % o 35,8"
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return;
+                      e.preventDefault();
+                      if (yubiqBridge === 'pending') return;
+                      void sendToYubiq(yubiqManualMarginInput);
+                    }}
+                    placeholder="Ej: 35 - 35% - 35,4%"
                     autoComplete="off"
                   />
                 </div>

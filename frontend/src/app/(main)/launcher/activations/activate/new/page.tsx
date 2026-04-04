@@ -8,6 +8,7 @@ import { getActivationPayloadFromHash } from '@/lib/activation-payload';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { replaceTemplateVariables, replaceUrlsEscaneadasPlaceholder } from '@/lib/replace-template-variables';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from './form.module.css';
 
 type SubAreaOption = { id: string; name: string };
@@ -405,8 +406,13 @@ export default function NewActivationPage() {
 
   return (
     <main className={styles.page}>
-      <Link href="/launcher" className={styles.back}>← Inicio</Link>
-      <h1 className={styles.h1}>Nueva activación</h1>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/dashboard">← Dashboard</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title="Nueva activación"
+        subtitle="Completa los datos del proyecto, destinatarios y cuerpo del correo antes de enviar."
+      />
       <form onSubmit={handleSubmit} className={styles.form} autoComplete="off">
         <div id="form-group-project-name" className={styles.formGroup}>
           <label className={styles.label} htmlFor="projectName"><span className={styles.labelText}>Nombre del proyecto</span> *</label>

@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from '../configuration.module.css';
 
 type SubAreaContact = { id: string; name: string; email: string; isProjectJp: boolean };
@@ -315,7 +315,9 @@ export default function AdminAreasPage() {
   if (forbidden) {
     return (
       <div className={styles.page}>
-        <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
+        <PageBreadcrumb>
+          <PageBackLink href="/launcher/activations/configuration">← Configuración</PageBackLink>
+        </PageBreadcrumb>
         <p className={styles.forbidden}>No tienes permisos para acceder a esta sección.</p>
       </div>
     );
@@ -323,11 +325,13 @@ export default function AdminAreasPage() {
 
   return (
     <div className={styles.page}>
-      <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
-      <h1 className={styles.h1}>Áreas</h1>
-      <p className={styles.sectionDesc}>
-        Catálogo global: áreas, directores y subáreas que usan todos los usuarios al crear activaciones.
-      </p>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/configuration">← Configuración</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title="Áreas"
+        subtitle="Catálogo global: áreas, directores y subáreas que usan todos los usuarios al crear activaciones."
+      />
       {error && <p className={styles.error}>{error}</p>}
 
       <section className={styles.areasAddCard} aria-labelledby="areas-add-heading">

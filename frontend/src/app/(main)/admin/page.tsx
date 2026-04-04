@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from './admin.module.css';
 
 type UserItem = {
@@ -162,7 +162,9 @@ export default function AdminUsersPage() {
   if (forbidden) {
     return (
       <div className={styles.page}>
-        <Link href="/launcher" className={styles.back}>← Inicio</Link>
+        <PageBreadcrumb>
+          <PageBackLink href="/launcher/activations/dashboard">← Dashboard</PageBackLink>
+        </PageBreadcrumb>
         <p className={styles.forbidden}>No tienes permisos para acceder a esta sección.</p>
       </div>
     );
@@ -170,11 +172,13 @@ export default function AdminUsersPage() {
 
   return (
     <div className={styles.page}>
-      <Link href="/launcher" className={styles.back}>← Inicio</Link>
-      <h1 className={styles.h1}>Gestión de usuarios</h1>
-      <p className={styles.sectionDesc}>
-        Crear usuarios y modificar permisos o contraseñas. Solo visible para administradores.
-      </p>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/dashboard">← Dashboard</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title="Gestión de usuarios"
+        subtitle="Crear usuarios y modificar permisos o contraseñas. Solo visible para administradores."
+      />
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.card}>

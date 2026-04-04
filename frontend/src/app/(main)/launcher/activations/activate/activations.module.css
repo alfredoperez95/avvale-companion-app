@@ -3,33 +3,6 @@
   margin: 0 auto;
 }
 
-.back {
-  display: block;
-  margin-bottom: var(--fiori-space-4);
-  color: var(--fiori-link);
-  font-size: 0.875rem;
-}
-
-.back:hover {
-  text-decoration: underline;
-}
-
-.pageHeader {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--fiori-space-4);
-  margin-bottom: var(--fiori-space-6);
-}
-
-.pageTitle {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--fiori-text);
-  margin: 0;
-}
-
 .btnNew {
   display: inline-flex;
   align-items: center;

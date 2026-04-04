@@ -102,23 +102,11 @@
   background: rgba(255, 255, 255, 0.9);
 }
 
-.h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: var(--fiori-space-6);
-  color: var(--fiori-text);
-}
-
-.menuDesc {
-  font-size: 0.875rem;
-  color: var(--fiori-text-secondary);
-  margin: 0 0 var(--fiori-space-6);
-}
-
 .tilesGrid {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--fiori-space-6);
+  align-items: stretch;
 }
 
 @media (min-width: 52rem) {
@@ -135,6 +123,8 @@
 
 .tile {
   position: relative;
+  flex: 1;
+  width: 100%;
   background: var(--fiori-surface);
   border: 1px solid var(--fiori-border-light);
   border-radius: 0.5rem;
@@ -152,6 +142,7 @@
 }
 
 .tileDesc {
+  flex: 1 1 auto;
   font-size: 0.8125rem;
   color: var(--fiori-text-secondary);
   margin: 0 0 var(--fiori-space-4);
@@ -161,7 +152,10 @@
 .tileLink {
   text-decoration: none;
   color: inherit;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
   user-select: none;
 }
 
@@ -213,9 +207,18 @@
   content: "\e0b7";
 }
 
+/* Yubiq: distinto de Activaciones — añadir documento / PDF (SAP-icons) */
+:global([data-theme="fiori"]) .tileIconYubiq::before {
+  content: "\e0ad";
+}
+
 /* Microsoft: icono tipo documento/app en el tile de Activaciones */
 :global([data-theme="microsoft"]) .tileIcon::before {
   content: "\e026";
+}
+
+:global([data-theme="microsoft"]) .tileIconYubiq::before {
+  content: "\e0ad";
 }
 
 .tileLink:hover .tileCta {

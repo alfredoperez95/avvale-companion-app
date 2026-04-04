@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from '../configuration.module.css';
 
 type ContactItem = { id: string; name: string; email: string; isProjectJp: boolean };
@@ -148,7 +148,9 @@ export default function AdminContactsPage() {
   if (forbidden) {
     return (
       <div className={styles.page}>
-        <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
+        <PageBreadcrumb>
+          <PageBackLink href="/launcher/activations/configuration">← Configuración</PageBackLink>
+        </PageBreadcrumb>
         <p className={styles.forbidden}>No tienes permisos para acceder a esta sección.</p>
       </div>
     );
@@ -156,11 +158,13 @@ export default function AdminContactsPage() {
 
   return (
     <div className={styles.page}>
-      <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
-      <h1 className={styles.h1}>Contactos</h1>
-      <p className={styles.sectionDesc}>
-        Destinatarios en copia que aparecen como sugerencias al crear o editar una activación.
-      </p>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/configuration">← Configuración</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title="Contactos"
+        subtitle="Destinatarios en copia que aparecen como sugerencias al crear o editar una activación."
+      />
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.contactsTopRow}>

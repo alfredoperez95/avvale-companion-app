@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
+import { PageHero } from '@/components/page-hero';
 import styles from './launcher.module.css';
 
 export default function LauncherPage() {
@@ -39,8 +40,7 @@ export default function LauncherPage() {
         </section>
       )}
 
-      <h1 className={styles.h1}>App Launcher</h1>
-      <p className={styles.menuDesc}>Elige una aplicación:</p>
+      <PageHero title="App Launcher" subtitle="Elige una aplicación:" />
       <div className={styles.tilesGrid} role="list">
         <Link
           href="/launcher/activations/dashboard"
@@ -92,7 +92,7 @@ export default function LauncherPage() {
               Sube una oferta comercial en PDF, analízala con IA y obtén campos estructurados (título, cliente, importe, área Avvale y resumen).
             </p>
             <span className={styles.tileCta}>Abrir módulo →</span>
-            <span className={styles.tileIcon} aria-hidden="true" />
+            <span className={`${styles.tileIcon} ${styles.tileIconYubiq}`} aria-hidden="true" />
           </article>
         </Link>
       </div>

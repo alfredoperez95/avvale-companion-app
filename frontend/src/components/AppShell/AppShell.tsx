@@ -19,7 +19,7 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
 const adminNavItem = { href: '/launcher/activations/configuration', label: 'Configuración', icon: 'settings' as IconName };
 const adminUsersNavItem = { href: '/admin', label: 'Gestión de usuarios', icon: 'settings' as IconName };
 
-/** Tabs del aplicativo activaciones (tema Fiori): Inicio, Dashboard, Nueva activación, Mis activaciones, Configuración */
+/** Tabs del aplicativo activaciones (tema Fiori): Inicio, Dashboard, Nueva activación, Mis activaciones, Configuración. En /launcher/yubiq/* solo Inicio + pestaña de la herramienta Yubiq (fioriTabsYubiq). */
 const fioriTabsActivations: {
   href: string;
   label: string;
@@ -61,6 +61,22 @@ const fioriTabsProfile: {
   { href: '/profile', label: 'Mi perfil', isActive: (p) => p === '/profile' },
 ];
 
+/** Tabs en /launcher/yubiq/* (Fiori): Inicio + herramienta actual (sin Dashboard de Activaciones) */
+const fioriTabsYubiq: {
+  href: string;
+  label: string;
+  icon?: IconName;
+  iconOnly?: boolean;
+  isActive: (pathname: string | null) => boolean;
+}[] = [
+  fioriTabHome,
+  {
+    href: '/launcher/yubiq/approve-seal-filler',
+    label: 'Yubiq Approve & Seal Filler',
+    isActive: (p) => p != null && p.startsWith('/launcher/yubiq/approve-seal-filler'),
+  },
+];
+
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
   const n = (name ?? '').trim();
   const l = (lastName ?? '').trim();
@@ -79,6 +95,10 @@ function getPageHeader(pathname: string | null): { title: string } {
   if (pathname === '/launcher') return { title: 'Inicio' };
   if (pathname === '/profile') return { title: 'Mi cuenta' };
   if (pathname === '/launcher/activations/dashboard') return { title: 'Activaciones' };
+  if (pathname.startsWith('/launcher/yubiq/approve-seal-filler')) {
+    return { title: 'Yubiq Tools' };
+  }
+  if (pathname.startsWith('/launcher/yubiq')) return { title: 'Yubiq' };
   if (pathname.startsWith('/launcher/activations/activate')) return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/configuration')) return { title: 'Configuración' };
   if (pathname.startsWith('/admin')) return { title: 'Administración' };
@@ -101,7 +121,9 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
       ? fioriTabsProfile
       : pathname?.startsWith('/admin')
         ? fioriTabsAdmin
-        : fioriTabsActivations;
+        : pathname?.startsWith('/launcher/yubiq')
+          ? fioriTabsYubiq
+          : fioriTabsActivations;
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
 
@@ -213,15 +235,18 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                     <h1 className={styles.pageHeaderTitle}>{pageHeader.title}</h1>
                   </div>
                 </div>
-                <nav className={styles.tabsNav} aria-label="Navegación principal">
-                  <div className={styles.tabsNavInner}>
-                    {fioriTabs
+                <div className={styles.tabsNavWrap}>
+                  <nav className={styles.tabsNav} aria-label="Navegación principal">
+                    <div className={styles.tabsNavInner}>
+                      {fioriTabs
                       .filter((tab) =>
                         pathname === '/profile'
                           ? true
                           : pathname?.startsWith('/admin')
                             ? tab.href === '/launcher' || user?.role === 'ADMIN'
-                            : tab.href !== '/launcher/activations/configuration' || !!user
+                            : pathname?.startsWith('/launcher/yubiq')
+                              ? true
+                              : tab.href !== '/launcher/activations/configuration' || !!user
                       )
                       .map((tab) => {
                         const { href, label, icon, iconOnly, isActive } = tab;
@@ -240,8 +265,9 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                           </Link>
                         );
                       })}
-                  </div>
-                </nav>
+                    </div>
+                  </nav>
+                </div>
               </>
             )}
             <div className={styles.mainFooterWrap}>

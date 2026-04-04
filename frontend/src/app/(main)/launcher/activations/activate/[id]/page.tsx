@@ -12,6 +12,7 @@ import { formatActivationCode } from '@/lib/activation-code';
 import { displayActivationErrorMessage } from '@/lib/activation-error-message';
 import { parseAttachmentNames, parseAttachmentUrls } from '@/lib/activation-attachment-urls';
 import { shouldWarnScannedUrlsOnly } from '@/lib/activation-attachment-warning';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from './detail.module.css';
 
 function isHtmlBody(body: string | null | undefined): boolean {
@@ -183,18 +184,14 @@ export default function ActivationDetailPage() {
 
   return (
     <main className={styles.page}>
-      <Link href="/launcher/activations/activate" className={styles.back}>
-        ← Mis activaciones
-      </Link>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>{activation.projectName}</h1>
-          <p className={styles.activationMeta}>
-            {formatActivationCode(activation.activationNumber)} · n.º {activation.activationNumber}
-          </p>
-        </div>
-        <StatusTag status={activation.status} />
-      </div>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/activate">← Mis activaciones</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title={activation.projectName}
+        subtitle={`${formatActivationCode(activation.activationNumber)} · n.º ${activation.activationNumber}`}
+        actions={<StatusTag status={activation.status} />}
+      />
 
       {section(
         'Proyecto y oferta',

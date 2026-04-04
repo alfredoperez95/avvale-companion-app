@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from '../configuration.module.css';
 
 export default function EmailSignaturePage() {
@@ -115,13 +115,17 @@ export default function EmailSignaturePage() {
 
   return (
     <div className={styles.page}>
-      <Link href="/launcher/activations/configuration" className={styles.back}>← Configuración</Link>
-      <h1 className={styles.h1}>Firma</h1>
-      <p className={styles.sectionDesc}>
-        {isAdmin
-          ? 'Tu firma personal se envía con tus activaciones. Más abajo puedes editar la plantilla HTML que reciben los usuarios nuevos al crear su firma por primera vez.'
-          : 'Firma HTML que se envía en el webhook a Make junto con el cuerpo del correo. Una firma por usuario.'}
-      </p>
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/configuration">← Configuración</PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title="Firma"
+        subtitle={
+          isAdmin
+            ? 'Tu firma personal se envía con tus activaciones. Más abajo puedes editar la plantilla HTML que reciben los usuarios nuevos al crear su firma por primera vez.'
+            : 'Firma HTML que se envía en el webhook a Make junto con el cuerpo del correo. Una firma por usuario.'
+        }
+      />
       {error && <p className={styles.error}>{error}</p>}
 
       <section className={styles.templateCard} aria-labelledby="signature-form-heading">

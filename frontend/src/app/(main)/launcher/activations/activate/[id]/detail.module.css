@@ -3,17 +3,6 @@
   margin: 0 auto;
 }
 
-.back {
-  display: block;
-  margin-bottom: var(--fiori-space-4);
-  color: var(--fiori-link);
-  font-size: 0.875rem;
-}
-
-.back:hover {
-  text-decoration: underline;
-}
-
 .loading,
 .error {
   padding: var(--fiori-space-8);
@@ -22,29 +11,6 @@
 
 .error {
   color: var(--fiori-error);
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--fiori-space-3);
-  margin-bottom: var(--fiori-space-6);
-}
-
-.title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--fiori-text);
-}
-
-.activationMeta {
-  margin: 0.25rem 0 0;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fiori-text-secondary);
-  font-variant-numeric: tabular-nums;
 }
 
 .section {

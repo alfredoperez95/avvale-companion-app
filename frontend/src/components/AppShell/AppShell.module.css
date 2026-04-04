@@ -49,6 +49,23 @@
   object-fit: contain;
 }
 
+/* Móvil: cabecera ~20% más alta (táctil / aire) */
+@media (max-width: 47.99rem) {
+  .header {
+    height: calc(var(--fiori-shell-height) * 1.2);
+  }
+
+  .body {
+    padding-top: calc(var(--fiori-shell-height) * 1.2);
+  }
+
+  /* Logo ~20 % más pequeño en móvil */
+  .logoImage {
+    height: calc(0.8 * (var(--fiori-shell-height) * 1.2 - var(--fiori-space-3) * 2));
+    max-height: calc(2.7rem * 0.8);
+  }
+}
+
 .appName {
   font-weight: 600;
   font-size: 1rem;
@@ -400,25 +417,80 @@
   margin: 0;
 }
 
+/* Contenedor sin scroll: ancla los degradados para que no se muevan con el scroll del nav */
+.tabsNavWrap {
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.tabsNavWrap::before,
+.tabsNavWrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  /* No llegar al borde inferior: no tapar la barra de scroll horizontal */
+  bottom: max(0.75rem, 10px);
+  width: 1.875rem; /* +50% respecto a 1.25rem */
+  z-index: 2;
+  pointer-events: none;
+}
+
+.tabsNavWrap::before {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    #fff 0%,
+    #fff 38%,
+    rgba(255, 255, 255, 0.72) 68%,
+    rgba(255, 255, 255, 0.2) 90%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.tabsNavWrap::after {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    #fff 0%,
+    #fff 38%,
+    rgba(255, 255, 255, 0.72) 68%,
+    rgba(255, 255, 255, 0.2) 90%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
 /* Fiori: barra de tabs horizontal; sticky debajo del header al hacer scroll */
 .tabsNav {
   background: #fff;
   border-bottom: 1px solid var(--fiori-border-light);
-  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
 }
 
 .tabsNavInner {
   display: flex;
+  flex-wrap: nowrap;
   align-items: stretch;
   gap: var(--fiori-space-4);
-  width: 100%;
-  max-width: 105em;
-  margin: 0 auto;
+  width: max-content;
+  min-width: 100%;
   padding: 0 var(--fiori-space-4);
+  box-sizing: border-box;
+}
+
+@media (min-width: 64rem) {
+  .tabsNavInner {
+    max-width: 105em;
+    margin-inline: auto;
+  }
 }
 
 /* top: 0 respecto al content-box del .body (que ya tiene padding-top = header); así los tabs quedan justo bajo el header */
-:global([data-theme="fiori"]) .tabsNav {
+:global([data-theme="fiori"]) .tabsNavWrap {
   position: sticky;
   top: 0;
   z-index: 10;
@@ -429,6 +501,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
+  flex-shrink: 0;
   padding: var(--fiori-space-3) var(--fiori-space-2) 0.075rem var(--fiori-space-2);
   font-size: 0.945rem;
   font-weight: 700;
@@ -436,6 +509,7 @@
   text-decoration: none;
   border-bottom: 2px solid transparent;
   margin-bottom: 0;
+  white-space: nowrap;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 

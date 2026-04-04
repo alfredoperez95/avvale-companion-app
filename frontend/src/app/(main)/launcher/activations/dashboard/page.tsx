@@ -13,6 +13,7 @@ import { formatActivationCode } from '@/lib/activation-code';
 import { offerCodeShortLabel } from '@/lib/offer-code-display';
 import { OfferCodeColumnHeader } from '@/components/OfferCodeTableCell/OfferCodeColumnHeader';
 import { OfferCodeTableCell } from '@/components/OfferCodeTableCell/OfferCodeTableCell';
+import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
 import styles from './dashboard.module.css';
 
 export default function DashboardPage() {
@@ -179,9 +180,13 @@ export default function DashboardPage() {
   return (
     <>
       <div className={styles.page}>
-        <header className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Dashboard</h1>
-        </header>
+        <PageBreadcrumb>
+          <PageBackLink href="/launcher">
+            <ChevronBackIcon />
+            App Launcher
+          </PageBackLink>
+        </PageBreadcrumb>
+        <PageHero title="Dashboard" subtitle="Resumen y listado de activaciones." />
 
         <section className={styles.kpiSection} aria-label="Resumen">
           <KpiCard title="Activaciones" value={kpis.total} icon="total" loading={loading} />

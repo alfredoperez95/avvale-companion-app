@@ -14,6 +14,7 @@ import { formatActivationCode } from '@/lib/activation-code';
 import { offerCodeShortLabel } from '@/lib/offer-code-display';
 import { OfferCodeColumnHeader } from '@/components/OfferCodeTableCell/OfferCodeColumnHeader';
 import { OfferCodeTableCell } from '@/components/OfferCodeTableCell/OfferCodeTableCell';
+import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from './activations.module.css';
 
 export default function ActivationsPage() {
@@ -256,11 +257,14 @@ export default function ActivationsPage() {
   return (
     <>
       <div className={styles.page}>
-        <Link href="/launcher" className={styles.back}>← Inicio</Link>
-        <header className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Mis activaciones</h1>
-          <Link href="/launcher/activations/activate/new" className={styles.btnNew}>Nueva activación</Link>
-        </header>
+        <PageBreadcrumb>
+          <PageBackLink href="/launcher/activations/dashboard">← Dashboard</PageBackLink>
+        </PageBreadcrumb>
+        <PageHero
+          title="Mis activaciones"
+          subtitle="Listado, filtros y seguimiento de tus solicitudes."
+          actions={<Link href="/launcher/activations/activate/new" className={styles.btnNew}>Nueva activación</Link>}
+        />
         <FilterBar
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
@@ -276,7 +280,7 @@ export default function ActivationsPage() {
             columns={columns}
             data={filtered}
             loading={tableLoading}
-            emptyMessage="No hay activaciones. Crea una desde Inicio o Nueva activación."
+            emptyMessage="No hay activaciones. Crea una desde el Dashboard o Nueva activación."
             getRowId={(row) => row.id}
             onRowClick={(row) => setSelectedId(row.id)}
           />
