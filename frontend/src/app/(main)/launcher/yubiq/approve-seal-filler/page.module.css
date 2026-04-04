@@ -342,6 +342,55 @@
   cursor: not-allowed;
 }
 
+.analysisMiddle {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--fiori-space-3) 0;
+}
+
+.analysisLoading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--fiori-space-3);
+  text-align: center;
+}
+
+.analysisSpinner {
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid color-mix(in srgb, var(--fiori-shell-bg) 22%, transparent);
+  border-top-color: var(--fiori-shell-bg);
+  border-radius: 50%;
+  animation: yubiqApproveSealSpin 0.75s linear infinite;
+}
+
+.analysisLoadingText {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  line-height: 1.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analysisSpinner {
+    animation: none;
+    border-color: color-mix(in srgb, var(--fiori-shell-bg) 45%, transparent);
+    border-top-color: var(--fiori-shell-bg);
+  }
+}
+
+@keyframes yubiqApproveSealSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .promptPreviewFooter {
   display: flex;
   flex-direction: column;

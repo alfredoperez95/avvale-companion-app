@@ -21,6 +21,17 @@ function ChevronBackIcon() {
   );
 }
 
+function analysisBusyLabel(phase: 'uploading' | 'extracting' | 'analyzing'): string {
+  switch (phase) {
+    case 'uploading':
+      return 'Subiendo PDF…';
+    case 'extracting':
+      return 'Extrayendo texto…';
+    default:
+      return 'Analizando con Claude…';
+  }
+}
+
 function StatusBadge({
   credLoading,
   configured,
@@ -96,6 +107,8 @@ export default function YubiqApproveSealFillerPage() {
   const resultsSectionRef = useRef<HTMLElement | null>(null);
 
   const canAnalyze = Boolean(file) && Boolean(credentialStatus?.configured) && phase !== 'uploading' && phase !== 'extracting' && phase !== 'analyzing';
+
+  const isAnalysisBusy = phase === 'uploading' || phase === 'extracting' || phase === 'analyzing';
 
   const modelLabel = useMemo(() => {
     if (model === 'opus') return 'Opus';
@@ -288,7 +301,11 @@ export default function YubiqApproveSealFillerPage() {
               <div className={styles.actionsToolbar}>
                 <div className={styles.actionsMain}>
                   <button type="button" className={styles.btnPrimary} onClick={runAnalyze} disabled={!canAnalyze}>
-                    {phase === 'analyzing' ? 'Analizando…' : 'Analizar PDF'}
+                    {phase === 'uploading'
+                      ? 'Subiendo…'
+                      : phase === 'extracting' || phase === 'analyzing'
+                        ? 'Analizando…'
+                        : 'Analizar PDF'}
                   </button>
                   <button
                     type="button"
@@ -334,6 +351,17 @@ export default function YubiqApproveSealFillerPage() {
             )}
 
             {error && <p className={styles.error}>{error}</p>}
+
+            <div className={styles.analysisMiddle}>
+              {isAnalysisBusy && (
+                <div className={styles.analysisLoading} role="status" aria-live="polite">
+                  <span className={styles.analysisSpinner} aria-hidden />
+                  <span className={styles.analysisLoadingText}>
+                    {analysisBusyLabel(phase as 'uploading' | 'extracting' | 'analyzing')}
+                  </span>
+                </div>
+              )}
+            </div>
 
             <div className={styles.promptPreviewFooter}>
               <p className={styles.promptPreviewLead}>
