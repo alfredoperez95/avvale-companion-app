@@ -1,16 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { resolveApiUrl } from '@/lib/api';
 import { getAppearanceFromCookie, setAppearanceCookie } from '@/lib/appearance-cookie';
 import styles from './login.module.css';
 
 type Appearance = 'microsoft' | 'fiori';
-
-const getApiBase = () =>
-  typeof window !== 'undefined'
-    ? (process.env.NODE_ENV === 'development' ? '' : (process.env.NEXT_PUBLIC_API_URL ?? ''))
-    : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,8 +18,6 @@ export default function LoginPage() {
   const [brandingReady, setBrandingReady] = useState(false);
   const [appearance, setAppearance] = useState<Appearance>(() => getAppearanceFromCookie() ?? 'microsoft');
 
-  const apiBase = useMemo(() => getApiBase(), []);
-
   useEffect(() => {
     let mounted = true;
     const applyAppearance = (value: Appearance) => {
@@ -33,9 +27,9 @@ export default function LoginPage() {
       }
     };
 
-    const brandingUrl = `${apiBase}/api/auth/branding`;
+    const brandingUrl = resolveApiUrl('/api/auth/branding');
     if (process.env.NODE_ENV === 'development') {
-      console.info('[login] Branding URL:', brandingUrl, 'apiBase=', apiBase || '(same-origin)');
+      console.info('[login] Branding URL:', brandingUrl);
     }
     fetch(brandingUrl)
       .then(async (res) => {
@@ -60,16 +54,16 @@ export default function LoginPage() {
     return () => {
       mounted = false;
     };
-  }, [apiBase]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const loginUrl = `${apiBase}/api/auth/login`;
+      const loginUrl = resolveApiUrl('/api/auth/login');
       if (process.env.NODE_ENV === 'development') {
-        console.info('[login] Login URL:', loginUrl, 'apiBase=', apiBase || '(same-origin)');
+        console.info('[login] Login URL:', loginUrl);
       }
       const res = await fetch(loginUrl, {
         method: 'POST',

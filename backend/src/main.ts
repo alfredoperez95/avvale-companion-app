@@ -1,33 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { RequestMethod, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import type { Request, Response, NextFunction } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  // #region agent log
-  app.use((req: Request, _res: Response, next: NextFunction) => {
-    if (req.url?.includes('ai-credentials')) {
-      fetch('http://127.0.0.1:7401/ingest/4ab151b9-cbda-4400-a5db-364c7cddddff', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '86e2d8' },
-        body: JSON.stringify({
-          sessionId: '86e2d8',
-          location: 'main.ts:middleware',
-          message: 'incoming ai-credentials',
-          data: { method: req.method, url: req.url, path: req.path },
-          timestamp: Date.now(),
-          hypothesisId: 'H2',
-          runId: 'post-fix',
-        }),
-      }).catch(() => {});
-    }
-    next();
-  });
-  // #endregion
-  app.setGlobalPrefix('api', {
-    exclude: [{ path: 'health', method: RequestMethod.GET }],
-  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

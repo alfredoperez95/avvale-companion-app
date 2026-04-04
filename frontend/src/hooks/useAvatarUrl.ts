@@ -1,12 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getToken } from '@/lib/api';
-
-const getBaseUrl = () =>
-  typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_URL ?? '')
-    : process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+import { getToken, resolveApiUrl } from '@/lib/api';
 
 /**
  * Fetches the authenticated user's avatar and returns an object URL (requires Authorization).
@@ -26,7 +21,7 @@ export function useAvatarUrl(avatarPath: string | null | undefined): string | nu
       return;
     }
     let revoked = false;
-    fetch(`${getBaseUrl()}/api/auth/me/avatar`, {
+    fetch(resolveApiUrl('/api/auth/me/avatar'), {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.blob() : null))

@@ -2,7 +2,7 @@
 
 Aplicación web para **gestionar activaciones por correo**: borradores, destinatarios, áreas, plantillas, adjuntos, firma global y **envío orquestado vía Make.com** (webhook + callback). Incluye **App Launcher** (varias apps en un mismo front), tema **Microsoft-like** o **SAP Fiori-like**, y zona de **perfil / cuenta**.
 
-**Stack:** monorepo con **NestJS 10** (API REST, prefijo `/api`), **Prisma 6** + **MySQL/MariaDB**, **Next.js 15** (App Router, React 19), cola **BullMQ** sobre **Redis**, integración **Make** (HTTP webhook + callback opcional).
+**Stack:** monorepo con **NestJS 10** (API REST; rutas en el servidor **sin** prefijo `/api`, p. ej. `/auth/login`), **Prisma 6** + **MySQL/MariaDB**, **Next.js 15** (App Router, React 19), cola **BullMQ** sobre **Redis**, integración **Make** (HTTP webhook + callback opcional). El front usa **`/api/...`** en mismo origen (rewrite de Next) o **`resolveApiUrl()`** cuando `NEXT_PUBLIC_API_URL` apunta al backend.
 
 ---
 
@@ -30,16 +30,16 @@ Aplicación web para **gestionar activaciones por correo**: borradores, destinat
 
 | Área | Descripción |
 |------|-------------|
-| **Auth** | JWT (`POST /api/auth/register`, `login`, `GET/PATCH /api/auth/me`), avatar (`POST/DELETE …/me/avatar`), apariencia usuario. |
+| **Auth** | JWT (`POST /auth/register`, `login`, `GET/PATCH /auth/me`), avatar (`POST/DELETE …/me/avatar`), apariencia usuario. |
 | **Activaciones** | CRUD filtrado por usuario; numeración `activation_number`; envío asíncrono `POST …/send` (cola). |
 | **Cola BullMQ** | Worker procesa envío a Make; reintentos configurables (`ACTIVATION_SEND_QUEUE_*`). |
-| **Make** | `MakeService.triggerWebhook` (POST saliente a `MAKE_WEBHOOK_URL`); `POST /api/webhooks/make/callback` para cierre `SENT` / `FAILED`. |
+| **Make** | `MakeService.triggerWebhook` (POST saliente a `MAKE_WEBHOOK_URL`); `POST /webhooks/make/callback` para cierre `SENT` / `FAILED`. |
 | **Áreas / subáreas** | Catálogo asociado a activaciones. |
 | **Contactos / billing CC** | Contactos para copias en facturación. |
 | **Plantillas email / firma** | Plantillas y firma HTML global (admin/configuración según rol). |
 | **User config** | Bootstrap de preferencias. |
 | **Users** | Gestión de usuarios (rutas protegidas **ADMIN**). |
-| **Health** | `GET /api/health` — comprueba base de datos. |
+| **Health** | `GET /health` — healthcheck Docker/Coolify. |
 
 **Roles:** `USER` | `ADMIN`. El registro público crea usuarios `USER`; el rol **ADMIN** se asigna en base de datos (u operaciones internas), según vuestra política.
 
@@ -186,7 +186,7 @@ Abre `http://localhost:3000` (o el puerto que indique Next).
 ### 4. Primer usuario
 
 ```bash
-curl -X POST http://localhost:4000/api/auth/register \
+curl -X POST http://localhost:4000/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"tu@email.com","password":"minimo6","name":"Tu Nombre"}'
 ```
@@ -194,8 +194,8 @@ curl -X POST http://localhost:4000/api/auth/register \
 ### 5. Comprobación rápida
 
 ```bash
-curl -s http://localhost:4000/api/health
-# {"status":"ok","database":"connected"}
+curl -s http://localhost:4000/health
+# {"status":"ok","database":"connected"} o similar según controlador Health
 ```
 
 Más pasos: **[docs/VERIFICACION.md](docs/VERIFICACION.md)**.
@@ -252,6 +252,8 @@ Ajusta `next.config.ts` si usáis rewrites al mismo host.
 
 Patrón habitual: servicio MariaDB, servicio **Redis**, build del **backend** desde `backend/Dockerfile`, build del **frontend** desde `frontend/Dockerfile` con la URL pública correcta del API.
 
+Si el despliegue falla con **`P3009`** o migración fallida `20260402090000_user_anthropic_credentials`, sigue **[docs/PRISMA_P3009_COOLIFY.md](docs/PRISMA_P3009_COOLIFY.md)** (resolver estado en MySQL y `prisma migrate resolve`).
+
 ---
 
 ## Producción — comprobaciones rápidas
@@ -298,23 +300,24 @@ Tabla completa de estados y transiciones: **[docs/ACTIVATION_STATE_MACHINE.md](d
 | [docs/MAKE.md](docs/MAKE.md) | Webhook Make, variables, payload v4, callback, adjuntos públicos |
 | [docs/ACTIVATION_STATE_MACHINE.md](docs/ACTIVATION_STATE_MACHINE.md) | Estados, BullMQ, orquestador, watchdog |
 | [docs/VERIFICACION.md](docs/VERIFICACION.md) | Health, auth y comprobaciones manuales |
+| [docs/PRISMA_P3009_COOLIFY.md](docs/PRISMA_P3009_COOLIFY.md) | Error Prisma P3009 / migración fallida en producción (Coolify) |
 
 ---
 
 ## API — resumen
 
-Prefijo global: **`/api`**.
+Rutas tal como las expone **Nest** (sin `/api`). El front llama **`/api/...`** en el mismo dominio o **`resolveApiUrl('/api/…')`** con `NEXT_PUBLIC_API_URL`.
 
-| Método | Ruta | Notas |
-|--------|------|--------|
-| GET | `/api/health` | Estado y conexión BD |
-| POST | `/api/auth/register` | Alta usuario |
-| POST | `/api/auth/login` | Token JWT |
-| GET | `/api/auth/me` | Perfil (Bearer) |
-| PATCH | `/api/auth/me` | Actualizar perfil / apariencia |
-| POST/DELETE | `/api/auth/me/avatar` | Foto de perfil |
-| — | `/api/activations` | Lista, creación, detalle, edición (borrador), envío, adjuntos… (Bearer, filtrado por usuario) |
-| POST | `/api/webhooks/make/callback` | Cuerpo JSON con `secret` alineado a `MAKE_CALLBACK_SECRET` |
+| Método | Ruta (Nest) | Notas |
+|--------|-------------|-------|
+| GET | `/health` | Probes Docker/Coolify |
+| POST | `/auth/register` | Alta usuario |
+| POST | `/auth/login` | Token JWT |
+| GET | `/auth/me` | Perfil (Bearer) |
+| PATCH | `/auth/me` | Actualizar perfil / apariencia |
+| POST/DELETE | `/auth/me/avatar` | Foto de perfil |
+| — | `/activations` | Lista, creación, detalle, edición (borrador), envío, adjuntos… (Bearer, filtrado por usuario) |
+| POST | `/webhooks/make/callback` | Cuerpo JSON con `secret` alineado a `MAKE_CALLBACK_SECRET` |
 
 Las **activaciones** visibles por API están **acotadas al usuario autenticado** salvo rutas de administración explícitas.
 
