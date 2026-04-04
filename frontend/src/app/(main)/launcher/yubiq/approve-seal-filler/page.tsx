@@ -262,7 +262,7 @@ export default function YubiqApproveSealFillerPage() {
               </span>
               <div>
                 <h2 className={styles.sectionTitle}>Modelo y ejecución</h2>
-                <p className={styles.sectionDesc}>Elige la variante de Claude y ejecuta el análisis. Los datos sensibles usan tu API key guardada en el perfil.</p>
+                <p className={styles.sectionDesc}>Elige la variante de Claude y ejecuta el análisis.</p>
               </div>
             </div>
 
@@ -285,7 +285,7 @@ export default function YubiqApproveSealFillerPage() {
                 </select>
               </div>
 
-              <div className={styles.actionsRow}>
+              <div className={styles.actionsToolbar}>
                 <div className={styles.actionsMain}>
                   <button type="button" className={styles.btnPrimary} onClick={runAnalyze} disabled={!canAnalyze}>
                     {phase === 'analyzing' ? 'Analizando…' : 'Analizar PDF'}
@@ -310,30 +310,18 @@ export default function YubiqApproveSealFillerPage() {
                     Limpiar
                   </button>
                 </div>
-                <button
-                  type="button"
-                  className={styles.profileLink}
-                  onClick={() => router.push('/profile')}
-                  aria-label="Abrir perfil: credenciales API"
-                >
-                  Credenciales API
-                </button>
+                <div className={styles.credentialsCell}>
+                  <button
+                    type="button"
+                    className={styles.profileLink}
+                    onClick={() => router.push('/profile')}
+                    aria-label="Abrir perfil: credenciales API"
+                  >
+                    Credenciales API
+                  </button>
+                </div>
               </div>
             </div>
-
-            <details className={styles.promptPreview}>
-              <summary className={styles.promptSummary}>Vista previa del prompt (Claude)</summary>
-              {promptPreview ? (
-                <pre className={styles.promptPre} tabIndex={0}>
-                  {promptPreview}
-                </pre>
-              ) : (
-                <p className={styles.promptEmpty}>
-                  Tras un análisis correcto, aquí verás el prompt completo enviado al modelo (incluye el texto extraído del
-                  PDF).
-                </p>
-              )}
-            </details>
 
             {!credLoading && !credentialStatus?.configured && (
               <p className={styles.notice}>
@@ -346,6 +334,25 @@ export default function YubiqApproveSealFillerPage() {
             )}
 
             {error && <p className={styles.error}>{error}</p>}
+
+            <div className={styles.promptPreviewFooter}>
+              <p className={styles.promptPreviewLead}>
+                Los datos sensibles usan tu API key guardada en el perfil.
+              </p>
+              <details className={styles.promptPreview}>
+                <summary className={styles.promptSummary}>Vista previa del prompt (Claude)</summary>
+                {promptPreview ? (
+                  <pre className={styles.promptPre} tabIndex={0}>
+                    {promptPreview}
+                  </pre>
+                ) : (
+                  <p className={styles.promptEmpty}>
+                    Tras un análisis correcto, aquí verás el prompt completo enviado al modelo (incluye el texto extraído del
+                    PDF).
+                  </p>
+                )}
+              </details>
+            </div>
           </div>
         </div>
       </section>
