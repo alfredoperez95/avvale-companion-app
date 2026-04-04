@@ -69,6 +69,8 @@ export type YubiqChromePayload = {
   generatedAt: string;
   document: YubiqDocumentBlock;
   prefill: YubiqPrefillBlock;
+  /** Opcional: margen manual entero 0–100 (la app ya redondea y acota antes de enviar). */
+  manualMargin?: number;
   /** Opcional: la extensión Chrome lo conserva para logs/storage; la automatización del formulario ignora estos campos. */
   companionMeta?: YubiqCompanionMeta;
 };
@@ -76,6 +78,8 @@ export type YubiqChromePayload = {
 export type BuildYubiqPayloadInput = {
   extraction: ClaudeOfferExtraction;
   fileName: string;
+  /** Texto del usuario; se normaliza a entero 0–100 en `buildYubiqPayload` (`parseManualMarginToNumber`). */
+  manualMargin?: string;
   target?: YubiqTargetId;
   /** Para tests; por defecto `new Date()`. */
   now?: Date;

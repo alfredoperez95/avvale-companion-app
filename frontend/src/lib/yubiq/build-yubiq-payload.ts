@@ -1,3 +1,4 @@
+/** Reglas de negocio (revenue Yubiq): docs/YUBIQ_OFERTA_REGLAS.md */
 import type {
   BuildYubiqPayloadInput,
   BuildYubiqPayloadResult,
@@ -10,6 +11,7 @@ import { buildPrefillTitle } from './build-prefill-title';
 import { debugYubiqPayloadBuild } from './debug-yubiq-payload';
 import { parseAmountAndCurrency } from './normalize-revenue';
 import { normalizeSegment } from './normalize-segment';
+import { parseManualMarginToNumber } from './parse-manual-margin';
 import { validateYubiqPayload } from './validate-yubiq-payload';
 
 /** Fecha local YYYY-MM-DD para `toBeSigned` (no UTC). */
@@ -36,8 +38,37 @@ export function buildYubiqPayload(input: BuildYubiqPayloadInput): BuildYubiqPayl
     /* ya cubierto por segment_unmapped o segment_empty */
   }
 
-  const amountParsed = parseAmountAndCurrency(extraction.importeOferta ?? '');
+  const compromisoNum = extraction.importeTotalConCompromisoNumerico;
+  const useCompromisoTotal =
+    typeof compromisoNum === 'number' && Number.isFinite(compromisoNum) && compromisoNum > 0;
+  const tmNum = extraction.importeRevenueTmSinJornadasNumerico;
+  const useTmSinJornadasRevenue =
+    !useCompromisoTotal &&
+    typeof tmNum === 'number' &&
+    Number.isFinite(tmNum) &&
+    tmNum > 0;
+  const amountParsed = useCompromisoTotal
+    ? {
+        amount: String(Math.round(compromisoNum)),
+        currency: 'EUR',
+        revenue: String(Math.round(compromisoNum)),
+        warnings: [] as string[],
+      }
+    : useTmSinJornadasRevenue
+      ? {
+          amount: String(Math.round(tmNum)),
+          currency: 'EUR',
+          revenue: String(Math.round(tmNum)),
+          warnings: [] as string[],
+        }
+      : parseAmountAndCurrency(extraction.importeOferta ?? '');
   warnings.push(...amountParsed.warnings);
+  if (useCompromisoTotal) {
+    warnings.push('revenue_from_importe_total_compromiso');
+  }
+  if (useTmSinJornadasRevenue) {
+    warnings.push('revenue_from_tm_sin_jornadas_min');
+  }
 
   const prefillTitle = buildPrefillTitle(extraction.titulo ?? '', extraction.nombreCliente ?? '');
 
@@ -62,6 +93,7 @@ export function buildYubiqPayload(input: BuildYubiqPayloadInput): BuildYubiqPayl
     revenue: amountParsed.revenue,
   };
 
+  const marginNum = parseManualMarginToNumber(input.manualMargin);
   const basePayload: YubiqChromePayload = {
     schemaVersion: YUBIQ_PAYLOAD_SCHEMA_VERSION,
     target,
@@ -69,6 +101,7 @@ export function buildYubiqPayload(input: BuildYubiqPayloadInput): BuildYubiqPayl
     generatedAt: now.toISOString(),
     document: documentBlock,
     prefill,
+    ...(marginNum !== undefined ? { manualMargin: marginNum } : {}),
   };
 
   const { isValid, errors: validationErrors } = validateYubiqPayload(basePayload);

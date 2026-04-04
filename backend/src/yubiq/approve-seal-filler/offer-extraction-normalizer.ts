@@ -1,6 +1,102 @@
+/** Reglas de negocio: docs/YUBIQ_OFERTA_REGLAS.md */
 import type { AreaCompania, ClaudeOfferExtraction, ClaudeOfferExtractionInternal, DealType } from './offer-extraction.types';
+import { buildNotaMultiplesOpcionesPrecio } from './nota-multiples-opciones-precio.constant';
+import {
+  IMPORTE_MINIMO_BOLSA_HORAS_TM_EUROS,
+  NOTA_INTERPRETACION_IMPORTE_TM_SIN_JORNADAS,
+} from './nota-interpretacion-importe.constant';
 
 const AREA_VALUES: AreaCompania[] = ['RUN', 'GROW', 'SAIBORG', 'WISE', 'YUBIQ'];
+
+/** Convierte número o texto tipo "2.990" / "390,50" a euros (float). */
+export function parseEuroAmountToNumber(raw: unknown): number | null {
+  if (raw == null) return null;
+  if (typeof raw === 'number') {
+    return Number.isFinite(raw) && raw >= 0 ? raw : null;
+  }
+  let t = String(raw).trim().replace(/€|EUR/gi, '');
+  t = t.replace(/[^\d.,-]/g, '').replace(/\s+/g, '');
+  if (!t || t === '-') return null;
+  const hasComma = t.includes(',');
+  const hasDot = t.includes('.');
+  let normalized = t;
+  if (hasComma && hasDot) {
+    const lastComma = t.lastIndexOf(',');
+    const lastDot = t.lastIndexOf('.');
+    if (lastComma > lastDot) {
+      normalized = t.replace(/\./g, '').replace(',', '.');
+    } else {
+      normalized = t.replace(/,/g, '');
+    }
+  } else if (hasComma && !hasDot) {
+    const parts = t.split(',');
+    if (parts.length === 2 && parts[1].length <= 2) {
+      normalized = `${parts[0].replace(/\./g, '')}.${parts[1]}`;
+    } else {
+      normalized = t.replace(/,/g, '');
+    }
+  } else if (hasDot && !hasComma) {
+    const parts = t.split('.');
+    if (parts.length === 2 && parts[1].length <= 2) {
+      normalized = `${parts[0].replace(/,/g, '')}.${parts[1]}`;
+    } else {
+      normalized = t.replace(/\./g, '');
+    }
+  }
+  const n = Number.parseFloat(normalized);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+function parseOpcionesPrecioEstimado(raw: unknown): number | null {
+  if (raw == null) return null;
+  const n = typeof raw === 'number' ? raw : Number.parseInt(String(raw).trim(), 10);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(Math.round(n), 99);
+}
+
+function parseMesesCompromiso(raw: unknown): number | null {
+  if (raw == null) return null;
+  if (typeof raw === 'number') {
+    return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : null;
+  }
+  const n = Number.parseInt(String(raw).trim(), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function formatEuroEsEnteros(n: number): string {
+  const rounded = Math.round(n);
+  return `${rounded.toLocaleString('es-ES')} €`;
+}
+
+function computeImporteTotalCompromiso(params: {
+  proyecto: number | null;
+  mensual: number | null;
+  meses: number | null;
+  textoCompromiso: string | null;
+}): { total: number; nota: string; texto: string } | null {
+  const { proyecto, mensual, meses, textoCompromiso } = params;
+  if (meses == null || meses <= 0) return null;
+  const p = proyecto ?? 0;
+  const m = mensual ?? 0;
+  if (m <= 0 && p <= 0) return null;
+  if (m > 0 && p <= 0) {
+    const total = m * meses;
+    const ref = textoCompromiso?.trim() ? ` (${textoCompromiso.trim()})` : '';
+    return {
+      total,
+      texto: formatEuroEsEnteros(total),
+      nota: `Total estimado sobre el periodo de compromiso${ref}: ${meses} meses × ${formatEuroEsEnteros(m)}.`,
+    };
+  }
+  if (p > 0 && m <= 0) return null;
+  const total = p + m * meses;
+  const ref = textoCompromiso?.trim() ? ` (${textoCompromiso.trim()})` : '';
+  return {
+    total,
+    texto: formatEuroEsEnteros(total),
+    nota: `Total estimado sobre el periodo de compromiso${ref}: ${formatEuroEsEnteros(p)} (proyecto) + ${meses} meses × ${formatEuroEsEnteros(m)}.`,
+  };
+}
 
 export function normalizeAreaCompania(raw: unknown): AreaCompania | null {
   if (raw == null) return null;
@@ -57,6 +153,36 @@ export function normalizeClaudeExtraction(
 
   const confidenceRaw = parsed.confidence ?? {};
 
+  const soloTmSinJornadas = parsed.soloImporteTarifaTmSinJornadas === true;
+
+  const proyectoN = parseEuroAmountToNumber(parsed.importeProyectoEuros);
+  const mensualN = parseEuroAmountToNumber(parsed.importeMensualEuros);
+  const mesesN = parseMesesCompromiso(parsed.periodoCompromisoMeses);
+  const textoCompromiso = (parsed.periodoCompromisoTexto ?? '').trim() || null;
+
+  const compromiso = computeImporteTotalCompromiso({
+    proyecto: proyectoN,
+    mensual: mensualN,
+    meses: mesesN,
+    textoCompromiso,
+  });
+  if (!compromiso) {
+    if (
+      (proyectoN != null || mensualN != null) &&
+      parsed.periodoCompromisoMeses != null &&
+      mesesN == null
+    ) {
+      warnings.push('periodoCompromisoMeses no interpretable; no se calculó total de compromiso');
+    }
+  }
+
+  const numOpcionesEst = parseOpcionesPrecioEstimado(parsed.numeroOpcionesPrecioEstimado);
+  const multiplesOpciones =
+    parsed.multiplesOpcionesPrecio === true || (numOpcionesEst != null && numOpcionesEst >= 2);
+  if (multiplesOpciones) {
+    warnings.push('multiples_opciones_precio');
+  }
+
   return {
     normalized: {
       titulo: (parsed.titulo ?? '').trim(),
@@ -72,6 +198,27 @@ export function normalizeClaudeExtraction(
         areaCompania: clamp01(confidenceRaw.areaCompania),
         resumen: clamp01(confidenceRaw.resumen),
       },
+      ...(soloTmSinJornadas
+        ? {
+            notaInterpretacionImporte: NOTA_INTERPRETACION_IMPORTE_TM_SIN_JORNADAS,
+            importeRevenueTmSinJornadasNumerico: IMPORTE_MINIMO_BOLSA_HORAS_TM_EUROS,
+          }
+        : {}),
+      ...(multiplesOpciones
+        ? {
+            notaMultiplesOpcionesPrecio: buildNotaMultiplesOpcionesPrecio(numOpcionesEst),
+            ...(numOpcionesEst != null && numOpcionesEst >= 2
+              ? { numeroOpcionesPrecioEstimado: numOpcionesEst }
+              : {}),
+          }
+        : {}),
+      ...(compromiso
+        ? {
+            importeTotalConCompromisoNumerico: Math.round(compromiso.total),
+            importeTotalConCompromisoTexto: compromiso.texto,
+            notaImporteCompromiso: compromiso.nota,
+          }
+        : {}),
       dealType: normalizeDealType((parsed as any).dealType),
       areaAvvale: (parsed as any).areaAvvale ?? null,
     },

@@ -104,6 +104,8 @@ export default function YubiqApproveSealFillerPage() {
   const [promptPreview, setPromptPreview] = useState('');
   const [yubiqBridge, setYubiqBridge] = useState<'idle' | 'pending' | 'success' | 'error' | 'no_extension'>('idle');
   const [yubiqBridgeMessage, setYubiqBridgeMessage] = useState('');
+  const [yubiqMarginModal, setYubiqMarginModal] = useState<'closed' | 'ask' | 'input'>('closed');
+  const [yubiqManualMarginInput, setYubiqManualMarginInput] = useState('');
   const resultsSectionRef = useRef<HTMLElement | null>(null);
 
   const canAnalyze = Boolean(file) && Boolean(credentialStatus?.configured) && phase !== 'uploading' && phase !== 'extracting' && phase !== 'analyzing';
@@ -128,6 +130,15 @@ export default function YubiqApproveSealFillerPage() {
       .then((data) => setCredentialStatus(data))
       .finally(() => setCredLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (yubiqMarginModal === 'closed') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setYubiqMarginModal('closed');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [yubiqMarginModal]);
 
   useEffect(() => {
     if (phase !== 'done') return;
@@ -190,14 +201,16 @@ export default function YubiqApproveSealFillerPage() {
     }
   };
 
-  const sendToYubiq = async () => {
+  const sendToYubiq = async (manualMargin?: string) => {
     if (!result) return;
+    setYubiqMarginModal('closed');
     setYubiqBridge('pending');
     setYubiqBridgeMessage('');
     try {
       const { payload } = buildYubiqPayload({
         extraction: result,
         fileName: lastFileName || file?.name || 'document.pdf',
+        ...(manualMargin !== undefined ? { manualMargin } : {}),
       });
       const detail = await dispatchYubiqToExtensionAndWait(payload, { timeoutMs: 8000 });
       if (detail.ok) {
@@ -320,6 +333,8 @@ export default function YubiqApproveSealFillerPage() {
                       setError('');
                       setYubiqBridge('idle');
                       setYubiqBridgeMessage('');
+                      setYubiqMarginModal('closed');
+                      setYubiqManualMarginInput('');
                       setPhase('idle');
                     }}
                     disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
@@ -429,7 +444,10 @@ export default function YubiqApproveSealFillerPage() {
               className={styles.btnSendYubiq}
               data-avvale-action="send-yubiq"
               disabled={!result || yubiqBridge === 'pending'}
-              onClick={() => void sendToYubiq()}
+              onClick={() => {
+                setYubiqManualMarginInput('');
+                setYubiqMarginModal('ask');
+              }}
             >
               {yubiqBridge === 'pending' ? 'Enviando…' : 'Enviar a Yubiq'}
             </button>
@@ -450,6 +468,98 @@ export default function YubiqApproveSealFillerPage() {
           </div>
         </article>
       </section>
+
+      {yubiqMarginModal !== 'closed' && (
+        <div
+          className={styles.marginModalBackdrop}
+          role="presentation"
+          onClick={() => yubiqBridge !== 'pending' && setYubiqMarginModal('closed')}
+        >
+          <div
+            className={styles.marginModalCard}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={
+              yubiqMarginModal === 'ask' ? 'yubiq-margin-ask-title' : 'yubiq-margin-input-title'
+            }
+            onClick={(e) => e.stopPropagation()}
+          >
+            {yubiqMarginModal === 'ask' && (
+              <>
+                <h2 id="yubiq-margin-ask-title" className={styles.marginModalTitle}>
+                  ¿Deseas indicar el margen manualmente?
+                </h2>
+                <p className={styles.marginModalDesc}>
+                  Si eliges <strong>No</strong>, se enviará el JSON a la extensión sin margen manual. Si eliges{' '}
+                  <strong>Sí</strong>, podrás escribir el valor antes de enviar.
+                </p>
+                <div className={styles.marginModalActions}>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    disabled={yubiqBridge === 'pending'}
+                    onClick={() => void sendToYubiq()}
+                  >
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    disabled={yubiqBridge === 'pending'}
+                    onClick={() => setYubiqMarginModal('input')}
+                  >
+                    Sí
+                  </button>
+                </div>
+              </>
+            )}
+            {yubiqMarginModal === 'input' && (
+              <>
+                <h2 id="yubiq-margin-input-title" className={styles.marginModalTitle}>
+                  Margen manual
+                </h2>
+                <p className={styles.marginModalDesc}>
+                  Valor entre <strong>0</strong> y <strong>100</strong> (p. ej. porcentaje). Puedes usar <code>%</code> o
+                  decimales: se <strong>redondean</strong> al entero más cercano y se acotan al rango. En el JSON va como{' '}
+                  <code>manualMargin</code> (entero).
+                </p>
+                <div className={styles.marginModalField}>
+                  <label htmlFor="yubiq-manual-margin" className={styles.fieldLabel}>
+                    Margen
+                  </label>
+                  <input
+                    id="yubiq-manual-margin"
+                    type="text"
+                    className={styles.marginModalInput}
+                    value={yubiqManualMarginInput}
+                    onChange={(e) => setYubiqManualMarginInput(e.target.value)}
+                    placeholder="Ej. 15, 15 % o 35,8"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className={styles.marginModalActions}>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    disabled={yubiqBridge === 'pending'}
+                    onClick={() => setYubiqMarginModal('ask')}
+                  >
+                    Atrás
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    disabled={yubiqBridge === 'pending'}
+                    onClick={() => void sendToYubiq(yubiqManualMarginInput)}
+                  >
+                    Enviar a Yubiq
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

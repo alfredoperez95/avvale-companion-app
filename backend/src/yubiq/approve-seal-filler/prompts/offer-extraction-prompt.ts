@@ -3,6 +3,8 @@
  *
  * Prompt base para extracción de ofertas comerciales (español).
  * Se construye dinámicamente con nombre de archivo, título limpio y texto extraído.
+ *
+ * Reglas de negocio (índice): docs/YUBIQ_OFERTA_REGLAS.md
  */
 
 export function buildOfferExtractionPrompt(params: {
@@ -35,7 +37,14 @@ export function buildOfferExtractionPrompt(params: {
     '    \"importeOferta\": number,',
     '    \"areaCompania\": number,',
     '    \"resumen\": number',
-    '  }',
+    '  },',
+    '  \"soloImporteTarifaTmSinJornadas\": boolean | null,',
+    '  \"importeProyectoEuros\": number | null,',
+    '  \"importeMensualEuros\": number | null,',
+    '  \"periodoCompromisoMeses\": number | null,',
+    '  \"periodoCompromisoTexto\": string | null,',
+    '  \"multiplesOpcionesPrecio\": boolean | null,',
+    '  \"numeroOpcionesPrecioEstimado\": number | null',
     '}',
     '',
     'Contexto adicional:',
@@ -57,10 +66,31 @@ export function buildOfferExtractionPrompt(params: {
     '',
     '3) importeOferta',
     '- Devuelve el importe principal ofertado como texto legible.',
-    '- Prioriza importes asociados a: \"TOTAL\", \"Importe total\", \"Total oferta\", \"Total presupuesto\", \"Coste proyecto\", \"Coste mensual\".',
-    '- Si hay parte única y parte mensual, refleja ambas en una única cadena legible, por ejemplo: \"2.990 € + 340 €/mes\".',
+    '- **Importes netos (tras descuento):** en todos los casos, los valores deben ser los **efectivos para el cliente después de aplicar descuentos** (promociones, % de descuento, oferta, \"precio final\", \"total a pagar\", \"neto\") cuando el documento distinga precio de lista vs precio rebajado. Si solo hay una cifra claramente etiquetada como final o con descuento aplicado, usa esa. Si el descuento no está claro, indícalo en observaciones.',
+    '- Prioriza importes asociados a: \"TOTAL\", \"Importe total\", \"Total oferta\", \"Total presupuesto\", \"Coste proyecto\", \"Coste mensual\" (siempre tomando la cifra **post-descuento** si consta).',
+    '- Si hay parte única (proyecto/implementación, una sola vez) y parte mensual (servicios/mensualidad), refleja ambas en una única cadena legible, por ejemplo: \"2.990 € + 390 €/mes\".',
+    '- Rangos y escenarios (2, 3 o más opciones): si el documento ofrece un rango (p. ej. \"entre X e Y €\", \"desde … hasta …\") o varias alternativas con precios distintos (paquetes, modalidades A/B/C, niveles, escenarios base vs ampliado vs premium), para el total debes tomar SIEMPRE el escenario de MAYOR IMPORTE (el más caro entre todas las alternativas identificables). No asumas que solo hay dos opciones: cuenta todas las que el PDF permita distinguir. Indica en el texto que es el máximo o la opción elegida si ayuda a la lectura, p. ej.: \"hasta 45.000 € (rango 38.000–45.000 €)\" o \"modalidad premium 18.200 €\".',
     '- Si solo aparecen tarifas por hora, indícalo claramente.',
     '- Si no está claro, devuelve null.',
+    '',
+    '3b) importeProyectoEuros, importeMensualEuros, periodoCompromisoMeses, periodoCompromisoTexto',
+    '- Rellena estos campos cuando el documento desglosa coste de proyecto/implementación y/o cuota mensual (servicios, mensualidad, fee recurrente) Y menciona un periodo de compromiso (duración mínima del contrato, permanencia, vigencia comprometida, etc.).',
+    '- **Descuentos:** importeProyectoEuros e importeMensualEuros deben ser siempre **importes netos tras descuento** (igual criterio que en importeOferta).',
+    '- **Proyecto (una sola vez):** importeProyectoEuros es el coste **único** de proyecto/implementación; se paga **una vez**, no es recurrente ni se multiplica por meses ni por años. Si no hay línea de proyecto, null.',
+    '- **Servicios y mensualidad (recurrente en el tiempo):** importeMensualEuros es la cuota **mensual** de servicios/mensualidad/fee recurrente. Esa cuota aplica durante el **periodo de compromiso** indicado en el documento (el tiempo durante el que el cliente se compromete a pagar esa mensualidad).',
+    '- **Compromiso en años (1 a 5 años) y en meses:** si el documento fija el compromiso en años, suele ser **1, 2, 3, 4 o 5 años**; conviértelo a MESES así: 1 año → 12, 2 → 24, 3 → 36, 4 → 48, 5 → 60. Si ya está en meses (p. ej. \"36 meses\"), usa ese número en periodoCompromisoMeses. Si el texto dice años distintos de 1–5, convierte igualmente (años × 12).',
+    '- importeProyectoEuros: número en euros (sin símbolo), neto tras descuento, o null. Si hay rango u opciones de proyecto, usa el importe SUPERIOR (más caro), siempre neto.',
+    '- importeMensualEuros: cuota mensual en euros, neto tras descuento, o null. Si hay rango u opciones de cuota mensual, usa el valor SUPERIOR (más caro), neto.',
+    '- periodoCompromisoMeses: meses totales del compromiso según el documento (ver equivalencias arriba). null si no es inferible.',
+    '- periodoCompromisoTexto: cita breve tal como aparece (ej.: \"compromiso de 3 años\", \"contrato 60 meses\"). null si no hay texto útil.',
+    '- **Total del periodo (lógica de negocio):** el proyecto se suma **una vez**; las mensualidades se multiplican por los meses del compromiso: importeProyectoEuros + importeMensualEuros × periodoCompromisoMeses (la aplicación lo calculará).',
+    '- Si solo hay cuota mensual y compromiso (sin proyecto), importeProyectoEuros null; el total recurrente es importeMensualEuros × periodoCompromisoMeses.',
+    '- Si no hay líneas separables o no hay compromiso, deja importeProyectoEuros, importeMensualEuros, periodoCompromisoMeses y periodoCompromisoTexto en null.',
+    '',
+    '3c) multiplesOpcionesPrecio, numeroOpcionesPrecioEstimado',
+    '- multiplesOpcionesPrecio: devuelve true si el documento describe MÁS DE UN escenario de precio comparable: varias opciones, varias modalidades, tabla con N filas de precios, paquetes distintos, o un rango mínimo–máximo (eso cuenta como al menos dos extremos). false si solo hay un precio único o un único total sin alternativas. null solo si no puedes saberlo.',
+    '- numeroOpcionesPrecioEstimado: número entero ≥ 2 cuando puedas contar cuántas alternativas o líneas de precio contrastables hay (p. ej. 3 modalidades → 3). Si hay rango \"desde X hasta Y\", puedes usar 2 como mínimo. Si no es estimable, null.',
+    '- Coherencia: si multiplesOpcionesPrecio es true, rellena numeroOpcionesPrecioEstimado cuando sea razonable; los importes numéricos (importeOferta, importeProyectoEuros, importeMensualEuros) deben corresponder al escenario de MAYOR importe **neto** (tras descuento) cuando aplique.',
     '',
     '4) resumen',
     '- Debe ser un único párrafo breve.',
@@ -102,13 +132,23 @@ export function buildOfferExtractionPrompt(params: {
     '',
     '8) observaciones',
     '- Explica brevemente ambigüedades, por ejemplo si hay varios importes o si la clasificación del área no es totalmente evidente.',
+    '- Si el descuento o el importe neto no está claro, dilo.',
+    '- Si había rango u opciones de precio (varias), indica en una frase cuántas alternativas reconoces y que los importes reflejan el escenario de mayor importe neto.',
+    '- Si rellenaste periodo de compromiso, menciona de dónde se deduce (cláusula, condiciones, años 1–5 o meses equivalentes).',
+    '',
+    '9) soloImporteTarifaTmSinJornadas',
+    '- Devuelve true SOLO si se cumplen a la vez:',
+    '  a) La oferta es esencialmente T&M (time & materials) o precios por tarifa: aparece precio por hora (€/h, EUR/h) y/o precio por jornada/día (sin un importe total cerrado del proyecto),',
+    '  b) Y NO consta dedicación explícita de jornadas / días / MD / esfuerzo acotado (no hay volumen de jornadas ni alcance temporal cuantificado que fije un total).',
+    '- Devuelve false si hay importe total/precio fijo claro, o si hay jornadas/dedicación explícitas además de tarifas.',
+    '- Si no aplica o no estás seguro, devuelve null.',
     '',
     'SALIDA:',
     '- Devuelve solo el JSON.',
     '',
     'Contenido del documento:',
     extractedText,
-  ].join('\\n');
+  ].join('\n');
 
   return prompt;
 }

@@ -93,6 +93,54 @@ describe('buildYubiqPayload', () => {
     expect(payload.companionMeta?.document).toEqual(payload.document);
   });
 
+  it('incluye manualMargin como entero 0–100 (quita %, redondea y acota)', () => {
+    const { payload } = buildYubiqPayload({
+      extraction: sampleExtraction,
+      fileName: 'x.pdf',
+      now: new Date('2026-01-01T00:00:00.000Z'),
+      manualMargin: '  15 % ',
+    });
+    expect(payload.manualMargin).toBe(15);
+  });
+
+  it('redondea decimales y acota', () => {
+    expect(
+      buildYubiqPayload({
+        extraction: sampleExtraction,
+        fileName: 'x.pdf',
+        now: new Date('2026-01-01T00:00:00.000Z'),
+        manualMargin: '35,8%',
+      }).payload.manualMargin,
+    ).toBe(36);
+    expect(
+      buildYubiqPayload({
+        extraction: sampleExtraction,
+        fileName: 'x.pdf',
+        now: new Date('2026-01-01T00:00:00.000Z'),
+        manualMargin: '120',
+      }).payload.manualMargin,
+    ).toBe(100);
+  });
+
+  it('omite manualMargin si viene vacío, solo espacios o no es un número', () => {
+    expect(
+      buildYubiqPayload({
+        extraction: sampleExtraction,
+        fileName: 'x.pdf',
+        now: new Date('2026-01-01T00:00:00.000Z'),
+        manualMargin: '   ',
+      }).payload.manualMargin,
+    ).toBeUndefined();
+    expect(
+      buildYubiqPayload({
+        extraction: sampleExtraction,
+        fileName: 'x.pdf',
+        now: new Date('2026-01-01T00:00:00.000Z'),
+        manualMargin: 'no-es-numero',
+      }).payload.manualMargin,
+    ).toBeUndefined();
+  });
+
   it('puede omitir companionMeta para JSON mínimo', () => {
     const { payload } = buildYubiqPayload({
       extraction: sampleExtraction,
@@ -129,5 +177,41 @@ describe('buildYubiqPayload', () => {
     });
     expect(warnings).toContain('segment_unmapped');
     expect(payload.prefill.segment).toBe('');
+  });
+
+  it('usa importe total de compromiso para revenue cuando viene calculado', () => {
+    const extraction: ClaudeOfferExtraction = {
+      ...sampleExtraction,
+      importeOferta: '2.990 € + 390 €/mes',
+      importeTotalConCompromisoNumerico: 17030,
+      importeTotalConCompromisoTexto: '17.030 €',
+      notaImporteCompromiso:
+        'Total estimado sobre el periodo de compromiso (3 años): 2.990 € (proyecto) + 36 meses × 390 €.',
+    };
+    const { warnings, payload } = buildYubiqPayload({
+      extraction,
+      fileName: 'oferta.pdf',
+      now: new Date('2026-04-02T12:00:00.000Z'),
+    });
+    expect(payload.document.amount).toBe('17030');
+    expect(payload.prefill.revenue).toBe('17030');
+    expect(warnings).toContain('revenue_from_importe_total_compromiso');
+  });
+
+  it('usa 10.000 € como revenue cuando aplica T&M sin jornadas', () => {
+    const extraction: ClaudeOfferExtraction = {
+      ...sampleExtraction,
+      importeOferta: '85 €/h',
+      notaInterpretacionImporte: 'Nota T&M',
+      importeRevenueTmSinJornadasNumerico: 10_000,
+    };
+    const { warnings, payload } = buildYubiqPayload({
+      extraction,
+      fileName: 'oferta.pdf',
+      now: new Date('2026-04-02T12:00:00.000Z'),
+    });
+    expect(payload.document.amount).toBe('10000');
+    expect(payload.prefill.revenue).toBe('10000');
+    expect(warnings).toContain('revenue_from_tm_sin_jornadas_min');
   });
 });

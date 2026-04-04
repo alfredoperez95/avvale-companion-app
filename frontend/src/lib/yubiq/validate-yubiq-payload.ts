@@ -53,6 +53,13 @@ export function validateYubiqPayload(payload: YubiqChromePayload): ValidateYubiq
     errors.push('invalid_segment');
   }
 
+  if (payload.manualMargin !== undefined) {
+    const m = payload.manualMargin;
+    if (typeof m !== 'number' || !Number.isFinite(m) || !Number.isInteger(m) || m < 0 || m > 100) {
+      errors.push('invalid_manualMargin');
+    }
+  }
+
   return {
     isValid: errors.length === 0,
     errors,

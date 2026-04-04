@@ -17,6 +17,17 @@ export type ClaudeOfferExtraction = {
   resumen: string;
   observaciones: string;
   confidence: ConfidenceMap;
+  /** Nota fija bajo el importe si solo tarifa T&M sin jornadas (viene del backend). */
+  notaInterpretacionImporte?: string;
+  /** 10.000 cuando aplica la nota T&M sin jornadas; usar como revenue en Yubiq. */
+  importeRevenueTmSinJornadasNumerico?: number | null;
+  /** Total € sobre periodo de compromiso (proyecto + mensual × meses), si el backend lo calculó. */
+  importeTotalConCompromisoNumerico?: number | null;
+  importeTotalConCompromisoTexto?: string | null;
+  notaImporteCompromiso?: string | null;
+  /** Aviso: varias opciones/rangos; se usa el escenario de mayor importe. */
+  notaMultiplesOpcionesPrecio?: string;
+  numeroOpcionesPrecioEstimado?: number | null;
   // futuro:
   dealType?: DealType | null;
   areaAvvale?: string | null;
