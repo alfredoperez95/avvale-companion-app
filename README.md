@@ -104,7 +104,7 @@ Origen único: **`.env` en la raíz**; luego [`scripts/prepare-env.sh`](scripts/
 | `DATABASE_URL` | MySQL/MariaDB (`mysql://USER:PASS@HOST:PORT/DB`) |
 | `JWT_SECRET` | Firma JWT (obligatorio; valor fuerte en producción) |
 | `JWT_EXPIRES_IN` | Caducidad del token (ej. `7d`) |
-| `CORS_ORIGIN` | Origen(es) del frontend en producción (separados por coma). Si en producción está vacío, el backend solo permite `localhost:3000` por defecto. |
+| `CORS_ORIGIN` | Origen(es) exactos del front en el navegador (`https://…`), separados por coma. Si queda vacío, las peticiones con cabecera `Origin` fallan por CORS. |
 | `NEXT_PUBLIC_API_URL` | URL pública del API para el navegador (build del front). Vacío en cliente puede implicar mismo origen + rewrites. |
 | `BACKEND_PUBLIC_URL` | Recomendada si difiere: URL base del backend para payloads a Make (adjuntos, callback). Ver [docs/MAKE.md](docs/MAKE.md). |
 | `REDIS_URL` o `REDIS_HOST`/`REDIS_PORT`/… | BullMQ |
@@ -260,12 +260,14 @@ Si el despliegue falla con **`P3009`** o migración fallida `20260402090000_user
 
 ## Producción — comprobaciones rápidas
 
-1. **`CORS_ORIGIN`**: debe listar el/los dominios reales del front (no solo localhost).
+1. **`CORS_ORIGIN`**: debe listar el/los orígenes reales del front (p. ej. `https://www.avvalecompanion.app` y el apex si aplica), no solo localhost.
 2. **`JWT_SECRET`**: largo y aleatorio.
 3. **Redis** estable y alcanzable desde el backend (sin Redis no hay envíos por cola fiables).
-4. **URLs públicas HTTPS**: `NEXT_PUBLIC_API_URL` / `BACKEND_PUBLIC_URL` y callback Make (`https://…/api/webhooks/make/callback`).
+4. **URLs públicas HTTPS**: `NEXT_PUBLIC_API_URL` / `BACKEND_PUBLIC_URL` y callback Make (`https://www.avvalecompanion.app/api/webhooks/make/callback` o el host que uséis).
 5. **Volumen persistente** para `ATTACHMENTS_DIR` si usáis adjuntos.
 6. **`docker build`** del frontend con el `NEXT_PUBLIC_API_URL` definitivo (o mismo origen + proxy).
+
+Lista detallada (variables, Make, DNS): **[docs/VERIFICACION.md](docs/VERIFICACION.md)** (sección 7).
 
 El tráfico **entrante** en tu dominio (p. ej. ngrok) muestra callbacks; los fallos de **“Reintentando”** suelen ser del **POST saliente** a `MAKE_WEBHOOK_URL` (no aparecen en el túnel de callbacks). Aumentar `MAKE_WEBHOOK_TIMEOUT_MS` si Make tarda en responder 200.
 
@@ -301,7 +303,7 @@ Tabla completa de estados y transiciones: **[docs/ACTIVATION_STATE_MACHINE.md](d
 |---------|-----------|
 | [docs/MAKE.md](docs/MAKE.md) | Webhook Make, variables, payload v4, callback, adjuntos públicos |
 | [docs/ACTIVATION_STATE_MACHINE.md](docs/ACTIVATION_STATE_MACHINE.md) | Estados, BullMQ, orquestador, watchdog |
-| [docs/VERIFICACION.md](docs/VERIFICACION.md) | Health, auth y comprobaciones manuales |
+| [docs/VERIFICACION.md](docs/VERIFICACION.md) | Health, auth, comprobaciones locales y checklist producción (dominio HTTPS) |
 | [docs/PRISMA_P3009_COOLIFY.md](docs/PRISMA_P3009_COOLIFY.md) | Error Prisma P3009 / migración fallida en producción (Coolify) |
 
 ---

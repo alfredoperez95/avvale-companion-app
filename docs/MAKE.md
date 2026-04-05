@@ -82,7 +82,7 @@ Tras enviar el correo (o si falla), Make puede llamar a:
 
 - **URL:** `POST {BASE_URL}/api/webhooks/make/callback`  
   Ejemplo local: `http://localhost:4000/api/webhooks/make/callback`  
-  Ejemplo producción: `https://tu-api.example.com/api/webhooks/make/callback`
+  Ejemplo producción (mismo host Next + API detrás de `/api`): `https://www.avvalecompanion.app/api/webhooks/make/callback`
 
 - **Cuerpo JSON:**
 

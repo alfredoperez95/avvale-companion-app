@@ -521,6 +521,32 @@ export default function EditActivationPage() {
     }
   };
 
+  const scannedUrlItems = form.attachmentUrlsText
+    .split(/[\n,]/)
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .map((url, i) => ({ url, name: (form.attachmentNames[i] ?? '').trim() || url }));
+
+  const removeScannedUrl = (index: number) => {
+    const next = scannedUrlItems.filter((_, j) => j !== index);
+    setForm((prev) => ({
+      ...prev,
+      attachmentUrlsText: next.map((a) => a.url).join('\n'),
+      attachmentNames: next.map((a) => a.name),
+    }));
+  };
+
+  const addScannedUrl = (url: string, name: string) => {
+    setForm((prev) => ({
+      ...prev,
+      attachmentUrlsText: prev.attachmentUrlsText ? `${prev.attachmentUrlsText}\n${url}` : url,
+      attachmentNames: [...(prev.attachmentNames ?? []), name || url],
+    }));
+    setNewUrl('');
+    setNewUrlName('');
+    setAddingUrl(false);
+  };
+
   if (fetchLoading) return null;
   if (loadError) return <p className={`${styles.error} ${styles.errorStandalone}`}>{loadError}</p>;
 
@@ -533,335 +559,573 @@ export default function EditActivationPage() {
         title="Editar activación"
         subtitle="Modifica los datos y guarda los cambios; el detalle reflejará la versión actualizada."
       />
-      <form onSubmit={handleSubmit} className={styles.form}>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="projectName">Nombre del proyecto *</label>
-          <input id="projectName" name="projectName" type="text" value={form.projectName} onChange={handleChange} onBlur={handleProjectNameBlur} required className={styles.input} placeholder="Implementación S/4HANA Public" />
-        </div>
-        <div className={styles.formGroupRow2}>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="projectJpCustomSearchEdit">JP del Proyecto</label>
-          <input
-            id="projectJpCustomSearchEdit"
-            list={projectJpSearch.trim().length >= 3 ? 'project-jp-contacts-edit' : undefined}
-            value={projectJpSearch}
-            onChange={(e) => {
-              const value = e.target.value;
-              setProjectJpSearch(value);
-              const selectedContact = ccContacts.find((c) => `${c.name} (${c.email})` === value);
-              setProjectJpContactId(selectedContact?.id ?? '');
-              setProjectManagerEmailWarning('');
-            }}
-            className={styles.input}
-            placeholder="Busca y selecciona un contacto (vacío = automático)"
-          />
-          <datalist id="project-jp-contacts-edit">
-            {ccContacts
-              .filter((c) =>
-                projectJpSearch.trim().length >= 3
-                  ? `${c.name} ${c.email}`.toLowerCase().includes(projectJpSearch.trim().toLowerCase())
-                  : false,
-              )
-              .map((c) => (
-              <option key={c.id} value={`${c.name} (${c.email})`} />
-              ))}
-          </datalist>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            {projectJpPreview.projectJpEmail ? (
-              <strong>
-                {`Seleccionado: ${projectJpPreview.projectJpName} (${projectJpPreview.projectJpEmail}) [${projectJpPreview.projectJpSource ?? ''}]`}
-              </strong>
-            ) : (
-              'Sin JP asignado. Marca contactos JP en áreas/subáreas o elige uno manual.'
-            )}
-          </p>
-          {projectManagerEmailWarning && (
-            <p style={{ fontSize: '0.8125rem', color: '#b71c1c', marginTop: 'var(--fiori-space-1)' }}>
-              {projectManagerEmailWarning}
+      <form onSubmit={handleSubmit} className={styles.formSections} autoComplete="off">
+        <section className={styles.section} aria-labelledby="edit-act-section-project">
+          <header className={styles.sectionHeader}>
+            <h2 id="edit-act-section-project" className={styles.sectionTitle}>
+              Datos del proyecto
+            </h2>
+            <p className={styles.sectionLead}>
+              Identificación comercial y enlace a HubSpot. El nombre puede venir pre-rellenado si abriste el formulario desde un flujo externo.
             </p>
-          )}
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="cc-input-edit">CC (opcional)</label>
-          <div className={styles.areaTagsRow}>
-            <div style={{ display: 'flex', flex: '1 1 14rem', gap: 'var(--fiori-space-2)', alignItems: 'center', minWidth: '12rem' }}>
+          </header>
+          <div className={styles.sectionInnerGrid}>
+            <div id="form-group-project-name" className={styles.formGroup}>
+              <label className={styles.label} htmlFor="projectName">
+                <span className={styles.labelText}>Nombre del proyecto</span>
+                <span className={styles.req} aria-hidden="true">
+                  *
+                </span>
+              </label>
               <input
-                id="cc-input-edit"
+                id="projectName"
+                name="projectName"
                 type="text"
-                value={ccDraft}
-                onChange={(e) => setCcDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    commitCcDraft();
-                  }
-                }}
-                list={ccDraft.trim().length >= 3 ? 'contacts-datalist-cc-edit' : undefined}
+                value={form.projectName}
+                onChange={handleChange}
+                onBlur={handleProjectNameBlur}
+                required
                 className={styles.input}
-                placeholder="Email (varios: separa por coma)"
-                aria-label="Escribir email en copia"
+                placeholder="Implementación S/4HANA Public"
                 autoComplete="off"
-                style={{ flex: 1, minWidth: 0 }}
               />
-              <button type="button" className={styles.btnSecondary} onClick={commitCcDraft}>
-                Añadir
-              </button>
             </div>
-            <datalist id="contacts-datalist-cc-edit">
-              {ccContacts.map((c) => (
-                <option key={c.id} value={c.email}>
-                  {c.name}
-                </option>
-              ))}
-            </datalist>
+            <div id="form-group-client" className={styles.formGroup}>
+              <label className={styles.label} htmlFor="client">
+                <span className={styles.labelText}>Cliente</span>
+              </label>
+              <input
+                id="client"
+                name="client"
+                type="text"
+                value={form.client}
+                onChange={handleChange}
+                className={styles.input}
+                placeholder="Nombre del cliente"
+                autoComplete="off"
+              />
+            </div>
+            <div id="form-group-offer-code" className={styles.formGroup}>
+              <label className={styles.label} htmlFor="offerCode">
+                <span className={styles.labelText}>Código de oferta</span>
+                <span className={styles.req} aria-hidden="true">
+                  *
+                </span>
+              </label>
+              <input
+                id="offerCode"
+                name="offerCode"
+                type="text"
+                value={form.offerCode}
+                onChange={handleChange}
+                required
+                className={styles.input}
+                placeholder="ESP_XX_XXXX"
+                autoComplete="off"
+              />
+            </div>
+            <div id="form-group-project-amount" className={styles.formGroup}>
+              <label className={styles.label} htmlFor="projectAmount">
+                <span className={styles.labelText}>Importe del proyecto</span>
+                <span className={styles.req} aria-hidden="true">
+                  *
+                </span>
+              </label>
+              <input
+                id="projectAmount"
+                name="projectAmount"
+                type="text"
+                value={form.projectAmount}
+                onChange={handleChange}
+                required
+                className={styles.input}
+                placeholder="Ej. 150.000,00€"
+                autoComplete="off"
+              />
+            </div>
+            <div id="form-group-project-type" className={styles.formGroup}>
+              <label className={styles.label} htmlFor="projectType">
+                <span className={styles.labelText}>Tipo de oportunidad</span>
+                <span className={styles.req} aria-hidden="true">
+                  *
+                </span>
+              </label>
+              <select
+                id="projectType"
+                name="projectType"
+                value={form.projectType}
+                onChange={handleChange}
+                required
+                className={styles.input}
+                aria-label="Tipo de oportunidad"
+                autoComplete="off"
+              >
+                <option value="">— Seleccionar —</option>
+                <option value="CONSULTORIA">Consultoría</option>
+                <option value="SW">Software</option>
+              </select>
+            </div>
+            <div id="form-group-hubspot-url" className={styles.formGroup}>
+              <label className={styles.label} htmlFor="hubspotUrl">
+                <span className={styles.labelText}>URL HubSpot</span>
+              </label>
+              <input
+                id="hubspotUrl"
+                name="hubspotUrl"
+                type="url"
+                value={form.hubspotUrl}
+                onChange={handleChange}
+                className={styles.input}
+                placeholder="https://app.hubspot.com/contacts/..../"
+                autoComplete="off"
+              />
+            </div>
           </div>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Escribe un email y pulsa Añadir o Enter; puedes encadenar varios. Director y subárea van en copia automáticamente.
-          </p>
-          <div className={styles.areaTagsRow} style={{ marginTop: 'var(--fiori-space-2)' }}>
-            {manualCcEntries.map((entry) => (
-              <span key={manualCcKey(entry)} className={styles.areaTag}>
-                {entry.name} ({entry.email})
-                <button
-                  type="button"
-                  className={styles.areaTagRemove}
-                  onClick={() =>
-                    setManualCcEntries((prev) => prev.filter((p) => manualCcKey(p) !== manualCcKey(entry)))
-                  }
-                  aria-label={`Quitar ${entry.email} de copia`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="client">Cliente</label>
-          <input id="client" name="client" type="text" value={form.client} onChange={handleChange} className={styles.input} placeholder="Nombre del cliente" />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="offerCode">Código de oferta *</label>
-          <input id="offerCode" name="offerCode" type="text" value={form.offerCode} onChange={handleChange} required className={styles.input} placeholder="ESP_XX_XXXX" />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="projectAmount">Importe del proyecto *</label>
-          <input id="projectAmount" name="projectAmount" type="text" value={form.projectAmount} onChange={handleChange} required className={styles.input} placeholder="Ej. 150.000,00€" />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="projectType">Tipo de oportunidad *</label>
-          <select id="projectType" name="projectType" value={form.projectType} onChange={handleChange} required className={styles.input} aria-label="Tipo de oportunidad">
-            <option value="">— Seleccionar —</option>
-            <option value="CONSULTORIA">Consultoría</option>
-            <option value="SW">Software</option>
-          </select>
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="hubspotUrl">URL HubSpot</label>
-          <input id="hubspotUrl" name="hubspotUrl" type="url" value={form.hubspotUrl} onChange={handleChange} className={styles.input} placeholder="https://app.hubspot.com/contacts/..../" />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Áreas *</label>
-          <div className={styles.areaTagsRow}>
-            <select
-              className={styles.areaSelect}
-              value=""
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v) {
-                  addSelection(v);
-                  e.target.value = '';
-                }
-              }}
-              aria-label="Añadir área o subárea"
-            >
-              <option value="">Seleccionar área o subárea…</option>
-              {areas.map((area) => {
-                const wholeSelected = isAreaSelected(area.id);
-                const hasSubareas = area.subAreas && area.subAreas.length > 0;
-                return (
-                  <optgroup key={area.id} label={area.name}>
-                    {!wholeSelected && (
-                      <option value={`area:${area.id}`}>
-                        {area.name} (toda el área)
-                      </option>
-                    )}
-                    {hasSubareas && !wholeSelected &&
-                      area.subAreas!.filter((sub) => !isSubareaSelected(sub.id)).map((sub) => (
-                        <option key={sub.id} value={`subarea:${sub.id}`}>
-                          {area.name} › {sub.name}
-                        </option>
-                      ))}
-                  </optgroup>
-                );
-              })}
-            </select>
-            {selected.map((item) => (
-              <span key={selectedKey(item)} className={styles.areaTag}>
-                {selectedLabel(item)}
-                <button type="button" className={styles.areaTagRemove} onClick={() => removeSelection(selectedKey(item))} aria-label={`Quitar ${selectedLabel(item)}`}>×</button>
-              </span>
-            ))}
-          </div>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-2)' }}>
-            En Para se incluyen siempre Facturación/Administración, creador y JP. En CC se añaden automáticamente director y contactos de subárea.
-          </p>
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="subject">Asunto</label>
-          <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="template-select-edit">Usar plantilla</label>
-          <select
-            id="template-select-edit"
-            className={styles.input}
-            value=""
-            onChange={(e) => {
-              const templateId = e.target.value;
-              if (!templateId) return;
-              const t = emailTemplates.find((x) => x.id === templateId);
-              if (t) {
-                setAppliedTemplateId(templateId);
-                setAppliedTemplateName(t.name);
-              }
-              e.target.value = '';
-            }}
-            style={{ maxWidth: '20rem' }}
-          >
-            <option value="">Sin plantilla</option>
-            {emailTemplates.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-          {appliedTemplateName && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-              Cuerpo generado desde la plantilla &quot;{appliedTemplateName}&quot;. Al cambiar datos del formulario se actualizan las variables; si editas el cuerpo a mano, esos cambios pueden perderse al modificar esos campos.
+        </section>
+
+        <section className={styles.section} aria-labelledby="edit-act-section-areas">
+          <header className={styles.sectionHeader}>
+            <h2 id="edit-act-section-areas" className={styles.sectionTitle}>
+              Áreas y routing
+            </h2>
+            <p className={styles.sectionLead}>
+              Define qué equipos intervienen. Puedes elegir un área completa o subáreas concretas (no combines área padre e hijo a la vez).
             </p>
-          )}
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="body">Cuerpo del correo</label>
-          <RichTextEditor
-            id="body"
-            value={form.body}
-            onChange={(value) => setForm((prev) => ({ ...prev, body: value }))}
-            placeholder="Contenido del email (opcional)"
-            minHeight={120}
-            aria-label="Cuerpo del correo"
-          />
-        </div>
-        {(() => {
-          const urlList = form.attachmentUrlsText.split(/[\n,]/).map((u) => u.trim()).filter(Boolean);
-          const attachmentList = urlList.map((url, i) => ({ url, name: (form.attachmentNames[i] ?? '').trim() || url }));
-          const removeScanned = (index: number) => {
-            const next = attachmentList.filter((_, j) => j !== index);
-            setForm((prev) => ({
-              ...prev,
-              attachmentUrlsText: next.map((a) => a.url).join('\n'),
-              attachmentNames: next.map((a) => a.name),
-            }));
-          };
-          const addScanned = (url: string, name: string) => {
-            setForm((prev) => ({
-              ...prev,
-              attachmentUrlsText: prev.attachmentUrlsText ? prev.attachmentUrlsText + '\n' + url : url,
-              attachmentNames: [...(prev.attachmentNames ?? []), name || url],
-            }));
-            setNewUrl('');
-            setNewUrlName('');
-            setAddingUrl(false);
-          };
-          return (
-            <>
-              {(attachmentList.length > 0 || addingUrl) && (
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>URLs escaneadas</label>
-                  {attachmentList.length > 0 && (
-                    <ul className={styles.attachmentList} style={{ margin: '0 0 var(--fiori-space-2)', paddingLeft: '1.2rem' }}>
-                      {attachmentList.map(({ url, name }, i) => (
-                        <li key={i} style={{ marginBottom: 'var(--fiori-space-1)' }}>
-                          <a href={url} target="_blank" rel="noopener noreferrer" className={styles.attachmentLink}>{name?.trim() || url}</a>
-                          {' '}
-                          <button type="button" className={styles.attachmentRemove} onClick={() => removeScanned(i)} aria-label="Quitar">Quitar</button>
-                        </li>
-                      ))}
-                    </ul>
+          </header>
+          <div className={styles.sectionInnerGrid}>
+            <div id="form-group-areas" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+              <label className={styles.label}>
+                <span className={styles.labelText}>Áreas</span>
+                <span className={styles.req} aria-hidden="true">
+                  *
+                </span>
+              </label>
+              <div className={styles.areaTagsRow}>
+                <select
+                  className={styles.areaSelect}
+                  value=""
+                  autoComplete="off"
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v) {
+                      addSelection(v);
+                      e.target.value = '';
+                    }
+                  }}
+                  aria-label="Añadir área o subárea"
+                >
+                  <option value="">Seleccionar área o subárea…</option>
+                  {areas.map((area) => {
+                    const wholeSelected = isAreaSelected(area.id);
+                    const hasSubareas = area.subAreas && area.subAreas.length > 0;
+                    return (
+                      <optgroup key={area.id} label={area.name}>
+                        {!wholeSelected && <option value={`area:${area.id}`}>{area.name} (toda el área)</option>}
+                        {hasSubareas &&
+                          !wholeSelected &&
+                          area.subAreas!.filter((sub) => !isSubareaSelected(sub.id)).map((sub) => (
+                            <option key={sub.id} value={`subarea:${sub.id}`}>
+                              {area.name} › {sub.name}
+                            </option>
+                          ))}
+                      </optgroup>
+                    );
+                  })}
+                </select>
+                {selected.map((item) => (
+                  <span key={selectedKey(item)} className={styles.areaTag}>
+                    {selectedLabel(item)}
+                    <button
+                      type="button"
+                      className={styles.areaTagRemove}
+                      onClick={() => removeSelection(selectedKey(item))}
+                      aria-label={`Quitar ${selectedLabel(item)}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              {selected.length === 0 && (
+                <p className={styles.helperText}>
+                  Añade al menos un área (o subárea si aplica). Los destinatarios se asignarán según los contactos configurados.
+                </p>
+              )}
+              <div className={styles.callout}>
+                <strong>Para y CC automáticos.</strong> En Para se incluyen Facturación/Administración, creador y JP. En CC se añaden director y
+                contactos de subárea según configuración.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="edit-act-section-mail">
+          <header className={styles.sectionHeader}>
+            <h2 id="edit-act-section-mail" className={styles.sectionTitle}>
+              Correo y destinatarios
+            </h2>
+            <p className={styles.sectionLead}>Asunto calculado, JP del proyecto y copias opcionales.</p>
+          </header>
+          <div className={styles.sectionInnerGrid}>
+            <div id="form-group-subject" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+              <label className={styles.label} htmlFor="subject">
+                <span className={styles.labelText}>Asunto del email</span>
+              </label>
+              <input id="subject" type="text" value={computedSubject} readOnly className={styles.inputReadOnly} aria-readonly="true" />
+            </div>
+            <div className={styles.formGroupRow2}>
+              <div id="form-group-project-jp" className={styles.formGroup}>
+                <label className={styles.label} htmlFor="projectJpCustomSearch">
+                  <span className={styles.labelText}>JP del proyecto</span>
+                </label>
+                <input
+                  id="projectJpCustomSearch"
+                  list={projectJpSearch.trim().length >= 3 ? 'project-jp-contacts-edit' : undefined}
+                  value={projectJpSearch}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setProjectJpSearch(value);
+                    const selectedContact = ccContacts.find((c) => `${c.name} (${c.email})` === value);
+                    setProjectJpContactId(selectedContact?.id ?? '');
+                    setProjectManagerEmailWarning('');
+                  }}
+                  className={styles.input}
+                  placeholder="Busca y selecciona un contacto (vacío = automático)"
+                />
+                <datalist id="project-jp-contacts-edit">
+                  {ccContacts
+                    .filter((c) =>
+                      projectJpSearch.trim().length >= 3
+                        ? `${c.name} ${c.email}`.toLowerCase().includes(projectJpSearch.trim().toLowerCase())
+                        : false,
+                    )
+                    .map((c) => (
+                      <option key={c.id} value={`${c.name} (${c.email})`} />
+                    ))}
+                </datalist>
+                <p className={styles.jpPreview}>
+                  {projectJpPreview.projectJpEmail ? (
+                    <strong>
+                      {`Seleccionado: ${projectJpPreview.projectJpName} (${projectJpPreview.projectJpEmail}) [${projectJpPreview.projectJpSource ?? ''}]`}
+                    </strong>
+                  ) : (
+                    'Sin JP asignado. Marca contactos JP en áreas/subáreas o elige uno manual.'
                   )}
-                  {addingUrl && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--fiori-space-2)', alignItems: 'center', marginBottom: 'var(--fiori-space-2)' }}>
-                      <input type="url" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} className={styles.input} placeholder="URL" style={{ minWidth: '14rem' }} aria-label="URL" />
-                      <input type="text" value={newUrlName} onChange={(e) => setNewUrlName(e.target.value)} className={styles.input} placeholder="Título" style={{ minWidth: '10rem' }} aria-label="Título" />
-                      <button type="button" className={styles.btnSecondary} onClick={() => { if (newUrl.trim()) addScanned(newUrl.trim(), newUrlName.trim() || newUrl.trim()); }}>Añadir</button>
-                      <button type="button" className={styles.btnSecondary} onClick={() => { setAddingUrl(false); setNewUrl(''); setNewUrlName(''); }}>Cancelar</button>
-                    </div>
-                  )}
-                  {!addingUrl && (
-                    <div style={{ display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap', marginTop: attachmentList.length > 0 ? 'var(--fiori-space-1)' : 0 }}>
-                      <button type="button" className={styles.btnSecondary} onClick={() => setAddingUrl(true)}>Añadir URL</button>
-                      <button type="button" className={styles.btnSecondary} onClick={() => { const raw = window.prompt('Pega una o más URLs (una por línea o separadas por comas)'); if (raw) { const urls = raw.split(/[\n,]/).map((u) => u.trim()).filter(Boolean); setForm((prev) => ({ ...prev, attachmentUrlsText: prev.attachmentUrlsText ? prev.attachmentUrlsText + '\n' + urls.join('\n') : urls.join('\n'), attachmentNames: [...(prev.attachmentNames ?? []), ...urls.map((u) => u)] })); } }}>Pegar URLs</button>
-                    </div>
-                  )}
-                  {attachmentList.length > 0 && (
-                    <div style={{ marginTop: 'var(--fiori-space-1)', display: 'flex', gap: 'var(--fiori-space-2)', flexWrap: 'wrap' }}>
-                      <button type="button" className={styles.btnSecondary} onClick={() => attachmentList.forEach(({ url }) => window.open(url, '_blank', 'noopener'))}>
-                        Descargar todos los adjuntos
+                </p>
+                {projectManagerEmailWarning ? <p className={styles.warningText}>{projectManagerEmailWarning}</p> : null}
+              </div>
+              <div id="form-group-cc" className={styles.formGroup}>
+                <label className={styles.label} htmlFor="cc-input-edit">
+                  <span className={styles.labelText}>CC adicionales</span>
+                </label>
+                <div className={styles.areaTagsRow}>
+                  <div className={styles.ccInputRow}>
+                    <input
+                      id="cc-input-edit"
+                      type="text"
+                      value={ccDraft}
+                      onChange={(e) => setCcDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          commitCcDraft();
+                        }
+                      }}
+                      list={ccDraft.trim().length >= 3 ? 'contacts-datalist-cc-edit' : undefined}
+                      className={styles.input}
+                      placeholder="Email (varios: separa por coma)"
+                      aria-label="Escribir email en copia"
+                      autoComplete="off"
+                    />
+                    <button type="button" className={styles.btnSecondary} onClick={commitCcDraft}>
+                      Añadir
+                    </button>
+                  </div>
+                  <datalist id="contacts-datalist-cc-edit">
+                    {ccContacts.map((c) => (
+                      <option key={c.id} value={c.email}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </datalist>
+                </div>
+                <p className={styles.helperText}>
+                  Escribe un email y pulsa Añadir o Enter. Director y subárea van en copia automáticamente.
+                </p>
+                <div className={styles.areaTagsRow}>
+                  {manualCcEntries.map((entry) => (
+                    <span key={manualCcKey(entry)} className={styles.areaTag}>
+                      {entry.name} ({entry.email})
+                      <button
+                        type="button"
+                        className={styles.areaTagRemove}
+                        onClick={() =>
+                          setManualCcEntries((prev) => prev.filter((p) => manualCcKey(p) !== manualCcKey(entry)))
+                        }
+                        aria-label={`Quitar ${entry.email} de copia`}
+                      >
+                        ×
                       </button>
-                    </div>
-                  )}
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-2)' }}>
-                    Los enlaces de HubSpot no se pueden descargar automáticamente. Usa &quot;Descargar todos los adjuntos&quot;, descarga con tu sesión y súbelos con &quot;Añadir archivos&quot;.
-                  </p>
+                    </span>
+                  ))}
                 </div>
-              )}
-              {attachmentList.length === 0 && !addingUrl && (
-                <div className={styles.formGroup}>
-                  <button type="button" className={styles.btnSecondary} onClick={() => setAddingUrl(true)}>Añadir URLs escaneadas</button>
-                </div>
-              )}
-            </>
-          );
-        })()}
-        <div className={styles.formGroup}>
-          <span className={styles.label}>Archivos adjuntos</span>
-          {attachments.length > 0 && (
-            <div style={{ marginTop: 'var(--fiori-space-1)' }}>
-              <AttachmentGrid
-                attachments={attachments}
-                activationId={id!}
-                apiFetch={apiFetch}
-                onDeleted={async () => {
-                  const r = await apiFetch(`/api/activations/${id}`);
-                  if (r.ok) {
-                    const data = await r.json();
-                    setAttachments(data.attachments ?? []);
-                  }
-                }}
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className={styles.section} aria-labelledby="edit-act-section-template">
+          <header className={styles.sectionHeader}>
+            <h2 id="edit-act-section-template" className={styles.sectionTitle}>
+              Plantilla y cuerpo
+            </h2>
+            <p className={styles.sectionLead}>
+              Elige una plantilla para rellenar variables automáticamente o edita el borrador a mano.
+            </p>
+          </header>
+          <div className={styles.sectionInnerGrid}>
+            <div id="form-group-template" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+              <label className={styles.label} htmlFor="template-select-edit">
+                <span className={styles.labelText}>Usar plantilla</span>
+              </label>
+              <div className={styles.templateRow}>
+                <select
+                  id="template-select-edit"
+                  className={`${styles.input} ${styles.templateSelect}`}
+                  value=""
+                  autoComplete="off"
+                  onChange={(e) => {
+                    const templateId = e.target.value;
+                    if (!templateId) return;
+                    const t = emailTemplates.find((x) => x.id === templateId);
+                    if (t) {
+                      setAppliedTemplateId(templateId);
+                      setAppliedTemplateName(t.name);
+                    }
+                    e.target.value = '';
+                  }}
+                >
+                  <option value="">Sin plantilla</option>
+                  {emailTemplates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {appliedTemplateName ? (
+                <p className={styles.helperText}>
+                  Cuerpo generado desde la plantilla &quot;{appliedTemplateName}&quot;. Al cambiar datos del formulario se actualizan las variables;
+                  si editas el cuerpo a mano, esos cambios pueden perderse al modificar esos campos.
+                </p>
+              ) : null}
+            </div>
+            <div id="form-group-body" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+              <label className={styles.label} htmlFor="body">
+                <span className={styles.labelText}>Cuerpo del correo</span>
+              </label>
+              <RichTextEditor
+                id="body"
+                value={form.body}
+                onChange={(value) => setForm((prev) => ({ ...prev, body: value }))}
+                placeholder="Contenido del email (opcional)"
+                minHeight={120}
+                aria-label="Cuerpo del correo"
               />
             </div>
-          )}
-          <p style={{ fontSize: '0.8125rem', color: 'var(--fiori-text-secondary)', marginTop: 'var(--fiori-space-1)' }}>
-            Añade archivos descargados desde HubSpot (o desde tu ordenador).
-          </p>
-          <label className={styles.btnSecondary} style={{ display: 'inline-block', marginTop: 'var(--fiori-space-1)', cursor: uploading ? 'not-allowed' : 'pointer' }}>
-            <input type="file" multiple disabled={uploading} onChange={handleFileUploadEdit} style={{ display: 'none' }} />
-            {uploading ? 'Subiendo…' : 'Añadir archivos'}
-          </label>
-          {uploading && (
-            <div className={styles.uploadProgressWrap} aria-live="polite">
-              <div className={styles.uploadProgressBar} style={{ width: `${uploadProgress}%` }} />
-              <span className={styles.uploadProgressText}>{uploadProgress}%</span>
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="edit-act-section-urls">
+          <header className={styles.sectionHeader}>
+            <h2 id="edit-act-section-urls" className={styles.sectionTitle}>
+              URLs escaneadas
+            </h2>
+            <p className={styles.sectionLead}>
+              Referencias rápidas (p. ej. enlaces a HubSpot). Puedes añadir archivos descargados en la sección siguiente.
+            </p>
+          </header>
+          <div className={styles.sectionInnerGrid}>
+            {scannedUrlItems.length > 0 || addingUrl ? (
+              <div id="form-group-scanned-urls" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+                <label className={styles.label}>
+                  <span className={styles.labelText}>Enlaces</span>
+                </label>
+                {scannedUrlItems.length > 0 ? (
+                  <ul className={styles.attachmentList}>
+                    {scannedUrlItems.map(({ url, name }, i) => (
+                      <li key={i} className={styles.attachmentItem}>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className={styles.attachmentLink}>
+                          {name?.trim() || url}
+                        </a>
+                        <button
+                          type="button"
+                          className={styles.attachmentRemove}
+                          onClick={() => removeScannedUrl(i)}
+                          aria-label="Quitar enlace"
+                        >
+                          Quitar
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {addingUrl ? (
+                  <div className={styles.urlAddRow}>
+                    <input
+                      type="url"
+                      value={newUrl}
+                      onChange={(e) => setNewUrl(e.target.value)}
+                      className={`${styles.input} ${styles.urlField}`}
+                      placeholder="https://…"
+                      aria-label="URL"
+                    />
+                    <input
+                      type="text"
+                      value={newUrlName}
+                      onChange={(e) => setNewUrlName(e.target.value)}
+                      className={`${styles.input} ${styles.urlFieldTitle}`}
+                      placeholder="Título visible"
+                      aria-label="Título"
+                    />
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      onClick={() => {
+                        if (newUrl.trim()) addScannedUrl(newUrl.trim(), newUrlName.trim() || newUrl.trim());
+                      }}
+                    >
+                      Añadir
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      onClick={() => {
+                        setAddingUrl(false);
+                        setNewUrl('');
+                        setNewUrlName('');
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : null}
+                {!addingUrl ? (
+                  <div className={styles.attachmentActions}>
+                    <button type="button" className={styles.btnSecondary} onClick={() => setAddingUrl(true)}>
+                      Añadir URL
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      onClick={() => {
+                        const raw = window.prompt('Pega una o más URLs (una por línea o separadas por comas)');
+                        if (raw) {
+                          const urls = raw
+                            .split(/[\n,]/)
+                            .map((u) => u.trim())
+                            .filter(Boolean);
+                          setForm((prev) => ({
+                            ...prev,
+                            attachmentUrlsText: prev.attachmentUrlsText
+                              ? `${prev.attachmentUrlsText}\n${urls.join('\n')}`
+                              : urls.join('\n'),
+                            attachmentNames: [...(prev.attachmentNames ?? []), ...urls.map((u) => u)],
+                          }));
+                        }
+                      }}
+                    >
+                      Pegar URLs
+                    </button>
+                  </div>
+                ) : null}
+                {scannedUrlItems.length > 0 ? (
+                  <div className={styles.attachmentActions}>
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      onClick={() => scannedUrlItems.forEach(({ url }) => window.open(url, '_blank', 'noopener'))}
+                    >
+                      Descargar todos los adjuntos
+                    </button>
+                  </div>
+                ) : null}
+                <p className={styles.helperText}>
+                  Los enlaces de HubSpot solo funcionan con tu sesión. Descarga con &quot;Descargar todos los adjuntos&quot; y súbelos con &quot;Añadir
+                  archivos&quot; abajo.
+                </p>
+              </div>
+            ) : (
+              <div id="form-group-add-urls" className={`${styles.formGroup} ${styles.formGroupFull}`}>
+                <div className={styles.emptyUrlsCta}>
+                  <p className={styles.helperTextStrong}>No hay URLs escaneadas todavía.</p>
+                  <button type="button" className={styles.btnSecondary} onClick={() => setAddingUrl(true)}>
+                    Añadir URLs escaneadas
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="edit-act-section-files">
+          <header className={styles.sectionHeader}>
+            <h2 id="edit-act-section-files" className={styles.sectionTitle}>
+              Archivos adjuntos
+            </h2>
+            <p className={styles.sectionLead}>Archivos subidos al servidor para el envío (p. ej. descargados desde HubSpot).</p>
+          </header>
+          <div className={styles.sectionInnerGrid}>
+            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
+              {attachments.length > 0 ? (
+                <AttachmentGrid
+                  attachments={attachments}
+                  activationId={id!}
+                  apiFetch={apiFetch}
+                  onDeleted={async () => {
+                    const r = await apiFetch(`/api/activations/${id}`);
+                    if (r.ok) {
+                      const data = await r.json();
+                      setAttachments(data.attachments ?? []);
+                    }
+                  }}
+                />
+              ) : null}
+              <p className={styles.helperText}>Añade archivos descargados desde HubSpot (o desde tu ordenador).</p>
+              <label
+                className={styles.btnSecondary}
+                style={{ display: 'inline-block', marginTop: 'var(--fiori-space-2)', cursor: uploading ? 'not-allowed' : 'pointer' }}
+              >
+                <input type="file" multiple disabled={uploading} onChange={handleFileUploadEdit} style={{ display: 'none' }} />
+                {uploading ? 'Subiendo…' : 'Añadir archivos'}
+              </label>
+              {uploading ? (
+                <div className={styles.uploadProgressWrap} aria-live="polite">
+                  <div className={styles.uploadProgressBar} style={{ width: `${uploadProgress}%` }} />
+                  <span className={styles.uploadProgressText}>{uploadProgress}%</span>
+                </div>
+              ) : null}
+              {uploadError ? <p className={`${styles.error} ${styles.errorMarginTop}`}>{uploadError}</p> : null}
             </div>
-          )}
-          {uploadError && <p className={`${styles.error} ${styles.errorMarginTop}`}>{uploadError}</p>}
-        </div>
-        {error && <p className={styles.error}>{error}</p>}
-        <div className={styles.actions}>
-          <button type="submit" disabled={saving || selected.length === 0 || !form.projectAmount.trim() || !form.projectType} className={styles.btnPrimary}>
-            {saving ? 'Guardando…' : 'Guardar cambios'}
-          </button>
-          <Link href={`/launcher/activations/activate/${id}`} className={styles.btnSecondary}>Cancelar</Link>
+          </div>
+        </section>
+
+        {error ? <p className={styles.error}>{error}</p> : null}
+        <div className={styles.formFooter}>
+          <p className={styles.formFooterHint}>
+            Requiere áreas, importe y tipo de oportunidad. Los cambios se reflejan en el detalle al guardar.
+          </p>
+          <div className={styles.formFooterActions}>
+            <Link href={`/launcher/activations/activate/${id}`} className={styles.btnSecondary}>
+              Cancelar
+            </Link>
+            <button
+              type="submit"
+              disabled={saving || selected.length === 0 || !form.projectAmount.trim() || !form.projectType}
+              className={styles.btnPrimary}
+            >
+              {saving ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </div>
         </div>
       </form>
     </main>
