@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
@@ -19,6 +20,9 @@ import * as path from 'path';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'magic-link', ttl: 60_000, limit: 5 }],
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       // Asegura carga de env aunque el backend se arranque desde la raíz del repo.

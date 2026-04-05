@@ -153,6 +153,65 @@
   font-size: 0.9rem;
 }
 
+.magicBlock {
+  margin-top: 0.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #dde2e8;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.magicLead {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #4a5d70;
+}
+
+.magicButton {
+  align-self: flex-start;
+  padding: 0.48rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 0.56rem;
+  border: 1px solid #b7c8dd;
+  background: #fff;
+  color: #0f548c;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.magicButton:hover:not(:disabled) {
+  background: #f0f4f9;
+  border-color: #0f6cbd;
+}
+
+.magicButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.magicSuccess {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #0e6027;
+  line-height: 1.4;
+}
+
+:global(html[data-appearance='microsoft']) .magicBlock {
+  border-top-color: #e0e5ea;
+}
+
+:global(html[data-appearance='microsoft']) .magicButton {
+  border-color: #c7d4e4;
+  color: #115ea3;
+}
+
+:global(html[data-appearance='microsoft']) .magicButton:hover:not(:disabled) {
+  background: #f6f8fb;
+  border-color: #0f6cbd;
+}
+
 .footerBar {
   margin-top: auto;
   margin-left: -2.7rem;

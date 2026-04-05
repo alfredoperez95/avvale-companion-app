@@ -116,3 +116,13 @@ Entorno de referencia: **[https://www.avvalecompanion.app/](https://www.avvaleco
 | **`BACKEND_PUBLIC_URL`** | Opcional si coincide con la base usada para adjuntos; si no, definidla para que `attachments[].url` en Make apunte a URLs HTTPS válidas (ver [MAKE.md](MAKE.md)). |
 | **Callback Make** | Escenario: `POST https://www.avvalecompanion.app/api/webhooks/make/callback` (o vuestro host real), cuerpo con `MAKE_CALLBACK_SECRET`. |
 | **DNS / certificado** | `www` y apex coherentes (redirect 301 o ambos servidos); evita mezclar HTTP y HTTPS en el mismo flujo de login. |
+
+---
+
+## 8. Login por enlace mágico y correo `no-reply`
+
+1. **Variables** (raíz `.env` → `prepare-env.sh`, o Coolify): `MAIL_FROM`, `SMTP_*`, `MAGIC_LINK_BASE_URL` (URL pública del front apuntando a `/login/magic`, sin query). En local sin SMTP: `MAIL_SKIP_SEND=true` (el enlace se registra en el log del backend). Solo hace falta **SMTP** (envío); datos tipo **IMAP** (p. ej. `imap.ionos.es:993`) son para leer correo en un cliente, no para esta aplicación.
+2. **DNS**: SPF/DKIM/DMARC para el dominio del remitente (p. ej. `no-reply@avvalecompanion.app`) según el proveedor SMTP/API.
+3. **IONOS (referencia)**: salida `smtp.ionos.es`, puerto **587**, TLS (en `nodemailer`: `SMTP_SECURE=false` con puerto 587). Usuario/contraseña del buzón que envía (suele ser el email completo).
+4. **Flujo**: en `/login`, «Enviar enlace de acceso» llama a `POST /api/auth/magic-link/request` (misma respuesta genérica siempre). El correo incluye un enlace a `/login/magic?token=…` que canjea `POST /api/auth/magic-link/verify` y guarda el JWT como el login normal.
+5. **Rate limit**: máximo 5 solicitudes de enlace por minuto e IP (aprox.) en `magic-link/request`.

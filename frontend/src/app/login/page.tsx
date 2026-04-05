@@ -17,6 +17,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [brandingReady, setBrandingReady] = useState(false);
   const [appearance, setAppearance] = useState<Appearance>(() => getAppearanceFromCookie() ?? 'microsoft');
+  const [magicLoading, setMagicLoading] = useState(false);
+  const [magicError, setMagicError] = useState('');
+  const [magicSuccess, setMagicSuccess] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -94,6 +97,43 @@ export default function LoginPage() {
     }
   };
 
+  const handleMagicLink = async () => {
+    setMagicError('');
+    setMagicSuccess('');
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setMagicError('Indica tu correo electrónico arriba.');
+      return;
+    }
+    setMagicLoading(true);
+    try {
+      const url = resolveApiUrl('/api/auth/magic-link/request');
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 429) {
+        setMagicError('Demasiados intentos. Espera un minuto e inténtalo de nuevo.');
+        return;
+      }
+      if (!res.ok) {
+        setMagicError('No se pudo enviar el enlace. Comprueba la conexión o inténtalo más tarde.');
+        return;
+      }
+      const msg =
+        typeof data?.message === 'string' && data.message.length > 0
+          ? data.message
+          : 'Si existe una cuenta con ese correo, recibirás un enlace para iniciar sesión.';
+      setMagicSuccess(msg);
+    } catch {
+      setMagicError('No se pudo conectar con el servidor.');
+    } finally {
+      setMagicLoading(false);
+    }
+  };
+
   return (
     <main className={styles.main} data-theme={appearance}>
       <section className={styles.card} aria-busy={!brandingReady}>
@@ -153,6 +193,19 @@ export default function LoginPage() {
                 </svg>
               </button>
             </div>
+          </div>
+          <div className={styles.magicBlock}>
+            <p className={styles.magicLead}>¿Sin contraseña? Te enviamos un enlace de acceso al correo indicado arriba.</p>
+            <button
+              type="button"
+              className={styles.magicButton}
+              onClick={handleMagicLink}
+              disabled={magicLoading || !brandingReady}
+            >
+              {magicLoading ? 'Enviando…' : 'Enviar enlace de acceso'}
+            </button>
+            {magicError ? <p className={styles.error}>{magicError}</p> : null}
+            {magicSuccess ? <p className={styles.magicSuccess}>{magicSuccess}</p> : null}
           </div>
           <div className={styles.actionsRow}>
             <label className={styles.checkboxRow}>

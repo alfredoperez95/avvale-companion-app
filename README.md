@@ -118,6 +118,7 @@ Origen único: **`.env` en la raíz**; luego [`scripts/prepare-env.sh`](scripts/
 | `MAKE_PENDING_CALLBACK_TIMEOUT_MS` | Watchdog: tiempo máximo en `PENDING_CALLBACK` antes de `FAILED` (también compat. `MAKE_READY_TO_SEND_TIMEOUT_MS`) |
 | `ATTACHMENTS_DIR` | Directorio de ficheros subidos/descargados (en producción: volumen persistente) |
 | `PORT` | Backend (default 4000) |
+| `MAIL_FROM`, `SMTP_*`, `MAGIC_LINK_BASE_URL` | Login por **enlace mágico** (correo transaccional). Ver [docs/VERIFICACION.md](docs/VERIFICACION.md) sección 8. En local: `MAIL_SKIP_SEND=true`. |
 
 Detalle de Make, payload **schema v4** y callback: **[docs/MAKE.md](docs/MAKE.md)**.  
 También existe **`backend/.env.example`** con comentarios alineados al despliegue del backend.
@@ -317,6 +318,8 @@ Rutas tal como las expone **Nest** (sin `/api`). El front llama **`/api/...`** e
 | GET | `/health` | Probes Docker/Coolify |
 | POST | `/auth/register` | Alta usuario |
 | POST | `/auth/login` | Token JWT |
+| POST | `/auth/magic-link/request` | Solicitar enlace mágico (correo; respuesta genérica) |
+| POST | `/auth/magic-link/verify` | Canjear token del enlace → mismo JWT que login |
 | GET | `/auth/me` | Perfil (Bearer) |
 | PATCH | `/auth/me` | Actualizar perfil / apariencia |
 | POST/DELETE | `/auth/me/avatar` | Foto de perfil |

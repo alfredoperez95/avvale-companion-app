@@ -1093,7 +1093,7 @@ export default function EditActivationPage() {
               <p className={styles.helperText}>Añade archivos descargados desde HubSpot (o desde tu ordenador).</p>
               <label
                 className={styles.btnSecondary}
-                style={{ display: 'inline-block', marginTop: 'var(--fiori-space-2)', cursor: uploading ? 'not-allowed' : 'pointer' }}
+                style={{ marginTop: 'var(--fiori-space-2)', cursor: uploading ? 'not-allowed' : 'pointer' }}
               >
                 <input type="file" multiple disabled={uploading} onChange={handleFileUploadEdit} style={{ display: 'none' }} />
                 {uploading ? 'Subiendo…' : 'Añadir archivos'}

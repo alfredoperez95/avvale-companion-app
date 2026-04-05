@@ -1,10 +1,26 @@
-import { Controller, Post, Body, Get, Patch, Delete, UseGuards, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Patch,
+  Delete,
+  UseGuards,
+  Res,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  HttpCode,
+} from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
+import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { UserPayload } from './decorators/user-payload';
@@ -21,6 +37,19 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('magic-link/request')
+  @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ 'magic-link': { limit: 5, ttl: 60_000 } })
+  async requestMagicLink(@Body() dto: MagicLinkRequestDto) {
+    return this.authService.requestMagicLink(dto.email);
+  }
+
+  @Post('magic-link/verify')
+  async verifyMagicLink(@Body() dto: MagicLinkVerifyDto) {
+    return this.authService.verifyMagicLink(dto.token);
   }
 
   @Get('branding')
