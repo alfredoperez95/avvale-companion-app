@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getToken } from '@/lib/api';
+import { getToken, LOGIN_PATH } from '@/lib/api';
 import styles from './page.module.css';
 
 export default function HomePage() {
@@ -12,7 +12,7 @@ export default function HomePage() {
     if (getToken()) {
       router.replace('/launcher');
     } else {
-      router.replace('/login');
+      router.replace(LOGIN_PATH);
     }
   }, [router]);
 
