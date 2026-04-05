@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import {
+  buildMagicLinkEmailHtml,
+  buildMagicLinkEmailText,
+  DEFAULT_MAIL_LOGO_URL,
+} from './templates/magic-link.email';
 
 @Injectable()
 export class MailService {
@@ -40,12 +45,18 @@ export class MailService {
       auth: user ? { user, pass } : undefined,
     });
 
+    const ttlMin = parseInt(this.config.get<string>('MAGIC_LINK_TTL_MINUTES') ?? '15', 10);
+    const ttlHint = `El enlace caduca en ${ttlMin} minutos por seguridad.`;
+    const logoUrl = this.config.get<string>('MAIL_LOGO_URL')?.trim() || DEFAULT_MAIL_LOGO_URL;
+    const productTagline = this.config.get<string>('MAIL_PRODUCT_TAGLINE')?.trim() || 'Activaciones · Avvale';
+    const emailOpts = { appName: fromName, ttlHint, logoUrl, productTagline };
+
     await transporter.sendMail({
       from: `"${fromName}" <${from}>`,
       to,
-      subject: 'Enlace para iniciar sesión',
-      text: `Abre este enlace para entrar en Avvale Companion (caduca en pocos minutos). Si no has solicitado el acceso, ignora este mensaje.\n\n${magicUrl}`,
-      html: `<p>Abre este enlace para iniciar sesión (caduca en pocos minutos):</p><p><a href="${magicUrl}">Iniciar sesión</a></p><p style="color:#666;font-size:12px">Si no has solicitado el acceso, ignora este mensaje.</p>`,
+      subject: 'AVVALE ID® - Iniciar Sesión | Avvale Companion App',
+      text: buildMagicLinkEmailText(magicUrl, { appName: fromName, productTagline, ttlHint }),
+      html: buildMagicLinkEmailHtml(magicUrl, emailOpts),
     });
   }
 }
