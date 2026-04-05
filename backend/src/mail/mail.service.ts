@@ -23,13 +23,17 @@ export class MailService {
     const skip = this.config.get<string>('MAIL_SKIP_SEND') === 'true';
 
     if (skip) {
-      this.logger.log(`[MAIL_SKIP_SEND] Enlace mágico para ${to}: ${magicUrl}`);
+      this.logger.warn(
+        `[MAIL_SKIP_SEND] No se envía correo real. Enlace mágico para ${to}: ${magicUrl} — En producción pon MAIL_SKIP_SEND=false y SMTP_*`,
+      );
       return;
     }
 
     const host = this.config.get<string>('SMTP_HOST')?.trim();
     if (!host) {
-      this.logger.error('SMTP_HOST no definido; no se puede enviar el correo (usa MAIL_SKIP_SEND=true en local)');
+      this.logger.error(
+        'SMTP_HOST no definido: no se puede enviar el correo. Define SMTP_HOST (y SMTP_*) en el backend o, solo en local, MAIL_SKIP_SEND=true',
+      );
       throw new Error('SMTP no configurado');
     }
 
@@ -51,12 +55,25 @@ export class MailService {
     const productTagline = this.config.get<string>('MAIL_PRODUCT_TAGLINE')?.trim() || 'Activaciones · Avvale';
     const emailOpts = { appName: fromName, ttlHint, logoUrl, productTagline };
 
-    await transporter.sendMail({
-      from: `"${fromName}" <${from}>`,
-      to,
-      subject: 'AVVALE ID® - Iniciar Sesión | Avvale Companion App',
-      text: buildMagicLinkEmailText(magicUrl, { appName: fromName, productTagline, ttlHint }),
-      html: buildMagicLinkEmailHtml(magicUrl, emailOpts),
-    });
+    try {
+      const info = await transporter.sendMail({
+        from: `"${fromName}" <${from}>`,
+        to,
+        subject: 'AVVALE ID® - Iniciar Sesión | Avvale Companion App',
+        text: buildMagicLinkEmailText(magicUrl, { appName: fromName, productTagline, ttlHint }),
+        html: buildMagicLinkEmailHtml(magicUrl, emailOpts),
+      });
+      this.logger.log(
+        `Correo enlace mágico enviado a ${to} (messageId=${(info as { messageId?: string }).messageId ?? 'n/a'})`,
+      );
+    } catch (err) {
+      const e = err as Error & { response?: string; responseCode?: number; command?: string };
+      this.logger.error(
+        `SMTP sendMail falló para ${to}: ${e.message}` +
+          (e.responseCode != null ? ` code=${e.responseCode}` : '') +
+          (e.command != null ? ` command=${e.command}` : ''),
+      );
+      throw err;
+    }
   }
 }

@@ -32,6 +32,11 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   console.log(`Backend running at http://localhost:${port}`);
   console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`);
+  if (process.env.MAIL_SKIP_SEND === 'true') {
+    console.warn(
+      '[MAIL] MAIL_SKIP_SEND=true: no se envían correos reales (solo enlace en logs). Producción: MAIL_SKIP_SEND=false (o sin definir) y SMTP_HOST/SMTP_USER/SMTP_PASS.',
+    );
+  }
 }
 
 bootstrap().catch((err: unknown) => {

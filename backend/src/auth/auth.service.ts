@@ -131,7 +131,12 @@ export class AuthService {
     try {
       await this.mailService.sendMagicLinkEmail(user.email, magicUrl);
     } catch (err) {
-      this.logger.warn(`Fallo al enviar enlace mágico a ${user.email}: ${err instanceof Error ? err.message : err}`);
+      const detail = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Enlace mágico no enviado a ${user.email}: ${detail}. ` +
+          `Comprobar en el backend: MAIL_SKIP_SEND=false (o ausente), SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS, ` +
+          `MAGIC_LINK_BASE_URL=https://…/login/magic. La API sigue respondiendo 200 con mensaje genérico por diseño.`,
+      );
       await this.prisma.magicLoginToken.deleteMany({ where: { tokenHash } });
     }
 

@@ -123,8 +123,9 @@ Entorno de referencia: **[https://www.avvalecompanion.app/](https://www.avvaleco
 
 ## 8. Login por enlace mágico y correo `no-reply`
 
-1. **Variables** (raíz `.env` → `prepare-env.sh`, o Coolify): `MAIL_FROM`, `SMTP_*`, `MAGIC_LINK_BASE_URL` (URL pública del front apuntando a `/login/magic`, sin query). En local sin SMTP: `MAIL_SKIP_SEND=true` (el enlace se registra en el log del backend). Solo hace falta **SMTP** (envío); datos tipo **IMAP** (p. ej. `imap.ionos.es:993`) son para leer correo en un cliente, no para esta aplicación.
-2. **DNS**: SPF/DKIM/DMARC para el dominio del remitente (p. ej. `no-reply@avvalecompanion.app`) según el proveedor SMTP/API.
-3. **IONOS (referencia)**: salida `smtp.ionos.es`, puerto **587**, TLS (en `nodemailer`: `SMTP_SECURE=false` con puerto 587). Usuario/contraseña del buzón que envía (suele ser el email completo).
-4. **Flujo**: en `/login`, «Enviar enlace de acceso» llama a `POST /api/auth/magic-link/request` (misma respuesta genérica siempre). El correo incluye un enlace a `/login/magic?token=…` que canjea `POST /api/auth/magic-link/verify` y guarda el JWT como el login normal.
-5. **Rate limit**: máximo 5 solicitudes de enlace por minuto e IP (aprox.) en `magic-link/request`.
+1. **Variables** (raíz `.env` → `prepare-env.sh`, o **Coolify en el contenedor del backend**): `MAIL_FROM`, `SMTP_*`, `MAGIC_LINK_BASE_URL` (URL **HTTPS** pública del front, terminando en `/login/magic`, sin `?token`). En local sin SMTP: `MAIL_SKIP_SEND=true` (el enlace se registra en el log del backend). **En producción:** `MAIL_SKIP_SEND` debe ser **`false` o no definida**; si es `true`, **no se envía** correo (solo log `[MAIL_SKIP_SEND]`). No dupliques `MAIL_SKIP_SEND` en el mismo `.env`. Solo hace falta **SMTP** (envío); **IMAP** es para leer correo en un cliente, no para esta aplicación.
+2. **Si “no llega el correo” pero la UI muestra éxito:** el endpoint siempre responde 200 (anti enumeración). Revisa **logs del Nest**: `Correo enlace mágico enviado` (OK), `SMTP sendMail falló` o `Enlace mágico no enviado` (credenciales / firewall saliente al SMTP), o `[MAIL_SKIP_SEND]` (envío desactivado).
+3. **DNS**: SPF/DKIM/DMARC para el dominio del remitente (p. ej. `no-reply@avvalecompanion.app`) según el proveedor SMTP/API.
+4. **IONOS (referencia)**: salida `smtp.ionos.es`, puerto **587**, TLS (en `nodemailer`: `SMTP_SECURE=false` con puerto 587). Usuario/contraseña del buzón que envía (suele ser el email completo).
+5. **Flujo**: en `/login`, «Enviar enlace de acceso» llama a `POST /api/auth/magic-link/request` (misma respuesta genérica siempre). El correo incluye un enlace a `/login/magic?token=…` que canjea `POST /api/auth/magic-link/verify` y guarda el JWT como el login normal.
+6. **Rate limit**: máximo 5 solicitudes de enlace por minuto e IP (aprox.) en `magic-link/request`.
