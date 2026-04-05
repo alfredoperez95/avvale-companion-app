@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
@@ -389,7 +389,7 @@ export default function NewActivationPage() {
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       if (!res.ok) {

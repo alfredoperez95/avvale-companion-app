@@ -17,7 +17,8 @@ export interface JwtPayload {
 type Appearance = 'microsoft' | 'fiori';
 
 const MAGIC_LINK_GENERIC_RESPONSE = {
-  message: 'Si existe una cuenta con ese correo, recibirás un enlace para iniciar sesión.',
+  message:
+    'Si existe una cuenta con ese correo y estás registrado en la plataforma, recibirás un enlace para iniciar sesión.',
 } as const;
 
 @Injectable()

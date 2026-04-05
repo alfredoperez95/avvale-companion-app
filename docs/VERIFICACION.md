@@ -2,6 +2,8 @@
 
 Comprueba que backend, frontend y base de datos están correctamente configurados.
 
+**Inicio de sesión (ruta canónica, flujo por defecto y redirecciones):** `docs/LOGIN_STANDARD.md`.
+
 ## 1. Backend arranca con las variables actuales
 
 Desde la raíz del proyecto:
@@ -16,7 +18,7 @@ Debe aparecer en consola:
 - `Backend running at http://localhost:4000`
 - `CORS allowed origins: http://localhost:3000` (o los valores de tu `CORS_ORIGIN`, separados por coma)
 
-Si falla por variables, revisa que exista `backend/.env` con `DATABASE_URL`, `JWT_SECRET` y `CORS_ORIGIN`.
+Si falla por variables, revisa que exista `backend/.env` con `DATABASE_URL`, `JWT_SECRET` y `CORS_ORIGIN`. El tiempo máximo de sesión lo fija `JWT_EXPIRES_IN` (por defecto en código `5d` si no la defines); detalle en `docs/LOGIN_STANDARD.md`.
 
 ---
 

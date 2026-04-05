@@ -21,7 +21,8 @@ const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET') ?? 'change-me-in-production',
-        signOptions: { expiresIn: config.get<string>('JWT_EXPIRES_IN') ?? '7d' },
+        // Duración máxima de sesión (JWT). Formato: número+unidad (ej. 12h, 5d, 7d). Ver docs/LOGIN_STANDARD.md
+        signOptions: { expiresIn: config.get<string>('JWT_EXPIRES_IN') ?? '5d' },
       }),
       inject: [ConfigService],
     }),

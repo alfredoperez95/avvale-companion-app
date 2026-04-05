@@ -103,7 +103,7 @@ Origen único: **`.env` en la raíz**; luego [`scripts/prepare-env.sh`](scripts/
 |----------|-----|
 | `DATABASE_URL` | MySQL/MariaDB (`mysql://USER:PASS@HOST:PORT/DB`) |
 | `JWT_SECRET` | Firma JWT (obligatorio; valor fuerte en producción) |
-| `JWT_EXPIRES_IN` | Caducidad del token (ej. `7d`) |
+| `JWT_EXPIRES_IN` | Tiempo máximo de sesión (JWT de acceso; ej. `12h`, `5d`, `7d`) |
 | `CORS_ORIGIN` | Origen(es) exactos del front en el navegador (`https://…`), separados por coma. Si queda vacío, las peticiones con cabecera `Origin` fallan por CORS. |
 | `NEXT_PUBLIC_API_URL` | URL pública del API para el navegador (build del front). Vacío en cliente puede implicar mismo origen + rewrites. |
 | `BACKEND_PUBLIC_URL` | Recomendada si difiere: URL base del backend para payloads a Make (adjuntos, callback). Ver [docs/MAKE.md](docs/MAKE.md). |

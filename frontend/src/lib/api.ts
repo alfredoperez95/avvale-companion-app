@@ -35,9 +35,31 @@ export function resolveApiUrl(path: string): string {
   return `${b}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+/** Si el JWT tiene `exp` y ya pasó, el token deja de considerarse válido en cliente. */
+function isAccessTokenExpired(token: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4;
+    if (pad) b64 += '='.repeat(4 - pad);
+    const payload = JSON.parse(atob(b64)) as { exp?: number };
+    if (typeof payload.exp !== 'number') return false;
+    return Date.now() >= payload.exp * 1000;
+  } catch {
+    return false;
+  }
+}
+
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('token');
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  if (isAccessTokenExpired(token)) {
+    localStorage.removeItem('token');
+    return null;
+  }
+  return token;
 }
 
 export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -75,3 +97,5 @@ export function apiUpload(
     xhr.send(formData);
   });
 }
+
+export { LOGIN_PATH, LOGIN_MAGIC_PATH, redirectToLogin } from './auth-routes';

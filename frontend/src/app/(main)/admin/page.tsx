@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from './admin.module.css';
 
@@ -42,7 +42,7 @@ export default function AdminUsersPage() {
   const loadUsers = async () => {
     const res = await apiFetch('/api/users');
     if (res.status === 401) {
-      window.location.href = '/login';
+      redirectToLogin();
       return;
     }
     if (!res.ok) return;
@@ -54,7 +54,7 @@ export default function AdminUsersPage() {
     apiFetch('/api/auth/me')
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         return r.ok ? r.json() : null;

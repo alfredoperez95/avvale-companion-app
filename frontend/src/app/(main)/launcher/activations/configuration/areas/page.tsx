@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from '../configuration.module.css';
@@ -49,7 +49,7 @@ export default function AdminAreasPage() {
     apiFetch('/api/auth/me')
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         return r.ok ? r.json() : null;
@@ -65,7 +65,7 @@ export default function AdminAreasPage() {
     const res = await apiFetch('/api/areas?admin=true');
     if (res.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      redirectToLogin();
       return;
     }
     if (!res.ok) return;

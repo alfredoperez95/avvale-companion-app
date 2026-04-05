@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch, apiUpload } from '@/lib/api';
+import { apiFetch, apiUpload, redirectToLogin } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
@@ -40,7 +40,7 @@ export default function ActivationDetailPage() {
     apiFetch(`/api/activations/${id}`)
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         if (!r.ok) return null;
@@ -152,7 +152,7 @@ export default function ActivationDetailPage() {
       const res = await apiFetch(`/api/activations/${id}`, { method: 'DELETE' });
       if (res.status === 401) {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       if (!res.ok) {

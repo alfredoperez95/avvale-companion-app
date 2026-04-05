@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import { DropzoneUploader } from '@/components/yubiq/DropzoneUploader/DropzoneUploader';
 import { AnalysisLogPanel } from '@/components/yubiq/AnalysisLogPanel/AnalysisLogPanel';
 import { ExtractionResultCard } from '@/components/yubiq/ExtractionResultCard/ExtractionResultCard';
@@ -151,7 +151,7 @@ export default function YubiqApproveSealFillerPage() {
     apiFetch('/api/user/ai-credentials/anthropic')
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         return r.ok ? r.json() : null;
@@ -220,7 +220,7 @@ export default function YubiqApproveSealFillerPage() {
       });
       const data = (await res.json().catch(() => null)) as AnalyzeOfferResponse | null;
       if (res.status === 401) {
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       if (!res.ok || !data) {
@@ -256,7 +256,7 @@ export default function YubiqApproveSealFillerPage() {
       });
       const data = (await res.json().catch(() => null)) as TranslateOfferResponse | { message?: string } | null;
       if (res.status === 401) {
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       if (!res.ok || !data || !('result' in data)) {

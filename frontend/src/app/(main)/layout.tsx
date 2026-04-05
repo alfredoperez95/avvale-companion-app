@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import '@ui5/webcomponents/dist/BusyIndicator.js';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import { AppShell } from '@/components/AppShell/AppShell';
 import { LoadingScreen } from '@/components/LoadingScreen/LoadingScreen';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -32,7 +32,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     apiFetch('/api/auth/me', { signal: ctrl.signal })
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         return r.ok ? r.json() : null;
@@ -42,7 +42,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           if (typeof window !== 'undefined') {
             localStorage.removeItem('token');
             clearAppearanceCookie();
-            window.location.href = '/login';
+            redirectToLogin();
           }
           return;
         }
@@ -60,7 +60,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
           clearAppearanceCookie();
-          window.location.href = '/login';
+          redirectToLogin();
         }
       })
       .finally(() => {
@@ -72,7 +72,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const refreshUser = useCallback(async () => {
     const r = await apiFetch('/api/auth/me');
     if (r.status === 401) {
-      window.location.href = '/login';
+      redirectToLogin();
       return;
     }
     if (!r.ok) return;

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch, apiUpload } from '@/lib/api';
+import { apiFetch, apiUpload, redirectToLogin } from '@/lib/api';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
@@ -246,7 +246,7 @@ export default function EditActivationPage() {
     apiFetch(`/api/activations/${id}`)
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         if (!r.ok) return null;
@@ -507,7 +507,7 @@ export default function EditActivationPage() {
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       if (!res.ok) {

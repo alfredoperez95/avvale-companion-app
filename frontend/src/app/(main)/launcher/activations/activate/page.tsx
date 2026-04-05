@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { ACTIVATION_IN_FLIGHT_STATUSES } from '@/types/activation';
 import { FilterBar, type SolicitanteOption } from '@/components/FilterBar/FilterBar';
@@ -61,7 +61,7 @@ export default function ActivationsPage() {
   const fetchActivations = useCallback(async () => {
     const response = await apiFetch('/api/activations');
     if (response.status === 401) {
-      window.location.href = '/login';
+      redirectToLogin();
       return;
     }
     if (!response.ok) return;
@@ -96,7 +96,7 @@ export default function ActivationsPage() {
       try {
         const response = await apiFetch('/api/activations');
         if (response.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return;
         }
         if (!response.ok) return;

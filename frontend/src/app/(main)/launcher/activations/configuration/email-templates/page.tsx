@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { TEMPLATE_SHORTCODES } from '@/lib/replace-template-variables';
@@ -30,7 +30,7 @@ export default function AdminEmailTemplatesPage() {
       const url = admin ? '/api/email-templates?scope=system' : '/api/email-templates';
       const res = await apiFetch(url);
       if (res.status === 401) {
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       if (!res.ok) {
@@ -53,7 +53,7 @@ export default function AdminEmailTemplatesPage() {
     apiFetch('/api/auth/me')
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         return r.ok ? r.json() : null;
@@ -137,7 +137,7 @@ export default function AdminEmailTemplatesPage() {
       const res = await apiFetch('/api/email-templates/restore-from-system', { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) {
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       if (!res.ok) {

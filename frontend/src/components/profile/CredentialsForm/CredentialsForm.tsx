@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import styles from './CredentialsForm.module.css';
 
 type AnthropicCredentialStatus = { configured: boolean; masked: string | null };
@@ -19,7 +19,7 @@ export function CredentialsForm() {
   const loadStatus = async () => {
     const res = await apiFetch('/api/user/ai-credentials/anthropic');
     if (res.status === 401) {
-      window.location.href = '/login';
+      redirectToLogin();
       return;
     }
     if (!res.ok) return;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import { clearAppearanceCookie, setAppearanceCookie } from '@/lib/appearance-cookie';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { PhoneCountryPicker } from '@/components/PhoneCountryPicker/PhoneCountryPicker';
@@ -60,7 +60,7 @@ export default function PerfilPage() {
     apiFetch('/api/auth/me')
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         if (!r.ok) return null;
@@ -118,7 +118,7 @@ export default function PerfilPage() {
       if (res.status === 401) {
         localStorage.removeItem('token');
         clearAppearanceCookie();
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -170,7 +170,7 @@ export default function PerfilPage() {
       if (res.status === 401) {
         localStorage.removeItem('token');
         clearAppearanceCookie();
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -198,7 +198,7 @@ export default function PerfilPage() {
       if (res.status === 401) {
         localStorage.removeItem('token');
         clearAppearanceCookie();
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -228,7 +228,7 @@ export default function PerfilPage() {
       if (res.status === 401) {
         localStorage.removeItem('token');
         clearAppearanceCookie();
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       const data = await res.json().catch(() => ({}));

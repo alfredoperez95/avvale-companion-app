@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from '../configuration.module.css';
@@ -24,7 +24,7 @@ export default function AdminBillingAdminPage() {
   const loadContacts = async () => {
     const res = await apiFetch('/api/billing-admin-contacts');
     if (res.status === 401) {
-      window.location.href = '/login';
+      redirectToLogin();
       return;
     }
     if (!res.ok) return;
@@ -36,7 +36,7 @@ export default function AdminBillingAdminPage() {
     apiFetch('/api/auth/me')
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         return r.ok ? r.json() : null;

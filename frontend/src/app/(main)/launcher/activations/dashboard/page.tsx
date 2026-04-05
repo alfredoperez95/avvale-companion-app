@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { KpiCard } from '@/components/KpiCard/KpiCard';
 import { FilterBar, type SolicitanteOption } from '@/components/FilterBar/FilterBar';
@@ -33,7 +33,7 @@ export default function DashboardPage() {
     apiFetch('/api/activations')
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return [];
         }
         return r.json();

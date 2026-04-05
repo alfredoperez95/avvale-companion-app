@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, redirectToLogin } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
@@ -41,7 +41,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
     apiFetch(`/api/activations/${activationId}`)
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = '/login';
+          redirectToLogin();
           return null;
         }
         if (!r.ok) return null;
@@ -61,7 +61,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
       const res = await apiFetch(`/api/activations/${activationId}/send`, { method: 'POST' });
       if (res.status === 401) {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -95,7 +95,7 @@ export function DetailDrawer({ activationId, onClose, onUpdated, onDeleted }: De
       const res = await apiFetch(`/api/activations/${activationId}`, { method: 'DELETE' });
       if (res.status === 401) {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        redirectToLogin();
         return;
       }
       if (!res.ok) {

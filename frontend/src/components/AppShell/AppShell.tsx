@@ -8,6 +8,7 @@ import { Footer } from '@/components/Footer/Footer';
 import { Icon, type IconName } from '@/components/Icon/Icon';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { clearAppearanceCookie } from '@/lib/appearance-cookie';
+import { redirectToLogin } from '@/lib/api';
 import styles from './AppShell.module.css';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
@@ -142,7 +143,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       clearAppearanceCookie();
-      window.location.href = '/login';
+      redirectToLogin();
     }
   };
 

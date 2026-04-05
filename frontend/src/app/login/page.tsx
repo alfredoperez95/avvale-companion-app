@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * Pantalla de inicio de sesión — entrada pública canónica.
+ * @see docs/LOGIN_STANDARD.md
+ */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { resolveApiUrl } from '@/lib/api';
@@ -8,9 +12,29 @@ import styles from './login.module.css';
 
 type Appearance = 'microsoft' | 'fiori';
 
+const CORP_EMAIL_DOMAIN = '@avvale.com';
+
+function parseEmailLocalPart(raw: string): string {
+  let t = raw.trim();
+  const suffix = '@avvale.com';
+  const lower = t.toLowerCase();
+  if (lower.endsWith(suffix)) {
+    return t.slice(0, -suffix.length).trim();
+  }
+  const at = t.indexOf('@');
+  if (at !== -1) {
+    return t.slice(0, at).trim();
+  }
+  return t;
+}
+
+function buildCorporateEmail(localPart: string): string {
+  return `${localPart.trim()}${CORP_EMAIL_DOMAIN}`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [emailLocal, setEmailLocal] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,6 +44,8 @@ export default function LoginPage() {
   const [magicLoading, setMagicLoading] = useState(false);
   const [magicError, setMagicError] = useState('');
   const [magicSuccess, setMagicSuccess] = useState('');
+  /** Por defecto acceso por enlace; al activar, se muestran contraseña y Continuar */
+  const [showPasswordPath, setShowPasswordPath] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -59,8 +85,7 @@ export default function LoginPage() {
     };
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runPasswordLogin = async () => {
     setError('');
     setLoading(true);
     try {
@@ -71,7 +96,7 @@ export default function LoginPage() {
       const res = await fetch(loginUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: buildCorporateEmail(emailLocal), password }),
       });
       const data = await res.json().catch(() => ({}));
       if (process.env.NODE_ENV === 'development') {
@@ -97,12 +122,21 @@ export default function LoginPage() {
     }
   };
 
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (showPasswordPath) {
+      await runPasswordLogin();
+      return;
+    }
+    await handleMagicLink();
+  };
+
   const handleMagicLink = async () => {
     setMagicError('');
     setMagicSuccess('');
-    const trimmed = email.trim();
+    const trimmed = emailLocal.trim();
     if (!trimmed) {
-      setMagicError('Indica tu correo electrónico arriba.');
+      setMagicError('Indica tu usuario corporativo (nombre.apellido) arriba.');
       return;
     }
     setMagicLoading(true);
@@ -111,7 +145,7 @@ export default function LoginPage() {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: buildCorporateEmail(trimmed) }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 429) {
@@ -125,7 +159,7 @@ export default function LoginPage() {
       const msg =
         typeof data?.message === 'string' && data.message.length > 0
           ? data.message
-          : 'Si existe una cuenta con ese correo, recibirás un enlace para iniciar sesión.';
+          : 'Si existe una cuenta con ese correo y estás registrado en la plataforma, recibirás un enlace para iniciar sesión.';
       setMagicSuccess(msg);
     } catch {
       setMagicError('No se pudo conectar con el servidor.');
@@ -152,75 +186,123 @@ export default function LoginPage() {
           </p>
         </header>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+        <form onSubmit={handleFormSubmit} className={styles.form}>
           <div className={styles.formGroup}>
             <label htmlFor="email" className={styles.label}>
-              Correo electrónico o nombre de usuario
+              Email corporativo
             </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className={styles.input}
-              placeholder="Correo electrónico o nombre de usuario"
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label htmlFor="password" className={styles.label}>
-              Contraseña
-            </label>
-            <div className={styles.passwordWrap}>
+            <div className={styles.emailComposite}>
               <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                id="email"
+                type="text"
+                inputMode="email"
+                autoComplete="username"
+                value={emailLocal}
+                onChange={(e) => setEmailLocal(parseEmailLocalPart(e.target.value))}
                 required
-                className={styles.input}
-                placeholder="Contraseña"
+                className={`${styles.input} ${styles.emailLocal}`}
+                placeholder="nombre.apellido"
+                spellCheck={false}
+                aria-describedby="email-domain-hint"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className={styles.passwordToggle}
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.eyeIcon}>
-                  <path d="M12 5C6.6 5 2.2 9.2 1 12c1.2 2.8 5.6 7 11 7s9.8-4.2 11-7c-1.2-2.8-5.6-7-11-7Zm0 11c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4Zm0-6.2a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4Z" />
-                </svg>
-              </button>
+              <span className={styles.emailSep} aria-hidden="true" />
+              <span id="email-domain-hint" className={styles.emailDomainBadge}>
+                {CORP_EMAIL_DOMAIN}
+              </span>
             </div>
           </div>
-          <div className={styles.magicBlock}>
-            <p className={styles.magicLead}>¿Sin contraseña? Te enviamos un enlace de acceso al correo indicado arriba.</p>
+
+          <div className={styles.pathToggleRow}>
             <button
               type="button"
-              className={styles.magicButton}
-              onClick={handleMagicLink}
-              disabled={magicLoading || !brandingReady}
+              className={styles.pathToggle}
+              onClick={() => {
+                setShowPasswordPath((v) => !v);
+                setError('');
+                setMagicError('');
+                if (showPasswordPath) {
+                  setMagicSuccess('');
+                }
+              }}
             >
-              {magicLoading ? 'Enviando…' : 'Enviar enlace de acceso'}
+              {showPasswordPath ? 'Volver al acceso por enlace' : '¿Quieres acceder con contraseña?'}
             </button>
-            {magicError ? <p className={styles.error}>{magicError}</p> : null}
-            {magicSuccess ? <p className={styles.magicSuccess}>{magicSuccess}</p> : null}
           </div>
-          <div className={styles.actionsRow}>
-            <label className={styles.checkboxRow}>
-              <input type="checkbox" className={styles.checkbox} />
-              <span>Mantener inicio de sesión</span>
-            </label>
-            <a href="#" className={styles.helpLink}>
-              ¿Ha olvidado la contraseña?
-            </a>
+
+          <div className={styles.formMain}>
+            {!showPasswordPath ? (
+              <div className={styles.magicBlock}>
+                <p className={styles.magicLead} aria-live="polite">
+                  Te enviamos un enlace seguro para acceder sin contraseña a:
+                  <span className={styles.magicLeadEmailLine}>
+                    {emailLocal.trim() ? (
+                      <b className={styles.magicLeadStrong}>{buildCorporateEmail(emailLocal.trim())}</b>
+                    ) : (
+                      <b className={styles.magicLeadPlaceholder}>email corporativo</b>
+                    )}
+                  </span>
+                </p>
+                {magicError ? <p className={styles.error}>{magicError}</p> : null}
+                {magicSuccess ? <p className={styles.magicSuccess}>{magicSuccess}</p> : null}
+              </div>
+            ) : (
+              <div className={styles.passwordSection}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="password" className={styles.label}>
+                    Contraseña
+                  </label>
+                  <div className={styles.passwordWrap}>
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required={showPasswordPath}
+                      className={styles.input}
+                      placeholder="Contraseña"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className={styles.passwordToggle}
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.eyeIcon}>
+                        <path d="M12 5C6.6 5 2.2 9.2 1 12c1.2 2.8 5.6 7 11 7s9.8-4.2 11-7c-1.2-2.8-5.6-7-11-7Zm0 11c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4Zm0-6.2a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4Z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className={styles.actionsRow}>
+                  <label className={styles.checkboxRow}>
+                    <input type="checkbox" className={styles.checkbox} />
+                    <span>Mantener inicio de sesión</span>
+                  </label>
+                  <a href="#" className={styles.helpLink}>
+                    ¿Ha olvidado la contraseña?
+                  </a>
+                </div>
+                {error ? <p className={styles.error}>{error}</p> : null}
+              </div>
+            )}
           </div>
-          {error && <p className={styles.error}>{error}</p>}
+
           <footer className={styles.footerBar}>
-            <button type="submit" disabled={loading || !brandingReady} className={styles.submit}>
-              {loading ? 'Entrando…' : 'Continuar'}
-            </button>
+            {!showPasswordPath ? (
+              <button
+                type="submit"
+                disabled={magicLoading || !brandingReady}
+                className={styles.submit}
+              >
+                {magicLoading ? 'Enviando…' : 'Enviar enlace de acceso'}
+              </button>
+            ) : (
+              <button type="submit" disabled={loading || !brandingReady} className={styles.submit}>
+                {loading ? 'Entrando…' : 'Continuar'}
+              </button>
+            )}
           </footer>
         </form>
       </section>

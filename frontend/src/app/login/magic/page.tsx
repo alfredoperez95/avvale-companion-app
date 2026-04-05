@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { resolveApiUrl } from '@/lib/api';
+import { resolveApiUrl, LOGIN_PATH } from '@/lib/api';
 import styles from '../login.module.css';
 
 function MagicVerifyContent() {
@@ -79,7 +79,7 @@ function MagicVerifyContent() {
           <h1 className={styles.title}>No se pudo iniciar sesión</h1>
           <p className={styles.subtitle}>{message}</p>
           <p style={{ marginTop: '1.5rem' }}>
-            <Link href="/login" className={styles.helpLink}>
+            <Link href={LOGIN_PATH} className={styles.helpLink}>
               Volver al inicio de sesión
             </Link>
           </p>
