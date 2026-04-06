@@ -9,8 +9,7 @@ import { RfqStorageService } from './rfq-storage.service';
 import { RfqPipelineService } from './rfq-pipeline.service';
 import { RfqAnalysisController } from './rfq-analysis.controller';
 import { RfqEmailWebhookController } from './rfq-email-webhook.controller';
-
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+import { RFQ_DEFAULT_MAX_FILE_BYTES } from './rfq-analysis.config';
 
 @Module({
   imports: [
@@ -19,7 +18,7 @@ const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
     AiCredentialsModule,
     MulterModule.register({
       storage: multer.memoryStorage(),
-      limits: { fileSize: MAX_UPLOAD_BYTES },
+      limits: { fileSize: RFQ_DEFAULT_MAX_FILE_BYTES },
     }),
   ],
   controllers: [RfqAnalysisController, RfqEmailWebhookController],

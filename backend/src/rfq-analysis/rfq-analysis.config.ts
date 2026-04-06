@@ -10,8 +10,11 @@ export function getRfqMaxAttachments(config: ConfigService): number {
   return parsePositiveInt(config.get<string>('RFQ_MAX_ATTACHMENTS_PER_ANALYSIS'), 10);
 }
 
+/** Default alineado con límite típico de body HTTP para webhooks con un adjunto grande en base64. */
+export const RFQ_DEFAULT_MAX_FILE_BYTES = 50 * 1024 * 1024;
+
 export function getRfqMaxFileBytes(config: ConfigService): number {
-  return parsePositiveInt(config.get<string>('RFQ_MAX_FILE_BYTES'), 20 * 1024 * 1024);
+  return parsePositiveInt(config.get<string>('RFQ_MAX_FILE_BYTES'), RFQ_DEFAULT_MAX_FILE_BYTES);
 }
 
 export function getRfqMaxTotalBytes(config: ConfigService): number {

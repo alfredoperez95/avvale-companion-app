@@ -21,7 +21,7 @@ import { CreateRfqAnalysisDto } from './dto/create-rfq-analysis.dto';
 import { PostRfqMessageDto } from './dto/post-rfq-message.dto';
 import { PatchRfqRecommendedQuestionsDto } from './dto/patch-rfq-recommended-questions.dto';
 import { ConfigService } from '@nestjs/config';
-import { getRfqMaxAttachments } from './rfq-analysis.config';
+import { getRfqMaxAttachments, RFQ_DEFAULT_MAX_FILE_BYTES } from './rfq-analysis.config';
 
 const MAX_FILES_UPLOAD_BATCH = 20;
 
@@ -60,7 +60,7 @@ export class RfqAnalysisController {
   @Post(':id/sources')
   @UseInterceptors(
     FilesInterceptor('files', MAX_FILES_UPLOAD_BATCH, {
-      limits: { fileSize: 25 * 1024 * 1024 },
+      limits: { fileSize: RFQ_DEFAULT_MAX_FILE_BYTES },
     }),
   )
   async uploadSources(

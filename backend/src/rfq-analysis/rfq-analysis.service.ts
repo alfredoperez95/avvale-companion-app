@@ -33,7 +33,7 @@ import {
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { buildRfqChatSystemPrompt } from './prompts/rfq-chat-system-prompt';
-import { truncateForContext } from './rfq-analysis.utils';
+import { formatBytesHuman, truncateForContext } from './rfq-analysis.utils';
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
@@ -382,11 +382,17 @@ export class RfqAnalysisService {
       const b64len = a.contentBase64?.length ?? 0;
       const approx = Math.floor((b64len * 3) / 4);
       if (approx > maxFile) {
+        this.logger.warn(
+          `RFQ email rechazado: adjunto supera límite por fichero (aprox ${formatBytesHuman(approx)} > máx ${formatBytesHuman(maxFile)}, fileName=${a.fileName?.slice(0, 120) ?? '?'})`,
+        );
         return { ok: false, reason: 'attachment_too_large' };
       }
       estimatedTotal += approx;
     }
     if (estimatedTotal > maxTotal) {
+      this.logger.warn(
+        `RFQ email rechazado: tamaño total de adjuntos aprox ${formatBytesHuman(estimatedTotal)} > máx ${formatBytesHuman(maxTotal)}`,
+      );
       return { ok: false, reason: 'total_size_exceeded' };
     }
 
@@ -439,6 +445,9 @@ export class RfqAnalysisService {
     for (const att of attachments) {
       const buffer = Buffer.from(att.contentBase64, 'base64');
       if (buffer.length > maxFile) {
+        this.logger.warn(
+          `RFQ email: tras decodificar base64, adjunto ${formatBytesHuman(buffer.length)} > máx ${formatBytesHuman(maxFile)} (${att.fileName?.slice(0, 120) ?? '?'})`,
+        );
         await this.failInboundAnalysis(analysis.id, 'attachment_too_large');
         return { ok: false, reason: 'attachment_too_large' };
       }

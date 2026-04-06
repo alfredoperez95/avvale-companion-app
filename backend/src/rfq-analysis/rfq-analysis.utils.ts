@@ -27,3 +27,11 @@ export function truncateForContext(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   return `${text.slice(0, maxChars)}\n\n[… texto truncado por límite de contexto …]`;
 }
+
+/** Para logs de límites de tamaño (adjuntos RFQ, etc.). */
+export function formatBytesHuman(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return String(n);
+  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(2)} MiB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(1)} KiB`;
+  return `${n} B`;
+}

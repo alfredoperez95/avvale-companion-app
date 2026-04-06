@@ -1,9 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 
+/**
+ * Límite global del body JSON/urlencoded (Express).
+ * Debe cubrir webhooks con adjuntos en base64 (p. ej. RFQ email). Ajustable vía HTTP_BODY_LIMIT (p. ej. 50mb).
+ */
+const HTTP_BODY_LIMIT = process.env.HTTP_BODY_LIMIT?.trim() || '50mb';
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+  });
+  app.use(json({ limit: HTTP_BODY_LIMIT }));
+  app.use(urlencoded({ limit: HTTP_BODY_LIMIT, extended: true }));
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -31,6 +43,7 @@ async function bootstrap() {
   const port = process.env.PORT ?? 4000;
   await app.listen(port, '0.0.0.0');
   console.log(`Backend running at http://localhost:${port}`);
+  console.log(`HTTP body limit (JSON / urlencoded): ${HTTP_BODY_LIMIT}`);
   console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`);
   if (process.env.MAIL_SKIP_SEND === 'true') {
     console.warn(

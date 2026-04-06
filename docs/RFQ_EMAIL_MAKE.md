@@ -15,10 +15,29 @@ El backend expone un webhook **HTTP** para que un escenario de **Make** envíe e
 |----------|-------------|-------------|
 | `RFQ_EMAIL_WEBHOOK_SECRET` | Sí (producción) | Secreto compartido; el body JSON debe incluir el mismo valor en `secret`. |
 | `RFQ_MAX_ATTACHMENTS_PER_ANALYSIS` | No | Máximo de adjuntos (default 10). |
-| `RFQ_MAX_FILE_BYTES` | No | Tamaño máximo por fichero en bytes (default 20 MB). |
-| `RFQ_MAX_TOTAL_BYTES_PER_ANALYSIS` | No | Tamaño total aproximado por análisis (default 50 MB). |
+| `RFQ_MAX_FILE_BYTES` | No | Tamaño máximo por fichero decodificado (default **50 MiB**). |
+| `RFQ_MAX_TOTAL_BYTES_PER_ANALYSIS` | No | Suma aproximada de adjuntos por análisis (default **50 MiB**). |
+| `HTTP_BODY_LIMIT` | No | Límite del body en Express (`json` / `urlencoded`). Default en código: **`50mb`**. Debe ser ≥ que el payload JSON real (base64 infla ~4/3). |
 
 Copia los valores en `backend/.env` (o raíz + `./scripts/prepare-env.sh` si aplica).
+
+## Límite de body en Nest (Express) y 413
+
+El arranque (`main.ts`) desactiva el body parser por defecto de Nest y registra **`express.json`** y **`express.urlencoded`** con límite **`HTTP_BODY_LIMIT`** (por defecto `50mb`), para que los POST grandes del webhook no fallen antes de llegar al controlador.
+
+Los límites de **negocio** (`RFQ_MAX_FILE_BYTES`, `RFQ_MAX_TOTAL_BYTES_PER_ANALYSIS`) se aplican en `handleInboundEmail` y, si se superan, la API responde `{ ok: false, reason: 'attachment_too_large' | 'total_size_exceeded' }` con **logs** indicando tamaños y límites.
+
+## Proxy inverso (Nginx, Traefik, etc.)
+
+Si el tráfico pasa por **Nginx** delante del backend, configura por ejemplo:
+
+```nginx
+client_max_body_size 50M;
+```
+
+Ajusta el valor acorde a `HTTP_BODY_LIMIT` y a tus necesidades. Sin esto, Nginx puede responder **413** antes de que Nest reciba el cuerpo.
+
+**Next.js (`/api/*` → backend):** en algunos despliegues el proxy de desarrollo o el edge pueden imponer límites propios. Para webhooks muy grandes, suele ser más fiable apuntar Make **directamente** a la URL pública del **backend** (puerto interno detrás del balanceador) o subir el límite en el proxy que delante del frontend.
 
 ## Cuerpo JSON (ejemplo)
 
