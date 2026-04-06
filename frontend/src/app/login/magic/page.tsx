@@ -1,19 +1,34 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { resolveApiUrl, LOGIN_PATH } from '@/lib/api';
 import styles from '../login.module.css';
 
+/**
+ * Lee el token desde la query del navegador (no desde useSearchParams en el primer render).
+ * En producción vimos dos POST casi simultáneos: primero ~21 chars (not_found), luego ~43 (ok);
+ * useSearchParams puede devolver un valor intermedio antes de hidratar la URL completa.
+ * Si hay varios `token=` en la query, se elige el valor más largo (enlace correcto).
+ */
+function pickMagicLinkTokenFromSearch(search: string): string | null {
+  const q = search.startsWith('?') ? search : `?${search}`;
+  const params = new URLSearchParams(q);
+  const raw = params.getAll('token').map((t) => t.trim()).filter(Boolean);
+  if (raw.length === 0) return null;
+  return raw.reduce((a, b) => (a.length >= b.length ? a : b));
+}
+
 function MagicVerifyContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'error' | 'done'>('loading');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const token = searchParams.get('token');
+    if (typeof window === 'undefined') return;
+
+    const token = pickMagicLinkTokenFromSearch(window.location.search);
     if (!token) {
       setStatus('error');
       setMessage('Falta el enlace. Solicita un nuevo acceso desde la pantalla de inicio de sesión.');
@@ -61,7 +76,7 @@ function MagicVerifyContent() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, router]);
+  }, [router]);
 
   if (status === 'loading') {
     return (
