@@ -24,7 +24,7 @@ import {
 } from './rfq-analysis.config';
 import { MailService } from '../mail/mail.service';
 import { avvaleUnitNamesFromInsightJson } from '../mail/templates/rfq-analysis-completed.email';
-import { formatRfqSourceLinesForEmail } from './rfq-completion-email.helpers';
+import { buildRfqEmailSourceRows } from './rfq-completion-email.helpers';
 import { recoverJsonObjectString, safeJsonParse, truncateForContext } from './rfq-analysis.utils';
 import { RfqStorageService } from './rfq-storage.service';
 import {
@@ -210,7 +210,7 @@ export class RfqPipelineService {
         await this.mail.sendRfqAnalysisCompletedEmail(user.email.trim(), {
           analysisTitle: fresh.title,
           viewUrl,
-          sourceLines: formatRfqSourceLinesForEmail(fresh.sources),
+          sourceRows: buildRfqEmailSourceRows(fresh.sources),
           avvaleUnitNames: avvaleUnitNamesFromInsightJson(parsed.avvaleAreas),
         });
       }
@@ -270,7 +270,7 @@ export class RfqPipelineService {
           : s.kind === RfqSourceKind.EMAIL_BODY
             ? 'Cuerpo del email'
             : s.kind === RfqSourceKind.THREAD_CONTEXT
-              ? 'Contexto del hilo'
+              ? 'Contexto del hilo de correo'
               : 'Nota manual';
       const text = (s.extractedText ?? '').trim();
       parts.push(`## Fuente [${s.id}] ${label}\n${text || '(vacío)'}\n`);

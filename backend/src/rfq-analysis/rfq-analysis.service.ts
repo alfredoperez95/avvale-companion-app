@@ -38,7 +38,7 @@ import {
   getRfqMaxFileBytes,
   getRfqMaxTotalBytes,
 } from './rfq-analysis.config';
-import { formatRfqSourceLinesForEmail } from './rfq-completion-email.helpers';
+import { buildRfqEmailSourceRows } from './rfq-completion-email.helpers';
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { buildRfqChatSystemPrompt } from './prompts/rfq-chat-system-prompt';
@@ -178,7 +178,7 @@ export class RfqAnalysisService {
     await this.mail.sendRfqAnalysisCompletedEmail(user.email.trim(), {
       analysisTitle: analysis.title,
       viewUrl,
-      sourceLines: formatRfqSourceLinesForEmail(analysis.sources),
+      sourceRows: buildRfqEmailSourceRows(analysis.sources),
       avvaleUnitNames: avvaleUnitNamesFromInsightJson(insight.avvaleAreas),
     });
     this.logger.log(`Correo RFQ completado reenviado manualmente analysis=${analysisId}`);

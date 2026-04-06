@@ -829,6 +829,7 @@
 .sourceKind {
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   padding: 0.2rem 0.5rem;
   border-radius: 0.3125rem;
   font-family: '72Black', '72Blackfull', '72', '72full', Arial, Helvetica, sans-serif;
@@ -839,6 +840,13 @@
   color: var(--fiori-text);
   background: color-mix(in srgb, var(--fiori-shell-bg) 18%, var(--fiori-nav-bg));
   border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 22%, var(--fiori-border-light));
+}
+
+.sourceKindIcon {
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: color-mix(in srgb, var(--fiori-shell-bg) 55%, var(--fiori-text));
 }
 
 .extractionErrorDetail {

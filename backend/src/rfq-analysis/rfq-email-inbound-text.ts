@@ -45,7 +45,7 @@ export function buildEmailInboundContextPreview(input: {
   if (body) lines.push(`Cuerpo:\n${body}`);
   const thread = sanitizeInboundEmailText(input.threadContext);
   if (thread && !areInboundEmailTextsEquivalent(body, thread)) {
-    lines.push(`Contexto del hilo (adicional):\n${thread}`);
+    lines.push(`Contexto del hilo de correo (adicional):\n${thread}`);
   }
   return lines.join('\n\n');
 }

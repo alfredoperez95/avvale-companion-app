@@ -3,8 +3,10 @@
  */
 
 import { DEFAULT_MAIL_LOGO_URL } from './magic-link.email';
+import type { RfqEmailSourceRow } from '../../rfq-analysis/rfq-completion-email.helpers';
 
 export { DEFAULT_MAIL_LOGO_URL };
+export type { RfqEmailSourceRow };
 
 function escapeHtml(s: string): string {
   return s
@@ -36,28 +38,46 @@ export function avvaleUnitNamesFromInsightJson(val: unknown): string[] {
 export type RfqCompletedEmailContent = {
   analysisTitle: string;
   viewUrl: string;
-  /** Una línea por fuente (p. ej. "Archivo: spec.pdf", "Cuerpo del email"). */
-  sourceLines: string[];
+  /** Nombre a la izquierda; etiqueta de formato a la derecha solo para adjuntos. */
+  sourceRows: RfqEmailSourceRow[];
   /** Códigos de unidad Avvale (RUN, GROW, …). */
   avvaleUnitNames: string[];
 };
 
-function buildSourcesTableHtml(lines: string[], rowBorder: string, rowBgAlt: string, textColor: string): string {
-  if (lines.length === 0) {
+function buildSourcesTableHtml(
+  rows: RfqEmailSourceRow[],
+  rowBorder: string,
+  rowBgAlt: string,
+  textColor: string,
+): string {
+  if (rows.length === 0) {
     return `<p style="margin:0.5rem 0 0;font-size:0.875rem;color:#8a9bab;">—</p>`;
   }
-  const rows = lines
-    .map((line, i) => {
+  const sourceCellFont =
+    "font-family:ui-monospace,'Cascadia Mono','Segoe UI Mono',Menlo,Monaco,Consolas,'Liberation Mono',monospace;";
+  const tagStyle =
+    "display:inline-block;padding:0.22rem 0.5rem;border-radius:0.35rem;font-size:0.62rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#0e548c;background-color:#e8f1f8;border:1px solid #b8cfe4;font-family:'Segoe UI',Roboto,sans-serif;white-space:nowrap;";
+
+  const innerRows = rows
+    .map((row, i) => {
       const bg = i % 2 === 0 ? '#ffffff' : rowBgAlt;
-      const borderBottom = i < lines.length - 1 ? `border-bottom:1px solid ${rowBorder};` : '';
+      const borderBottom = i < rows.length - 1 ? `border-bottom:1px solid ${rowBorder};` : '';
+      const tagHtml = row.formatTag ? `<span style="${tagStyle}">${escapeHtml(row.formatTag)}</span>` : '';
       return `<tr>
                         <td style="width:4px;background-color:#0e548c;font-size:0;line-height:0;">&nbsp;</td>
-                        <td style="padding:0.55rem 0.75rem;background-color:${bg};${borderBottom}font-size:0.875rem;line-height:1.45;color:${textColor};">${escapeHtml(line)}</td>
+                        <td style="padding:0.55rem 0.75rem;background-color:${bg};${borderBottom}color:${textColor};">
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                            <tr>
+                              <td style="vertical-align:middle;font-size:0.8125rem;line-height:1.5;letter-spacing:0.01em;${sourceCellFont}">${escapeHtml(row.title)}</td>
+                              <td align="right" valign="middle" style="vertical-align:middle;padding-left:0.75rem;width:1%;white-space:nowrap;">${tagHtml}</td>
+                            </tr>
+                          </table>
+                        </td>
                       </tr>`;
     })
     .join('\n');
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0.5rem 0 0;border-collapse:collapse;border:1px solid ${rowBorder};border-radius:8px;overflow:hidden;">
-                      ${rows}
+                      ${innerRows}
                     </table>`;
 }
 
@@ -80,7 +100,7 @@ export function buildRfqAnalysisCompletedEmailHtml(
   const safeUrlDisplay = escapeHtml(content.viewUrl);
   const safeLogoSrc = escapeAttr(logoUrl);
 
-  const sourcesHtml = buildSourcesTableHtml(content.sourceLines, '#e8ecf0', '#f6f8fa', '#1f2c3b');
+  const sourcesHtml = buildSourcesTableHtml(content.sourceRows, '#e8ecf0', '#f6f8fa', '#1f2c3b');
   const areasHtml = buildAvvaleTagsHtml(content.avvaleUnitNames);
 
   const pageBg = '#f5f6f7';
@@ -147,7 +167,7 @@ export function buildRfqAnalysisCompletedEmailHtml(
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding:0 0 1.1rem;border-bottom:1px solid ${footerBarBorder};">
+                        <td style="padding:1rem 0 1.1rem;border-bottom:1px solid ${footerBarBorder};">
                           <p style="margin:0;font-size:0.8125rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:#758ca4;">Áreas Avvale detectadas</p>
                           ${areasHtml}
                         </td>
@@ -204,8 +224,10 @@ export function buildRfqAnalysisCompletedEmailText(
   options?: { appName?: string; productTagline?: string },
 ): string {
   const sourcesBlock =
-    content.sourceLines.length > 0
-      ? content.sourceLines.map((l) => `  · ${l}`).join('\n')
+    content.sourceRows.length > 0
+      ? content.sourceRows
+          .map((r) => `  · ${r.title}${r.formatTag ? ` (${r.formatTag})` : ''}`)
+          .join('\n')
       : '  · —';
   const areasBlock =
     content.avvaleUnitNames.length > 0 ? content.avvaleUnitNames.join(', ') : '—';
