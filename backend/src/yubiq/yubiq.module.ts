@@ -8,7 +8,7 @@ import { AiCredentialsModule } from '../ai-credentials/ai-credentials.module';
   imports: [AiCredentialsModule],
   controllers: [ApproveSealFillerController],
   providers: [PdfExtractionService, AnthropicClientService],
-  exports: [PdfExtractionService],
+  exports: [PdfExtractionService, AnthropicClientService],
 })
 export class YubiqModule {}
 

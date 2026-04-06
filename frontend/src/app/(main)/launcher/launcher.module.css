@@ -311,7 +311,7 @@
 
 @media (min-width: 72rem) {
   .tilesGrid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -342,6 +342,10 @@
 
 .tileAccentYubiq {
   border-top: 3px solid color-mix(in srgb, var(--fiori-shell-bg) 45%, #7c3aed);
+}
+
+.tileAccentRfq {
+  border-top: 3px solid color-mix(in srgb, var(--fiori-shell-bg) 40%, #ea580c);
 }
 
 .tileTitle {
@@ -444,6 +448,10 @@
   content: "\e0ad";
 }
 
+:global([data-theme="fiori"]) .tileIconRfq::before {
+  content: "\e1a2";
+}
+
 /* Microsoft: icono tipo documento/app en el tile de Activaciones */
 :global([data-theme="microsoft"]) .tileIcon::before {
   content: "\e026";
@@ -451,6 +459,10 @@
 
 :global([data-theme="microsoft"]) .tileIconYubiq::before {
   content: "\e0ad";
+}
+
+:global([data-theme="microsoft"]) .tileIconRfq::before {
+  content: "\e1a2";
 }
 
 .tileLink:hover .tileCta {

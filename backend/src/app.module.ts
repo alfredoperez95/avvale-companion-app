@@ -16,6 +16,7 @@ import { QueueModule } from './queue/queue.module';
 import { HealthController } from './health.controller';
 import { AiCredentialsModule } from './ai-credentials/ai-credentials.module';
 import { YubiqModule } from './yubiq/yubiq.module';
+import { RfqAnalysisModule } from './rfq-analysis/rfq-analysis.module';
 import * as path from 'path';
 
 @Module({
@@ -50,6 +51,7 @@ import * as path from 'path';
     UserConfigModule,
     AiCredentialsModule,
     YubiqModule,
+    RfqAnalysisModule,
   ],
   controllers: [HealthController],
 })

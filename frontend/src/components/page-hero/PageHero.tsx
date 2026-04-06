@@ -32,7 +32,9 @@ export function PageHero({
       <div className={styles.heroInner}>
         <div className={styles.heroText}>
           <h1 className={styles.h1}>{title}</h1>
-          {subtitle != null && subtitle !== '' ? <p className={styles.subtitle}>{subtitle}</p> : null}
+          {subtitle != null && subtitle !== '' ? (
+            <div className={styles.subtitle}>{subtitle}</div>
+          ) : null}
         </div>
         {actions ? <div className={styles.heroActions}>{actions}</div> : null}
       </div>

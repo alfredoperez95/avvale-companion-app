@@ -1,0 +1,61 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: var(--fiori-space-1) var(--fiori-space-2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: 1px solid transparent;
+}
+
+.spinner {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: rfqStatusSpin 0.8s linear infinite;
+}
+
+@keyframes rfqStatusSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.draft {
+  background: #f5f5f5;
+  color: var(--fiori-text-secondary);
+  border-color: var(--fiori-border-light);
+}
+
+.queued {
+  background: #e8eaf0;
+  color: var(--fiori-text-secondary);
+  border-color: var(--fiori-border-light);
+}
+
+.processing {
+  background: var(--fiori-warning-bg);
+  color: var(--fiori-warning);
+  border-color: rgba(233, 115, 12, 0.3);
+}
+
+.completed {
+  background: var(--fiori-success-bg);
+  color: var(--fiori-success);
+  border-color: rgba(16, 126, 62, 0.3);
+}
+
+.failed {
+  background: var(--fiori-error-bg);
+  color: var(--fiori-error);
+  border-color: rgba(176, 0, 0, 0.2);
+}
+
+.rejected {
+  background: color-mix(in srgb, var(--fiori-text-secondary) 12%, var(--fiori-surface));
+  color: var(--fiori-text-secondary);
+  border-color: var(--fiori-border-light);
+}

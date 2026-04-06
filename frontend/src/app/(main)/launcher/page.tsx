@@ -30,12 +30,12 @@ import { apiFetch } from '@/lib/api';
 import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './launcher.module.css';
 
-const DEFAULT_TILE_ORDER: LauncherTileId[] = ['activations', 'pipeline', 'yubiq'];
+const DEFAULT_TILE_ORDER: LauncherTileId[] = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis'];
 
 function normalizeTileOrder(raw: unknown): LauncherTileId[] {
-  if (!Array.isArray(raw) || raw.length !== 3) return [...DEFAULT_TILE_ORDER];
-  const allowed = new Set<string>(['activations', 'pipeline', 'yubiq']);
-  if (new Set(raw).size !== 3) return [...DEFAULT_TILE_ORDER];
+  if (!Array.isArray(raw) || raw.length !== 4) return [...DEFAULT_TILE_ORDER];
+  const allowed = new Set<string>(['activations', 'pipeline', 'yubiq', 'rfqAnalysis']);
+  if (new Set(raw).size !== 4) return [...DEFAULT_TILE_ORDER];
   if (!raw.every((x) => typeof x === 'string' && allowed.has(x))) return [...DEFAULT_TILE_ORDER];
   return raw as LauncherTileId[];
 }
@@ -44,6 +44,7 @@ const TILE_ACCENT: Record<LauncherTileId, string> = {
   activations: styles.tileAccentActivations,
   pipeline: styles.tileAccentPipeline,
   yubiq: styles.tileAccentYubiq,
+  rfqAnalysis: styles.tileAccentRfq,
 };
 
 function TileLink({
@@ -112,6 +113,25 @@ function TileLink({
             </p>
             <span className={styles.tileCta}>Abrir módulo →</span>
             <span className={`${styles.tileIcon} ${styles.tileIconYubiq}`} aria-hidden="true" />
+          </article>
+        </Link>
+      );
+    case 'rfqAnalysis':
+      return (
+        <Link
+          href="/launcher/rfq-analysis"
+          className={styles.tileLink}
+          aria-labelledby="tile-rfq-analysis-heading"
+        >
+          <article className={tile}>
+            <h2 id="tile-rfq-analysis-heading" className={styles.tileTitle}>
+              Análisis RFQs
+            </h2>
+            <p className={styles.tileDesc}>
+              Workspace por oportunidad: documentos, análisis estructurado con IA y chat sobre el mismo contexto (manual o por email).
+            </p>
+            <span className={styles.tileCta}>Abrir módulo →</span>
+            <span className={`${styles.tileIcon} ${styles.tileIconRfq}`} aria-hidden="true" />
           </article>
         </Link>
       );

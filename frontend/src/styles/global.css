@@ -11,9 +11,13 @@
 
 html {
   font-size: 14px;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
+  height: 100%;
+  overflow: hidden;
   font-family: var(--fiori-font-family);
   line-height: 1.5;
   color: var(--fiori-text);

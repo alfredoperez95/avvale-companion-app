@@ -71,5 +71,57 @@ export class AnthropicClientService {
       '';
     return { text: String(text), modelId: id };
   }
+
+  /**
+   * Mensajes multi-turn (chat). `messages` alterna user/assistant; el último suele ser user.
+   */
+  async completeMessages(params: {
+    apiKey: string;
+    model: AnthropicModelChoice;
+    system?: string;
+    messages: { role: 'user' | 'assistant'; content: string }[];
+    maxTokens?: number;
+  }): Promise<{ text: string; modelId: string }> {
+    let id = modelId(params.model);
+    try {
+      id = await this.resolveAvailableModelId(params.apiKey, params.model);
+    } catch {
+      // fallback
+    }
+    const body: Record<string, unknown> = {
+      model: id,
+      max_tokens: params.maxTokens ?? 4096,
+      temperature: 0.2,
+      messages: params.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    };
+    if (params.system?.trim()) {
+      body.system = params.system.trim();
+    }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'x-api-key': params.apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+    const bodyText = await res.text();
+    if (!res.ok) {
+      const snippet = bodyText.length > 400 ? `${bodyText.slice(0, 400)}…` : bodyText;
+      throw new Error(`Anthropic ${res.status}: ${snippet}`);
+    }
+    const json = JSON.parse(bodyText) as {
+      content?: { type?: string; text?: string }[];
+    };
+    const text =
+      json.content?.find((c) => c.type === 'text')?.text ??
+      json.content?.[0]?.text ??
+      '';
+    return { text: String(text), modelId: id };
+  }
 }
 

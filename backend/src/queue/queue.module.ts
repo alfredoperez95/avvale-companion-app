@@ -2,10 +2,17 @@ import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ActivationsModule } from '../activations/activations.module';
-import { activationSendQueueDefaultsFactory, bullRootModuleOptionsFactory } from './bullmq.config';
-import { ACTIVATION_SEND_QUEUE } from './queue.constants';
+import { RfqAnalysisModule } from '../rfq-analysis/rfq-analysis.module';
+import {
+  activationSendQueueDefaultsFactory,
+  bullRootModuleOptionsFactory,
+  rfqAnalysisQueueDefaultsFactory,
+} from './bullmq.config';
+import { ACTIVATION_SEND_QUEUE, RFQ_ANALYSIS_QUEUE } from './queue.constants';
 import { ActivationSendProducer } from './producers/activation-send-producer.service';
 import { ActivationSendProcessor } from './processors/activation-send.processor';
+import { RfqAnalysisProducer } from './producers/rfq-analysis-producer.service';
+import { RfqAnalysisProcessor } from './processors/rfq-analysis.processor';
 
 /**
  * Infraestructura BullMQ. Importar una sola vez (p. ej. desde AppModule o ActivationsModule).
@@ -34,9 +41,23 @@ import { ActivationSendProcessor } from './processors/activation-send.processor'
       }),
       inject: [ConfigService],
     }),
+    BullModule.registerQueueAsync({
+      name: RFQ_ANALYSIS_QUEUE,
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        defaultJobOptions: rfqAnalysisQueueDefaultsFactory(config),
+      }),
+      inject: [ConfigService],
+    }),
     forwardRef(() => ActivationsModule),
+    forwardRef(() => RfqAnalysisModule),
   ],
-  providers: [ActivationSendProducer, ActivationSendProcessor],
-  exports: [BullModule, ActivationSendProducer],
+  providers: [
+    ActivationSendProducer,
+    ActivationSendProcessor,
+    RfqAnalysisProducer,
+    RfqAnalysisProcessor,
+  ],
+  exports: [BullModule, ActivationSendProducer, RfqAnalysisProducer],
 })
 export class QueueModule {}

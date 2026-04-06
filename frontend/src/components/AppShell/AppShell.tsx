@@ -78,6 +78,21 @@ const fioriTabsYubiq: {
   },
 ];
 
+const fioriTabsRfqAnalysis: {
+  href: string;
+  label: string;
+  icon?: IconName;
+  iconOnly?: boolean;
+  isActive: (pathname: string | null) => boolean;
+}[] = [
+  fioriTabHome,
+  {
+    href: '/launcher/rfq-analysis',
+    label: 'Análisis RFQs',
+    isActive: (p) => p != null && p.startsWith('/launcher/rfq-analysis'),
+  },
+];
+
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
   const n = (name ?? '').trim();
   const l = (lastName ?? '').trim();
@@ -100,6 +115,7 @@ function getPageHeader(pathname: string | null): { title: string } {
     return { title: 'Yubiq Tools' };
   }
   if (pathname.startsWith('/launcher/yubiq')) return { title: 'Yubiq' };
+  if (pathname.startsWith('/launcher/rfq-analysis')) return { title: 'Análisis RFQs' };
   if (pathname.startsWith('/launcher/activations/activate')) return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/configuration')) return { title: 'Configuración' };
   if (pathname.startsWith('/admin')) return { title: 'Administración' };
@@ -122,9 +138,11 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
       ? fioriTabsProfile
       : pathname?.startsWith('/admin')
         ? fioriTabsAdmin
-        : pathname?.startsWith('/launcher/yubiq')
-          ? fioriTabsYubiq
-          : fioriTabsActivations;
+        : pathname?.startsWith('/launcher/rfq-analysis')
+          ? fioriTabsRfqAnalysis
+          : pathname?.startsWith('/launcher/yubiq')
+            ? fioriTabsYubiq
+            : fioriTabsActivations;
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
 

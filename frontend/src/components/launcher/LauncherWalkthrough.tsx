@@ -196,8 +196,9 @@ const STEPS = [
         </p>
         <p>
           Cada mosaico abre una herramienta: <strong>Activaciones</strong> (gestión por correo y dashboard),{' '}
-          <strong>Pipeline Dashboard</strong> (enlace externo a métricas de ventas) y{' '}
-          <strong>Yubiq Approve &amp; Seal Filler</strong> (análisis de ofertas PDF e integración con Yubiq).
+          <strong>Pipeline Dashboard</strong> (enlace externo a métricas de ventas),{' '}
+          <strong>Yubiq Approve &amp; Seal Filler</strong> (análisis de ofertas PDF e integración con Yubiq) y{' '}
+          <strong>Análisis RFQs</strong> (workspace por oportunidad con documentos, insight estructurado y chat).
         </p>
       </>
     ),

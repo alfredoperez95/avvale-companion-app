@@ -40,7 +40,7 @@ model User {
   role         UserRole @default(USER)
   enabled      Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
-  /** Orden de mosaicos en App Launcher: ["activations","pipeline","yubiq"] */
+  /** Orden de mosaicos en App Launcher: permutación de activations, pipeline, yubiq, rfqAnalysis */
   launcherTileOrder Json? @map("launcher_tile_order")
 
   activations     Activation[]
@@ -49,8 +49,155 @@ model User {
   emailSignature  EmailSignature? @relation("UserEmailSignature")
   anthropicCredential UserAnthropicCredential?
   magicLoginTokens   MagicLoginToken[]
+  rfqAnalyses        RfqAnalysis[]
 
   @@map("users")
+}
+
+/** Origen del workspace: creado en app o vía email (Make). */
+enum RfqWorkspaceSource {
+  MANUAL
+  EMAIL
+}
+
+enum RfqAnalysisStatus {
+  DRAFT
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  REJECTED
+}
+
+/** Tipo de cada fuente de entrada dentro del análisis. */
+enum RfqSourceKind {
+  FILE
+  EMAIL_BODY
+  THREAD_CONTEXT
+  MANUAL_NOTE
+}
+
+enum RfqExtractionStatus {
+  PENDING
+  OK
+  FAILED
+  SKIPPED
+}
+
+enum RfqMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum RfqJobPhase {
+  INGEST
+  EXTRACT
+  NORMALIZE
+  SYNTHESIZE
+}
+
+/** Workspace persistente por oportunidad / RFQ. */
+model RfqAnalysis {
+  id                  String              @id @default(uuid())
+  userId              String              @map("user_id")
+  sourceType          RfqWorkspaceSource  @map("source_type")
+  status              RfqAnalysisStatus   @default(DRAFT)
+  title               String              @db.VarChar(512)
+  manualContext       String?             @map("manual_context") @db.Text
+  originEmail         String?             @map("origin_email") @db.VarChar(320)
+  originSubject       String?             @map("origin_subject") @db.VarChar(998)
+  originThreadContext String?             @map("origin_thread_context") @db.Text
+  lastProcessedAt     DateTime?           @map("last_processed_at")
+  failureReason       String?             @map("failure_reason") @db.Text
+  bullJobId           String?             @map("bull_job_id") @db.VarChar(128)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources  RfqAnalysisSource[]
+  insights RfqAnalysisInsight[]
+  messages RfqAnalysisMessage[]
+  jobEvents RfqAnalysisJobEvent[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("rfq_analyses")
+}
+
+model RfqAnalysisSource {
+  id                String               @id @default(uuid())
+  analysisId        String               @map("analysis_id")
+  kind              RfqSourceKind        @map("kind")
+  sortOrder         Int                  @default(0) @map("sort_order")
+  fileName          String?              @map("file_name") @db.VarChar(512)
+  mimeType          String?              @map("mime_type") @db.VarChar(255)
+  storagePath       String?              @map("storage_path") @db.VarChar(1024)
+  extractedText     String?              @map("extracted_text") @db.LongText
+  extractionStatus  RfqExtractionStatus  @default(PENDING) @map("extraction_status")
+  extractionError   String?              @map("extraction_error") @db.Text
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  analysis RfqAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@map("rfq_analysis_sources")
+}
+
+model RfqAnalysisInsight {
+  id                   String   @id @default(uuid())
+  analysisId           String   @map("analysis_id")
+  version              Int      @default(1)
+  executiveSummary     String?  @map("executive_summary") @db.Text
+  opportunityType      String?  @map("opportunity_type") @db.VarChar(512)
+  detectedTechnologies Json?    @map("detected_technologies")
+  avvaleAreas          Json?    @map("avvale_areas")
+  functionalVision     String?  @map("functional_vision") @db.Text
+  technicalVision      String?  @map("technical_vision") @db.Text
+  risksAndUnknowns     String?  @map("risks_and_unknowns") @db.Text
+  recommendedQuestions Json?    @map("recommended_questions")
+  confidenceNotes      String?  @map("confidence_notes") @db.Text
+  rawModelOutput       String?  @map("raw_model_output") @db.LongText
+  synthesisModelId     String?  @map("synthesis_model_id") @db.VarChar(128)
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  analysis RfqAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@map("rfq_analysis_insights")
+}
+
+model RfqAnalysisMessage {
+  id         String         @id @default(uuid())
+  analysisId String         @map("analysis_id")
+  role       RfqMessageRole
+  content    String         @db.LongText
+  metadata   Json?
+  modelId    String?        @map("model_id") @db.VarChar(128)
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  analysis RfqAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@map("rfq_analysis_messages")
+}
+
+model RfqAnalysisJobEvent {
+  id           String       @id @default(uuid())
+  analysisId   String       @map("analysis_id")
+  phase        RfqJobPhase
+  status       String       @db.VarChar(32)
+  detail       Json?
+  modelId      String?      @map("model_id") @db.VarChar(128)
+  promptHash   String?      @map("prompt_hash") @db.VarChar(64)
+  errorMessage String?      @map("error_message") @db.Text
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  analysis RfqAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@map("rfq_analysis_job_events")
 }
 
 /** Tokens de un solo uso para login por enlace mágico (hash almacenado, no el token en claro). */
