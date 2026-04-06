@@ -22,6 +22,7 @@ type Source = {
   id: string;
   kind: string;
   fileName: string | null;
+  mimeType: string | null;
   extractionStatus: string;
   extractionError: string | null;
 };
@@ -176,6 +177,11 @@ function sourceKindLabel(kind: string): string {
     MANUAL_NOTE: 'Nota manual',
   };
   return m[kind] ?? kind;
+}
+
+/** Archivos sin extracción OK no entran en el contexto del modelo; el resto sí. */
+function isSourceFileOutOfContext(s: Source): boolean {
+  return s.kind === 'FILE' && s.extractionStatus !== 'OK';
 }
 
 function shortId(id: string): string {
@@ -521,6 +527,13 @@ export default function RfqAnalysisDetailPage() {
 
   const insight = detail?.insights?.[0];
 
+  const { sourcesInContext, sourcesNotInContext } = useMemo(() => {
+    const list = detail?.sources ?? [];
+    const notIn = list.filter(isSourceFileOutOfContext);
+    const inCtx = list.filter((s) => !isSourceFileOutOfContext(s));
+    return { sourcesInContext: inCtx, sourcesNotInContext: notIn };
+  }, [detail?.sources]);
+
   const section = (title: string, children: React.ReactNode) => (
     <section className={styles.sectionCard} aria-label={title}>
       <h2 className={styles.sectionHeading}>{title}</h2>
@@ -663,41 +676,104 @@ export default function RfqAnalysisDetailPage() {
           detail.sources.length === 0 ? (
             <p className={styles.emptyHint}>No hay fuentes registradas para este análisis.</p>
           ) : (
-            <div className={styles.sourceTableWrap}>
-              <table className={styles.sourceTable}>
-                <thead>
-                  <tr>
-                    <th scope="col">Tipo</th>
-                    <th scope="col">Nombre / contenido</th>
-                    <th scope="col">Extracción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.sources.map((s) => (
-                    <tr key={s.id}>
-                      <td className={styles.sourceTypeCell}>
-                        <span className={styles.sourceKind}>{sourceKindLabel(s.kind)}</span>
-                      </td>
-                      <td className={styles.sourceNameCell}>
-                        {s.fileName ?? '—'}
-                        {s.extractionError ? (
-                          <div className={styles.extractionErrorDetail}>{s.extractionError}</div>
-                        ) : null}
-                      </td>
-                      <td className={styles.sourceStatusCell}>
-                        <span
-                          className={
-                            s.extractionStatus === 'OK' ? styles.extractionOk : styles.extractionBad
-                          }
-                        >
-                          {s.extractionStatus}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {sourcesNotInContext.length > 0 && sourcesInContext.length > 0 ? (
+                <p className={styles.sourcesContextLead}>
+                  La tabla siguiente solo incluye fuentes cuyo texto entra en el contexto del análisis. Los adjuntos
+                  recibidos sin texto extraíble van en el apartado plegable.
+                </p>
+              ) : null}
+              {sourcesInContext.length > 0 ? (
+                <div className={styles.sourceTableWrap}>
+                  <table className={styles.sourceTable}>
+                    <thead>
+                      <tr>
+                        <th scope="col">Tipo</th>
+                        <th scope="col">Nombre / contenido</th>
+                        <th scope="col">Extracción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sourcesInContext.map((s) => (
+                        <tr key={s.id}>
+                          <td className={styles.sourceTypeCell}>
+                            <span className={styles.sourceKind}>{sourceKindLabel(s.kind)}</span>
+                          </td>
+                          <td className={styles.sourceNameCell}>
+                            {s.fileName ?? '—'}
+                            {s.extractionError ? (
+                              <div className={styles.extractionErrorDetail}>{s.extractionError}</div>
+                            ) : null}
+                          </td>
+                          <td className={styles.sourceStatusCell}>
+                            <span
+                              className={
+                                s.extractionStatus === 'OK' ? styles.extractionOk : styles.extractionBad
+                              }
+                            >
+                              {s.extractionStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className={styles.emptyHint}>
+                  {sourcesNotInContext.length > 0
+                    ? 'Ninguna fuente de este análisis aporta texto al contexto del modelo (p. ej. solo adjuntos no extraíbles). Revisa el apartado inferior para confirmar qué archivos han llegado.'
+                    : 'No hay fuentes en contexto.'}
+                </p>
+              )}
+              {sourcesNotInContext.length > 0 ? (
+                <details
+                  className={styles.sourcesNotInContextDetails}
+                  aria-label="Datos no recogidos en el contexto del análisis"
+                >
+                  <summary className={styles.sourcesNotInContextSummary}>
+                    Datos no recogidos en el contexto
+                    <span className={styles.sourcesNotInContextCount}>({sourcesNotInContext.length})</span>
+                  </summary>
+                  <p className={styles.sourcesNotInContextHelp}>
+                    Estos adjuntos se han recibido y guardado en el análisis; no aportan texto al modelo (imágenes,
+                    formatos no soportados aún u otras causas). Sirve para comprobar que el envío llegó completo.
+                  </p>
+                  <div className={styles.sourceTableWrap}>
+                    <table className={styles.sourceTable}>
+                      <thead>
+                        <tr>
+                          <th scope="col">Tipo</th>
+                          <th scope="col">Nombre</th>
+                          <th scope="col">Adjunto</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sourcesNotInContext.map((s) => (
+                          <tr key={s.id}>
+                            <td className={styles.sourceTypeCell}>
+                              <span className={styles.sourceKind}>{sourceKindLabel(s.kind)}</span>
+                            </td>
+                            <td className={styles.sourceNameCell}>
+                              {s.fileName ?? '—'}
+                              {s.mimeType ? (
+                                <div className={styles.sourceMimeHint}>{s.mimeType}</div>
+                              ) : null}
+                              {s.extractionError ? (
+                                <div className={styles.extractionOutOfContextNote}>{s.extractionError}</div>
+                              ) : null}
+                            </td>
+                            <td className={styles.sourceStatusCell}>
+                              <span className={styles.attachmentReceivedBadge}>Recibido</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              ) : null}
+            </>
           ),
         )}
 
