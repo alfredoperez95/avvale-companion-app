@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import * as multer from 'multer';
 import { QueueModule } from '../queue/queue.module';
+import { MailModule } from '../mail/mail.module';
 import { YubiqModule } from '../yubiq/yubiq.module';
 import { AiCredentialsModule } from '../ai-credentials/ai-credentials.module';
 import { RfqAnalysisService } from './rfq-analysis.service';
@@ -14,6 +15,7 @@ import { RFQ_DEFAULT_MAX_FILE_BYTES } from './rfq-analysis.config';
 @Module({
   imports: [
     forwardRef(() => QueueModule),
+    MailModule,
     YubiqModule,
     AiCredentialsModule,
     MulterModule.register({

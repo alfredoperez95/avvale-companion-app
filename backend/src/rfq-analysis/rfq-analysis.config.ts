@@ -43,3 +43,24 @@ export function getRfqChatModel(config: ConfigService): AnthropicModelChoice {
   if (raw === 'sonnet' || raw === 'opus' || raw === 'haiku') return raw;
   return getRfqSynthesisModel(config);
 }
+
+/**
+ * URL pública del frontend (enlaces en correos). Preferir APP_PUBLIC_URL en producción.
+ * Si solo existe MAGIC_LINK_BASE_URL (…/login/magic), se usa el origen sin ese path.
+ */
+export function getAppPublicUrl(config: ConfigService): string {
+  const explicit = config.get<string>('APP_PUBLIC_URL')?.trim();
+  if (explicit) return explicit.replace(/\/$/, '');
+  const magic = config.get<string>('MAGIC_LINK_BASE_URL')?.trim();
+  if (magic) {
+    try {
+      const u = new URL(magic);
+      const path = u.pathname.replace(/\/login\/magic\/?$/i, '').replace(/\/$/, '');
+      return `${u.origin}${path}`;
+    } catch {
+      const stripped = magic.replace(/\/login\/magic\/?$/i, '').replace(/\/$/, '');
+      if (stripped) return stripped;
+    }
+  }
+  return 'http://localhost:3000';
+}

@@ -17,10 +17,13 @@ import {
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { buildRfqSynthesisPrompt } from './prompts/rfq-synthesis-prompt';
 import {
+  getAppPublicUrl,
   getRfqContextMaxChars,
   getRfqSynthesisEscalationModel,
   getRfqSynthesisModel,
 } from './rfq-analysis.config';
+import { MailService } from '../mail/mail.service';
+import { avvaleUnitNamesFromInsightJson } from '../mail/templates/rfq-analysis-completed.email';
 import { recoverJsonObjectString, safeJsonParse, truncateForContext } from './rfq-analysis.utils';
 import { RfqStorageService } from './rfq-storage.service';
 import {
@@ -52,6 +55,7 @@ export class RfqPipelineService {
     private readonly anthropic: AnthropicClientService,
     private readonly creds: AnthropicCredentialsService,
     private readonly storage: RfqStorageService,
+    private readonly mail: MailService,
   ) {}
 
   async runPipeline(analysisId: string, userId: string): Promise<void> {
@@ -193,6 +197,39 @@ export class RfqPipelineService {
     });
 
     this.logger.log(`RFQ analysis ${analysisId} completado (insight v${nextVersion})`);
+
+    const baseUrl = getAppPublicUrl(this.config);
+    const viewUrl = `${baseUrl}/launcher/rfq-analysis/${analysisId}`;
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, enabled: true },
+      });
+      if (user?.email?.trim() && user.enabled !== false) {
+        await this.mail.sendRfqAnalysisCompletedEmail(user.email.trim(), {
+          analysisTitle: fresh.title,
+          viewUrl,
+          sourceLines: this.formatSourceLinesForEmail(fresh.sources),
+          avvaleUnitNames: avvaleUnitNamesFromInsightJson(parsed.avvaleAreas),
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Correo de RFQ completado omitido (analysis=${analysisId}): ${msg}`);
+    }
+  }
+
+  private formatSourceLinesForEmail(
+    sources: { kind: RfqSourceKind; fileName: string | null }[],
+  ): string[] {
+    return sources.map((s) => {
+      if (s.kind === RfqSourceKind.FILE) {
+        return `Archivo: ${s.fileName ?? 'sin nombre'}`;
+      }
+      if (s.kind === RfqSourceKind.EMAIL_BODY) return 'Cuerpo del email';
+      if (s.kind === RfqSourceKind.THREAD_CONTEXT) return 'Contexto del hilo';
+      return 'Nota manual';
+    });
   }
 
   /** Archivo no PDF con extracción OK: conviene segunda pasada con modelo más capaz. */
