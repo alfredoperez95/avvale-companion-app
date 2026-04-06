@@ -9,6 +9,16 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+/**
+ * Contrato webhook Make → POST /webhooks/rfq-email/inbound (JSON).
+ *
+ * Obligatorios: `secret`, `fromEmail`.
+ * Opcionales: `subject`, `bodyPlain` (cuerpo del correo en texto plano), `threadContext` (contexto del hilo si Make lo aporta),
+ * `attachments[]` (fileName, contentBase64, contentType|mimeType opcionales).
+ *
+ * En servicio se aplican trim y deduplicación: si `threadContext` es equivalente a `bodyPlain` tras normalizar,
+ * no se crea fuente de hilo (solo cuerpo).
+ */
 export class RfqEmailAttachmentDto {
   @IsString()
   @IsNotEmpty()

@@ -67,6 +67,14 @@ Cada elemento de `attachments` incluye siempre **`fileName`** y **`contentBase64
 
 Si no llega ninguno de los dos, o el valor no es un MIME usable, se hace **fallback por extensión** del `fileName` (p. ej. `.pdf` → `application/pdf`) y, en último caso, `application/octet-stream`.
 
+### `bodyPlain` y `threadContext` (Make)
+
+- Opcionales; se **recortan** (trim) y las cadenas vacías se tratan como ausentes.
+- **`bodyPlain`**: cuerpo del correo en texto plano; genera fuente `EMAIL_BODY` (orden primero entre textos).
+- **`threadContext`**: contexto adicional del hilo; genera fuente `THREAD_CONTEXT` **solo si** no es equivalente a `bodyPlain` tras normalizar espacios, saltos de línea y comparación **case-insensitive**. Si es duplicado, se registra en log y no se crea la segunda fuente.
+- El **asunto** va en `title` / `originSubject` y encabeza el bundle del pipeline en metadatos.
+- Función auxiliar `buildEmailInboundContextPreview` en código: ensambla asunto + cuerpo + hilo (sin duplicar) para logs y posibles extensiones; el análisis LLM sigue usando las **fuentes** ordenadas (cuerpo → hilo → archivos).
+
 - **Validación temprana:** si `fromEmail` no corresponde a un usuario en la tabla `users`, la API responde **200** con `{ "ok": false, "reason": "unknown_sender" }` y **no** encola trabajo costoso.
 - Otros rechazos controlados: `too_many_attachments`, `attachment_too_large`, `total_size_exceeded`, `no_anthropic_key`, `no_content`, etc.
 - Campos extra en el JSON: el endpoint usa un `ValidationPipe` que **no** rechaza propiedades adicionales (Make puede enviar metadatos).

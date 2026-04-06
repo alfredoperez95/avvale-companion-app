@@ -19,6 +19,11 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RfqStorageService } from './rfq-storage.service';
 import { resolveRfqInboundAttachmentMime } from './rfq-inbound-attachment-mime';
+import {
+  areInboundEmailTextsEquivalent,
+  buildEmailInboundContextPreview,
+  sanitizeInboundEmailText,
+} from './rfq-email-inbound-text';
 import { RfqAnalysisProducer } from '../queue/producers/rfq-analysis-producer.service';
 import { CreateRfqAnalysisDto } from './dto/create-rfq-analysis.dto';
 import { PostRfqMessageDto } from './dto/post-rfq-message.dto';
@@ -403,7 +408,36 @@ export class RfqAnalysisService {
       return { ok: false, reason: 'no_anthropic_key' };
     }
 
-    const title = (dto.subject?.trim() || 'Análisis desde email').slice(0, 512);
+    const subjectSan = sanitizeInboundEmailText(dto.subject);
+    const bodyPlainSan = sanitizeInboundEmailText(dto.bodyPlain);
+    const threadRawSan = sanitizeInboundEmailText(dto.threadContext);
+
+    if (bodyPlainSan) {
+      this.logger.log(`RFQ email inbound: bodyPlain presente (${bodyPlainSan.length} caracteres)`);
+    }
+    if (threadRawSan) {
+      this.logger.log(`RFQ email inbound: threadContext presente (${threadRawSan.length} caracteres)`);
+    }
+
+    let threadContextForSources = threadRawSan;
+    if (threadRawSan && bodyPlainSan && areInboundEmailTextsEquivalent(bodyPlainSan, threadRawSan)) {
+      this.logger.log('RFQ email inbound: threadContext descartado (equivalente a bodyPlain tras normalizar)');
+      threadContextForSources = undefined;
+    }
+
+    const title = (subjectSan || 'Análisis desde email').slice(0, 512);
+
+    /** Ensamblado prioridad asunto → cuerpo → hilo (sin duplicar fuentes en BD). Disponible para logs / extensiones futuras. */
+    const emailContextPreview = buildEmailInboundContextPreview({
+      subject: subjectSan,
+      bodyPlain: bodyPlainSan,
+      threadContext: threadContextForSources,
+    });
+    if (emailContextPreview.length > 0) {
+      this.logger.log(
+        `RFQ email inbound: vista previa de contexto ensamblado (${emailContextPreview.length} caracteres; pipeline usa fuentes EMAIL_BODY/THREAD + adjuntos)`,
+      );
+    }
 
     const analysis = await this.prisma.rfqAnalysis.create({
       data: {
@@ -412,31 +446,31 @@ export class RfqAnalysisService {
         status: RfqAnalysisStatus.QUEUED,
         title,
         originEmail: email,
-        originSubject: dto.subject?.slice(0, 998) ?? null,
-        originThreadContext: dto.threadContext?.trim() || null,
+        originSubject: subjectSan?.slice(0, 998) ?? null,
+        originThreadContext: threadContextForSources?.slice(0, 8000) ?? null,
         manualContext: null,
       },
     });
 
     let order = 0;
-    if (dto.bodyPlain?.trim()) {
+    if (bodyPlainSan) {
       await this.prisma.rfqAnalysisSource.create({
         data: {
           analysisId: analysis.id,
           kind: RfqSourceKind.EMAIL_BODY,
           sortOrder: order++,
-          extractedText: dto.bodyPlain.trim(),
+          extractedText: bodyPlainSan,
           extractionStatus: RfqExtractionStatus.OK,
         },
       });
     }
-    if (dto.threadContext?.trim()) {
+    if (threadContextForSources) {
       await this.prisma.rfqAnalysisSource.create({
         data: {
           analysisId: analysis.id,
           kind: RfqSourceKind.THREAD_CONTEXT,
           sortOrder: order++,
-          extractedText: dto.threadContext.trim(),
+          extractedText: threadContextForSources,
           extractionStatus: RfqExtractionStatus.OK,
         },
       });
