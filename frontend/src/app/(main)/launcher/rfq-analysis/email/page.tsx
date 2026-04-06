@@ -22,8 +22,8 @@ export default function RfqAnalysisEmailFlowPage() {
   "attachments": [
     {
       "fileName": "requisitos.pdf",
-      "mimeType": "application/pdf",
-      "contentBase64": "<base64>"
+      "contentBase64": "<base64>",
+      "contentType": "application/pdf"
     }
   ]
 }`;

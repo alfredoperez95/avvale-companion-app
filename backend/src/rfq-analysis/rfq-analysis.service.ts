@@ -18,6 +18,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RfqStorageService } from './rfq-storage.service';
+import { resolveRfqInboundAttachmentMime } from './rfq-inbound-attachment-mime';
 import { RfqAnalysisProducer } from '../queue/producers/rfq-analysis-producer.service';
 import { CreateRfqAnalysisDto } from './dto/create-rfq-analysis.dto';
 import { PostRfqMessageDto } from './dto/post-rfq-message.dto';
@@ -441,10 +442,15 @@ export class RfqAnalysisService {
         await this.failInboundAnalysis(analysis.id, 'attachment_too_large');
         return { ok: false, reason: 'attachment_too_large' };
       }
+      const resolvedMime = resolveRfqInboundAttachmentMime({
+        contentType: att.contentType,
+        mimeType: att.mimeType,
+        fileName: att.fileName,
+      });
       const saved = await this.storage.saveUploadedFile(analysis.id, {
         buffer,
         originalname: att.fileName,
-        mimetype: att.mimeType ?? 'application/octet-stream',
+        mimetype: resolvedMime,
       });
       await this.prisma.rfqAnalysisSource.create({
         data: {

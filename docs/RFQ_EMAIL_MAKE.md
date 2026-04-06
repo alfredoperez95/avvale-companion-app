@@ -32,12 +32,21 @@ Copia los valores en `backend/.env` (o raíz + `./scripts/prepare-env.sh` si apl
   "attachments": [
     {
       "fileName": "requisitos.pdf",
-      "mimeType": "application/pdf",
-      "contentBase64": "<base64>"
+      "contentBase64": "<base64>",
+      "contentType": "application/pdf"
     }
   ]
 }
 ```
+
+### Adjuntos: `contentType` y compatibilidad
+
+Cada elemento de `attachments` incluye siempre **`fileName`** y **`contentBase64`**. Opcionalmente:
+
+- **`contentType`** (recomendado desde Make): MIME original del adjunto (p. ej. `application/pdf`, tipo DOCX/XLSX ofimática). Tiene **prioridad** al guardar y al extraer texto.
+- **`mimeType`**: alias histórico; si no hay `contentType`, el backend usa `mimeType` igual que antes.
+
+Si no llega ninguno de los dos, o el valor no es un MIME usable, se hace **fallback por extensión** del `fileName` (p. ej. `.pdf` → `application/pdf`) y, en último caso, `application/octet-stream`.
 
 - **Validación temprana:** si `fromEmail` no corresponde a un usuario en la tabla `users`, la API responde **200** con `{ "ok": false, "reason": "unknown_sender" }` y **no** encola trabajo costoso.
 - Otros rechazos controlados: `too_many_attachments`, `attachment_too_large`, `total_size_exceeded`, `no_anthropic_key`, `no_content`, etc.

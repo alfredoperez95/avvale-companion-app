@@ -15,15 +15,26 @@ export class RfqEmailAttachmentDto {
   @MaxLength(512)
   fileName!: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  mimeType?: string;
-
   /** Base64 del fichero (Make puede mapear el binario). */
   @IsString()
   @IsNotEmpty()
   contentBase64!: string;
+
+  /**
+   * MIME enviado explícitamente (p. ej. desde Make). Tiene prioridad sobre {@link mimeType}.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  contentType?: string;
+
+  /**
+   * @deprecated Preferir {@link contentType}; se mantiene para payloads antiguos de Make.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  mimeType?: string;
 }
 
 export class RfqEmailInboundDto {
