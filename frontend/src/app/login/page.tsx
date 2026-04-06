@@ -14,6 +14,9 @@ type Appearance = 'microsoft' | 'fiori';
 
 const CORP_EMAIL_DOMAIN = '@avvale.com';
 
+/** Tras solicitar el enlace mágico, no permitir otra petición hasta pasados estos segundos (cliente). El backend sigue con su propio rate limit. */
+const MAGIC_LINK_COOLDOWN_SEC = 30;
+
 function parseEmailLocalPart(raw: string): string {
   let t = raw.trim();
   const suffix = '@avvale.com';
@@ -46,6 +49,13 @@ export default function LoginPage() {
   const [magicSuccess, setMagicSuccess] = useState('');
   /** Por defecto acceso por enlace; al activar, se muestran contraseña y Continuar */
   const [showPasswordPath, setShowPasswordPath] = useState(false);
+  const [magicCooldownSec, setMagicCooldownSec] = useState(0);
+
+  useEffect(() => {
+    if (magicCooldownSec <= 0) return;
+    const t = setTimeout(() => setMagicCooldownSec((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [magicCooldownSec]);
 
   useEffect(() => {
     let mounted = true;
@@ -140,6 +150,7 @@ export default function LoginPage() {
       return;
     }
     setMagicLoading(true);
+    setMagicCooldownSec(MAGIC_LINK_COOLDOWN_SEC);
     try {
       const url = resolveApiUrl('/api/auth/magic-link/request');
       const res = await fetch(url, {
@@ -293,10 +304,14 @@ export default function LoginPage() {
             {!showPasswordPath ? (
               <button
                 type="submit"
-                disabled={magicLoading || !brandingReady}
+                disabled={magicLoading || !brandingReady || magicCooldownSec > 0}
                 className={styles.submit}
               >
-                {magicLoading ? 'Enviando…' : 'Enviar enlace de acceso'}
+                {magicLoading
+                  ? 'Enviando…'
+                  : magicCooldownSec > 0
+                    ? `Espera ${magicCooldownSec}s para reenviar`
+                    : 'Enviar enlace de acceso'}
               </button>
             ) : (
               <button type="submit" disabled={loading || !brandingReady} className={styles.submit}>
