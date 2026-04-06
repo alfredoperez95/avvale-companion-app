@@ -89,7 +89,15 @@ const fioriTabsRfqAnalysis: {
   {
     href: '/launcher/rfq-analysis',
     label: 'Análisis RFQs',
-    isActive: (p) => p != null && p.startsWith('/launcher/rfq-analysis'),
+    isActive: (p) =>
+      p != null &&
+      p.startsWith('/launcher/rfq-analysis') &&
+      !p.startsWith('/launcher/rfq-analysis/new'),
+  },
+  {
+    href: '/launcher/rfq-analysis/new',
+    label: 'Nuevo análisis',
+    isActive: (p) => p != null && p.startsWith('/launcher/rfq-analysis/new'),
   },
 ];
 

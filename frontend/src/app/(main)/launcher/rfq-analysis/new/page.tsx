@@ -4,8 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch, apiUpload } from '@/lib/api';
+import { MultiDropzoneUploader } from '@/components/rfq/MultiDropzoneUploader/MultiDropzoneUploader';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
 import styles from '../rfq-analysis.module.css';
+import layout from './page.module.css';
 
 export default function RfqAnalysisNewPage() {
   const router = useRouter();
@@ -74,7 +76,7 @@ export default function RfqAnalysisNewPage() {
   };
 
   return (
-    <main className={styles.page}>
+    <main className={layout.page}>
       <PageBreadcrumb>
         <PageBackLink href="/launcher/rfq-analysis">
           <ChevronBackIcon />
@@ -91,129 +93,110 @@ export default function RfqAnalysisNewPage() {
         }
       />
 
+      <p className={layout.lead}>
+        <strong className={styles.formIntroStrong}>Título</strong> y{' '}
+        <strong className={styles.formIntroStrong}>al menos un adjunto</strong> son obligatorios. El{' '}
+        <strong className={styles.formIntroStrong}>contexto manual</strong> es opcional. Tras crear, irás al detalle del
+        análisis; el procesamiento se ejecuta en segundo plano.
+      </p>
+
       {error ? (
         <div className={styles.errorBox} role="alert">
           {error}
         </div>
       ) : null}
 
-      <section className={styles.sectionCard} aria-label="Formulario de nuevo análisis">
-        <h2 className={styles.sectionHeading}>Datos del workspace</h2>
-        <div className={styles.sectionBody}>
-          <div className={styles.formIntro}>
-            <p className={styles.formIntroLead}>
-              <strong className={styles.formIntroStrong}>Título</strong> y{' '}
-              <strong className={styles.formIntroStrong}>al menos un adjunto</strong> son obligatorios. El{' '}
-              <strong className={styles.formIntroStrong}>contexto manual</strong> es opcional y ayuda a orientar el
-              análisis.
-            </p>
-            <p className={styles.formIntroSub}>El procesamiento se encola y se ejecuta en segundo plano.</p>
-            <ul className={styles.formIntroList}>
-              <li>Al crear, pasarás al detalle del análisis y podrás esperar allí el resultado.</li>
-              <li>Si el pipeline falla, el estado lo mostrará y podrás reintentar desde el mismo workspace.</li>
-            </ul>
+      <section className={layout.primaryCard} aria-label="Nuevo análisis RFQ">
+        <div className={layout.primaryCardRow}>
+          <div className={layout.cardSection}>
+            <div className={layout.sectionHead}>
+              <span className={layout.stepBadge} aria-hidden>
+                1
+              </span>
+              <div>
+                <h2 className={layout.sectionTitle}>Documentación</h2>
+                <p className={layout.sectionDesc}>
+                  Arrastra archivos o selecciónalos desde tu equipo. RFP, pliegos, extracts (PDF, texto u hojas de cálculo
+                  compatibles). Puedes añadir varios a la vez.
+                </p>
+              </div>
+            </div>
+            <MultiDropzoneUploader files={files} onFilesChange={setFiles} disabled={busy} />
           </div>
-          <form className={styles.form} onSubmit={(e) => void handleSubmit(e)} noValidate>
-            <label className={styles.label} htmlFor="rfq-new-title">
-              <span className={styles.labelTitleRow}>
-                Título de la oportunidad
-                <span className={styles.requiredMark}>Obligatorio</span>
-              </span>
-              <input
-                id="rfq-new-title"
-                className={styles.input}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={512}
-                aria-required="true"
-                disabled={busy}
-                autoComplete="off"
-                placeholder="Ej. RFP Hortifrut – integración tesorería"
-              />
-            </label>
 
-            <div className={styles.formFieldBlock}>
-              <div className={styles.labelTitleRow}>
-                <label className={styles.labelPlain} htmlFor="rfq-new-files">
-                  Documentación adjunta
+          <div className={`${layout.cardSection} ${layout.cardSectionMuted}`}>
+            <div className={layout.sectionHead}>
+              <span className={layout.stepBadge} aria-hidden>
+                2
+              </span>
+              <div>
+                <h2 className={layout.sectionTitle}>Datos del workspace</h2>
+                <p className={layout.sectionDesc}>
+                  Nombra la oportunidad y, si quieres, añade notas que no figuren en los adjuntos.
+                </p>
+              </div>
+            </div>
+
+            <form className={layout.formStack} onSubmit={(e) => void handleSubmit(e)} noValidate>
+              <label className={styles.label} htmlFor="rfq-new-title">
+                <span className={styles.labelTitleRow}>
+                  Título de la oportunidad
                   <span className={styles.requiredMark}>Obligatorio</span>
-                </label>
-              </div>
-              <p id="rfq-file-hint" className={styles.fieldHelp}>
-                Sube la RFP, pliegos o extracts en PDF o texto plano. Puedes seleccionar varios archivos a la vez. Los
-                límites de tamaño y número de adjuntos los aplica el servidor.
-              </p>
-              <div
-                className={
-                  files.length > 0
-                    ? `${styles.fileDropArea} ${styles.fileDropAreaFilled}`
-                    : `${styles.fileDropArea} ${styles.fileDropAreaAwaiting}`
-                }
-              >
+                </span>
                 <input
-                  id="rfq-new-files"
-                  className={styles.fileInput}
-                  type="file"
-                  name="sources"
-                  multiple
+                  id="rfq-new-title"
+                  className={styles.input}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  maxLength={512}
                   aria-required="true"
-                  onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])}
                   disabled={busy}
-                  aria-describedby="rfq-file-hint"
+                  autoComplete="off"
+                  placeholder="Ej. RFP Hortifrut – integración tesorería"
                 />
-                {files.length === 0 ? (
-                  <p className={styles.fileDropPlaceholder}>Ningún archivo seleccionado aún.</p>
-                ) : (
-                  <ul className={styles.filePickList} aria-label="Archivos seleccionados">
-                    {files.map((f, i) => (
-                      <li key={`${f.name}-${i}`}>
-                        <span className={styles.fileName}>{f.name}</span>
-                        <span className={styles.fileMeta}>{(f.size / 1024).toFixed(f.size < 1024 ? 0 : 1)} KB</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
+              </label>
 
-            <label className={styles.label} htmlFor="rfq-new-context">
-              <span className={styles.labelTitleRow}>
-                Contexto manual
-                <span className={styles.optionalMark}>Opcional</span>
-              </span>
-              <textarea
-                id="rfq-new-context"
-                className={styles.textarea}
-                value={manualContext}
-                onChange={(e) => setManualContext(e.target.value)}
-                disabled={busy}
-                placeholder="Notas del consultor, cliente, restricciones conocidas, matices que no están en los adjuntos…"
-                rows={5}
-              />
-            </label>
-            <div className={styles.formFooter}>
-              <button
-                type="submit"
-                className={`${styles.primaryBtn} ${styles.primaryBtnWithSpinner}`}
-                disabled={busy}
-                aria-busy={busy}
-              >
-                {busy ? (
-                  <>
-                    <span className={styles.btnSpinner} aria-hidden />
-                    {phase ?? 'Enviando…'}
-                  </>
-                ) : (
-                  'Crear y analizar'
-                )}
-              </button>
-              <Link href="/launcher/rfq-analysis" className={styles.secondaryBtn}>
-                Volver al listado
-              </Link>
-            </div>
-          </form>
+              <label className={styles.label} htmlFor="rfq-new-context">
+                <span className={styles.labelTitleRow}>
+                  Contexto manual
+                  <span className={styles.optionalMark}>Opcional</span>
+                </span>
+                <textarea
+                  id="rfq-new-context"
+                  className={styles.textarea}
+                  value={manualContext}
+                  onChange={(e) => setManualContext(e.target.value)}
+                  disabled={busy}
+                  placeholder="Notas del consultor, cliente, restricciones conocidas, matices que no están en los adjuntos…"
+                  rows={5}
+                />
+              </label>
+
+              <div className={`${styles.formFooter} ${layout.formFooter}`}>
+                <button
+                  type="submit"
+                  className={`${styles.primaryBtn} ${styles.primaryBtnWithSpinner}`}
+                  disabled={busy}
+                  aria-busy={busy}
+                >
+                  {busy ? (
+                    <>
+                      <span className={styles.btnSpinner} aria-hidden />
+                      {phase ?? 'Enviando…'}
+                    </>
+                  ) : (
+                    'Crear y analizar'
+                  )}
+                </button>
+                <Link href="/launcher/rfq-analysis" className={styles.secondaryBtn}>
+                  Volver al listado
+                </Link>
+              </div>
+            </form>
+          </div>
         </div>
       </section>
+
       {busy && phase ? (
         <p className={styles.visuallyHidden} role="status" aria-live="polite">
           {phase}

@@ -105,7 +105,11 @@
   align-items: center;
   gap: 0.35rem;
   width: 100%;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  overflow: visible;
   border-bottom: 2px dashed #5f6f80;
+  padding-top: 0.2rem;
   padding-bottom: 0.65rem;
 }
 
@@ -117,6 +121,8 @@
   flex: 1;
   min-width: 0;
   width: auto !important;
+  min-height: 1.5rem;
+  line-height: 1.5;
   border-bottom: none !important;
   padding-bottom: 0 !important;
 }
@@ -380,7 +386,7 @@
 
 :global(html[data-appearance='microsoft']) .input {
   border: 1px solid #b7c8dd;
-  border-radius: 0.52rem;
+  border-radius: 0;
   padding: 0.62rem 2.4rem 0.62rem 0.72rem;
   background: #fff;
 }
@@ -393,9 +399,11 @@
 :global(html[data-appearance='microsoft']) .emailComposite {
   border: 1px solid #b7c8dd;
   border-radius: 0.52rem;
-  padding: 0.62rem 0.72rem;
+  min-height: 2.85rem;
+  padding: 0.72rem 0.85rem;
   background: #fff;
   border-bottom: 1px solid #b7c8dd;
+  overflow: visible;
 }
 
 :global(html[data-appearance='microsoft']) .emailComposite:focus-within {
@@ -407,6 +415,8 @@
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
+  min-height: 1.5rem;
+  line-height: 1.5;
   background: transparent;
 }
 

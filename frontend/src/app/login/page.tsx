@@ -197,7 +197,7 @@ export default function LoginPage() {
           </p>
         </header>
 
-        <form onSubmit={handleFormSubmit} className={styles.form}>
+        <form onSubmit={handleFormSubmit} className={styles.form} autoComplete="off">
           <div className={styles.formGroup}>
             <label htmlFor="email" className={styles.label}>
               Email corporativo
@@ -205,9 +205,11 @@ export default function LoginPage() {
             <div className={styles.emailComposite}>
               <input
                 id="email"
+                name="email-local"
                 type="text"
                 inputMode="email"
-                autoComplete="username"
+                autoComplete="off"
+                autoFocus
                 value={emailLocal}
                 onChange={(e) => setEmailLocal(parseEmailLocalPart(e.target.value))}
                 required

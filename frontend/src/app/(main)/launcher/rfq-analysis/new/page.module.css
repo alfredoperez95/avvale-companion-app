@@ -1,0 +1,114 @@
+/* Layout alineado con /launcher/yubiq/approve-seal-filler (tarjeta principal en dos columnas) */
+.page {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: var(--fiori-space-4) var(--fiori-space-4) var(--fiori-space-10);
+}
+
+.lead {
+  margin: 0 0 var(--fiori-space-5);
+  padding: var(--fiori-space-3) var(--fiori-space-4);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fiori-text-secondary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-surface) 96%, var(--fiori-shell-bg));
+}
+
+.primaryCard {
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+  margin-bottom: var(--fiori-space-6);
+  overflow: hidden;
+}
+
+.primaryCardRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+@media (min-width: 48rem) {
+  .primaryCardRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .primaryCardRow > .cardSection {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .primaryCardRow .cardSection + .cardSection {
+    border-top: none;
+    border-left: 1px solid var(--fiori-border-light);
+  }
+}
+
+.cardSection {
+  padding: var(--fiori-space-5);
+}
+
+.cardSection + .cardSection {
+  border-top: 1px solid var(--fiori-border-light);
+}
+
+.cardSectionMuted {
+  background: color-mix(in srgb, var(--fiori-surface) 96%, var(--fiori-shell-bg));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fiori-space-3);
+  margin-bottom: var(--fiori-space-3);
+}
+
+.stepBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--fiori-shell-bg);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--fiori-text);
+  line-height: 1.35;
+}
+
+.sectionDesc {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  line-height: 1.4;
+}
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fiori-space-4);
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Empuja la fila de acciones al borde inferior en columnas altas (como Yubiq) */
+.formFooter {
+  margin-top: auto;
+  padding-top: var(--fiori-space-2);
+}

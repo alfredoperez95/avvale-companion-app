@@ -332,20 +332,12 @@
     transform 0.2s ease;
 }
 
-.tileAccentActivations {
-  border-top: 3px solid var(--fiori-shell-bg);
-}
-
-.tileAccentPipeline {
-  border-top: 3px solid color-mix(in srgb, var(--fiori-shell-bg) 55%, #0d9488);
-}
-
-.tileAccentYubiq {
-  border-top: 3px solid color-mix(in srgb, var(--fiori-shell-bg) 45%, #7c3aed);
-}
-
+/* Mismo acento superior para todos los mosaicos (antes había variantes por módulo). */
+.tileAccentActivations,
+.tileAccentPipeline,
+.tileAccentYubiq,
 .tileAccentRfq {
-  border-top: 3px solid color-mix(in srgb, var(--fiori-shell-bg) 40%, #ea580c);
+  border-top: 3px solid var(--fiori-shell-bg);
 }
 
 .tileTitle {

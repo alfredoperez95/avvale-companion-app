@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
@@ -17,6 +17,8 @@ type Item = {
   originSubject: string | null;
   originEmail: string | null;
 };
+
+type SourceFilter = 'all' | 'MANUAL' | 'EMAIL';
 
 function formatCreatedAt(iso: string): string {
   try {
@@ -35,6 +37,23 @@ export default function RfqAnalysisListPage() {
   const [error, setError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Item | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const filteredItems = useMemo(() => {
+    if (sourceFilter === 'all') return items;
+    if (sourceFilter === 'EMAIL') return items.filter((x) => x.sourceType === 'EMAIL');
+    return items.filter((x) => x.sourceType !== 'EMAIL');
+  }, [items, sourceFilter]);
+
+  useEffect(() => {
+    if (!helpOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setHelpOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [helpOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,22 +113,72 @@ export default function RfqAnalysisListPage() {
       <PageHero
         title="Análisis RFQs"
         subtitle="Un workspace por oportunidad: fuentes, resultado estructurado con IA y conversación sobre el mismo contexto."
-        actions={
-          <div className={styles.toolbar}>
-            <Link href="/launcher/rfq-analysis/email" className={styles.secondaryBtn}>
-              Entrada por email
-            </Link>
-            <Link href="/launcher/rfq-analysis/new" className={styles.primaryBtn}>
-              Nuevo análisis
-            </Link>
-            {!loading ? (
-              <span className={styles.toolbarCount}>
-                {total === 1 ? '1 análisis' : `${total} análisis`}
-              </span>
-            ) : null}
-          </div>
-        }
       />
+
+      <div className={styles.listHeroToolbar}>
+        <div className={styles.listHeroToolbarStart}>
+          <div
+            className={styles.sourceFilter}
+            role="group"
+            aria-label="Filtrar por origen del análisis"
+          >
+            {(
+              [
+                { id: 'all' as const, label: 'Todos' },
+                { id: 'MANUAL' as const, label: 'Manual' },
+                { id: 'EMAIL' as const, label: 'Email' },
+              ] as const
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                className={
+                  sourceFilter === id
+                    ? `${styles.sourceFilterBtn} ${styles.sourceFilterBtnActive}`
+                    : styles.sourceFilterBtn
+                }
+                aria-pressed={sourceFilter === id}
+                onClick={() => setSourceFilter(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {!loading ? (
+            <button
+              type="button"
+              className={`${styles.toolbarCount} ${styles.toolbarCountButton}`}
+              onClick={() => setHelpOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={helpOpen}
+              aria-label="Cómo funcionan los análisis RFQ y el envío por correo"
+            >
+              {sourceFilter === 'all'
+                ? total === 1
+                  ? '1 análisis'
+                  : `${total} análisis`
+                : filteredItems.length === 1
+                  ? '1 resultado'
+                  : `${filteredItems.length} resultados`}
+              {sourceFilter !== 'all' && total > 0 ? (
+                <span className={styles.toolbarCountMuted}> · {total} en total</span>
+              ) : null}
+            </button>
+          ) : null}
+        </div>
+        <div className={styles.toolbar}>
+          <button
+            type="button"
+            className={styles.secondaryBtn}
+            onClick={() => setHelpOpen(true)}
+          >
+            Entrada por email
+          </button>
+          <Link href="/launcher/rfq-analysis/new" className={styles.primaryBtn}>
+            Nuevo análisis
+          </Link>
+        </div>
+      </div>
 
       {loading ? (
         <div
@@ -133,6 +202,24 @@ export default function RfqAnalysisListPage() {
         </div>
       ) : null}
 
+      {!loading && !error && items.length > 0 && filteredItems.length === 0 ? (
+        <section className={styles.emptyState} aria-label="Sin resultados con este filtro">
+          <div className={styles.emptyStateIcon} aria-hidden />
+          <h2 className={styles.emptyStateTitle}>Ningún análisis con este filtro</h2>
+          <p className={styles.emptyStateText}>
+            Prueba con «Todos» o cambia entre manual y email. Hay {total === 1 ? '1 análisis' : `${total} análisis`}{' '}
+            en el workspace.
+          </p>
+          <button
+            type="button"
+            className={`${styles.secondaryBtn} ${styles.emptyStateCta}`}
+            onClick={() => setSourceFilter('all')}
+          >
+            Mostrar todos
+          </button>
+        </section>
+      ) : null}
+
       {!loading && !error && items.length === 0 ? (
         <section className={styles.emptyState} aria-label="Sin análisis">
           <div className={styles.emptyStateIcon} aria-hidden />
@@ -147,9 +234,9 @@ export default function RfqAnalysisListPage() {
         </section>
       ) : null}
 
-      {!loading && items.length > 0 ? (
+      {!loading && filteredItems.length > 0 ? (
         <ul className={styles.cardList}>
-          {items.map((a) => (
+          {filteredItems.map((a) => (
             <li
               key={a.id}
               className={`${styles.sectionCard} ${styles.listRow} ${styles.listCardShell}`}
@@ -206,6 +293,81 @@ export default function RfqAnalysisListPage() {
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {helpOpen ? (
+        <div
+          className={styles.helpOverlay}
+          role="presentation"
+          onClick={() => setHelpOpen(false)}
+        >
+          <div
+            className={styles.helpDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rfq-list-help-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="rfq-list-help-title" className={styles.helpDialogTitle}>
+              Análisis RFQs: procedimiento y correo
+            </h2>
+            <div className={styles.helpDialogBody}>
+              <p className={styles.helpDialogLead}>
+                El número que ves es la cantidad de workspaces en este listado (según el filtro: todos, solo
+                manuales o solo creados por email).
+              </p>
+              <section className={styles.helpDialogSection} aria-label="Creación manual">
+                <h3 className={styles.helpDialogH3}>Creación manual</h3>
+                <p>
+                  Usa <strong>Nuevo análisis</strong> para subir documentos desde la app. Se genera un
+                  workspace por oportunidad con fuentes, resultado estructurado con IA y chat sobre el mismo
+                  contexto.
+                </p>
+              </section>
+              <section className={styles.helpDialogSection} aria-label="Entrada por correo">
+                <h3 className={styles.helpDialogH3}>Entrada por correo</h3>
+                <p>
+                  Envía el correo <strong>desde la misma dirección</strong> con la que inicias sesión en Avvale
+                  Companion (usuario registrado). Dirección de buzón de escaneo:
+                </p>
+                <p className={styles.helpDialogEmail}>
+                  <code>scanner@avvalecompanion.app</code>
+                </p>
+                <p>
+                  Una integración externa (por ejemplo Make) reenvía el contenido al servidor; se crea un
+                  análisis vinculado a tu usuario. <strong>Si el remitente no está dado de alta</strong>, no se
+                  creará el workspace.
+                </p>
+              </section>
+              <section className={styles.helpDialogSection} aria-label="Limitaciones">
+                <h3 className={styles.helpDialogH3}>Limitaciones habituales</h3>
+                <ul className={styles.helpDialogList}>
+                  <li>Límite de <strong>tamaño</strong> y <strong>número</strong> de adjuntos por análisis (lo marca la configuración del servidor).</li>
+                  <li>Formatos de archivo soportados para extracción de texto (p. ej. PDF, ofimática según configuración).</li>
+                  <li>Límites del proveedor de correo, proxy o firewall corporativo (tamaño de mensaje, bloqueos).</li>
+                  <li>El cuerpo del mensaje y los adjuntos deben poder procesarse; mensajes vacíos o no válidos pueden rechazarse.</li>
+                </ul>
+              </section>
+            </div>
+            <div className={styles.helpDialogFooter}>
+              <Link
+                href="/launcher/rfq-analysis/email"
+                className={styles.helpDialogTechLink}
+                onClick={() => setHelpOpen(false)}
+              >
+                Documentación técnica (Make, webhook)
+              </Link>
+              <button
+                type="button"
+                className={styles.helpDialogClose}
+                onClick={() => setHelpOpen(false)}
+                data-autofocus
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       <ConfirmDialog
