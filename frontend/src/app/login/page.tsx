@@ -47,6 +47,11 @@ export default function LoginPage() {
   /** Por defecto acceso por enlace; al activar, se muestran contraseña y Continuar */
   const [showPasswordPath, setShowPasswordPath] = useState(false);
 
+  /** Temporal: verificar que Coolify sirve el front nuevo. Eliminar cuando termines. */
+  useEffect(() => {
+    alert('Coolify deploy check — /login bundle cargado');
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     const applyAppearance = (value: Appearance) => {
