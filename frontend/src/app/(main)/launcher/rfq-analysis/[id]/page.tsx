@@ -432,6 +432,8 @@ export default function RfqAnalysisDetailPage() {
   const [chatBusy, setChatBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [resendEmailBusy, setResendEmailBusy] = useState(false);
+  const [resendEmailOk, setResendEmailOk] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -452,6 +454,7 @@ export default function RfqAnalysisDetailPage() {
     setDetail(data);
     setNotFound(false);
     setError(null);
+    setResendEmailOk(null);
   }, [id]);
 
   useEffect(() => {
@@ -503,6 +506,27 @@ export default function RfqAnalysisDetailPage() {
       setError(err instanceof Error ? err.message : 'Error en el chat');
     } finally {
       setChatBusy(false);
+    }
+  };
+
+  const resendCompletionEmail = async () => {
+    if (!id || detail?.status !== 'COMPLETED') return;
+    setResendEmailBusy(true);
+    setResendEmailOk(null);
+    setError(null);
+    try {
+      const res = await apiFetch(`/api/rfq-analyses/${id}/resend-completion-email`, { method: 'POST' });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || 'No se pudo enviar el correo de prueba');
+      }
+      setResendEmailOk(
+        'Solicitud enviada. Si SMTP está configurado y MAIL_SKIP_SEND no está activo, revisa la bandeja del email de tu cuenta.',
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al reenviar el correo');
+    } finally {
+      setResendEmailBusy(false);
     }
   };
 
@@ -602,6 +626,17 @@ export default function RfqAnalysisDetailPage() {
         actions={
           <div className={styles.heroActionsRow}>
             <RfqStatusTag status={detail.status} />
+            {detail.status === 'COMPLETED' ? (
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                disabled={resendEmailBusy}
+                onClick={() => void resendCompletionEmail()}
+                title="Reenvía el correo de análisis completado (misma plantilla que al terminar el pipeline)"
+              >
+                {resendEmailBusy ? 'Enviando correo…' : 'Probar correo completado'}
+              </button>
+            ) : null}
             <button
               type="button"
               className={styles.dangerBtn}
@@ -615,6 +650,11 @@ export default function RfqAnalysisDetailPage() {
       />
 
       {error && <div className={styles.errorBox}>{error}</div>}
+      {resendEmailOk ? (
+        <div className={styles.successHint} role="status">
+          {resendEmailOk}
+        </div>
+      ) : null}
 
       <div className={styles.detailLayout}>
         {busy && (

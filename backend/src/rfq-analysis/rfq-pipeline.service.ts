@@ -24,6 +24,7 @@ import {
 } from './rfq-analysis.config';
 import { MailService } from '../mail/mail.service';
 import { avvaleUnitNamesFromInsightJson } from '../mail/templates/rfq-analysis-completed.email';
+import { formatRfqSourceLinesForEmail } from './rfq-completion-email.helpers';
 import { recoverJsonObjectString, safeJsonParse, truncateForContext } from './rfq-analysis.utils';
 import { RfqStorageService } from './rfq-storage.service';
 import {
@@ -209,7 +210,7 @@ export class RfqPipelineService {
         await this.mail.sendRfqAnalysisCompletedEmail(user.email.trim(), {
           analysisTitle: fresh.title,
           viewUrl,
-          sourceLines: this.formatSourceLinesForEmail(fresh.sources),
+          sourceLines: formatRfqSourceLinesForEmail(fresh.sources),
           avvaleUnitNames: avvaleUnitNamesFromInsightJson(parsed.avvaleAreas),
         });
       }
@@ -217,19 +218,6 @@ export class RfqPipelineService {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Correo de RFQ completado omitido (analysis=${analysisId}): ${msg}`);
     }
-  }
-
-  private formatSourceLinesForEmail(
-    sources: { kind: RfqSourceKind; fileName: string | null }[],
-  ): string[] {
-    return sources.map((s) => {
-      if (s.kind === RfqSourceKind.FILE) {
-        return `Archivo: ${s.fileName ?? 'sin nombre'}`;
-      }
-      if (s.kind === RfqSourceKind.EMAIL_BODY) return 'Cuerpo del email';
-      if (s.kind === RfqSourceKind.THREAD_CONTEXT) return 'Contexto del hilo';
-      return 'Nota manual';
-    });
   }
 
   /** Archivo no PDF con extracción OK: conviene segunda pasada con modelo más capaz. */

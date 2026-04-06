@@ -28,13 +28,17 @@ import { RfqAnalysisProducer } from '../queue/producers/rfq-analysis-producer.se
 import { CreateRfqAnalysisDto } from './dto/create-rfq-analysis.dto';
 import { PostRfqMessageDto } from './dto/post-rfq-message.dto';
 import type { RfqEmailInboundDto } from './dto/rfq-email-inbound.dto';
+import { MailService } from '../mail/mail.service';
+import { avvaleUnitNamesFromInsightJson } from '../mail/templates/rfq-analysis-completed.email';
 import {
+  getAppPublicUrl,
   getRfqChatModel,
   getRfqContextMaxChars,
   getRfqMaxAttachments,
   getRfqMaxFileBytes,
   getRfqMaxTotalBytes,
 } from './rfq-analysis.config';
+import { formatRfqSourceLinesForEmail } from './rfq-completion-email.helpers';
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { buildRfqChatSystemPrompt } from './prompts/rfq-chat-system-prompt';
@@ -55,6 +59,7 @@ export class RfqAnalysisService {
     private readonly producer: RfqAnalysisProducer,
     private readonly anthropic: AnthropicClientService,
     private readonly creds: AnthropicCredentialsService,
+    private readonly mail: MailService,
   ) {}
 
   async remove(userId: string, analysisId: string): Promise<{ ok: true }> {
@@ -136,6 +141,47 @@ export class RfqAnalysisService {
         recommendedQuestions: cleaned as Prisma.InputJsonValue,
       },
     });
+    return { ok: true };
+  }
+
+  /**
+   * Reenvía el correo de análisis completado (misma plantilla que al terminar el pipeline). Para pruebas de SMTP/plantilla.
+   */
+  async resendCompletionEmail(userId: string, analysisId: string): Promise<{ ok: true }> {
+    const analysis = await this.prisma.rfqAnalysis.findFirst({
+      where: { id: analysisId, userId },
+      include: {
+        sources: { orderBy: { sortOrder: 'asc' } },
+        insights: { orderBy: { version: 'desc' }, take: 1 },
+      },
+    });
+    if (!analysis) throw new NotFoundException('Análisis no encontrado');
+    if (analysis.status !== RfqAnalysisStatus.COMPLETED) {
+      throw new BadRequestException('Solo se puede reenviar el correo cuando el análisis está completado');
+    }
+    const insight = analysis.insights[0];
+    if (!insight) {
+      throw new BadRequestException('No hay resultado estructurado; no se puede generar el correo');
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, enabled: true },
+    });
+    if (!user?.email?.trim()) {
+      throw new BadRequestException('Tu cuenta no tiene email para enviar el aviso');
+    }
+    if (user.enabled === false) {
+      throw new BadRequestException('Cuenta deshabilitada');
+    }
+    const baseUrl = getAppPublicUrl(this.config);
+    const viewUrl = `${baseUrl}/launcher/rfq-analysis/${analysisId}`;
+    await this.mail.sendRfqAnalysisCompletedEmail(user.email.trim(), {
+      analysisTitle: analysis.title,
+      viewUrl,
+      sourceLines: formatRfqSourceLinesForEmail(analysis.sources),
+      avvaleUnitNames: avvaleUnitNamesFromInsightJson(insight.avvaleAreas),
+    });
+    this.logger.log(`Correo RFQ completado reenviado manualmente analysis=${analysisId}`);
     return { ok: true };
   }
 

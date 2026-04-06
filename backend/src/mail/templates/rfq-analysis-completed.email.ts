@@ -42,29 +42,46 @@ export type RfqCompletedEmailContent = {
   avvaleUnitNames: string[];
 };
 
+function buildSourcesTableHtml(lines: string[], rowBorder: string, rowBgAlt: string, textColor: string): string {
+  if (lines.length === 0) {
+    return `<p style="margin:0.5rem 0 0;font-size:0.875rem;color:#8a9bab;">—</p>`;
+  }
+  const rows = lines
+    .map((line, i) => {
+      const bg = i % 2 === 0 ? '#ffffff' : rowBgAlt;
+      const borderBottom = i < lines.length - 1 ? `border-bottom:1px solid ${rowBorder};` : '';
+      return `<tr>
+                        <td style="width:4px;background-color:#0e548c;font-size:0;line-height:0;">&nbsp;</td>
+                        <td style="padding:0.55rem 0.75rem;background-color:${bg};${borderBottom}font-size:0.875rem;line-height:1.45;color:${textColor};">${escapeHtml(line)}</td>
+                      </tr>`;
+    })
+    .join('\n');
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0.5rem 0 0;border-collapse:collapse;border:1px solid ${rowBorder};border-radius:8px;overflow:hidden;">
+                      ${rows}
+                    </table>`;
+}
+
+function buildAvvaleTagsHtml(units: string[]): string {
+  if (units.length === 0) {
+    return `<span style="font-size:0.9rem;color:#8a9bab;">—</span>`;
+  }
+  const chip = (u: string) =>
+    `<span style="display:inline-block;margin:0.2rem 0.35rem 0 0;padding:0.32rem 0.6rem;border-radius:0.4rem;font-size:0.72rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0e548c;background-color:#e8f1f8;border:1px solid #b8cfe4;font-family:'Segoe UI',Roboto,sans-serif;">${escapeHtml(u)}</span>`;
+  return `<p style="margin:0.45rem 0 0;line-height:1.6;">${units.map(chip).join('')}</p>`;
+}
+
 export function buildRfqAnalysisCompletedEmailHtml(
   content: RfqCompletedEmailContent,
   options?: { appName?: string; logoUrl?: string; productTagline?: string },
 ): string {
-  const appName = options?.appName?.trim() || 'Avvale Companion';
   const logoUrl = (options?.logoUrl?.trim() || DEFAULT_MAIL_LOGO_URL).trim();
-  const productTagline = options?.productTagline?.trim() || 'Activaciones · Avvale';
   const safeTitle = escapeHtml(content.analysisTitle);
   const hrefUrl = escapeAttr(content.viewUrl);
   const safeUrlDisplay = escapeHtml(content.viewUrl);
   const safeLogoSrc = escapeAttr(logoUrl);
 
-  const sourcesHtml =
-    content.sourceLines.length > 0
-      ? `<ul style="margin:0.35rem 0 0;padding-left:1.15rem;color:${'#5b6d7f'};font-size:0.9rem;line-height:1.5;">
-${content.sourceLines.map((line) => `          <li style="margin:0.2rem 0;">${escapeHtml(line)}</li>`).join('\n')}
-        </ul>`
-      : `<p style="margin:0.35rem 0 0;font-size:0.9rem;color:${'#5b6d7f'};">—</p>`;
-
-  const areasText =
-    content.avvaleUnitNames.length > 0
-      ? escapeHtml(content.avvaleUnitNames.join(', '))
-      : '—';
+  const sourcesHtml = buildSourcesTableHtml(content.sourceLines, '#e8ecf0', '#f6f8fa', '#1f2c3b');
+  const areasHtml = buildAvvaleTagsHtml(content.avvaleUnitNames);
 
   const pageBg = '#f5f6f7';
   const cardBg = '#ffffff';
@@ -112,9 +129,6 @@ ${content.sourceLines.map((line) => `          <li style="margin:0.2rem 0;">${es
                     </table>
                     <h1 style="margin:1.5rem 0 0.15rem;font-size:2.25rem;font-weight:700;line-height:1.02;color:${titleColor};letter-spacing:-0.02em;">Análisis RFQ listo</h1>
                     <p style="margin:0;font-size:0.95rem;line-height:1.45;color:${subtitleColor};">Tu análisis estructurado ya está disponible.</p>
-                    <p style="margin:0.75rem 0 0;font-size:0.8125rem;line-height:1.45;color:${bodyMuted};">${escapeHtml(
-                      appName,
-                    )} · ${escapeHtml(productTagline)}</p>
                   </td>
                 </tr>
                 <tr>
@@ -135,7 +149,7 @@ ${content.sourceLines.map((line) => `          <li style="margin:0.2rem 0;">${es
                       <tr>
                         <td style="padding:0 0 1.1rem;border-bottom:1px solid ${footerBarBorder};">
                           <p style="margin:0;font-size:0.8125rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:#758ca4;">Áreas Avvale detectadas</p>
-                          <p style="margin:0.35rem 0 0;font-size:0.95rem;line-height:1.5;color:${bodyMuted};">${areasText}</p>
+                          ${areasHtml}
                         </td>
                       </tr>
                       <tr>
@@ -176,7 +190,7 @@ ${content.sourceLines.map((line) => `          <li style="margin:0.2rem 0;">${es
           </tr>
         </table>
         <p style="margin:20px 0 0;font-size:0.6875rem;color:#9aa8b6;text-align:center;line-height:1.4;">
-          Mensaje automático · ${escapeHtml(appName)}
+          Mensaje automático
         </p>
       </td>
     </tr>
@@ -189,8 +203,6 @@ export function buildRfqAnalysisCompletedEmailText(
   content: RfqCompletedEmailContent,
   options?: { appName?: string; productTagline?: string },
 ): string {
-  const appName = options?.appName?.trim() || 'Avvale Companion';
-  const tag = options?.productTagline?.trim() || 'Activaciones · Avvale';
   const sourcesBlock =
     content.sourceLines.length > 0
       ? content.sourceLines.map((l) => `  · ${l}`).join('\n')
@@ -200,8 +212,6 @@ export function buildRfqAnalysisCompletedEmailText(
 
   return `AVVALE ID®
 Análisis RFQ listo.
-
-${appName} (${tag})
 
 Nombre:
 ${content.analysisTitle}
