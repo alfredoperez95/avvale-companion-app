@@ -8,6 +8,9 @@ RUN npm ci
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# URL interna del Nest para rewrites server-side `/api/*` (misma red Docker que el backend). Ver `next.config.ts`.
+ARG INTERNAL_API_URL
+ENV INTERNAL_API_URL=${INTERNAL_API_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

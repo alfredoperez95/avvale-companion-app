@@ -22,8 +22,9 @@ function MagicVerifyContent() {
 
     let cancelled = false;
     (async () => {
+      const verifyUrl = resolveApiUrl('/api/auth/magic-link/verify');
       try {
-        const res = await fetch(resolveApiUrl('/api/auth/magic-link/verify'), {
+        const res = await fetch(verifyUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),

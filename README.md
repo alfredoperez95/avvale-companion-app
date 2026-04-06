@@ -106,6 +106,7 @@ Origen único: **`.env` en la raíz**; luego [`scripts/prepare-env.sh`](scripts/
 | `JWT_EXPIRES_IN` | Tiempo máximo de sesión (JWT de acceso; ej. `12h`, `5d`, `7d`) |
 | `CORS_ORIGIN` | Origen(es) exactos del front en el navegador (`https://…`), separados por coma. Si queda vacío, las peticiones con cabecera `Origin` fallan por CORS. |
 | `NEXT_PUBLIC_API_URL` | URL pública del API para el navegador (build del front). Vacío en cliente puede implicar mismo origen + rewrites. |
+| `INTERNAL_API_URL` | Solo **build** del frontend: URL que usa Next (servidor) para reescribir `/api/*` hacia Nest. En Docker/Coolify suele ser `http://nombre-servicio-backend:4000`; sin esto, el rewrite puede apuntar a `localhost:4000` y romper login/enlace mágico. |
 | `BACKEND_PUBLIC_URL` | Recomendada si difiere: URL base del backend para payloads a Make (adjuntos, callback). Ver [docs/MAKE.md](docs/MAKE.md). |
 | `REDIS_URL` o `REDIS_HOST`/`REDIS_PORT`/… | BullMQ |
 | `BULL_PREFIX` | Prefijo Redis (default `avvale`) |
