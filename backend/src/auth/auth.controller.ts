@@ -36,11 +36,15 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ 'auth-brute': { limit: 10, ttl: 60_000 } })
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Post('login')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ 'auth-brute': { limit: 10, ttl: 60_000 } })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
@@ -54,6 +58,8 @@ export class AuthController {
   }
 
   @Post('magic-link/verify')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ 'auth-brute': { limit: 15, ttl: 60_000 } })
   async verifyMagicLink(@Body() dto: MagicLinkVerifyDto) {
     return this.authService.verifyMagicLink(dto.token);
   }

@@ -22,7 +22,11 @@ import * as path from 'path';
 @Module({
   imports: [
     ThrottlerModule.forRoot({
-      throttlers: [{ name: 'magic-link', ttl: 60_000, limit: 5 }],
+      throttlers: [
+        { name: 'magic-link', ttl: 60_000, limit: 5 },
+        /** Login, registro y verificación de magic link (por IP). En varias réplicas usar storage Redis del throttler. */
+        { name: 'auth-brute', ttl: 60_000, limit: 20 },
+      ],
     }),
     ConfigModule.forRoot({
       isGlobal: true,

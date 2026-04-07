@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { json, urlencoded } from 'express';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 /**
@@ -13,6 +14,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bodyParser: false,
   });
+  if (process.env.NODE_ENV === 'production') {
+    app.use(
+      helmet({
+        contentSecurityPolicy: false,
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+      }),
+    );
+  }
   app.use(json({ limit: HTTP_BODY_LIMIT }));
   app.use(urlencoded({ limit: HTTP_BODY_LIMIT, extended: true }));
 
