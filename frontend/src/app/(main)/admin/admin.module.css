@@ -151,71 +151,12 @@
   flex-shrink: 0;
 }
 
-.inviteWrap {
-  position: relative;
-  display: inline-flex;
-  align-items: flex-start;
-}
-
-.invitePopover {
-  position: absolute;
-  top: calc(100% + var(--fiori-space-2));
-  right: 0;
-  z-index: 50;
-  width: min(100vw - 2rem, 26rem);
-  max-height: min(80vh, 32rem);
-  overflow-y: auto;
-  padding: var(--fiori-space-4);
-  background: var(--fiori-surface);
-  border: 1px solid var(--fiori-border-light);
-  border-radius: 0.75rem;
-  box-shadow: 0 8px 28px rgb(0 0 0 / 14%);
-}
-
-.invitePopoverLead {
-  margin: 0 0 var(--fiori-space-3);
-  font-size: 0.8125rem;
-  line-height: 1.45;
+/** Texto introductorio del modal «Invitar usuario» (mismo tono que descripciones Fiori). */
+.inviteModalLead {
+  margin: 0 0 var(--fiori-space-4);
+  font-size: 0.875rem;
+  line-height: 1.55;
   color: var(--fiori-text-secondary);
-}
-
-.inviteForm {
-  display: flex;
-  flex-direction: column;
-  gap: var(--fiori-space-3);
-}
-
-.inviteNameRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--fiori-space-3);
-  align-items: start;
-}
-
-@media (max-width: 22rem) {
-  .inviteNameRow {
-    grid-template-columns: 1fr;
-  }
-}
-
-.inviteField label {
-  display: block;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fiori-text-secondary);
-  margin-bottom: var(--fiori-space-1);
-}
-
-.inviteField .input,
-.inviteField .select {
-  width: 100%;
-  min-width: 0;
-}
-
-.inviteError {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: #b42318;
 }
 
 .inviteOk {
@@ -223,16 +164,6 @@
   font-size: 0.8125rem;
   color: #027a48;
   font-weight: 600;
-}
-
-.inviteActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--fiori-space-2);
-  padding-top: var(--fiori-space-2);
-  border-top: 1px solid var(--fiori-border-light);
-  margin-top: var(--fiori-space-1);
 }
 
 .createForm {
@@ -737,6 +668,12 @@
 .modalClose:focus-visible {
   outline: 2px solid var(--fiori-shell-bg);
   outline-offset: 2px;
+}
+
+.modalClose:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .modalClose span {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, redirectToLogin } from '@/lib/api';
 import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
@@ -66,7 +66,6 @@ export default function AdminUsersPage() {
   const [inviteSaving, setInviteSaving] = useState(false);
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState(false);
-  const inviteWrapRef = useRef<HTMLDivElement>(null);
 
   const loadUsers = async () => {
     const res = await apiFetch('/api/users');
@@ -103,20 +102,14 @@ export default function AdminUsersPage() {
   useEffect(() => {
     if (!inviteOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setInviteOpen(false);
-    };
-    const onDocClick = (e: MouseEvent) => {
-      if (inviteWrapRef.current && !inviteWrapRef.current.contains(e.target as Node)) {
+      if (e.key === 'Escape' && !inviteSaving) {
         setInviteOpen(false);
+        setInviteError('');
       }
     };
     document.addEventListener('keydown', onKey);
-    document.addEventListener('click', onDocClick);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('click', onDocClick);
-    };
-  }, [inviteOpen]);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [inviteOpen, inviteSaving]);
 
   useEffect(() => {
     if (editingId === null) setDeleteDialogOpen(false);
@@ -388,146 +381,19 @@ export default function AdminUsersPage() {
             <button type="button" className={styles.btnPrimary} onClick={() => setShowCreate(true)}>
               Crear usuario
             </button>
-            <div className={styles.inviteWrap} ref={inviteWrapRef}>
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                aria-expanded={inviteOpen}
-                aria-haspopup="dialog"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setInviteOpen((v) => !v);
-                  setInviteError('');
-                  setInviteSuccess(false);
-                }}
-              >
-                Invitar usuario
-              </button>
-              {inviteOpen ? (
-                <div
-                  className={styles.invitePopover}
-                  role="dialog"
-                  aria-label="Invitar por correo electrónico"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <p className={styles.invitePopoverLead}>
-                    Se enviará un enlace para completar el registro (contraseña y datos pendientes).
-                  </p>
-                  <form onSubmit={handleInvite} className={styles.inviteForm}>
-                    <div className={styles.inviteNameRow}>
-                      <div className={styles.inviteField}>
-                        <label htmlFor="invite-name">Nombre</label>
-                        <input
-                          id="invite-name"
-                          type="text"
-                          value={invName}
-                          onChange={(e) => setInvName(e.target.value)}
-                          className={styles.input}
-                          required
-                          autoComplete="given-name"
-                        />
-                      </div>
-                      <div className={styles.inviteField}>
-                        <label htmlFor="invite-lastname">Apellido</label>
-                        <input
-                          id="invite-lastname"
-                          type="text"
-                          value={invLastName}
-                          onChange={(e) => setInvLastName(e.target.value)}
-                          className={styles.input}
-                          required
-                          autoComplete="family-name"
-                        />
-                      </div>
-                    </div>
-                    <div className={styles.inviteField}>
-                      <label htmlFor="invite-email">Email</label>
-                      <input
-                        id="invite-email"
-                        type="email"
-                        value={invEmail}
-                        onChange={(e) => setInvEmail(e.target.value)}
-                        className={styles.input}
-                        required
-                        autoComplete="email"
-                      />
-                    </div>
-                    <div className={styles.inviteField}>
-                      <label htmlFor="invite-position">Puesto</label>
-                      <select
-                        id="invite-position"
-                        value={invPosition}
-                        onChange={(e) =>
-                          setInvPosition((e.target.value || '') as '' | UserPositionValue)
-                        }
-                        className={styles.select}
-                        aria-label="Puesto (opcional)"
-                      >
-                        <option value="">— Opcional —</option>
-                        {getPositionOptionsForAdminEditor(users, null).map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className={styles.inviteField}>
-                      <label htmlFor="invite-industry">Industria</label>
-                      <select
-                        id="invite-industry"
-                        value={invIndustry}
-                        onChange={(e) =>
-                          setInvIndustry((e.target.value || '') as '' | UserIndustryValue)
-                        }
-                        className={styles.select}
-                      >
-                        <option value="">— Opcional —</option>
-                        {USER_INDUSTRY_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className={styles.inviteField}>
-                      <label htmlFor="invite-role">Rol</label>
-                      <select
-                        id="invite-role"
-                        value={invRole}
-                        onChange={(e) => setInvRole(e.target.value as 'USER' | 'ADMIN')}
-                        className={styles.select}
-                      >
-                        <option value="USER">Usuario</option>
-                        <option value="ADMIN">Administrador</option>
-                      </select>
-                    </div>
-                    {inviteError ? (
-                      <p className={styles.inviteError} role="alert">
-                        {inviteError}
-                      </p>
-                    ) : null}
-                    {inviteSuccess ? (
-                      <p className={styles.inviteOk}>Invitación enviada por correo.</p>
-                    ) : null}
-                    <div className={styles.inviteActions}>
-                      <button type="submit" className={styles.btnPrimary} disabled={inviteSaving}>
-                        {inviteSaving ? 'Enviando…' : 'Enviar invitación'}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.btnSmall}
-                        onClick={() => {
-                          setInviteOpen(false);
-                          setInviteError('');
-                        }}
-                      >
-                        Cerrar
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              ) : null}
-            </div>
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              aria-expanded={inviteOpen}
+              aria-haspopup="dialog"
+              onClick={() => {
+                setInviteOpen(true);
+                setInviteError('');
+                setInviteSuccess(false);
+              }}
+            >
+              Invitar usuario
+            </button>
             <Link href="/admin/invitations" className={`${styles.btnSecondary} ${styles.cardIntroLinkEnd}`}>
               Invitaciones
             </Link>
@@ -963,6 +829,158 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      {inviteOpen ? (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="invite-user-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !inviteSaving) {
+              setInviteOpen(false);
+              setInviteError('');
+            }
+          }}
+        >
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <header className={styles.modalHeader}>
+              <h2 id="invite-user-title" className={styles.modalTitle}>
+                Invitar usuario
+              </h2>
+              <button
+                type="button"
+                className={styles.modalClose}
+                onClick={() => {
+                  if (!inviteSaving) {
+                    setInviteOpen(false);
+                    setInviteError('');
+                  }
+                }}
+                disabled={inviteSaving}
+                aria-label="Cerrar"
+              >
+                <span aria-hidden>×</span>
+              </button>
+            </header>
+            <form onSubmit={handleInvite}>
+              <div className={styles.modalBody}>
+                <p className={styles.inviteModalLead}>
+                  Se enviará un enlace para completar el registro (contraseña y datos pendientes).
+                </p>
+                <div className={styles.modalNameRow}>
+                  <div className={styles.modalFormRow}>
+                    <label htmlFor="invite-name">Nombre</label>
+                    <input
+                      id="invite-name"
+                      type="text"
+                      value={invName}
+                      onChange={(e) => setInvName(e.target.value)}
+                      className={styles.input}
+                      required
+                      autoComplete="given-name"
+                    />
+                  </div>
+                  <div className={styles.modalFormRow}>
+                    <label htmlFor="invite-lastname">Apellido</label>
+                    <input
+                      id="invite-lastname"
+                      type="text"
+                      value={invLastName}
+                      onChange={(e) => setInvLastName(e.target.value)}
+                      className={styles.input}
+                      required
+                      autoComplete="family-name"
+                    />
+                  </div>
+                </div>
+                <div className={styles.modalFormRow}>
+                  <label htmlFor="invite-email">Email</label>
+                  <input
+                    id="invite-email"
+                    type="email"
+                    value={invEmail}
+                    onChange={(e) => setInvEmail(e.target.value)}
+                    className={styles.input}
+                    required
+                    autoComplete="email"
+                    placeholder="usuario@ejemplo.com"
+                  />
+                </div>
+                <div className={styles.modalFormRow}>
+                  <label htmlFor="invite-position">Puesto</label>
+                  <select
+                    id="invite-position"
+                    value={invPosition}
+                    onChange={(e) =>
+                      setInvPosition((e.target.value || '') as '' | UserPositionValue)
+                    }
+                    className={styles.select}
+                    aria-label="Puesto (opcional)"
+                  >
+                    <option value="">— Opcional —</option>
+                    {getPositionOptionsForAdminEditor(users, null).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className={styles.modalFormRow}>
+                  <label htmlFor="invite-industry">Industria</label>
+                  <select
+                    id="invite-industry"
+                    value={invIndustry}
+                    onChange={(e) =>
+                      setInvIndustry((e.target.value || '') as '' | UserIndustryValue)
+                    }
+                    className={styles.select}
+                  >
+                    <option value="">— Opcional —</option>
+                    {USER_INDUSTRY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className={styles.modalFormRow}>
+                  <label htmlFor="invite-role">Rol</label>
+                  <select
+                    id="invite-role"
+                    value={invRole}
+                    onChange={(e) => setInvRole(e.target.value as 'USER' | 'ADMIN')}
+                    className={styles.select}
+                  >
+                    <option value="USER">Usuario</option>
+                    <option value="ADMIN">Administrador</option>
+                  </select>
+                </div>
+                {inviteError ? <div className={styles.modalError}>{inviteError}</div> : null}
+                {inviteSuccess ? <p className={styles.inviteOk}>Invitación enviada por correo.</p> : null}
+              </div>
+              <div className={styles.modalActions}>
+                <div className={styles.modalActionsRight}>
+                  <button
+                    type="button"
+                    className={styles.btnSmall}
+                    onClick={() => {
+                      setInviteOpen(false);
+                      setInviteError('');
+                    }}
+                    disabled={inviteSaving}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" className={styles.btnPrimary} disabled={inviteSaving}>
+                    {inviteSaving ? 'Enviando…' : 'Enviar invitación'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       <ConfirmDialog
         open={deleteDialogOpen}
