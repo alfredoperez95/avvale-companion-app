@@ -9,6 +9,7 @@ import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { getAppPublicUrl } from '../rfq-analysis/rfq-analysis.config';
 
 export interface JwtPayload {
   sub: string;
@@ -127,9 +128,10 @@ export class AuthService {
       where: { userId: user.id, usedAt: null },
     });
 
+    const appPublicUrl = getAppPublicUrl(this.config);
     const baseUrl =
       this.config.get<string>('MAGIC_LINK_BASE_URL')?.trim() ||
-      'http://localhost:3000/login/magic';
+      `${appPublicUrl}/login/magic`;
     const magicUrl = `${baseUrl.replace(/\/$/, '')}?token=${encodeURIComponent(rawToken)}`;
 
     await this.prisma.magicLoginToken.create({

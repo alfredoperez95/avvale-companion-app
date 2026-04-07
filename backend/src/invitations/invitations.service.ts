@@ -16,6 +16,7 @@ import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { getAppPublicUrl } from '../rfq-analysis/rfq-analysis.config';
 
 const SALT_ROUNDS = 10;
 
@@ -54,9 +55,10 @@ export class InvitationsService {
   }
 
   private buildInviteUrl(rawToken: string): string {
+    const appPublicUrl = getAppPublicUrl(this.config);
     const base =
       this.config.get<string>('INVITE_REGISTRATION_BASE_URL')?.trim() ||
-      'http://localhost:3000/login/register-invite';
+      `${appPublicUrl}/login/register-invite`;
     return `${base.replace(/\/$/, '')}?token=${encodeURIComponent(rawToken)}`;
   }
 
