@@ -1,6 +1,7 @@
  'use client';
 
 import { useEffect, useState } from 'react';
+import { resolveAppearance } from '@/lib/appearance-cookie';
 import styles from './LoadingScreen.module.css';
 
 interface LoadingScreenProps {
@@ -10,13 +11,12 @@ interface LoadingScreenProps {
 
 export function LoadingScreen({ message = 'Cargando contenido...', fullPage = true }: LoadingScreenProps) {
   const [appearance, setAppearance] = useState<'fiori' | 'microsoft'>(() => {
-    if (typeof document === 'undefined') return 'microsoft';
-    return document.documentElement.getAttribute('data-appearance') === 'fiori' ? 'fiori' : 'microsoft';
+    if (typeof document === 'undefined') return resolveAppearance(undefined);
+    return resolveAppearance(document.documentElement.getAttribute('data-appearance'));
   });
   useEffect(() => {
     const value = document.documentElement.getAttribute('data-appearance');
-    const nextAppearance = value === 'fiori' ? 'fiori' : 'microsoft';
-    setAppearance(nextAppearance);
+    setAppearance(resolveAppearance(value));
   }, []);
 
   const isFiori = appearance === 'fiori';

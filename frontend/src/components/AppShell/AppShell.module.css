@@ -22,7 +22,7 @@
   display: flex;
   align-items: center;
   width: 100%;
-  max-width: 105em;
+  max-width: 90rem;
   margin: 0 auto;
   padding: 0 var(--fiori-space-4);
   height: 100%;
@@ -364,15 +364,12 @@
 .main {
   flex: 1;
   overflow: auto;
+  max-width: 90rem;
+  margin: 0 auto;
   padding: var(--fiori-space-6);
-  margin-top: 35px;
-  margin-bottom: 35px;
-}
-
-/* Microsoft: sin márgenes verticales en main */
-:global([data-theme="microsoft"]) .main {
-  margin-top: 0;
-  margin-bottom: 0;
+  padding-bottom: var(--fiori-space-8);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 /* Fiori: main crece con el contenido, scroll en .body; el wrapper hace que el footer quede al final o abajo */
@@ -401,7 +398,7 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  max-width: 105em;
+  max-width: 90rem;
   margin: 0 auto;
   padding: 50px var(--fiori-space-4) 40px var(--fiori-space-4);
 }
@@ -485,7 +482,7 @@
 
 @media (min-width: 64rem) {
   .tabsNavInner {
-    max-width: 105em;
+    max-width: 90rem;
     margin-inline: auto;
   }
 }

@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { ConfigService } from '@nestjs/config';
+import { UserIndustry, UserPosition } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
@@ -53,21 +54,26 @@ export class AuthService {
     return this.usersService.findById(userId);
   }
 
+  /** Respuesta pública de usuario (incluye hasAnthropicApiKey, sin credenciales). */
+  async getUserPublicById(userId: string) {
+    return this.usersService.findByIdForApiResponse(userId);
+  }
+
   async updateProfile(
     userId: string,
     dto: {
       name?: string;
       lastName?: string;
-      position?: string;
+      position?: UserPosition;
+      industry?: UserIndustry | null;
       phone?: string;
       appearance?: string | null;
       launcherTileOrder?: string[];
     },
   ) {
-    const user = await this.usersService.updateProfile(userId, dto);
-    if (!user) return null;
-    const { passwordHash: _, ...rest } = user;
-    return rest;
+    const updated = await this.usersService.updateProfile(userId, dto);
+    if (!updated) return null;
+    return this.usersService.findByIdForApiResponse(userId);
   }
 
   async setAvatar(userId: string, file: { buffer: Buffer; mimetype?: string }) {
@@ -83,7 +89,7 @@ export class AuthService {
   }
 
   getLoginBranding() {
-    const rawAppearance = (process.env.LOGIN_APPEARANCE ?? process.env.DEFAULT_APPEARANCE ?? 'microsoft')
+    const rawAppearance = (process.env.LOGIN_APPEARANCE ?? process.env.DEFAULT_APPEARANCE ?? 'fiori')
       .toLowerCase()
       .trim();
     const appearance: Appearance = rawAppearance === 'fiori' ? 'fiori' : 'microsoft';
@@ -181,7 +187,7 @@ export class AuthService {
     return this.buildTokenResponse(row.user.id, row.user.email);
   }
 
-  private buildTokenResponse(userId: string, email: string) {
+  buildTokenResponse(userId: string, email: string) {
     const payload: JwtPayload = { sub: userId, email };
     const accessToken = this.jwtService.sign(payload);
     return { accessToken, user: { id: userId, email } };

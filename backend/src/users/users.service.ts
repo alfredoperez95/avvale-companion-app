@@ -5,7 +5,7 @@ import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { RegisterDto } from '../auth/dto/register.dto';
-import { UserRole } from '@prisma/client';
+import { UserIndustry, UserPosition, UserRole } from '@prisma/client';
 import { CreateUserByAdminDto } from './dto/create-user-by-admin.dto';
 import { UpdateUserByAdminDto } from './dto/update-user-by-admin.dto';
 
@@ -29,8 +29,44 @@ export class UsersService {
     return rest;
   }
 
+  /** Solo una persona puede tener GROWTH_MANAGING_DIRECTOR; `excludeUserId` es quien ya ocupa el puesto (p. ej. al editarse a sí mismo). */
+  async assertGrowthManagingDirectorAvailable(
+    position: UserPosition | null | undefined,
+    excludeUserId: string | null,
+  ): Promise<void> {
+    if (position !== UserPosition.GROWTH_MANAGING_DIRECTOR) return;
+    const holder = await this.prisma.user.findFirst({
+      where: { position: UserPosition.GROWTH_MANAGING_DIRECTOR },
+      select: { id: true },
+    });
+    if (!holder) return;
+    if (excludeUserId !== null && holder.id === excludeUserId) return;
+    throw new ConflictException(
+      'El puesto Growth Managing Director ya está asignado a otra persona.',
+    );
+  }
+
   async findById(id: string) {
     return this.prisma.user.findUnique({ where: { id } });
+  }
+
+  /** Usuario para respuestas API (/auth/me, etc.): sin hash de contraseña e indicador de clave Anthropic. */
+  async findByIdForApiResponse(id: string) {
+    const u = await this.prisma.user.findUnique({
+      where: { id },
+      include: { anthropicCredential: { select: { id: true } } },
+    });
+    if (!u) return null;
+    const growthHolder = await this.prisma.user.findFirst({
+      where: { position: UserPosition.GROWTH_MANAGING_DIRECTOR },
+      select: { id: true },
+    });
+    const { passwordHash: _, anthropicCredential, ...rest } = u;
+    return {
+      ...rest,
+      hasAnthropicApiKey: Boolean(anthropicCredential),
+      growthManagingDirectorUserId: growthHolder?.id ?? null,
+    };
   }
 
   async findByEmail(email: string) {
@@ -40,8 +76,17 @@ export class UsersService {
   async findAll() {
     const users = await this.prisma.user.findMany({
       orderBy: [{ createdAt: 'desc' }],
+      include: {
+        anthropicCredential: { select: { id: true } },
+      },
     });
-    return users.map((u) => this.omitPasswordHash(u));
+    return users.map((u) => {
+      const { passwordHash: _, anthropicCredential, ...rest } = u;
+      return {
+        ...rest,
+        hasAnthropicApiKey: Boolean(anthropicCredential),
+      };
+    });
   }
 
   async updateProfile(
@@ -49,7 +94,8 @@ export class UsersService {
     data: {
       name?: string;
       lastName?: string;
-      position?: string;
+      position?: UserPosition;
+      industry?: UserIndustry | null;
       phone?: string;
       appearance?: string | null;
       launcherTileOrder?: string[];
@@ -66,15 +112,19 @@ export class UsersService {
 
     const normalizedName = data.name?.trim();
     const normalizedLastName = data.lastName?.trim();
-    const normalizedPosition = data.position?.trim();
+    const normalizedPosition = data.position;
     const normalizedPhone =
       data.phone !== undefined ? (data.phone.trim() === '' ? null : data.phone.trim()) : undefined;
 
     if (
       hasAllProfileFields &&
-      (!normalizedName || !normalizedLastName || !normalizedPosition)
+      (!normalizedName || !normalizedLastName || normalizedPosition === undefined)
     ) {
       throw new BadRequestException('Nombre, apellidos y puesto son obligatorios');
+    }
+
+    if (data.position !== undefined) {
+      await this.assertGrowthManagingDirectorAvailable(normalizedPosition ?? null, userId);
     }
 
     await this.prisma.user.update({
@@ -83,6 +133,7 @@ export class UsersService {
         ...(data.name !== undefined && { name: normalizedName }),
         ...(data.lastName !== undefined && { lastName: normalizedLastName }),
         ...(data.position !== undefined && { position: normalizedPosition }),
+        ...(data.industry !== undefined && { industry: data.industry }),
         ...(data.phone !== undefined && { phone: normalizedPhone }),
         ...(data.appearance !== undefined && { appearance: data.appearance || null }),
         ...(data.launcherTileOrder !== undefined && {
@@ -103,6 +154,7 @@ export class UsersService {
         name: dto.name ?? null,
         passwordHash,
         role: UserRole.USER,
+        appearance: 'fiori',
       },
     });
   }
@@ -112,10 +164,12 @@ export class UsersService {
     if (existing) throw new ConflictException('El email ya está registrado');
     const name = dto.name.trim();
     const lastName = dto.lastName.trim();
-    const position = dto.position.trim();
+    const position = dto.position;
     if (!name || !lastName || !position) {
       throw new BadRequestException('Nombre, apellidos y puesto son obligatorios');
     }
+    await this.assertGrowthManagingDirectorAvailable(position, null);
+
     const passwordHash = await bcrypt.hash(dto.password, this.SALT_ROUNDS);
     const user = await this.prisma.user.create({
       data: {
@@ -123,8 +177,10 @@ export class UsersService {
         name,
         lastName,
         position,
+        ...(dto.industry !== undefined && { industry: dto.industry }),
         passwordHash,
         role: dto.role ?? UserRole.USER,
+        appearance: 'fiori',
       },
     });
     return this.omitPasswordHash(user);
@@ -217,23 +273,62 @@ export class UsersService {
   async updateByAdmin(id: string, dto: UpdateUserByAdminDto) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Usuario no encontrado');
-    const data: { email?: string; position?: string | null; role?: UserRole; enabled?: boolean; passwordHash?: string } = {};
+    const data: {
+      name?: string;
+      lastName?: string;
+      email?: string;
+      position?: UserPosition | null;
+      industry?: UserIndustry | null;
+      role?: UserRole;
+      enabled?: boolean;
+      passwordHash?: string;
+    } = {};
+    if (dto.name !== undefined || dto.lastName !== undefined) {
+      const name = (dto.name ?? existing.name ?? '').trim();
+      const lastName = (dto.lastName ?? existing.lastName ?? '').trim();
+      if (!name || !lastName) {
+        throw new BadRequestException('Nombre y apellido son obligatorios');
+      }
+      data.name = name;
+      data.lastName = lastName;
+    }
     if (dto.email !== undefined && dto.email.trim() !== '') {
       const normalizedEmail = dto.email.toLowerCase().trim();
       const other = await this.findByEmail(normalizedEmail);
       if (other && other.id !== id) throw new ConflictException('El correo electrónico ya está en uso');
       data.email = normalizedEmail;
     }
-    if (dto.position !== undefined) data.position = dto.position.trim() || null;
+    if (dto.position !== undefined) data.position = dto.position;
+    if (dto.industry !== undefined) data.industry = dto.industry;
     if (dto.role !== undefined) data.role = dto.role;
     if (dto.enabled !== undefined) data.enabled = dto.enabled;
     if (dto.newPassword !== undefined && dto.newPassword.length > 0) {
       data.passwordHash = await bcrypt.hash(dto.newPassword, this.SALT_ROUNDS);
+    }
+    if (dto.position !== undefined) {
+      await this.assertGrowthManagingDirectorAvailable(dto.position, id);
     }
     const user = await this.prisma.user.update({
       where: { id },
       data,
     });
     return this.omitPasswordHash(user);
+  }
+
+  /** Elimina un usuario y datos relacionados (cascada en BD). No permite borrar el propio usuario ni al único administrador. */
+  async deleteByAdmin(id: string, actingAdminId: string): Promise<void> {
+    if (id === actingAdminId) {
+      throw new BadRequestException('No puedes eliminar tu propio usuario.');
+    }
+    const existing = await this.prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Usuario no encontrado');
+    if (existing.role === UserRole.ADMIN) {
+      const adminCount = await this.prisma.user.count({ where: { role: UserRole.ADMIN } });
+      if (adminCount <= 1) {
+        throw new BadRequestException('No se puede eliminar el único administrador del sistema.');
+      }
+    }
+    await this.removeAvatar(id).catch(() => {});
+    await this.prisma.user.delete({ where: { id } });
   }
 }

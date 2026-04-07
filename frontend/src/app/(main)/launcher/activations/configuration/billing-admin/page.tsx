@@ -295,7 +295,9 @@ export default function AdminBillingAdminPage() {
         message="¿Eliminar este contacto de Facturación y Administración?"
         confirmLabel="Eliminar"
         variant="danger"
-        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onConfirm={() => {
+          if (confirmDeleteId) void handleDelete(confirmDeleteId);
+        }}
         onCancel={() => setConfirmDeleteId(null)}
       />
     </div>

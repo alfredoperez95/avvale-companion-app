@@ -49,7 +49,7 @@ export default function RfqAnalysisEmailFlowPage() {
           <ol className={styles.emailFlowSteps}>
             <li>
               <strong>Remitente = usuario registrado.</strong> El campo <code className={styles.emailFlowCodeInline}>fromEmail</code>{' '}
-              debe coincidir con el email de una cuenta en Companion Apps (mismo dominio o correo que usas para iniciar sesión).
+              debe coincidir con el email de una cuenta en Companion App (mismo dominio o correo que usas para iniciar sesión).
             </li>
             <li>
               <strong>Clave Anthropic.</strong> Ese usuario debe tener guardada su API key de Anthropic (como en Yubiq); si no, el

@@ -9,6 +9,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { MailModule } from '../mail/mail.module';
+import { InvitationsModule } from '../invitations/invitations.module';
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
@@ -16,6 +17,7 @@ const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
   imports: [
     UsersModule,
     MailModule,
+    InvitationsModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

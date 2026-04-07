@@ -343,7 +343,9 @@ export default function AdminContactsPage() {
         message="¿Eliminar este contacto de la lista?"
         confirmLabel="Eliminar"
         variant="danger"
-        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onConfirm={() => {
+          if (confirmDeleteId) void handleDelete(confirmDeleteId);
+        }}
         onCancel={() => setConfirmDeleteId(null)}
       />
     </div>

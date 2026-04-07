@@ -3,12 +3,14 @@ import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
+  IsEnum,
   IsIn,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { UserIndustry, UserPosition } from '@prisma/client';
 
 export const APPEARANCE_VALUES = ['microsoft', 'fiori'] as const;
 export type AppearanceValue = (typeof APPEARANCE_VALUES)[number];
@@ -31,10 +33,12 @@ export class UpdateProfileDto {
   lastName?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(1, { message: 'El puesto es obligatorio' })
-  @MaxLength(120)
-  position?: string;
+  @IsEnum(UserPosition, { message: 'Puesto no válido' })
+  position?: UserPosition;
+
+  @IsOptional()
+  @IsEnum(UserIndustry, { message: 'Industria no válida' })
+  industry?: UserIndustry | null;
 
   @IsOptional()
   @IsString()

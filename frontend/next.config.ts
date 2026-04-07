@@ -35,6 +35,12 @@ const nextConfig: NextConfig = {
         hostname: 'www.avvale.com',
         pathname: '/hubfs/**',
       },
+      /** Logo Avvale en flujo de invitación / login (mismo asset que plantillas de correo). */
+      {
+        protocol: 'https',
+        hostname: 'www.sap.com',
+        pathname: '/dam/**',
+      },
     ],
   },
   async rewrites() {

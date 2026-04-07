@@ -4,7 +4,7 @@ import { createContext, useContext } from 'react';
 
 export type Theme = 'microsoft' | 'fiori';
 
-const ThemeContext = createContext<Theme>('microsoft');
+const ThemeContext = createContext<Theme>('fiori');
 
 export function ThemeProvider({ theme, children }: { theme: Theme; children: React.ReactNode }) {
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;

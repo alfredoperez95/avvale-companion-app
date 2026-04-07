@@ -302,7 +302,9 @@ export default function AdminEmailTemplatesPage() {
         message="¿Eliminar esta plantilla? No se desharán los correos ya enviados que la usaron."
         confirmLabel="Eliminar"
         variant="danger"
-        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onConfirm={() => {
+          if (confirmDeleteId) void handleDelete(confirmDeleteId);
+        }}
         onCancel={() => setConfirmDeleteId(null)}
       />
       <ConfirmDialog

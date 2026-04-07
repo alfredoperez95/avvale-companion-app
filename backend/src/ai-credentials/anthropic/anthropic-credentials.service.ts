@@ -63,6 +63,12 @@ export class AnthropicCredentialsService {
     return { ok: true };
   }
 
+  /** Elimina la clave Anthropic del usuario (si existía). */
+  async removeApiKey(userId: string): Promise<{ ok: true }> {
+    await this.prisma.userAnthropicCredential.deleteMany({ where: { userId } });
+    return { ok: true };
+  }
+
   async getApiKeyPlainOrThrow(userId: string): Promise<string> {
     const row = await this.prisma.userAnthropicCredential.findUnique({
       where: { userId },

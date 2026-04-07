@@ -1,7 +1,9 @@
+/* Ancho del contenido: el mismo que AppShell .main (90rem); sin segunda columna más estrecha */
 .page {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: var(--fiori-space-4) var(--fiori-space-4) var(--fiori-space-10);
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0 0 var(--fiori-space-10);
 }
 
 .statusRow {

@@ -1,7 +1,9 @@
+/* Mismo ancho útil que AppShell .main (90rem); el padding horizontal lo aporta .main */
 .page {
-  max-width: 56rem;
-  margin: 0 auto;
-  padding: 0 var(--fiori-space-4) var(--fiori-space-8);
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0 0 var(--fiori-space-8);
 }
 
 /* Guía: flujo email → Make → webhook */

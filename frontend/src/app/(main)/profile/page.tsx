@@ -3,11 +3,14 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { apiFetch, redirectToLogin } from '@/lib/api';
-import { clearAppearanceCookie, setAppearanceCookie } from '@/lib/appearance-cookie';
+import { clearAppearanceCookie, resolveAppearance, setAppearanceCookie } from '@/lib/appearance-cookie';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { PhoneCountryPicker } from '@/components/PhoneCountryPicker/PhoneCountryPicker';
 import { buildStoredPhone, parseStoredPhone } from '@/lib/phone-country-codes';
+import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
 import { CredentialsForm } from '@/components/profile/CredentialsForm/CredentialsForm';
+import { USER_INDUSTRY_OPTIONS, type UserIndustryValue } from '@/lib/user-industry';
+import { getPositionOptionsForProfileEditor, type UserPositionValue } from '@/lib/user-position';
 import styles from './profile.module.css';
 
 type Profile = {
@@ -17,14 +20,19 @@ type Profile = {
   name: string | null;
   lastName: string | null;
   position: string | null;
+  industry?: string | null;
   avatarPath?: string | null;
   appearance: string | null;
   role?: string;
   createdAt?: string;
+  growthManagingDirectorUserId?: string | null;
 };
 
 const APPEARANCE_MICROSOFT = 'microsoft';
 const APPEARANCE_FIORI = 'fiori';
+
+/** Si es true, la tarjeta «Microsoft Like» no es seleccionable. Pasa a false para rehabilitarla. */
+const APPEARANCE_MICROSOFT_OPTION_DISABLED = true;
 
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
   const n = (name ?? '').trim();
@@ -46,10 +54,18 @@ export default function PerfilPage() {
   const [deletingAvatar, setDeletingAvatar] = useState(false);
   const [savingAppearance, setSavingAppearance] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string;
+    lastName: string;
+    position: '' | UserPositionValue;
+    industry: '' | UserIndustryValue;
+    phoneCountryIso: string;
+    phoneNational: string;
+  }>({
     name: '',
     lastName: '',
     position: '',
+    industry: '',
     phoneCountryIso: 'ES',
     phoneNational: '',
   });
@@ -73,12 +89,13 @@ export default function PerfilPage() {
           setForm({
             name: data.name ?? '',
             lastName: data.lastName ?? '',
-            position: data.position ?? '',
+            position: (data.position as UserPositionValue | null | undefined) ?? '',
+            industry: (data.industry as UserIndustryValue | null | undefined) ?? '',
             phoneCountryIso: parsed.iso,
             phoneNational: parsed.national,
           });
-          if (typeof document !== 'undefined' && data.appearance != null) {
-            const appearanceValue = data.appearance === 'fiori' ? 'fiori' : 'microsoft';
+          if (typeof document !== 'undefined') {
+            const appearanceValue = resolveAppearance(data.appearance);
             document.documentElement.setAttribute('data-appearance', appearanceValue);
             setAppearanceCookie(appearanceValue);
           }
@@ -87,7 +104,7 @@ export default function PerfilPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setError('');
@@ -98,9 +115,8 @@ export default function PerfilPage() {
     setError('');
     const name = form.name.trim();
     const lastName = form.lastName.trim();
-    const position = form.position.trim();
-    if (!name || !lastName || !position) {
-      setError('Nombre, apellidos y puesto son obligatorios.');
+    if (!name || !lastName || !form.position) {
+      setError('Nombre, apellido y puesto son obligatorios.');
       return;
     }
     setSaving(true);
@@ -111,7 +127,8 @@ export default function PerfilPage() {
         body: JSON.stringify({
           name,
           lastName,
-          position,
+          position: form.position,
+          industry: form.industry === '' ? null : form.industry,
           phone: buildStoredPhone(form.phoneCountryIso, form.phoneNational),
         }),
       });
@@ -132,7 +149,8 @@ export default function PerfilPage() {
         ...f,
         name: data.name ?? '',
         lastName: data.lastName ?? '',
-        position: data.position ?? '',
+        position: (data.position as UserPositionValue | null | undefined) ?? '',
+        industry: (data.industry as UserIndustryValue | null | undefined) ?? '',
         phoneCountryIso: parsed.iso,
         phoneNational: parsed.national,
       }));
@@ -141,7 +159,7 @@ export default function PerfilPage() {
     }
   };
 
-  const currentAppearance = profile?.appearance ?? APPEARANCE_MICROSOFT;
+  const currentAppearance = resolveAppearance(profile?.appearance);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -238,7 +256,7 @@ export default function PerfilPage() {
       }
       setProfile(data);
       if (typeof document !== 'undefined') {
-        const appearanceValue = data.appearance === 'fiori' ? 'fiori' : 'microsoft';
+        const appearanceValue = resolveAppearance(data.appearance);
         document.documentElement.setAttribute('data-appearance', appearanceValue);
         setAppearanceCookie(appearanceValue);
         window.dispatchEvent(new CustomEvent('theme-changed', { detail: { appearance: data.appearance } }));
@@ -248,13 +266,44 @@ export default function PerfilPage() {
     }
   };
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <PageBreadcrumb>
+          <PageBackLink href="/launcher/activations/dashboard">
+            <ChevronBackIcon />
+            Dashboard
+          </PageBackLink>
+        </PageBreadcrumb>
+        <div className={styles.loadingState} role="status" aria-live="polite">
+          <span className={styles.loadingSpinner} aria-hidden />
+          <span>Cargando perfil…</span>
+        </div>
+      </div>
+    );
+  }
 
   const initials = getInitials(profile?.name, profile?.lastName, profile?.email);
 
   return (
     <div className={styles.page}>
-      <section className={styles.section} aria-labelledby="perfil-datos">
+      <PageBreadcrumb>
+        <PageBackLink href="/launcher/activations/dashboard">
+          <ChevronBackIcon />
+          Dashboard
+        </PageBackLink>
+      </PageBreadcrumb>
+      <PageHero
+        title="Mi perfil"
+        subtitle="Datos de cuenta, apariencia de la aplicación y credenciales de IA (Anthropic) en un solo lugar."
+      />
+      {error ? (
+        <div className={styles.errorBanner} role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      <section className={styles.card} aria-labelledby="perfil-datos">
         <div className={styles.avatarBlock}>
           <input
             ref={fileInputRef}
@@ -312,9 +361,12 @@ export default function PerfilPage() {
             )}
           </div>
         </div>
-        <h2 id="perfil-datos" className={styles.sectionTitle}>
+        <h2 id="perfil-datos" className={styles.cardTitle}>
           Datos del usuario
         </h2>
+        <p className={styles.cardDesc}>
+          Nombre, contacto y puesto. El correo lo asigna un administrador; aquí solo se muestra.
+        </p>
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.nameRow}>
             <div className={styles.formGroup}>
@@ -329,12 +381,13 @@ export default function PerfilPage() {
                 onChange={handleChange}
                 className={styles.input}
                 required
-                placeholder="Tu nombre"
+                placeholder="Nombre"
+                autoComplete="given-name"
               />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label} htmlFor="lastName">
-                Apellidos
+                Apellido
               </label>
               <input
                 id="lastName"
@@ -344,7 +397,8 @@ export default function PerfilPage() {
                 onChange={handleChange}
                 className={styles.input}
                 required
-                placeholder="Tus apellidos"
+                placeholder="Apellido"
+                autoComplete="family-name"
               />
             </div>
           </div>
@@ -394,18 +448,46 @@ export default function PerfilPage() {
             <label className={styles.label} htmlFor="position">
               Puesto
             </label>
-            <input
+            <select
               id="position"
               name="position"
-              type="text"
               value={form.position}
               onChange={handleChange}
-              className={styles.input}
+              className={styles.select}
               required
-              placeholder="Ej. Consultor, Analista..."
-            />
+              aria-label="Puesto"
+            >
+              <option value="">Seleccionar…</option>
+              {getPositionOptionsForProfileEditor(
+                profile?.id ?? '',
+                profile?.growthManagingDirectorUserId,
+              ).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </div>
-          {error && <p className={styles.error}>{error}</p>}
+          <div className={styles.formGroup}>
+            <label className={styles.label} htmlFor="industry">
+              Industria
+            </label>
+            <select
+              id="industry"
+              name="industry"
+              value={form.industry}
+              onChange={handleChange}
+              className={styles.select}
+              aria-label="Industria o sector"
+            >
+              <option value="">Seleccionar…</option>
+              {USER_INDUSTRY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className={styles.actions}>
             <button type="submit" disabled={saving} className={styles.btnPrimary}>
               {saving ? 'Guardando…' : 'Guardar cambios'}
@@ -414,20 +496,31 @@ export default function PerfilPage() {
         </form>
       </section>
 
-      <section className={styles.section} aria-labelledby="perfil-apariencia">
-        <h2 id="perfil-apariencia" className={styles.sectionTitle}>
+      <section className={styles.card} aria-labelledby="perfil-apariencia">
+        <h2 id="perfil-apariencia" className={styles.cardTitle}>
           Apariencia
         </h2>
+        <p className={styles.cardDesc}>
+          Elige el tema visual de la aplicación. El cambio se aplica al instante en este dispositivo.
+        </p>
         <div className={styles.appearanceGrid} role="group" aria-label="Seleccionar apariencia">
           <button
             type="button"
             className={currentAppearance === APPEARANCE_MICROSOFT ? `${styles.appearanceCard} ${styles.appearanceCardSelected}` : styles.appearanceCard}
             onClick={() => handleAppearanceSelect(APPEARANCE_MICROSOFT)}
-            disabled={savingAppearance}
+            disabled={savingAppearance || APPEARANCE_MICROSOFT_OPTION_DISABLED}
             aria-pressed={currentAppearance === APPEARANCE_MICROSOFT}
+            title={
+              APPEARANCE_MICROSOFT_OPTION_DISABLED
+                ? 'De momento no está disponible volver a este tema.'
+                : undefined
+            }
           >
             <span className={styles.appearanceCardTitle}>Microsoft Like</span>
             <span className={styles.appearanceCardDesc}>Estilo tipo Microsoft Portal (actual)</span>
+            {APPEARANCE_MICROSOFT_OPTION_DISABLED ? (
+              <span className={styles.appearanceCardHint}>No disponible de momento.</span>
+            ) : null}
           </button>
           <button
             type="button"
@@ -440,21 +533,21 @@ export default function PerfilPage() {
             <span className={styles.appearanceCardDesc}>Estilo SAP Fiori</span>
           </button>
         </div>
-        {error && <p className={styles.error}>{error}</p>}
       </section>
 
-      <section className={styles.section} aria-labelledby="perfil-ai-credentials">
-        <h2 id="perfil-ai-credentials" className={styles.sectionTitle}>
+      <section className={styles.card} aria-labelledby="perfil-ai-credentials">
+        <h2 id="perfil-ai-credentials" className={styles.cardTitle}>
           AI Credentials
         </h2>
-        <CredentialsForm />
+        <CredentialsForm embedded />
       </section>
 
       {profile?.role === 'ADMIN' && (
-        <section className={`${styles.section} ${styles.adminSection}`} aria-labelledby="perfil-admin">
-          <h2 id="perfil-admin" className={styles.sectionTitle}>
+        <section className={`${styles.card} ${styles.adminSection}`} aria-labelledby="perfil-admin">
+          <h2 id="perfil-admin" className={styles.cardTitle}>
             Administración
           </h2>
+          <p className={styles.cardDesc}>Acceso rápido a la gestión de usuarios del sistema.</p>
           <Link href="/admin" className={styles.adminCard}>
             <span className={styles.adminCardTitle}>Gestión de usuarios</span>
             <span className={styles.adminCardDesc}>

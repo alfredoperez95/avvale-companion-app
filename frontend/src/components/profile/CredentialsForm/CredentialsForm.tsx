@@ -2,19 +2,29 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch, redirectToLogin } from '@/lib/api';
+import { useRefreshUser } from '@/contexts/UserContext';
+import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import styles from './CredentialsForm.module.css';
 
 type AnthropicCredentialStatus = { configured: boolean; masked: string | null };
 type TestConnectionResponse = { ok: boolean; message: string };
 
-export function CredentialsForm() {
+type CredentialsFormProps = {
+  /** Si true, no dibuja contenedor ni título (p. ej. dentro de una tarjeta de perfil). */
+  embedded?: boolean;
+};
+
+export function CredentialsForm({ embedded = false }: CredentialsFormProps = {}) {
+  const refreshUser = useRefreshUser();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<AnthropicCredentialStatus | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState('');
   const [okMsg, setOkMsg] = useState('');
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
   const loadStatus = async () => {
     const res = await apiFetch('/api/user/ai-credentials/anthropic');
@@ -54,8 +64,31 @@ export function CredentialsForm() {
       setApiKey('');
       setOkMsg('API key guardada.');
       await loadStatus();
+      await refreshUser();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemoveConfirm = async () => {
+    if (!status?.configured || removing) return;
+    setShowRemoveConfirm(false);
+    setError('');
+    setOkMsg('');
+    setRemoving(true);
+    try {
+      const res = await apiFetch('/api/user/ai-credentials/anthropic', { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.message ?? 'No se pudo eliminar la clave.');
+        return;
+      }
+      setApiKey('');
+      setOkMsg('API key eliminada.');
+      await loadStatus();
+      await refreshUser();
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -77,12 +110,22 @@ export function CredentialsForm() {
     }
   };
 
+  const rootClass = embedded ? styles.embeddedRoot : styles.card;
+
   return (
-    <div className={styles.card}>
-      <h2 className={styles.sectionTitle}>AI Credentials</h2>
-      <p className={styles.desc}>
-        Guarda tu API key personal de Anthropic (Claude). Se almacena cifrada y solo se usa en el backend.
-      </p>
+    <div className={rootClass}>
+      {!embedded ? (
+        <>
+          <h2 className={styles.sectionTitle}>AI Credentials</h2>
+          <p className={styles.desc}>
+            Guarda tu API key personal de Anthropic (Claude). Se almacena cifrada y solo se usa en el backend.
+          </p>
+        </>
+      ) : (
+        <p className={styles.desc}>
+          Guarda tu API key personal de Anthropic (Claude). Se almacena cifrada y solo se usa en el backend.
+        </p>
+      )}
 
       <div className={styles.formGroup}>
         <div className={styles.labelRow}>
@@ -116,7 +159,7 @@ export function CredentialsForm() {
           type="button"
           className={styles.btnPrimary}
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || removing}
         >
           {saving ? 'Guardando…' : 'Guardar'}
         </button>
@@ -124,15 +167,37 @@ export function CredentialsForm() {
           type="button"
           className={styles.btnSecondary}
           onClick={handleTest}
-          disabled={testing || !status?.configured}
+          disabled={testing || !status?.configured || removing}
           title={!status?.configured ? 'Configura una API key antes de probar' : 'Probar conexión'}
         >
           {testing ? 'Probando…' : 'Test connection'}
+        </button>
+        <button
+          type="button"
+          className={styles.btnDanger}
+          onClick={() => setShowRemoveConfirm(true)}
+          disabled={removing || !status?.configured || saving}
+          title={
+            !status?.configured ? 'No hay clave guardada' : 'Eliminar la API key de este dispositivo/cuenta'
+          }
+        >
+          {removing ? 'Eliminando…' : 'Eliminar clave'}
         </button>
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
       {okMsg && <p className={styles.ok}>{okMsg}</p>}
+
+      <ConfirmDialog
+        open={showRemoveConfirm}
+        title="¿Eliminar la API key?"
+        message="Se borrará la clave guardada. Los módulos que usan IA (Yubiq, Análisis RFQs) quedarán bloqueados hasta que configures una clave nueva."
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={() => void handleRemoveConfirm()}
+        onCancel={() => setShowRemoveConfirm(false)}
+      />
     </div>
   );
 }

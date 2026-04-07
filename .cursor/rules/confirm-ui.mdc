@@ -1,0 +1,13 @@
+---
+description: Confirmaciones de usuario con modal, nunca alert/confirm nativos
+alwaysApply: true
+---
+
+# Confirmaciones en la UI
+
+Para cualquier acción que requiera confirmación del usuario (eliminar, descartar cambios irreversibles, etc.):
+
+- **No** uses `window.confirm`, `window.alert` ni `window.prompt` para flujos de producto.
+- **Sí** usa un diálogo modal acoplado al diseño (p. ej. el componente `ConfirmDialog` en `frontend/src/components/ConfirmDialog/`), con título, texto aclaratorio, botones Cancelar / acción principal y, si aplica, estado de carga en el botón de confirmación.
+
+El overlay debe poder cerrarse con Escape y clic fuera, salvo mientras una operación esté en curso.

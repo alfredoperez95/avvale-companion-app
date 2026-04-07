@@ -1,87 +1,111 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, type ReactNode } from 'react';
 import styles from './ConfirmDialog.module.css';
 
-interface ConfirmDialogProps {
+export type ConfirmDialogProps = {
   open: boolean;
   title: string;
-  message: string;
+  /** Texto o contenido del cuerpo (uso habitual en la app). */
+  message?: ReactNode;
+  /** Contenido rico del cuerpo; si existe, tiene prioridad sobre `message`. */
+  description?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  variant?: 'danger' | 'default';
-  confirmVariant?: 'primary' | 'default';
+  /** Tono del diálogo: título en rojo si `danger`. */
+  variant?: 'default' | 'danger';
+  /** Estilo del botón de confirmación (por defecto: rojo si `variant="danger"`, si no acento). */
+  confirmVariant?: 'primary' | 'danger';
+  confirmBusy?: boolean;
+  /** Texto del botón principal mientras `confirmBusy`. */
+  busyLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
-}
+};
 
+/**
+ * Diálogo modal de confirmación (estética Fiori). No usar `window.confirm` / `alert` para flujos de producto.
+ */
 export function ConfirmDialog({
   open,
   title,
   message,
+  description,
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
   variant = 'default',
-  confirmVariant = 'default',
+  confirmVariant,
+  confirmBusy = false,
+  busyLabel = 'Procesando…',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  const resolvedConfirmVariant: 'primary' | 'danger' =
+    confirmVariant ?? (variant === 'danger' ? 'danger' : 'primary');
+
+  const bodyContent = description ?? message;
+  const showBody =
+    bodyContent != null &&
+    bodyContent !== '' &&
+    !(typeof bodyContent === 'string' && bodyContent.trim() === '');
 
   useEffect(() => {
     if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !confirmBusy) onCancel();
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onCancel]);
-
-  useEffect(() => {
-    if (open && dialogRef.current) {
-      const focusable = dialogRef.current.querySelector<HTMLElement>('[data-autofocus]');
-      focusable?.focus();
-    }
-  }, [open]);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onCancel, confirmBusy]);
 
   if (!open) return null;
 
+  const handleOverlayClick = () => {
+    if (!confirmBusy) onCancel();
+  };
+
   return (
-    <div
-      className={styles.overlay}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-      aria-describedby="confirm-dialog-desc"
-      onClick={onCancel}
-    >
-      <div className={styles.dialog} ref={dialogRef} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.header}>
-          <h2 id="confirm-dialog-title" className={styles.title}>
+    <div className={styles.overlay} role="presentation" onClick={handleOverlayClick}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className={styles.dialog}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className={styles.header}>
+          <h2
+            id={titleId}
+            className={`${styles.title} ${variant === 'danger' ? styles.titleDanger : ''}`}
+          >
             {title}
           </h2>
-        </div>
-        <p id="confirm-dialog-desc" className={styles.body}>
-          {message}
-        </p>
-        <div className={styles.footer}>
-          <button type="button" className={styles.btn} onClick={onCancel} data-autofocus>
+        </header>
+        {showBody ? (
+          <div className={styles.body}>
+            <div className={styles.description}>{bodyContent}</div>
+          </div>
+        ) : null}
+        <footer className={styles.actions}>
+          <button
+            type="button"
+            className={styles.btnCancel}
+            onClick={onCancel}
+            disabled={confirmBusy}
+          >
             {cancelLabel}
           </button>
           <button
             type="button"
-            className={
-              variant === 'danger'
-                ? `${styles.btn} ${styles.btnDanger}`
-                : confirmVariant === 'primary'
-                  ? `${styles.btn} ${styles.btnPrimary}`
-                  : styles.btn
-            }
-            onClick={onConfirm}
+            className={`${styles.btnConfirm} ${resolvedConfirmVariant === 'danger' ? styles.btnConfirmDanger : ''}`}
+            onClick={() => onConfirm()}
+            disabled={confirmBusy}
           >
-            {confirmLabel}
+            {confirmBusy ? busyLabel : confirmLabel}
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );

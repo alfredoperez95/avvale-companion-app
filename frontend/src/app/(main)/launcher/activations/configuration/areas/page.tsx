@@ -705,7 +705,9 @@ export default function AdminAreasPage() {
         message="¿Eliminar esta área, sus subáreas y contactos? Esta acción no se puede deshacer."
         confirmLabel="Eliminar"
         variant="danger"
-        onConfirm={() => confirmDelete?.area && handleDeleteArea(confirmDelete.area)}
+        onConfirm={() => {
+          if (confirmDelete?.area) void handleDeleteArea(confirmDelete.area);
+        }}
         onCancel={() => setConfirmDelete(null)}
       />
       <ConfirmDialog
@@ -714,7 +716,9 @@ export default function AdminAreasPage() {
         message="¿Eliminar esta subárea y sus contactos?"
         confirmLabel="Eliminar"
         variant="danger"
-        onConfirm={() => confirmDelete?.subarea && handleDeleteSubArea(confirmDelete.subarea)}
+        onConfirm={() => {
+          if (confirmDelete?.subarea) void handleDeleteSubArea(confirmDelete.subarea);
+        }}
         onCancel={() => setConfirmDelete(null)}
       />
       <ConfirmDialog
@@ -723,7 +727,9 @@ export default function AdminAreasPage() {
         message="¿Eliminar este contacto?"
         confirmLabel="Eliminar"
         variant="danger"
-        onConfirm={() => confirmDelete?.contact && handleDeleteContact(confirmDelete.contact)}
+        onConfirm={() => {
+          if (confirmDelete?.contact) void handleDeleteContact(confirmDelete.contact);
+        }}
         onCancel={() => setConfirmDelete(null)}
       />
     </div>

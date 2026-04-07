@@ -11,6 +11,10 @@ import {
   buildRfqAnalysisCompletedEmailText,
   type RfqCompletedEmailContent,
 } from './templates/rfq-analysis-completed.email';
+import {
+  buildInvitationRegistrationEmailHtml,
+  buildInvitationRegistrationEmailText,
+} from './templates/invitation-registration.email';
 
 @Injectable()
 export class MailService {
@@ -29,6 +33,17 @@ export class MailService {
       logoUrl: this.config.get<string>('MAIL_LOGO_URL')?.trim() || DEFAULT_MAIL_LOGO_URL,
       productTagline: this.config.get<string>('MAIL_PRODUCT_TAGLINE')?.trim() || 'Activaciones · Avvale',
     };
+  }
+
+  /** Texto de caducidad para invitaciones: días si el TTL es múltiplo de 24 h; si no, horas. */
+  private invitationTtlHint(ttlHours: number): string {
+    if (ttlHours > 0 && ttlHours % 24 === 0) {
+      const days = ttlHours / 24;
+      return days === 1
+        ? 'Por seguridad, el enlace caduca en 1 día.'
+        : `Por seguridad, el enlace caduca en ${days} días.`;
+    }
+    return `Por seguridad, el enlace caduca en ${ttlHours} horas.`;
   }
 
   private createTransporter(): nodemailer.Transporter {
@@ -150,6 +165,75 @@ export class MailService {
           (e.responseCode != null ? ` code=${e.responseCode}` : '') +
           (e.command != null ? ` command=${e.command}` : ''),
       );
+    }
+  }
+
+  /**
+   * Invitación de registro (admin). Si MAIL_SKIP_SEND=true, solo log (como enlace mágico).
+   */
+  async sendInvitationRegistrationEmail(
+    to: string,
+    inviteUrl: string,
+    meta: { name: string; lastName: string; ttlHours?: number },
+  ): Promise<void> {
+    const { address, name } = this.mailFrom();
+    const skip = this.config.get<string>('MAIL_SKIP_SEND') === 'true';
+
+    if (skip) {
+      this.logger.warn(
+        `[MAIL_SKIP_SEND] Invitación registro para ${to}: ${inviteUrl} — En producción pon MAIL_SKIP_SEND=false y SMTP_*`,
+      );
+      return;
+    }
+
+    let transporter: nodemailer.Transporter;
+    try {
+      transporter = this.createTransporter();
+    } catch {
+      this.logger.error(
+        'SMTP_HOST no definido: no se puede enviar la invitación. Define SMTP_* en el backend o MAIL_SKIP_SEND=true en desarrollo.',
+      );
+      throw new Error('SMTP no configurado');
+    }
+
+    const { logoUrl, productTagline } = this.mailBranding();
+    const ttlHours =
+      meta.ttlHours ??
+      parseInt(this.config.get<string>('INVITE_REGISTRATION_TTL_HOURS') ?? '168', 10);
+    const ttlHint = this.invitationTtlHint(ttlHours);
+
+    try {
+      const info = await transporter.sendMail({
+        from: `"${name}" <${address}>`,
+        to,
+        subject: `AVVALE ID® - Invitación al registro | ${name}`,
+        text: buildInvitationRegistrationEmailText(inviteUrl, {
+          name: meta.name,
+          lastName: meta.lastName,
+          appName: name,
+          ttlHint,
+          productTagline,
+        }),
+        html: buildInvitationRegistrationEmailHtml(inviteUrl, {
+          name: meta.name,
+          lastName: meta.lastName,
+          appName: name,
+          logoUrl,
+          ttlHint,
+          productTagline,
+        }),
+      });
+      this.logger.log(
+        `Correo invitación registro enviado a ${to} (messageId=${(info as { messageId?: string }).messageId ?? 'n/a'})`,
+      );
+    } catch (err) {
+      const e = err as Error & { responseCode?: number; command?: string };
+      this.logger.error(
+        `SMTP sendMail falló (invitación) para ${to}: ${e.message}` +
+          (e.responseCode != null ? ` code=${e.responseCode}` : '') +
+          (e.command != null ? ` command=${e.command}` : ''),
+      );
+      throw err;
     }
   }
 }

@@ -1,5 +1,5 @@
 import { IsEmail, IsString, MinLength, IsOptional, IsEnum } from 'class-validator';
-import { UserRole } from '@prisma/client';
+import { UserIndustry, UserPosition, UserRole } from '@prisma/client';
 
 export class CreateUserByAdminDto {
   @IsEmail()
@@ -17,9 +17,12 @@ export class CreateUserByAdminDto {
   @MinLength(1, { message: 'Los apellidos son obligatorios' })
   lastName: string;
 
-  @IsString()
-  @MinLength(1, { message: 'El puesto es obligatorio' })
-  position: string;
+  @IsEnum(UserPosition, { message: 'Selecciona un puesto válido' })
+  position: UserPosition;
+
+  @IsOptional()
+  @IsEnum(UserIndustry, { message: 'Industria no válida' })
+  industry?: UserIndustry;
 
   @IsOptional()
   @IsEnum(UserRole, { message: 'El rol debe ser USER o ADMIN' })

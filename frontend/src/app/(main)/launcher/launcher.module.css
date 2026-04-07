@@ -355,6 +355,55 @@
   line-height: 1.4;
 }
 
+.tileLinkDisabled {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  color: inherit;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+.tileLocked {
+  opacity: 0.9;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--fiori-text-secondary) 40%, var(--fiori-border-light));
+  background: color-mix(in srgb, var(--fiori-nav-bg) 38%, var(--fiori-surface));
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.tileLockedHint {
+  flex: 1 1 auto;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-3);
+}
+
+.tileLockedLink {
+  pointer-events: auto;
+  color: var(--fiori-shell-bg);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tileLockedLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tileCtaLocked {
+  margin-top: auto;
+  padding-top: var(--fiori-space-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+  letter-spacing: 0.02em;
+}
+
 .tileLink {
   text-decoration: none;
   color: inherit;

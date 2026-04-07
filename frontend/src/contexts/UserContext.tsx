@@ -10,11 +10,17 @@ export type User = {
   name?: string | null;
   lastName?: string | null;
   position?: string | null;
+  /** Sector Avvale (`UserIndustry` en API). */
+  industry?: string | null;
   avatarPath?: string | null;
   appearance?: string | null;
   role?: string;
   /** Orden de mosaicos App Launcher; permutación de activations, pipeline, yubiq, rfqAnalysis */
   launcherTileOrder?: LauncherTileId[] | null;
+  /** Indica si el usuario guardó clave Anthropic (módulos con IA en el launcher). */
+  hasAnthropicApiKey?: boolean;
+  /** Id del usuario que tiene el puesto Growth Managing Director (solo uno); null si libre. */
+  growthManagingDirectorUserId?: string | null;
 };
 
 type UserContextValue = {

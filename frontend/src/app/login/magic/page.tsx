@@ -110,7 +110,7 @@ function MagicVerifyContent() {
 
   if (status === 'loading') {
     return (
-      <main className={styles.main}>
+      <main className={styles.main} data-theme="microsoft">
         <section className={styles.card}>
           <p className={styles.subtitle}>Preparando acceso…</p>
         </section>
@@ -120,7 +120,7 @@ function MagicVerifyContent() {
 
   if (status === 'error') {
     return (
-      <main className={styles.main}>
+      <main className={styles.main} data-theme="microsoft">
         <section className={styles.card}>
           <h1 className={styles.title}>No se pudo iniciar sesión</h1>
           <p className={styles.subtitle}>{message}</p>
@@ -141,7 +141,7 @@ export default function MagicLoginPage() {
   return (
     <Suspense
       fallback={
-        <main className={styles.main}>
+        <main className={styles.main} data-theme="microsoft">
           <section className={styles.card}>
             <p className={styles.subtitle}>Cargando…</p>
           </section>

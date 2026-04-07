@@ -7,10 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { resolveApiUrl } from '@/lib/api';
-import { getAppearanceFromCookie, setAppearanceCookie } from '@/lib/appearance-cookie';
 import styles from './login.module.css';
-
-type Appearance = 'microsoft' | 'fiori';
 
 const CORP_EMAIL_DOMAIN = '@avvale.com';
 
@@ -42,8 +39,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [brandingReady, setBrandingReady] = useState(false);
-  const [appearance, setAppearance] = useState<Appearance>(() => getAppearanceFromCookie() ?? 'microsoft');
   const [magicLoading, setMagicLoading] = useState(false);
   const [magicError, setMagicError] = useState('');
   const [magicSuccess, setMagicSuccess] = useState('');
@@ -56,44 +51,6 @@ export default function LoginPage() {
     const t = setTimeout(() => setMagicCooldownSec((s) => Math.max(0, s - 1)), 1000);
     return () => clearTimeout(t);
   }, [magicCooldownSec]);
-
-  useEffect(() => {
-    let mounted = true;
-    const applyAppearance = (value: Appearance) => {
-      if (typeof document !== 'undefined') {
-        document.documentElement.setAttribute('data-appearance', value);
-        setAppearanceCookie(value);
-      }
-    };
-
-    const brandingUrl = resolveApiUrl('/api/auth/branding');
-    if (process.env.NODE_ENV === 'development') {
-      console.info('[login] Branding URL:', brandingUrl);
-    }
-    fetch(brandingUrl)
-      .then(async (res) => {
-        if (!res.ok) return null;
-        return (await res.json()) as { appearance?: string };
-      })
-      .then((data) => {
-        if (!mounted) return;
-        const nextAppearance: Appearance = data?.appearance === 'fiori' ? 'fiori' : 'microsoft';
-        setAppearance(nextAppearance);
-        applyAppearance(nextAppearance);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setAppearance('microsoft');
-        applyAppearance('microsoft');
-      })
-      .finally(() => {
-        if (mounted) setBrandingReady(true);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const runPasswordLogin = async () => {
     setError('');
@@ -180,11 +137,11 @@ export default function LoginPage() {
   };
 
   return (
-    <main className={styles.main} data-theme={appearance}>
-      <section className={styles.card} aria-busy={!brandingReady}>
+    <main className={styles.main} data-theme="microsoft">
+      <section className={styles.card} aria-busy={false}>
         <header className={styles.header}>
           <div className={styles.brandRow}>
-            <p className={styles.brandKicker}>{appearance === 'fiori' ? 'SAP ID' : 'AVVALE ID®'}</p>
+            <p className={styles.brandKicker}>AVVALE ID®</p>
             <img
               src="https://www.sap.com/dam/application/shared/logos/customer/a-g/avvale-customer-logo.png"
               alt="Avvale"
@@ -192,9 +149,7 @@ export default function LoginPage() {
             />
           </div>
           <h1 className={styles.title}>Iniciar sesión</h1>
-          <p className={styles.subtitle}>
-            {appearance === 'fiori' ? 'SAP for Me' : 'Accede con tu cuenta corporativa'}
-          </p>
+          <p className={styles.subtitle}>Accede con tu cuenta corporativa</p>
         </header>
 
         <form onSubmit={handleFormSubmit} className={styles.form} autoComplete="off">
@@ -306,7 +261,7 @@ export default function LoginPage() {
             {!showPasswordPath ? (
               <button
                 type="submit"
-                disabled={magicLoading || !brandingReady || magicCooldownSec > 0}
+                disabled={magicLoading || magicCooldownSec > 0}
                 className={styles.submit}
               >
                 {magicLoading
@@ -316,7 +271,7 @@ export default function LoginPage() {
                     : 'Enviar enlace de acceso'}
               </button>
             ) : (
-              <button type="submit" disabled={loading || !brandingReady} className={styles.submit}>
+              <button type="submit" disabled={loading} className={styles.submit}>
                 {loading ? 'Entrando…' : 'Continuar'}
               </button>
             )}

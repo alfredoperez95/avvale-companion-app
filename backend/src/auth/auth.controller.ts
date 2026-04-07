@@ -11,6 +11,7 @@ import {
   UploadedFile,
   BadRequestException,
   HttpCode,
+  Query,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -24,10 +25,15 @@ import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { UserPayload } from './decorators/user-payload';
+import { InvitationsService } from '../invitations/invitations.service';
+import { AcceptInvitationDto } from '../invitations/dto/accept-invitation.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly invitationsService: InvitationsService,
+  ) {}
 
   @Post('register')
   async register(@Body() dto: RegisterDto) {
@@ -52,6 +58,19 @@ export class AuthController {
     return this.authService.verifyMagicLink(dto.token);
   }
 
+  @Get('invitations/preview')
+  async previewInvitation(@Query('token') token: string) {
+    return this.invitationsService.getPreviewByToken(token ?? '');
+  }
+
+  @Post('invitations/accept')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ 'magic-link': { limit: 10, ttl: 60_000 } })
+  async acceptInvitation(@Body() dto: AcceptInvitationDto) {
+    const user = await this.invitationsService.acceptInvitation(dto);
+    return this.authService.buildTokenResponse(user.id, user.email);
+  }
+
   @Get('branding')
   getBranding() {
     return this.authService.getLoginBranding();
@@ -60,10 +79,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() payload: UserPayload) {
-    const user = await this.authService.validateUserById(payload.userId);
-    if (!user) return null;
-    const { passwordHash: _, ...rest } = user;
-    return rest;
+    return this.authService.getUserPublicById(payload.userId);
   }
 
   @Patch('me')
@@ -84,10 +100,9 @@ export class AuthController {
       buffer: file.buffer,
       mimetype: file.mimetype,
     });
-    const user = await this.authService.validateUserById(payload.userId);
+    const user = await this.authService.getUserPublicById(payload.userId);
     if (!user) return { avatarPath };
-    const { passwordHash: _, ...rest } = user;
-    return rest;
+    return user;
   }
 
   @Get('me/avatar')
@@ -107,9 +122,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async deleteAvatar(@CurrentUser() payload: UserPayload) {
     await this.authService.removeAvatar(payload.userId);
-    const user = await this.authService.validateUserById(payload.userId);
+    const user = await this.authService.getUserPublicById(payload.userId);
     if (!user) return { avatarPath: null };
-    const { passwordHash: _, ...rest } = user;
-    return rest;
+    return user;
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { UserPayload } from '../../auth/decorators/user-payload';
@@ -27,6 +27,11 @@ export class AnthropicCredentialsController {
   @Post('test')
   async test(@CurrentUser() user: UserPayload): Promise<AnthropicTestConnectionResponse> {
     return this.service.testConnection(user.userId);
+  }
+
+  @Delete()
+  async remove(@CurrentUser() user: UserPayload) {
+    return this.service.removeApiKey(user.userId);
   }
 }
 

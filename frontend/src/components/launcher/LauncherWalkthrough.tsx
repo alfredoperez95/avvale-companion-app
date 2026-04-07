@@ -191,7 +191,7 @@ const STEPS = [
     body: (
       <>
         <p>
-          Esta es la pantalla principal de <strong>Avvale Companion Apps</strong>: un único punto de acceso a
+          Esta es la pantalla principal de <strong>Avvale Companion App</strong>: un único punto de acceso a
           aplicaciones internas.
         </p>
         <p>

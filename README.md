@@ -1,4 +1,4 @@
-# Avvale Companion Apps — Plataforma de Activaciones
+# Avvale Companion App — Plataforma de Activaciones
 
 Aplicación web para **gestionar activaciones por correo**: borradores, destinatarios, áreas, plantillas, adjuntos, firma global y **envío orquestado vía Make.com** (webhook + callback). Incluye **App Launcher** (varias apps en un mismo front), tema **Microsoft-like** o **SAP Fiori-like**, y zona de **perfil / cuenta**.
 
@@ -345,4 +345,4 @@ Luego: `http://localhost:3000` y registro con `curl` o flujo de login.
 
 ---
 
-*Proyecto: **Companion Apps** — aplicación de **Activaciones** dentro del ecosistema Avvale.*
+*Proyecto: **Companion App** — aplicación de **Activaciones** dentro del ecosistema Avvale.*

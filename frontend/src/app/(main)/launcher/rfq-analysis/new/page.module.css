@@ -1,8 +1,9 @@
-/* Layout alineado con /launcher/yubiq/approve-seal-filler (tarjeta principal en dos columnas) */
+/* Mismo ancho útil que AppShell .main; tarjeta principal en dos columnas en pantallas anchas */
 .page {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: var(--fiori-space-4) var(--fiori-space-4) var(--fiori-space-10);
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0 0 var(--fiori-space-10);
 }
 
 .lead {

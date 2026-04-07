@@ -9,6 +9,7 @@ import { Icon, type IconName } from '@/components/Icon/Icon';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { clearAppearanceCookie } from '@/lib/appearance-cookie';
 import { redirectToLogin } from '@/lib/api';
+import { positionLabel } from '@/lib/user-position';
 import styles from './AppShell.module.css';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
@@ -136,7 +137,7 @@ interface AppShellProps {
   theme?: 'microsoft' | 'fiori';
 }
 
-export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps) {
+export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
   const pathname = usePathname();
   const initials = user ? getInitials(user.name, user.lastName, user.email) : '';
   const avatarUrl = useAvatarUrl(user?.avatarPath ?? null);
@@ -188,7 +189,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
             />
           </Link>
           <span className={styles.appName} aria-label="Nombre de la aplicación">
-            Companion Apps
+            Companion App
           </span>
           <div className={styles.headerRight}>
             {user && (
@@ -223,7 +224,7 @@ export function AppShell({ children, user, theme = 'microsoft' }: AppShellProps)
                         {[user.name, user.lastName].filter(Boolean).join(' ') || user.email || 'Usuario'}
                       </div>
                       <div className={styles.avatarDropdownPosition}>
-                        {user.position?.trim() || '—'}
+                        {positionLabel(user.position)}
                       </div>
                       <div className={styles.avatarDropdownEmail}>{user.email}</div>
                     </div>

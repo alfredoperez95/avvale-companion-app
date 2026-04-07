@@ -50,9 +50,12 @@ const TILE_ACCENT: Record<LauncherTileId, string> = {
 function TileLink({
   id,
   tileClassName,
+  locked,
 }: {
   id: LauncherTileId;
   tileClassName?: string;
+  /** Sin clave Anthropic: mosaicos de IA no navegan (Yubiq, RFQ). */
+  locked?: boolean;
 }) {
   const accent = TILE_ACCENT[id];
   const tile = `${styles.tile} ${accent} ${tileClassName ?? ''}`.trim();
@@ -98,6 +101,36 @@ function TileLink({
         </Link>
       );
     case 'yubiq':
+      if (locked) {
+        const lockedTile = `${styles.tile} ${accent} ${styles.tileLocked} ${tileClassName ?? ''}`.trim();
+        return (
+          <div
+            className={styles.tileLinkDisabled}
+            aria-labelledby="tile-yubiq-approve-seal-heading"
+            aria-describedby="tile-yubiq-locked-hint"
+            role="group"
+          >
+            <article className={lockedTile}>
+              <h2 id="tile-yubiq-approve-seal-heading" className={styles.tileTitle}>
+                Yubiq Approve &amp; Seal Filler
+              </h2>
+              <p className={styles.tileDesc}>
+                Sube una oferta comercial en PDF, analízala con IA y obtén campos estructurados (título, cliente, importe,
+                área Avvale y resumen).
+              </p>
+              <p id="tile-yubiq-locked-hint" className={styles.tileLockedHint}>
+                Activa tu clave de API de Anthropic en{' '}
+                <Link href="/profile#perfil-ai-credentials" className={styles.tileLockedLink}>
+                  Perfil → AI Credentials
+                </Link>{' '}
+                para usar este módulo.
+              </p>
+              <span className={styles.tileCtaLocked}>Requiere API IA</span>
+              <span className={`${styles.tileIcon} ${styles.tileIconYubiq}`} aria-hidden="true" />
+            </article>
+          </div>
+        );
+      }
       return (
         <Link
           href="/launcher/yubiq/approve-seal-filler"
@@ -117,6 +150,36 @@ function TileLink({
         </Link>
       );
     case 'rfqAnalysis':
+      if (locked) {
+        const lockedTile = `${styles.tile} ${accent} ${styles.tileLocked} ${tileClassName ?? ''}`.trim();
+        return (
+          <div
+            className={styles.tileLinkDisabled}
+            aria-labelledby="tile-rfq-analysis-heading"
+            aria-describedby="tile-rfq-locked-hint"
+            role="group"
+          >
+            <article className={lockedTile}>
+              <h2 id="tile-rfq-analysis-heading" className={styles.tileTitle}>
+                Análisis RFQs
+              </h2>
+              <p className={styles.tileDesc}>
+                Workspace por oportunidad: documentos, análisis estructurado con IA y chat sobre el mismo contexto (manual o
+                por email).
+              </p>
+              <p id="tile-rfq-locked-hint" className={styles.tileLockedHint}>
+                Activa tu clave de API de Anthropic en{' '}
+                <Link href="/profile#perfil-ai-credentials" className={styles.tileLockedLink}>
+                  Perfil → AI Credentials
+                </Link>{' '}
+                para usar este módulo.
+              </p>
+              <span className={styles.tileCtaLocked}>Requiere API IA</span>
+              <span className={`${styles.tileIcon} ${styles.tileIconRfq}`} aria-hidden="true" />
+            </article>
+          </div>
+        );
+      }
       return (
         <Link
           href="/launcher/rfq-analysis"
@@ -156,10 +219,13 @@ function GripIcon() {
 function SortableTile({
   id,
   reorderMode,
+  aiLocked,
 }: {
   id: LauncherTileId;
   reorderMode: boolean;
+  aiLocked: boolean;
 }) {
+  const tileLocked = aiLocked && (id === 'yubiq' || id === 'rfqAnalysis');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled: !reorderMode,
@@ -191,7 +257,11 @@ function SortableTile({
         </button>
       )}
       <div className={reorderMode ? styles.tileLinkOuter : styles.tileLinkOuterStatic}>
-        <TileLink id={id} tileClassName={reorderMode ? styles.tileReorder : undefined} />
+        <TileLink
+          id={id}
+          tileClassName={reorderMode ? styles.tileReorder : undefined}
+          locked={tileLocked}
+        />
       </div>
     </li>
   );
@@ -278,6 +348,7 @@ export default function LauncherPage() {
   );
 
   const displayName = user?.name?.trim() || user?.email || 'Usuario';
+  const aiLocked = user?.hasAnthropicApiKey !== true;
 
   return (
     <div className={styles.page}>
@@ -287,9 +358,9 @@ export default function LauncherPage() {
       </header>
 
       {bannerVisible && (
-        <section className={styles.welcomeBanner} aria-label="Bienvenida a Avvale Companion Apps">
+        <section className={styles.welcomeBanner} aria-label="Bienvenida a Avvale Companion App">
           <div className={styles.welcomeBannerOverlay}>
-            <h3 className={styles.welcomeBannerTitle}>Te damos la bienvenida a Avvale Companion Apps</h3>
+            <h3 className={styles.welcomeBannerTitle}>Te damos la bienvenida a Avvale Companion App</h3>
             <p className={styles.welcomeBannerSubtitle}>
               Un ecosistema de aplicaciones internas creado para reunir en un único punto de acceso distintas soluciones desarrolladas por Avvale, orientadas a optimizar operaciones, acelerar tareas recurrentes y dar soporte a procesos de negocio y gestión interna.
             </p>
@@ -442,7 +513,7 @@ export default function LauncherPage() {
           <SortableContext items={order} strategy={rectSortingStrategy}>
             <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder}`} role="list">
               {order.map((id) => (
-                <SortableTile key={id} id={id} reorderMode={reorderMode} />
+                <SortableTile key={id} id={id} reorderMode={reorderMode} aiLocked={aiLocked} />
               ))}
             </ul>
           </SortableContext>
@@ -451,7 +522,7 @@ export default function LauncherPage() {
         <ul className={styles.tilesGrid} role="list">
           {order.map((id) => (
             <li key={id} className={styles.sortableItemStatic} role="listitem">
-              <TileLink id={id} />
+              <TileLink id={id} locked={aiLocked && (id === 'yubiq' || id === 'rfqAnalysis')} />
             </li>
           ))}
         </ul>

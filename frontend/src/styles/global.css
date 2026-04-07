@@ -59,3 +59,10 @@ select {
   white-space: nowrap;
   border: 0;
 }
+
+/* Rutas /login* (LoginAppearance): estética Microsoft / Fluent en página completa. */
+html[data-appearance='microsoft'] body {
+  background: #f5f6f7;
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #323130;
+}

@@ -12,6 +12,21 @@ enum UserRole {
   ADMIN
 }
 
+/** Sector / industria Avvale (perfil y administración). */
+enum UserIndustry {
+  ENERGY_PUBLIC_SECTOR
+  CONSUMER_MARKETS
+  LIFESTYLE_SERVICES
+  INDUSTRIAL_CORPORATE_MARKETS
+}
+
+/** Puesto / rol funcional en perfil y administración. */
+enum UserPosition {
+  GROWTH_MANAGING_DIRECTOR
+  INDUSTRY_DIRECTOR
+  ACCOUNT_MANAGER
+}
+
 enum ActivationStatus {
   DRAFT
   PENDING_CALLBACK
@@ -33,7 +48,8 @@ model User {
   phone        String?  @map("phone")
   name         String?
   lastName     String?  @map("last_name")
-  position     String?  @map("position")
+  position     UserPosition? @map("position")
+  industry     UserIndustry? @map("industry")
   appearance   String?  @map("appearance")
   avatarPath   String?  @map("avatar_path")
   passwordHash String   @map("password_hash")
@@ -50,8 +66,29 @@ model User {
   anthropicCredential UserAnthropicCredential?
   magicLoginTokens   MagicLoginToken[]
   rfqAnalyses        RfqAnalysis[]
+  sentInvitations    UserInvitation[] @relation("UserInvitedBy")
 
   @@map("users")
+}
+
+/** Invitación pendiente de registro (token por email; se elimina o marca al aceptar). */
+model UserInvitation {
+  id               String         @id @default(uuid())
+  email            String         @unique @map("email")
+  name             String         @map("name")
+  lastName         String         @map("last_name")
+  position         UserPosition?  @map("position")
+  industry         UserIndustry?  @map("industry")
+  role             UserRole       @default(USER) @map("role")
+  tokenHash        String         @unique @map("token_hash") @db.VarChar(64)
+  invitedByUserId  String         @map("invited_by_user_id")
+  expiresAt        DateTime       @map("expires_at")
+  usedAt           DateTime?      @map("used_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  invitedBy User @relation("UserInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@map("user_invitations")
 }
 
 /** Origen del workspace: creado en app o vía email (Make). */
