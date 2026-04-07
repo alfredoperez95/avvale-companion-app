@@ -49,10 +49,6 @@ const nextConfig: NextConfig = {
         source: '/api/:path*',
         destination: `${apiRewriteTarget}/:path*`,
       },
-      {
-        source: '/extension/:path*',
-        destination: `${apiRewriteTarget}/extensions/:path*`,
-      },
     ];
   },
 };
