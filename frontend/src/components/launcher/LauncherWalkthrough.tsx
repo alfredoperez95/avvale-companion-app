@@ -136,10 +136,11 @@ function WalkthroughStepExtensionBody() {
         <strong>modo desarrollador</strong>
         {' desde '}
         <a
-          href="#"
+          href="/extension/avvale-companion-extension.zip"
           className={styles.docLink}
-          onClick={(e) => e.preventDefault()}
-          title="Enlace disponible próximamente"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Descargar ZIP de la extensión"
         >
           este enlace
         </a>
