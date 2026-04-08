@@ -1,8 +1,8 @@
-/* Mismo ancho útil que AppShell .main; tarjeta principal en dos columnas en pantallas anchas */
+/* Mismo ancho útil que listado RFQ / activaciones (90rem) */
 .page {
-  max-width: none;
+  max-width: 90rem;
   width: 100%;
-  margin: 0;
+  margin: 0 auto;
   padding: 0 0 var(--fiori-space-10);
 }
 

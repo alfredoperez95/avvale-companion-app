@@ -1,0 +1,131 @@
+/**
+ * Diálogo informativo: misma base visual que ConfirmDialog (Fiori), cuerpo ampliable y scroll.
+ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: var(--fiori-space-4);
+  animation: infoOverlayIn 0.2s ease-out;
+}
+
+@keyframes infoOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dialog {
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.75rem;
+  max-width: 32rem;
+  width: 100%;
+  max-height: min(90vh, 36rem);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 22%);
+  overflow: hidden;
+  animation: infoDialogIn 0.25s ease-out;
+}
+
+@keyframes infoDialogIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .dialog {
+    animation: none;
+  }
+}
+
+.header {
+  flex-shrink: 0;
+  padding: var(--fiori-space-4) var(--fiori-space-5);
+  background: var(--fiori-nav-bg);
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+  letter-spacing: -0.01em;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--fiori-space-4) var(--fiori-space-5);
+  overflow-y: auto;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fiori-text);
+}
+
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--fiori-space-3);
+  padding: var(--fiori-space-4) var(--fiori-space-5);
+  background: var(--fiori-background);
+  border-top: 1px solid var(--fiori-border-light);
+}
+
+.footerStart {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.footerStart:empty {
+  display: none;
+}
+
+.footerWithStart {
+  justify-content: space-between;
+}
+
+.btnClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid var(--fiori-shell-bg);
+  border-radius: 0.375rem;
+  background: var(--fiori-shell-bg);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+
+.btnClose:hover {
+  opacity: 0.92;
+}
+
+.btnClose:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}

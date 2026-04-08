@@ -1,9 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import styles from './FilterBar.module.css';
 
 export type SolicitanteOption = { id: string; name?: string | null; lastName?: string | null; email: string };
+
+export type StatusFilterOption = { value: string; label: string };
+
+const ACTIVATION_STATUS_OPTIONS: StatusFilterOption[] = [
+  { value: '', label: 'Todos' },
+  { value: 'DRAFT', label: 'Borrador' },
+  { value: 'QUEUED', label: 'En cola' },
+  { value: 'PROCESSING', label: 'Procesando' },
+  { value: 'RETRYING', label: 'Reintentando' },
+  { value: 'PENDING_CALLBACK', label: 'Esperando' },
+  { value: 'SENT', label: 'Enviado' },
+  { value: 'FAILED', label: 'Error envío' },
+];
 
 interface FilterBarProps {
   /** Clase adicional en el contenedor (p. ej. anidado en una tarjeta). */
@@ -16,6 +29,9 @@ interface FilterBarProps {
   onSolicitanteFilterChange?: (userId: string) => void;
   solicitanteOptions?: SolicitanteOption[];
   solicitanteLoading?: boolean;
+  /** Si se define, sustituye las opciones de estado (p. ej. RFQ vs activaciones). */
+  statusOptions?: StatusFilterOption[];
+  searchPlaceholder?: string;
 }
 
 function getSolicitanteLabel(u: SolicitanteOption): string {
@@ -33,10 +49,20 @@ export function FilterBar({
   onSolicitanteFilterChange,
   solicitanteOptions = [],
   solicitanteLoading = false,
+  statusOptions,
+  searchPlaceholder = 'Proyecto, cliente, destinatario u oferta...',
 }: FilterBarProps) {
+  const uid = useId();
+  const panelId = `${uid}-panel`;
+  const statusFieldId = `${uid}-status`;
+  const searchFieldId = `${uid}-search`;
+  const solicitanteFieldId = `${uid}-solicitante`;
+
   const showSolicitante = Boolean(onSolicitanteFilterChange);
   const hasSolicitanteOptions = solicitanteOptions.length > 0;
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+  const resolvedStatusOptions = statusOptions ?? ACTIVATION_STATUS_OPTIONS;
 
   return (
     <div className={[styles.root, className].filter(Boolean).join(' ')}>
@@ -45,43 +71,40 @@ export function FilterBar({
         className={styles.mobileToggle}
         onClick={() => setMobileFiltersOpen((v) => !v)}
         aria-expanded={mobileFiltersOpen}
-        aria-controls="filter-bar-panel"
+        aria-controls={panelId}
       >
         {mobileFiltersOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
       </button>
       <div
-        id="filter-bar-panel"
+        id={panelId}
         className={`${styles.bar} ${mobileFiltersOpen ? styles.barExpanded : ''}`}
         role="search"
       >
         <div className={styles.field}>
-          <label className={styles.label} htmlFor="filter-status">
+          <label className={styles.label} htmlFor={statusFieldId}>
             Estado
           </label>
           <select
-            id="filter-status"
+            id={statusFieldId}
             className={styles.select}
             value={statusFilter}
             onChange={(e) => onStatusFilterChange(e.target.value)}
             aria-label="Filtrar por estado"
           >
-            <option value="">Todos</option>
-            <option value="DRAFT">Borrador</option>
-            <option value="QUEUED">En cola</option>
-            <option value="PROCESSING">Procesando</option>
-            <option value="RETRYING">Reintentando</option>
-            <option value="PENDING_CALLBACK">Esperando</option>
-            <option value="SENT">Enviado</option>
-            <option value="FAILED">Error envío</option>
+            {resolvedStatusOptions.map((opt) => (
+              <option key={opt.value === '' ? `${uid}-all` : opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </div>
         {showSolicitante && (
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="filter-solicitante">
+            <label className={styles.label} htmlFor={solicitanteFieldId}>
               Solicitante
             </label>
             <select
-              id="filter-solicitante"
+              id={solicitanteFieldId}
               className={`${styles.select} ${styles.selectSolicitante}`}
               value={solicitanteFilter}
               onChange={(e) => onSolicitanteFilterChange?.(e.target.value)}
@@ -103,14 +126,14 @@ export function FilterBar({
         )}
         {onSearchChange && (
           <div className={`${styles.field} ${styles.fieldSearch}`}>
-            <label className={styles.label} htmlFor="filter-search">
+            <label className={styles.label} htmlFor={searchFieldId}>
               Buscar
             </label>
             <input
-              id="filter-search"
+              id={searchFieldId}
               type="search"
               className={styles.input}
-              placeholder="Proyecto, cliente, destinatario u oferta..."
+              placeholder={searchPlaceholder}
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               aria-label="Buscar"
