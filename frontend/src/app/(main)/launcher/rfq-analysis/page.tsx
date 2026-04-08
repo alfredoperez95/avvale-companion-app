@@ -88,6 +88,7 @@ export default function RfqAnalysisListPage() {
   }, [filteredItems, listExpanded]);
 
   const hiddenListCount = Math.max(0, filteredItems.length - LIST_INITIAL_VISIBLE);
+  const peekItem = !listExpanded && filteredItems.length > LIST_INITIAL_VISIBLE ? filteredItems[LIST_INITIAL_VISIBLE] : null;
 
   const resetListFilters = () => {
     setSourceFilter('all');
@@ -335,28 +336,72 @@ export default function RfqAnalysisListPage() {
               </li>
             ))}
           </ul>
+          {peekItem ? (
+            <div className={styles.listPeek} aria-hidden="true">
+              <div className={`${styles.sectionCard} ${styles.listRow} ${styles.listCardShell} ${styles.listPeekCard}`}>
+                <div className={styles.listCardInner}>
+                  <div className={styles.listCardMainHit} role="presentation">
+                    <div className={styles.listRowMain}>
+                      <h2 className={styles.listTitle}>{peekItem.title}</h2>
+                      <div className={styles.listMetaRow}>
+                        <span
+                          className={
+                            peekItem.sourceType === 'EMAIL' ? styles.listSourcePillEmail : styles.listSourcePillManual
+                          }
+                        >
+                          {peekItem.sourceType === 'EMAIL' ? 'Email' : 'Manual'}
+                        </span>
+                        {peekItem.originSubject ? (
+                          <span className={styles.listSubjectHint} title={peekItem.originSubject}>
+                            {peekItem.originSubject}
+                          </span>
+                        ) : null}
+                        {peekItem.originEmail ? (
+                          <span className={styles.listEmailHint} title={peekItem.originEmail ?? undefined}>
+                            {peekItem.originEmail}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className={styles.listMetaDate}>
+                        <span className={styles.listMetaDateLabel}>Creado</span>{' '}
+                        <time dateTime={peekItem.createdAt}>{formatCreatedAt(peekItem.createdAt)}</time>
+                      </p>
+                    </div>
+                    <span className={styles.listCardChevron} aria-hidden>
+                      ›
+                    </span>
+                  </div>
+                  <div className={styles.listCardToolbar} role="presentation">
+                    <RfqStatusTag status={peekItem.status} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
           {filteredItems.length > LIST_INITIAL_VISIBLE ? (
             <div className={styles.listShowMoreWrap}>
               {!listExpanded ? (
                 <button
                   type="button"
-                  className={styles.secondaryBtn}
+                  className={`${styles.secondaryBtn} ${styles.listShowMoreBtn}`}
                   onClick={() => setListExpanded(true)}
                   aria-expanded={false}
                   aria-controls="rfq-analysis-workspace-list"
                 >
                   Mostrar más
                   <span className={styles.listShowMoreCount}> ({hiddenListCount} más)</span>
+                  <span className={styles.listShowMoreIcon} aria-hidden />
                 </button>
               ) : (
                 <button
                   type="button"
-                  className={styles.secondaryBtn}
+                  className={`${styles.secondaryBtn} ${styles.listShowMoreBtn}`}
                   onClick={() => setListExpanded(false)}
                   aria-expanded
                   aria-controls="rfq-analysis-workspace-list"
                 >
                   Mostrar menos
+                  <span className={styles.listShowMoreIcon} aria-hidden />
                 </button>
               )}
             </div>

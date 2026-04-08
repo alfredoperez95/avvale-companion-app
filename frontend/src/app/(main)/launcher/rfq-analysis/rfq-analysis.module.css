@@ -1922,15 +1922,87 @@
   gap: var(--fiori-space-4);
 }
 
+.listPeek {
+  position: relative;
+  max-height: 4.25rem;
+  overflow: hidden;
+  margin-top: var(--fiori-space-4);
+  pointer-events: none;
+}
+
+.listPeek::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4.25rem;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    color-mix(in srgb, #f5f6f7 70%, transparent) 35%,
+    #f5f6f7 100%
+  );
+}
+
+.listPeekCard {
+  transform: none;
+  opacity: 1;
+  filter: none;
+}
+
 .listShowMoreWrap {
   display: flex;
   justify-content: center;
-  margin-top: var(--fiori-space-2);
+  margin-top: var(--fiori-space-3);
+  padding: var(--fiori-space-2) 0;
 }
 
 .listShowMoreCount {
   font-weight: 500;
   color: var(--fiori-text-secondary);
+}
+
+.listShowMoreBtn {
+  width: min(32rem, 100%);
+  min-height: 2.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px dashed color-mix(in srgb, var(--fiori-shell-bg) 22%, var(--fiori-border-light));
+  background: transparent;
+  color: var(--fiori-shell-bg);
+  gap: 0.45rem;
+  justify-content: center;
+  box-shadow: none;
+}
+
+.listShowMoreBtn:hover {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 32%, var(--fiori-border-light));
+  background: color-mix(in srgb, var(--fiori-nav-bg) 35%, var(--fiori-surface));
+}
+
+.listShowMoreBtn:active {
+  background: color-mix(in srgb, var(--fiori-nav-bg) 45%, var(--fiori-surface));
+}
+
+.listShowMoreIcon {
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.listShowMoreIcon::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  margin-top: -0.05rem;
 }
 
 .listRow {
