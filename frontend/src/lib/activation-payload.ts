@@ -8,11 +8,27 @@ export interface ActivationPayloadFromExtension {
   client?: string;
   amount?: string;
   projectManagerEmail?: string;
-  /** "Consulting" | "Software" (desde HubSpot) → se mapea a CONSULTORIA | SW */
+  /**
+   * Desde HubSpot / extensión. Valores conocidos:
+   * - "Consulting" → CONSULTORIA
+   * - "Software" | "Software / Product" → SW
+   */
   serviceType?: string;
   attachmentUrls?: string[];
   /** Nombres de archivo (mismo orden que attachmentUrls); puede ser string vacío si no hay nombre */
   attachmentNames?: string[];
+}
+
+/**
+ * Mapea `serviceType` del hash de la extensión al tipo de oportunidad del formulario.
+ */
+export function mapExtensionServiceTypeToProjectType(
+  serviceType: string | undefined | null,
+): '' | 'CONSULTORIA' | 'SW' {
+  const s = (serviceType ?? '').trim().replace(/\s+/g, ' ');
+  if (s === 'Consulting') return 'CONSULTORIA';
+  if (s === 'Software' || s === 'Software / Product') return 'SW';
+  return '';
 }
 
 /**

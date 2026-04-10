@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, redirectToLogin } from '@/lib/api';
-import { getActivationPayloadFromHash } from '@/lib/activation-payload';
+import { getActivationPayloadFromHash, mapExtensionServiceTypeToProjectType } from '@/lib/activation-payload';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { replaceTemplateVariables, replaceUrlsEscaneadasPlaceholder } from '@/lib/replace-template-variables';
@@ -254,8 +254,7 @@ export default function NewActivationPage() {
     const p = getActivationPayloadFromHash();
     if (!p) return;
     const pmEmail = p.projectManagerEmail?.trim() || '';
-    const projectTypeFromServiceType =
-      p.serviceType === 'Consulting' ? 'CONSULTORIA' : p.serviceType === 'Software' ? 'SW' : '';
+    const projectTypeFromServiceType = mapExtensionServiceTypeToProjectType(p.serviceType);
     const rawProjectName = p.projectName ?? '';
     const parsed = rawProjectName ? parseHubSpotStyleProjectName(rawProjectName) : null;
     const projectName = parsed ? parsed.projectDescription : rawProjectName || '';
