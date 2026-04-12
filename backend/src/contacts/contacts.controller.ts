@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -10,9 +10,15 @@ import { UpdateContactDto } from './dto/update-contact.dto';
 export class ContactsController {
   constructor(private readonly contactsService: ContactsService) {}
 
+  /**
+   * Lista contactos CC (usuario autenticado).
+   * - Sin query o `fields=name,email`: array `{ id, name, email, isProjectJp }[]` (orden por nombre).
+   * - `?fields=email`: `{ emails: string[] }`
+   * - `?fields=name`: `{ names: string[] }`
+   */
   @Get()
-  list() {
-    return this.contactsService.findAll();
+  list(@Query('fields') fields?: string) {
+    return this.contactsService.findAll(fields);
   }
 
   @Post()
