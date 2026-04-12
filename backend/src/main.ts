@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { json, urlencoded } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -9,6 +9,7 @@ import { AppModule } from './app.module';
  * Debe cubrir webhooks con adjuntos en base64 (p. ej. RFQ email). Ajustable vía HTTP_BODY_LIMIT (p. ej. 50mb).
  */
 const HTTP_BODY_LIMIT = process.env.HTTP_BODY_LIMIT?.trim() || '50mb';
+const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -45,7 +46,13 @@ async function bootstrap() {
         return callback(null, true);
       }
 
-      return callback(new Error(`CORS not allowed for origin: ${origin}`), false);
+      /**
+       * No pasar `Error` al callback: el middleware `cors` hace `next(err)` y Nest responde **500**.
+       * Orígenes no listados (p. ej. `chrome-extension://…`) deben negarse con `callback(null, false)`.
+       * Para permitir una extensión, añade su origen exacto a `CORS_ORIGIN` (coma-separado).
+       */
+      logger.warn(`CORS: origen no permitido (no 500): ${origin}`);
+      return callback(null, false);
     },
     credentials: true,
   });
