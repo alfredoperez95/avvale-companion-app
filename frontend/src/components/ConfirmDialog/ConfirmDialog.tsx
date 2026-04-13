@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, type ReactNode } from 'react';
+import { isDialogEnterTargetInteractive } from '@/lib/dialog-keyboard';
 import styles from './ConfirmDialog.module.css';
 
 export type ConfirmDialogProps = {
@@ -54,11 +55,19 @@ export function ConfirmDialog({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !confirmBusy) onCancel();
+      if (e.key === 'Escape' && !confirmBusy) {
+        onCancel();
+        return;
+      }
+      if (e.key === 'Enter' && !confirmBusy) {
+        if (isDialogEnterTargetInteractive(e.target)) return;
+        e.preventDefault();
+        onConfirm();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onCancel, confirmBusy]);
+  }, [open, onCancel, onConfirm, confirmBusy]);
 
   if (!open) return null;
 

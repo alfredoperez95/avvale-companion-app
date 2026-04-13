@@ -14,6 +14,7 @@ import type {
   TranslateOfferResponse,
   UserAnthropicCredentialStatus,
 } from '@/types/yubiq';
+import { isDialogEnterTargetInteractive } from '@/lib/dialog-keyboard';
 import { buildYubiqPayload, dispatchYubiqToExtensionAndWait } from '@/lib/yubiq';
 import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
 import styles from './page.module.css';
@@ -160,15 +161,6 @@ export default function YubiqApproveSealFillerPage() {
       .finally(() => setCredLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (yubiqMarginModal === 'closed') return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setYubiqMarginModal('closed');
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [yubiqMarginModal]);
-
   useLayoutEffect(() => {
     if (yubiqMarginModal !== 'input') return;
     const el = yubiqMarginInputRef.current;
@@ -306,6 +298,25 @@ export default function YubiqApproveSealFillerPage() {
       setYubiqBridgeMessage(e instanceof Error ? e.message : String(e));
     }
   };
+
+  useEffect(() => {
+    if (yubiqMarginModal === 'closed') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (yubiqBridge !== 'pending') setYubiqMarginModal('closed');
+        return;
+      }
+      if (e.key === 'Enter') {
+        if (yubiqBridge === 'pending') return;
+        if (isDialogEnterTargetInteractive(e.target)) return;
+        e.preventDefault();
+        if (yubiqMarginModal === 'ask') setYubiqMarginModal('input');
+        else void sendToYubiq(yubiqManualMarginInput);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [yubiqMarginModal, yubiqBridge, yubiqManualMarginInput, sendToYubiq]);
 
   return (
     <main className={styles.page}>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { isDialogEnterTargetInteractive } from '@/lib/dialog-keyboard';
 import styles from './InfoDialog.module.css';
 
 export type InfoDialogProps = {
@@ -32,7 +33,15 @@ export function InfoDialog({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key === 'Enter') {
+        if (isDialogEnterTargetInteractive(e.target)) return;
+        e.preventDefault();
+        onClose();
+      }
     };
     document.addEventListener('keydown', onKey);
     const t = window.setTimeout(() => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { isDialogEnterTargetInteractive } from '@/lib/dialog-keyboard';
 import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './LauncherWalkthrough.module.css';
 
@@ -240,15 +241,24 @@ export function LauncherWalkthrough({ open, onClose }: LauncherWalkthroughProps)
 
   useEffect(() => {
     if (!open) return;
+    const stepCount = STEPS.length;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose('later');
+        return;
+      }
+      if (e.key === 'Enter') {
+        if (isDialogEnterTargetInteractive(e.target)) return;
+        e.preventDefault();
+        const isLast = step >= stepCount - 1;
+        if (!isLast) setStep((s) => s + 1);
+        else onClose('later');
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, step]);
 
   useEffect(() => {
     if (!open) return;
