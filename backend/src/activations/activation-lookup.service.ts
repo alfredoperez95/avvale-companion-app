@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingAdminContactsService } from '../billing-admin-contacts/billing-admin-contacts.service';
+import { AttachmentsService } from '../attachments/attachments.service';
 
 /**
  * Lecturas de activación con `manualCcEmails` para API y para el orquestador de envío a Make.
@@ -13,6 +14,7 @@ export class ActivationLookupService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly billingAdminContactsService: BillingAdminContactsService,
+    private readonly attachmentsService: AttachmentsService,
   ) {}
 
   /** Obtiene una activación por id sin filtrar por usuario (para ADMIN). */
@@ -28,21 +30,11 @@ export class ActivationLookupService {
             },
           },
         },
-        attachments: {
-          orderBy: { createdAt: 'asc' },
-          select: {
-            id: true,
-            fileName: true,
-            originalUrl: true,
-            contentType: true,
-            createdAt: true,
-            publicToken: true,
-          },
-        },
         createdByUser: { select: { name: true, lastName: true, email: true } },
       },
     });
     if (!activation) throw new NotFoundException('Activation no encontrada');
+    const attachments = await this.attachmentsService.getAttachmentsByActivationId(activationId);
     const areaIds = activation.activationAreas.map((a) => a.areaId);
     const subAreaIds = activation.activationSubAreas.map((a) => a.subAreaId);
     const manualCcEmails = await this.computeManualCcEmails(
@@ -50,7 +42,7 @@ export class ActivationLookupService {
       areaIds,
       subAreaIds,
     );
-    return { ...activation, manualCcEmails };
+    return { ...activation, attachments, manualCcEmails };
   }
 
   /** Obtiene una activación solo si pertenece al usuario, con áreas, subáreas y adjuntos. */
@@ -66,21 +58,11 @@ export class ActivationLookupService {
             },
           },
         },
-        attachments: {
-          orderBy: { createdAt: 'asc' },
-          select: {
-            id: true,
-            fileName: true,
-            originalUrl: true,
-            contentType: true,
-            createdAt: true,
-            publicToken: true,
-          },
-        },
         createdByUser: { select: { name: true, lastName: true, email: true } },
       },
     });
     if (!activation) throw new NotFoundException('Activation no encontrada');
+    const attachments = await this.attachmentsService.getAttachmentsByActivationId(activationId);
     const areaIds = activation.activationAreas.map((a) => a.areaId);
     const subAreaIds = activation.activationSubAreas.map((a) => a.subAreaId);
     const manualCcEmails = await this.computeManualCcEmails(
@@ -88,7 +70,7 @@ export class ActivationLookupService {
       areaIds,
       subAreaIds,
     );
-    return { ...activation, manualCcEmails };
+    return { ...activation, attachments, manualCcEmails };
   }
 
   private async getRecipientsFromAreasAndSubAreas(

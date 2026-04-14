@@ -259,13 +259,41 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /** Lista los adjuntos descargados de una activación. */
+  /** Lista los adjuntos descargados de una activación (incluye tamaño en disco). */
   async getAttachmentsByActivationId(activationId: string) {
-    return this.prisma.activationAttachment.findMany({
+    const rows = await this.prisma.activationAttachment.findMany({
       where: { activationId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, fileName: true, originalUrl: true, contentType: true, createdAt: true },
+      select: {
+        id: true,
+        fileName: true,
+        originalUrl: true,
+        contentType: true,
+        createdAt: true,
+        storedPath: true,
+        publicToken: true,
+      },
     });
+    return Promise.all(
+      rows.map(async (r) => {
+        let fileSizeBytes: number | null = null;
+        try {
+          const st = await fs.stat(path.join(this.baseDir, r.storedPath));
+          fileSizeBytes = st.size;
+        } catch {
+          fileSizeBytes = null;
+        }
+        return {
+          id: r.id,
+          fileName: r.fileName,
+          originalUrl: r.originalUrl,
+          contentType: r.contentType,
+          createdAt: r.createdAt,
+          publicToken: r.publicToken,
+          fileSizeBytes,
+        };
+      }),
+    );
   }
 
   /** Devuelve el buffer del archivo y su contentType. Comprueba que el adjunto pertenezca a la activación. */

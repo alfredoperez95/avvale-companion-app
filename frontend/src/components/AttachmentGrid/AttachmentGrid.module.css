@@ -76,6 +76,13 @@
   line-height: 1.3;
 }
 
+.fileSize {
+  font-size: 0.6875rem;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 var(--fiori-space-1);
+  line-height: 1.2;
+}
+
 .footerActions {
   display: flex;
   align-items: center;

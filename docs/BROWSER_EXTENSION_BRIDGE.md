@@ -63,6 +63,13 @@ Solo URLs `http:` / `https:` (la web valida antes de enviar).
 
 **Data si `ok`:**
 
+Cada elemento de `files` debe llevar el binario de una de estas formas (la web prioriza `dataBase64` si viene relleno):
+
+- **`dataBase64`** (recomendado): cadena base64 del contenido **sin** prefijo `data:...;base64,`. Evita pérdida de datos al cruzar content script ↔ página en Chrome MV3, donde un `ArrayBuffer` en `CustomEvent.detail` a veces llega **vacío** (0 B) aunque el nombre y el MIME sean correctos.
+- **`arrayBuffer`**: `ArrayBuffer` no vacío. Si el buffer llega vacío o corrupto, la subida fallará con `invalid_payload`. Conviene copiar antes de despachar: `buffer.slice(0)` para que el clon sea estable.
+
+Ejemplo orientativo (el transporte real es `CustomEvent.detail`, **no** `JSON.stringify` del binario):
+
 ```json
 {
   "files": [
@@ -70,7 +77,7 @@ Solo URLs `http:` / `https:` (la web valida antes de enviar).
       "originalUrl": "https://...",
       "name": "documento.pdf",
       "mimeType": "application/pdf",
-      "arrayBuffer": "<ArrayBuffer>"
+      "dataBase64": "JVBERi0xLjQK..."
     }
   ]
 }

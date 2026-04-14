@@ -9,7 +9,19 @@ export type AttachmentItem = {
   originalUrl: string;
   contentType: string | null;
   createdAt: string;
+  /** Tamaño en bytes (API); si no viene, no se muestra. */
+  fileSizeBytes?: number | null;
 };
+
+function formatAttachmentSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) {
+    const kb = bytes / 1024;
+    return kb < 10 ? `${kb.toFixed(1)} KB` : `${Math.round(kb)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 type ApiFetchFn = (path: string, init?: RequestInit) => Promise<Response>;
 
@@ -188,6 +200,11 @@ function SingleCard({
         <p className={styles.fileName} title={att.fileName}>
           {att.fileName}
         </p>
+        {typeof att.fileSizeBytes === 'number' && att.fileSizeBytes >= 0 ? (
+          <p className={styles.fileSize} title={`${att.fileSizeBytes} bytes`}>
+            {formatAttachmentSize(att.fileSizeBytes)}
+          </p>
+        ) : null}
         <div className={styles.footerActions}>
           <button type="button" className={styles.downloadBtn} onClick={handleDownload}>
             Descargar

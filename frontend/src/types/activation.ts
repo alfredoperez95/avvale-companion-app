@@ -41,5 +41,14 @@ export interface Activation {
   errorMessage: string | null;
   activationAreas?: { area: { id: string; name: string } }[];
   activationSubAreas?: { subArea: { id: string; name: string; area: { id: string; name: string } } }[];
-  attachments?: { id: string; fileName: string; originalUrl: string; contentType: string | null; createdAt: string }[];
+  attachments?: {
+    id: string;
+    fileName: string;
+    originalUrl: string;
+    contentType: string | null;
+    createdAt: string;
+    publicToken?: string | null;
+    /** Tamaño en bytes en servidor; puede faltar si el fichero no está en disco. */
+    fileSizeBytes?: number | null;
+  }[];
 }

@@ -47,11 +47,18 @@ export type ExtensionRequestDetail = {
   payload: DownloadFilesPayload | GetTempFilesPayload | ClearTempFilesPayload;
 };
 
+/**
+ * Uno de `dataBase64` o `arrayBuffer` (no vacío) debe aportar el binario.
+ * En extensiones Chrome, `ArrayBuffer` en `CustomEvent.detail` a veces llega vacío al cruzar
+ * content script ↔ página; conviene enviar **dataBase64** (o copiar con `.slice(0)` antes de despachar).
+ */
 export type TempFileDescriptor = {
   originalUrl?: string;
   name: string;
   mimeType: string;
-  arrayBuffer: ArrayBuffer;
+  arrayBuffer?: ArrayBuffer;
+  /** Contenido del fichero en base64 (sin prefijo `data:...;base64,`). Más fiable que solo arrayBuffer en el puente. */
+  dataBase64?: string;
 };
 
 export type GetTempFilesResponseData = {

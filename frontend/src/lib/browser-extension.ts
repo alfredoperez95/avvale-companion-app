@@ -205,12 +205,51 @@ export type FetchTempFilesResult =
   | { ok: true; items: FetchedTempFile[] }
   | { ok: false; error: ExtensionErrorCode; timedOut: boolean };
 
+function decodeBase64ToArrayBuffer(b64: string): ArrayBuffer | null {
+  const trimmed = b64.replace(/\s/g, '');
+  if (!trimmed) return null;
+  try {
+    const binary = atob(trimmed);
+    const len = binary.length;
+    if (len === 0 || len > MAX_CLIENT_ATTACHMENT_BYTES) return null;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Obtiene bytes del descriptor: prioriza `dataBase64` (fiable en el puente extensión↔página) y copia `arrayBuffer` con `.slice(0)`.
+ */
+function bytesFromTempDescriptor(d: TempFileDescriptor): ArrayBuffer | null {
+  if (typeof d.dataBase64 === 'string' && d.dataBase64.length > 0) {
+    const buf = decodeBase64ToArrayBuffer(d.dataBase64);
+    if (buf && buf.byteLength > 0) return buf;
+  }
+  const ab = d.arrayBuffer;
+  if (ab instanceof ArrayBuffer && ab.byteLength > 0) {
+    if (ab.byteLength > MAX_CLIENT_ATTACHMENT_BYTES) return null;
+    return ab.slice(0);
+  }
+  return null;
+}
+
 function descriptorToFile(d: TempFileDescriptor): File | null {
-  if (d.arrayBuffer.byteLength > MAX_CLIENT_ATTACHMENT_BYTES) {
+  const buf = bytesFromTempDescriptor(d);
+  if (!buf || buf.byteLength === 0) {
+    bridgeDevLog('fichero sin bytes (0 B): revisa dataBase64 o arrayBuffer en la extensión; ArrayBuffer en CustomEvent a veces llega vacío', {
+      name: d.name,
+      tieneDataBase64: typeof d.dataBase64 === 'string' && d.dataBase64.length > 0,
+      arrayBufferLen: d.arrayBuffer instanceof ArrayBuffer ? d.arrayBuffer.byteLength : -1,
+    });
     return null;
   }
   const safeName = d.name.replace(/[/\\?*:|"<>]/g, '_').slice(0, 200) || 'documento';
-  return new File([d.arrayBuffer], safeName, {
+  return new File([buf], safeName, {
     type: d.mimeType || 'application/octet-stream',
   });
 }
