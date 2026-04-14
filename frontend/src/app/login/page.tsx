@@ -248,8 +248,8 @@ export default function LoginPage() {
                     <input type="checkbox" className={styles.checkbox} />
                     <span>Mantener inicio de sesión</span>
                   </label>
-                  <a href="#" className={styles.helpLink}>
-                    ¿Ha olvidado la contraseña?
+                  <a href="/asistencia" className={styles.helpLink}>
+                    Ayuda / Asistencia
                   </a>
                 </div>
                 {error ? <p className={styles.error}>{error}</p> : null}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, apiUpload, redirectToLogin } from '@/lib/api';
@@ -16,7 +16,6 @@ import {
   parseAttachmentUrls,
 } from '@/lib/activation-attachment-urls';
 import { shouldWarnScannedUrlsOnly } from '@/lib/activation-attachment-warning';
-import { fetchUrlAsFileInBrowser } from '@/lib/activation-client-fetch-upload';
 import {
   useActivationExtensionDownloads,
   type ExtensionDownloadPhase,
@@ -27,21 +26,6 @@ import styles from './detail.module.css';
 function isHtmlBody(body: string | null | undefined): boolean {
   return Boolean(body?.trim().startsWith('<'));
 }
-
-type ImportScannedUrlsResult = {
-  saved: string[];
-  failed: { url: string; error: string }[];
-  skippedHubSpot: string[];
-  skippedAlreadyPresent: string[];
-};
-
-type ClientImportResult =
-  | {
-      kind: 'done';
-      saved: string[];
-      failed: { url: string; error: string }[];
-    }
-  | { kind: 'nothingToImport'; message: string };
 
 function extensionBridgeStatusText(
   phase: ExtensionDownloadPhase,
@@ -56,7 +40,7 @@ function extensionBridgeStatusText(
     case 'downloading':
       return 'Descargando archivos con la sesión del navegador (extensión)…';
     case 'ready':
-      return 'Archivos listos en la extensión. Pulsa «Cargar al flujo» para subirlos.';
+      return 'Archivos listos en la extensión. Si no continúa la subida sola, pulsa el botón para reintentar.';
     case 'uploading':
       return 'Subiendo archivos al servidor…';
     case 'done':
@@ -81,16 +65,14 @@ export default function ActivationDetailPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
   const [sanitizedBody, setSanitizedBody] = useState<string | null>(null);
-  const [importUrlsLoading, setImportUrlsLoading] = useState(false);
-  const [importUrlsError, setImportUrlsError] = useState('');
-  const [importResult, setImportResult] = useState<ImportScannedUrlsResult | null>(null);
-  const [importClientLoading, setImportClientLoading] = useState(false);
-  const [clientImportResult, setClientImportResult] = useState<ClientImportResult | null>(null);
   const [showDiscardExtensionConfirm, setShowDiscardExtensionConfirm] = useState(false);
   const [discardExtensionBusy, setDiscardExtensionBusy] = useState(false);
   const [showDeleteAllAttachmentsConfirm, setShowDeleteAllAttachmentsConfirm] = useState(false);
   const [deleteAllAttachmentsBusy, setDeleteAllAttachmentsBusy] = useState(false);
   const [bulkAttachmentsError, setBulkAttachmentsError] = useState('');
+  const [showExtensionAlreadyImportedTip, setShowExtensionAlreadyImportedTip] = useState(false);
+  const autoStartedImportRef = useRef(false);
+  const disableAutoImportRef = useRef(false);
 
   const extensionBridge = useActivationExtensionDownloads();
 
@@ -121,6 +103,12 @@ export default function ActivationDetailPage() {
     });
     return () => { cancelled = true; };
   }, [activation?.body]);
+
+  useEffect(() => {
+    if (!showExtensionAlreadyImportedTip) return;
+    const t = window.setTimeout(() => setShowExtensionAlreadyImportedTip(false), 2200);
+    return () => window.clearTimeout(t);
+  }, [showExtensionAlreadyImportedTip]);
 
   const performSend = async () => {
     if (!id) return;
@@ -176,30 +164,15 @@ export default function ActivationDetailPage() {
     return () => window.clearTimeout(t);
   }, [extensionBridge.phase, extensionBridge.resetLocalState, id]);
 
-  const handleExtensionDownloadClick = () => {
-    if (!activation) return;
-    const already = new Set(
-      (activation.attachments ?? []).map((a) => a.originalUrl.trim()).filter(Boolean),
-    );
-    const parsedUrls = parseAttachmentUrls(activation.attachmentUrls);
-    const parsedNames = parseAttachmentNames(activation.attachmentNames);
-    const toProcess = parsedUrls.map((u) => u.trim()).filter((u) => u && !already.has(u));
-    const items = toProcess.map((url) => {
-      const idx = parsedUrls.findIndex((u) => u.trim() === url);
-      const suggestedName =
-        idx >= 0 && parsedNames[idx]?.trim() ? parsedNames[idx]!.trim() : undefined;
-      return { url, suggestedName };
-    });
-    void extensionBridge.startDownload(items);
-  };
-
   const handleExtensionLoadClick = async () => {
     if (!id || !activation) return;
-    setClientImportResult(null);
     const alreadyImportedOriginalUrls = new Set(
       (activation.attachments ?? []).map((a) => a.originalUrl?.trim()).filter(Boolean) as string[],
     );
-    const out = await extensionBridge.uploadBatchToActivation(id, { alreadyImportedOriginalUrls });
+    const out = await extensionBridge.uploadBatchToActivation(id, {
+      alreadyImportedOriginalUrls,
+      progressRange: { start: 6, end: 100 },
+    });
     if (out.kind === 'success' || out.kind === 'partial') {
       refetchActivation();
     }
@@ -210,7 +183,7 @@ export default function ActivationDetailPage() {
     try {
       const r = await extensionBridge.discardExtensionTempFiles();
       if (!r.ok && r.message) {
-        setImportUrlsError(r.message);
+        setBulkAttachmentsError(r.message);
       }
     } finally {
       setDiscardExtensionBusy(false);
@@ -220,6 +193,7 @@ export default function ActivationDetailPage() {
 
   const handleConfirmDeleteAllAttachments = async () => {
     if (!id || !activation?.attachments?.length) return;
+    disableAutoImportRef.current = true;
     setBulkAttachmentsError('');
     setDeleteAllAttachmentsBusy(true);
     try {
@@ -242,106 +216,6 @@ export default function ActivationDetailPage() {
       setBulkAttachmentsError(e instanceof Error ? e.message : 'Error de red');
     } finally {
       setDeleteAllAttachmentsBusy(false);
-    }
-  };
-
-  const handleImportScannedUrls = async () => {
-    if (!id) return;
-    setImportUrlsLoading(true);
-    setImportUrlsError('');
-    setImportResult(null);
-    setClientImportResult(null);
-    try {
-      const res = await apiFetch(`/api/activations/${id}/attachments/import-scanned-urls`, {
-        method: 'POST',
-      });
-      const data = (await res.json().catch(() => ({}))) as ImportScannedUrlsResult & {
-        message?: string | string[];
-      };
-      if (res.status === 401) {
-        redirectToLogin();
-        return;
-      }
-      if (!res.ok) {
-        const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
-        setImportUrlsError(msg ?? 'No se pudieron importar las URLs');
-        return;
-      }
-      const normalized: ImportScannedUrlsResult = {
-        saved: Array.isArray(data.saved) ? data.saved : [],
-        failed: Array.isArray(data.failed) ? data.failed : [],
-        skippedHubSpot: Array.isArray(data.skippedHubSpot) ? data.skippedHubSpot : [],
-        skippedAlreadyPresent: Array.isArray(data.skippedAlreadyPresent) ? data.skippedAlreadyPresent : [],
-      };
-      setImportResult(normalized);
-      if (normalized.saved.length > 0) {
-        refetchActivation();
-      }
-    } catch (e) {
-      setImportUrlsError(e instanceof Error ? e.message : 'Error de red');
-    } finally {
-      setImportUrlsLoading(false);
-    }
-  };
-
-  const handleImportFromBrowser = async () => {
-    if (!id || !activation) return;
-    setImportClientLoading(true);
-    setClientImportResult(null);
-    setImportUrlsError('');
-    setImportResult(null);
-    try {
-      const already = new Set(
-        (activation.attachments ?? []).map((a) => a.originalUrl.trim()).filter(Boolean),
-      );
-      const parsedUrls = parseAttachmentUrls(activation.attachmentUrls);
-      const parsedNames = parseAttachmentNames(activation.attachmentNames);
-      const toProcess = parsedUrls.map((u) => u.trim()).filter((u) => u && !already.has(u));
-      if (toProcess.length === 0) {
-        setClientImportResult({
-          kind: 'nothingToImport',
-          message: 'Todas las URLs escaneadas ya tienen un adjunto asociado.',
-        });
-        return;
-      }
-      const saved: string[] = [];
-      const failed: { url: string; error: string }[] = [];
-      for (const url of toProcess) {
-        const idx = parsedUrls.findIndex((u) => u.trim() === url);
-        const displayName = (idx >= 0 && parsedNames[idx]?.trim()) || url;
-        const fetched = await fetchUrlAsFileInBrowser(url, displayName);
-        if (!fetched.ok) {
-          failed.push({ url, error: fetched.error });
-          continue;
-        }
-        const formData = new FormData();
-        formData.append('file', fetched.file);
-        formData.append('originalUrl', url);
-        const res = await apiUpload(`/api/activations/${id}/attachments/upload`, formData);
-        if (res.status === 401) {
-          redirectToLogin();
-          return;
-        }
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
-          failed.push({ url, error: msg ?? `Error al subir (HTTP ${res.status})` });
-          continue;
-        }
-        saved.push(url);
-      }
-      setClientImportResult({ kind: 'done', saved, failed });
-      if (saved.length > 0) {
-        refetchActivation();
-      }
-    } catch (e) {
-      setClientImportResult({
-        kind: 'done',
-        saved: [],
-        failed: [{ url: '(general)', error: e instanceof Error ? e.message : 'Error desconocido' }],
-      });
-    } finally {
-      setImportClientLoading(false);
     }
   };
 
@@ -406,6 +280,95 @@ export default function ActivationDetailPage() {
     }
   };
 
+  const section = (title: string, children: React.ReactNode) => (
+    <section className={styles.sectionCard} aria-label={title}>
+      <h3 className={styles.sectionHeading}>{title}</h3>
+      <div className={styles.sectionBody}>{children}</div>
+    </section>
+  );
+
+  const urls = activation ? parseAttachmentUrls(activation.attachmentUrls) : [];
+  const names = activation ? parseAttachmentNames(activation.attachmentNames) : [];
+  const attachmentList = urls.map((url, i) => ({ url, name: names[i]?.trim() || url }));
+  const alreadyImportedForExtension = new Set(
+    (activation?.attachments ?? []).map((a) => a.originalUrl.trim()).filter(Boolean),
+  );
+  const extensionPendingCount = attachmentList.filter(
+    ({ url }) => url.trim() && !alreadyImportedForExtension.has(url.trim()),
+  ).length;
+  const extensionBlockingBatch =
+    extensionBridge.phase === 'ready' ||
+    extensionBridge.phase === 'stale_batch' ||
+    extensionBridge.phase === 'done';
+  const urlImportBusy = uploading || extensionBridge.extensionBusy;
+  const canExtensionDownload =
+    extensionPendingCount > 0 &&
+    !extensionBlockingBatch &&
+    !urlImportBusy;
+  const canExtensionLoad =
+    (extensionBridge.phase === 'ready' || extensionBridge.phase === 'stale_batch') &&
+    !extensionBridge.extensionBusy;
+  const extensionPrimaryBusy =
+    extensionBridge.phase === 'checking' ||
+    extensionBridge.phase === 'downloading' ||
+    extensionBridge.phase === 'uploading';
+  const canExtensionPrimaryClick = canExtensionLoad || canExtensionDownload;
+  const extensionPrimaryDisabled = extensionPrimaryBusy || !canExtensionPrimaryClick;
+  const extensionAlreadyImported = !extensionPrimaryBusy && !canExtensionPrimaryClick;
+  let extensionPrimaryLabel = 'Importar con extensión';
+  if (
+    extensionBridge.phase === 'uploading' ||
+    extensionBridge.phase === 'checking' ||
+    extensionBridge.phase === 'downloading'
+  ) {
+    extensionPrimaryLabel = 'Importando con la extensión…';
+  } else if (canExtensionLoad) {
+    extensionPrimaryLabel = 'Reintentar subida al flujo';
+  }
+  const handleExtensionPrimaryClick = async () => {
+    if (!id || !activation) return;
+    if (canExtensionDownload) {
+      const already = new Set(
+        (activation.attachments ?? []).map((a) => a.originalUrl.trim()).filter(Boolean),
+      );
+      const parsedUrls = parseAttachmentUrls(activation.attachmentUrls);
+      const parsedNames = parseAttachmentNames(activation.attachmentNames);
+      const toProcess = parsedUrls.map((u) => u.trim()).filter((u) => u && !already.has(u));
+      const items = toProcess.map((url) => {
+        const idx = parsedUrls.findIndex((u) => u.trim() === url);
+        const suggestedName =
+          idx >= 0 && parsedNames[idx]?.trim() ? parsedNames[idx]!.trim() : undefined;
+        return { url, suggestedName };
+      });
+      const alreadyImportedOriginalUrls = new Set(
+        (activation.attachments ?? []).map((a) => a.originalUrl?.trim()).filter(Boolean) as string[],
+      );
+      const out = await extensionBridge.startDownloadAndUploadToActivation(id, items, {
+        alreadyImportedOriginalUrls,
+      });
+      if (out.kind === 'success' || out.kind === 'partial') {
+        refetchActivation();
+      }
+    } else if (canExtensionLoad) {
+      await handleExtensionLoadClick();
+    }
+  };
+  const hasUploadedAttachments = (activation?.attachments?.length ?? 0) > 0;
+  const canDeleteUploadedAttachments =
+    hasUploadedAttachments && !urlImportBusy && !deleteAllAttachmentsBusy;
+  const allScannedAreHubSpot =
+    attachmentList.length > 0 && attachmentList.every(({ url }) => isHubSpotAttachmentUrl(url));
+  const errorMessageDisplay = displayActivationErrorMessage(activation?.errorMessage);
+
+  useEffect(() => {
+    if (autoStartedImportRef.current) return;
+    if (disableAutoImportRef.current) return;
+    // Autostart: solo si hay URLs pendientes y no hay nada en curso.
+    if (!canExtensionDownload || extensionPrimaryBusy) return;
+    autoStartedImportRef.current = true;
+    void handleExtensionPrimaryClick();
+  }, [canExtensionDownload, extensionPrimaryBusy]);
+
   if (loading) {
     return (
       <main className={styles.page}>
@@ -419,67 +382,6 @@ export default function ActivationDetailPage() {
         <p className={styles.notFound}>Activación no encontrada.</p>
       </main>
     );
-  }
-
-  const section = (title: string, children: React.ReactNode) => (
-    <section className={styles.sectionCard} aria-label={title}>
-      <h3 className={styles.sectionHeading}>{title}</h3>
-      <div className={styles.sectionBody}>{children}</div>
-    </section>
-  );
-
-  const urls = parseAttachmentUrls(activation.attachmentUrls);
-  const names = parseAttachmentNames(activation.attachmentNames);
-  const attachmentList = urls.map((url, i) => ({ url, name: names[i]?.trim() || url }));
-  const alreadyImportedForExtension = new Set(
-    (activation.attachments ?? []).map((a) => a.originalUrl.trim()).filter(Boolean),
-  );
-  const extensionPendingCount = attachmentList.filter(
-    ({ url }) => url.trim() && !alreadyImportedForExtension.has(url.trim()),
-  ).length;
-  const extensionBlockingBatch =
-    extensionBridge.phase === 'ready' ||
-    extensionBridge.phase === 'stale_batch' ||
-    extensionBridge.phase === 'done';
-  const urlImportBusy =
-    importUrlsLoading || importClientLoading || uploading || extensionBridge.extensionBusy;
-  const canExtensionDownload =
-    extensionPendingCount > 0 &&
-    !extensionBlockingBatch &&
-    !urlImportBusy;
-  const canExtensionLoad =
-    (extensionBridge.phase === 'ready' || extensionBridge.phase === 'stale_batch') &&
-    !extensionBridge.extensionBusy;
-  const hasUploadedAttachments = (activation.attachments?.length ?? 0) > 0;
-  const canDeleteUploadedAttachments =
-    hasUploadedAttachments && !urlImportBusy && !deleteAllAttachmentsBusy;
-  const allScannedAreHubSpot =
-    attachmentList.length > 0 && attachmentList.every(({ url }) => isHubSpotAttachmentUrl(url));
-  const errorMessageDisplay = displayActivationErrorMessage(activation.errorMessage);
-
-  let importFeedbackClassName = styles.importFeedback;
-  if (importUrlsError) {
-    importFeedbackClassName = `${styles.importFeedback} ${styles.importFeedbackError}`;
-  } else if (importResult) {
-    const { saved, failed, skippedHubSpot, skippedAlreadyPresent } = importResult;
-    if (failed.length > 0 && saved.length === 0) {
-      importFeedbackClassName = `${styles.importFeedback} ${styles.importFeedbackError}`;
-    } else if (failed.length > 0 && saved.length > 0) {
-      importFeedbackClassName = `${styles.importFeedback} ${styles.importFeedbackWarning}`;
-    } else if (
-      saved.length === 0 &&
-      failed.length === 0 &&
-      skippedHubSpot.length > 0 &&
-      skippedAlreadyPresent.length === 0
-    ) {
-      importFeedbackClassName = `${styles.importFeedback} ${styles.importFeedbackWarning}`;
-    } else if (skippedHubSpot.length > 0 || skippedAlreadyPresent.length > 0) {
-      importFeedbackClassName = `${styles.importFeedback} ${styles.importFeedbackWarning}`;
-    } else if (saved.length > 0) {
-      importFeedbackClassName = `${styles.importFeedback} ${styles.importFeedbackSuccess}`;
-    } else {
-      importFeedbackClassName = `${styles.importFeedback} ${styles.importFeedbackWarning}`;
-    }
   }
 
   return (
@@ -598,79 +500,61 @@ export default function ActivationDetailPage() {
                 ))}
               </ul>
               <p className={styles.hint}>
-                <strong>Importar al servidor</strong> descarga el archivo en el backend (solo enlaces públicos; HubSpot se
-                omite). <strong>Desde el navegador (memoria)</strong> descarga el fichero en la RAM del navegador (sin
-                carpeta temporal en disco) y lo sube: puede funcionar con URLs que permitan CORS; HubSpot suele bloquearlo
-                por seguridad. <strong>Con la extensión Avvale Companion</strong> la descarga usa la sesión del navegador
-                (sin carpeta de Descargas del sistema) y luego puedes subir los archivos a la activación. Si falla, usa
-                &quot;Abrir enlaces&quot; y &quot;Añadir archivos&quot; manualmente.
+                <strong>Con la extensión Avvale Companion</strong> el botón «Importar con extensión» descarga con tu
+                sesión del navegador y sube los archivos al flujo en un solo paso (verás la barra de progreso). Si
+                prefieres hacerlo a mano, usa «Descargar localmente» y luego «Añadir archivos».
               </p>
               {allScannedAreHubSpot ? (
                 <p className={styles.hint}>
-                  Todas las URLs son de HubSpot: el servidor no puede descargarlas. Puedes probar &quot;Desde el
-                  navegador&quot; por si el enlace redirige a un archivo con CORS permitido; si no, descarga manual.
+                  Todas las URLs son de HubSpot: conviene la extensión o guardar cada archivo desde el navegador y
+                  subirlo en «Añadir archivos».
                 </p>
               ) : null}
-              <div className={styles.urlActions}>
-                <button
-                  type="button"
-                  className={styles.btnPrimary}
-                  disabled={urlImportBusy || allScannedAreHubSpot}
-                  onClick={() => void handleImportScannedUrls()}
-                >
-                  {importUrlsLoading ? 'Importando…' : 'Importar al servidor'}
-                </button>
-                <button
-                  type="button"
-                  className={styles.btnSecondary}
-                  disabled={urlImportBusy}
-                  onClick={() => void handleImportFromBrowser()}
-                >
-                  {importClientLoading ? 'Descargando en memoria…' : 'Desde el navegador (memoria)'}
-                </button>
-                <button
-                  type="button"
-                  className={styles.linkButton}
-                  disabled={urlImportBusy}
-                  onClick={() => attachmentList.forEach(({ url }) => window.open(url, '_blank', 'noopener'))}
-                >
-                  Abrir enlaces en pestañas
-                </button>
-              </div>
               <div
                 className={styles.extensionBridge}
                 aria-live="polite"
                 aria-atomic="true"
               >
                 <div className={styles.urlActions}>
+                  <span
+                    className={styles.disabledTipWrap}
+                  >
+                    <button
+                      type="button"
+                      className={styles.btnPrimary}
+                      disabled={extensionPrimaryDisabled}
+                      aria-describedby={showExtensionAlreadyImportedTip ? 'extension-already-imported-tip' : undefined}
+                      onClick={() => void handleExtensionPrimaryClick()}
+                    >
+                      {extensionPrimaryLabel}
+                    </button>
+                    {extensionAlreadyImported ? (
+                      <button
+                        type="button"
+                        className={styles.disabledTipOverlay}
+                        aria-label="Los archivos ya están importados"
+                        onClick={() => setShowExtensionAlreadyImportedTip(true)}
+                      />
+                    ) : null}
+                    {showExtensionAlreadyImportedTip && extensionAlreadyImported ? (
+                      <span
+                        id="extension-already-imported-tip"
+                        role="status"
+                        aria-live="polite"
+                        className={styles.disabledTip}
+                      >
+                        Los archivos ya están importados.
+                      </span>
+                    ) : null}
+                  </span>
                   <button
                     type="button"
-                    className={styles.btnSecondary}
-                    disabled={!canExtensionDownload}
-                    onClick={() => handleExtensionDownloadClick()}
+                    className={styles.linkButton}
+                    disabled={urlImportBusy}
+                    title="Abre cada URL en una pestaña nueva para que puedas guardar el archivo desde el navegador"
+                    onClick={() => attachmentList.forEach(({ url }) => window.open(url, '_blank', 'noopener'))}
                   >
-                    {extensionBridge.phase === 'checking' || extensionBridge.phase === 'downloading'
-                      ? 'Descargando con extensión…'
-                      : 'Descargar con extensión'}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnPrimary}
-                    disabled={!canExtensionLoad}
-                    onClick={() => void handleExtensionLoadClick()}
-                  >
-                    {extensionBridge.phase === 'uploading' ? 'Subiendo al flujo…' : 'Cargar al flujo'}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnSecondary}
-                    disabled={!canDeleteUploadedAttachments}
-                    onClick={() => {
-                      setBulkAttachmentsError('');
-                      setShowDeleteAllAttachmentsConfirm(true);
-                    }}
-                  >
-                    {deleteAllAttachmentsBusy ? 'Eliminando…' : 'Eliminar adjuntos subidos'}
+                    Descargar localmente
                   </button>
                   {extensionBridge.canDiscardTempFiles ? (
                     <button
@@ -683,6 +567,17 @@ export default function ActivationDetailPage() {
                     </button>
                   ) : null}
                 </div>
+                {extensionBridge.chainProgress !== null ? (
+                  <div className={styles.extensionChainProgress}>
+                    <div className={styles.uploadProgressWrap}>
+                      <div
+                        className={styles.uploadProgressBar}
+                        style={{ width: `${extensionBridge.chainProgress}%` }}
+                      />
+                    </div>
+                    <span className={styles.uploadProgressText}>{extensionBridge.chainProgress}%</span>
+                  </div>
+                ) : null}
                 {(() => {
                   const line = extensionBridgeStatusText(extensionBridge.phase, extensionBridge.errorMessage);
                   return line ? <p className={styles.extensionBridgeStatus}>{line}</p> : null;
@@ -723,107 +618,42 @@ export default function ActivationDetailPage() {
                   </p>
                 ) : null}
               </div>
-              {importUrlsError ? (
-                <div className={`${styles.importFeedback} ${styles.importFeedbackError}`} role="alert">
-                  <p>{importUrlsError}</p>
-                </div>
-              ) : null}
-              {importResult && !importUrlsError ? (
-                <div className={importFeedbackClassName}>
-                  {importResult.saved.length > 0 ? (
-                    <p>
-                      Se importaron {importResult.saved.length} archivo(s) al servidor; aparecen en &quot;Archivos
-                      adjuntos&quot;.
-                    </p>
-                  ) : null}
-                  {importResult.skippedAlreadyPresent.length > 0 ? (
-                    <p>
-                      {importResult.skippedAlreadyPresent.length} URL(s) ya estaban importadas (se omitieron).
-                    </p>
-                  ) : null}
-                  {importResult.skippedHubSpot.length > 0 ? (
-                    <p>
-                      {importResult.skippedHubSpot.length} URL(s) apuntan a HubSpot: el servidor no puede descargarlas sin
-                      tu sesión. Ábrelas con &quot;Abrir enlaces en pestañas&quot; o súbelas en &quot;Añadir archivos&quot;.
-                    </p>
-                  ) : null}
-                  {importResult.failed.length > 0 ? (
-                    <div>
-                      <p>No se pudieron importar {importResult.failed.length} enlace(s):</p>
-                      <ul className={styles.importFailedList}>
-                        {importResult.failed.map((f) => (
-                          <li key={f.url}>
-                            {f.url} — {f.error}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {importResult.saved.length === 0 &&
-                  importResult.failed.length === 0 &&
-                  importResult.skippedHubSpot.length === 0 &&
-                  importResult.skippedAlreadyPresent.length > 0 ? (
-                    <p>No había URLs nuevas que importar.</p>
-                  ) : null}
-                </div>
-              ) : null}
-              {clientImportResult ? (
-                <div
-                  className={`${styles.importFeedback} ${
-                    clientImportResult.kind === 'nothingToImport'
-                      ? styles.importFeedbackWarning
-                      : clientImportResult.saved.length === 0 && clientImportResult.failed.length > 0
-                        ? styles.importFeedbackError
-                        : clientImportResult.failed.length > 0
-                          ? styles.importFeedbackWarning
-                          : styles.importFeedbackSuccess
-                  }`}
-                >
-                  {clientImportResult.kind === 'nothingToImport' ? (
-                    <p>{clientImportResult.message}</p>
-                  ) : (
-                    <>
-                      {clientImportResult.saved.length > 0 ? (
-                        <p>
-                          Desde el navegador se subieron {clientImportResult.saved.length} archivo(s) (memoria → servidor);
-                          aparecen en &quot;Archivos adjuntos&quot;.
-                        </p>
-                      ) : null}
-                      {clientImportResult.failed.length > 0 ? (
-                        <div>
-                          <p>No se pudo obtener o subir desde el navegador:</p>
-                          <ul className={styles.importFailedList}>
-                            {clientImportResult.failed.map((f) => (
-                              <li key={f.url}>
-                                {f.url} — {f.error}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              ) : null}
             </>,
           )
         : null}
       {activation.attachments && activation.attachments.length > 0
         ? section(
             'Archivos adjuntos',
-            <AttachmentGrid
-              attachments={activation.attachments}
-              activationId={activation.id}
-              apiFetch={apiFetch}
-              onDeleted={refetchActivation}
-            />,
+            <>
+              <AttachmentGrid
+                attachments={activation.attachments}
+                activationId={activation.id}
+                apiFetch={apiFetch}
+                onDeleted={refetchActivation}
+              />
+              <div className={styles.attachmentBulkActions}>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  disabled={!canDeleteUploadedAttachments}
+                  onClick={() => {
+                    disableAutoImportRef.current = true;
+                    setBulkAttachmentsError('');
+                    setShowDeleteAllAttachmentsConfirm(true);
+                  }}
+                >
+                  {deleteAllAttachmentsBusy ? 'Eliminando…' : 'Eliminar adjuntos'}
+                </button>
+              </div>
+            </>,
           )
         : null}
       {section(
         'Añadir archivos',
         <div className={styles.uploadZone}>
           <p className={styles.hint}>
-            Para documentos detrás de HubSpot: primero ábrelos desde &quot;URLs escaneadas&quot;, guárdalos en tu equipo y súbelos aquí.
+            Para documentos detrás de HubSpot: en «URLs escaneadas» usa «Descargar localmente», guarda cada archivo en tu
+            equipo y súbelo aquí (o usa el botón de la extensión en «URLs escaneadas»).
           </p>
           <label className={styles.linkButton} style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
             <input type="file" multiple disabled={uploading} onChange={handleFileUpload} style={{ display: 'none' }} />
@@ -945,7 +775,7 @@ export default function ActivationDetailPage() {
       />
       <ConfirmDialog
         open={showDeleteAllAttachmentsConfirm}
-        title="Eliminar adjuntos subidos"
+        title="Eliminar adjuntos"
         message={`Se eliminarán del servidor los ${activation.attachments?.length ?? 0} archivo(s) de esta activación. Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar todos"
         cancelLabel="Cancelar"
@@ -957,6 +787,33 @@ export default function ActivationDetailPage() {
           if (!deleteAllAttachmentsBusy) setShowDeleteAllAttachmentsConfirm(false);
         }}
       />
+      {extensionBridge.chainProgress !== null ? (
+        <div className={styles.fixedWorkBar} role="status" aria-live="polite" aria-atomic="true">
+          <div className={styles.fixedWorkInner}>
+            <div className={styles.fixedWorkLeft}>
+              <span className={styles.fixedWorkTitle}>Importando adjuntos…</span>
+              <span className={styles.fixedWorkSubtitle}>
+                {extensionBridge.phase === 'checking'
+                  ? 'Comprobando extensión'
+                  : extensionBridge.phase === 'downloading'
+                    ? 'Descargando con tu sesión del navegador'
+                    : extensionBridge.phase === 'uploading'
+                      ? 'Subiendo al servidor'
+                      : 'Procesando'}
+              </span>
+            </div>
+            <div className={styles.fixedWorkProgress}>
+              <div className={styles.uploadProgressWrap} style={{ marginTop: 0, width: '100%' }}>
+                <div
+                  className={styles.uploadProgressBar}
+                  style={{ width: `${extensionBridge.chainProgress}%` }}
+                />
+              </div>
+              <span className={styles.uploadProgressText}>{extensionBridge.chainProgress}%</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
