@@ -242,8 +242,28 @@ export function ExtractionResultCard({
               </span>
             </div>
           ) : null}
+          {result.importeTotalDealComputablesTexto && !result.importeTotalConCompromisoTexto ? (
+            <div
+              className={styles.importeTotalCompromiso}
+              role="group"
+              aria-label="Total importe computable"
+            >
+              <span className={styles.importeTotalCompromisoLabel}>Total importe computable</span>
+              <span className={styles.importeTotalCompromisoValueRow}>
+                <span className={styles.importeTotalCompromisoValue}>{result.importeTotalDealComputablesTexto}</span>
+                {result.notaImporteTotalDealComputables ? (
+                  <CompromisoInfoTooltip text={result.notaImporteTotalDealComputables} />
+                ) : null}
+              </span>
+            </div>
+          ) : null}
           {result.notaImporteCompromiso && !result.importeTotalConCompromisoTexto ? (
             <p className={styles.importeNota}>{result.notaImporteCompromiso}</p>
+          ) : null}
+          {result.notaImporteTotalDealComputables &&
+          !result.importeTotalDealComputablesTexto &&
+          !result.importeTotalConCompromisoTexto ? (
+            <p className={styles.importeNota}>{result.notaImporteTotalDealComputables}</p>
           ) : null}
           {result.notaInterpretacionImporte ? (
             <p className={styles.importeNota}>{result.notaInterpretacionImporte}</p>

@@ -26,7 +26,8 @@ Resumen de intención (detalle en el propio prompt):
 | **Proyecto vs recurrente** | **Proyecto / implementación:** cargo **único** (no se multiplica por tiempo). **Servicios / mensualidad:** cuota **mensual** aplicable durante el periodo de compromiso. |
 | **Compromiso temporal** | Si el documento habla en **años** (habitualmente 1–5), convertir a **meses** (12, 24, 36, 48, 60). Si ya está en meses, usar ese número. |
 | **Rangos y opciones** | Si hay varias opciones o rango min–max, tomar el escenario de **mayor importe neto** para totales y campos numéricos. |
-| **JSON devuelto** | Incluye campos como `importeOferta`, `importeProyectoEuros`, `importeMensualEuros`, `periodoCompromisoMeses`, `periodoCompromisoTexto`, `multiplesOpcionesPrecio`, `numeroOpcionesPrecioEstimado`, `soloImporteTarifaTmSinJornadas`, `confidence`, etc. (estructura exacta en el prompt). |
+| **JSON devuelto** | Incluye campos como `importeOferta`, `importeProyectoEuros`, `importeMensualEuros`, `importeSuscripcionOlicenciaAnualEuros`, `periodoCompromisoMeses`, `periodoCompromisoTexto`, `multiplesOpcionesPrecio`, `numeroOpcionesPrecioEstimado`, `soloImporteTarifaTmSinJornadas`, `confidence`, etc. (estructura exacta en el prompt). |
+| **Licencia/suscripción anual** | Línea anual de producto (no AMS ni accesorios). Se suma **una vez** con el proyecto cuando no hay total de compromiso mensual. |
 
 ---
 
@@ -46,11 +47,15 @@ Resumen de intención (detalle en el propio prompt):
    - Salida: `importeTotalConCompromisoNumerico`, `importeTotalConCompromisoTexto`, `notaImporteCompromiso` (texto explicativo).
    - Warning si el modelo envió meses de compromiso pero no son interpretables.
 
-3. **T&M sin jornadas** — Si `soloImporteTarifaTmSinJornadas === true`:
+3. **Total deal computable (proyecto + licencia/suscripción anual)** — Si **no** se calculó el total de compromiso del punto anterior y constan `importeProyectoEuros` y `importeSuscripcionOlicenciaAnualEuros` (ambos > 0 tras parsear):
+   - Fórmula: **proyecto + suscripción/licencia anual** (cada línea una vez; no multiplica años ni incluye AMS u otros no computables).
+   - Salida: `importeTotalDealComputablesNumerico`, `importeTotalDealComputablesTexto`, `notaImporteTotalDealComputables`.
+
+4. **T&M sin jornadas** — Si `soloImporteTarifaTmSinJornadas === true`:
    - Nota fija: ver constante `NOTA_INTERPRETACION_IMPORTE_TM_SIN_JORNADAS`.
    - `importeRevenueTmSinJornadasNumerico` = `IMPORTE_MINIMO_BOLSA_HORAS_TM_EUROS` (10.000 €) para coherencia con el payload Yubiq.
 
-4. **Múltiples opciones de precio** — Si `multiplesOpcionesPrecio` o `numeroOpcionesPrecioEstimado ≥ 2`:
+5. **Múltiples opciones de precio** — Si `multiplesOpcionesPrecio` o `numeroOpcionesPrecioEstimado ≥ 2`:
    - Nota generada con `buildNotaMultiplesOpcionesPrecio` (texto base + recuento opcional).
    - Warning `multiples_opciones_precio` en el flujo de análisis.
 
@@ -63,8 +68,9 @@ Resumen de intención (detalle en el propio prompt):
 **Orden de prioridad** para `document.amount` y `prefill.revenue` (mismo valor numérico en euros, sin decimales en la cadena):
 
 1. **`importeTotalConCompromisoNumerico`** si es un número finito **> 0** → warning `revenue_from_importe_total_compromiso`.
-2. Si no aplica (1), **`importeRevenueTmSinJornadasNumerico`** si es finito **> 0** → warning `revenue_from_tm_sin_jornadas_min`.
-3. Si no aplica (1) ni (2), **`parseAmountAndCurrency(importeOferta)`** (puede emitir `revenue_unparsed`, `currency_not_detected`, etc.).
+2. Si no aplica (1), **`importeTotalDealComputablesNumerico`** si es finito **> 0** → warning `revenue_from_importe_total_deal_computables`.
+3. Si no aplica (1) ni (2), **`importeRevenueTmSinJornadasNumerico`** si es finito **> 0** → warning `revenue_from_tm_sin_jornadas_min`.
+4. Si no aplica (1–3), **`parseAmountAndCurrency(importeOferta)`** (puede emitir `revenue_unparsed`, `currency_not_detected`, etc.).
 
 El resto del payload (título prefill, segmento, `companionMeta`, etc.) sigue la lógica del mismo archivo y [`frontend/src/types/yubiq-payload.ts`](../frontend/src/types/yubiq-payload.ts).
 
@@ -78,6 +84,7 @@ El resto del payload (título prefill, segmento, `companionMeta`, etc.) sigue la
 |----------|----------------|
 | **Importe** | Muestra `importeOferta` y, si aplica, bloque “Múltiples importes” (details) con aviso compacto, icono de advertencia y texto desplegable. |
 | **Total importe comprometido** | Etiqueta + valor; la nota larga de cálculo (`notaImporteCompromiso`) va en **tooltip** (botón info azul, panel en portal `position: fixed` para no recortar). |
+| **Total importe computable** | Si hay proyecto + licencia anual y no hay total de compromiso mensual: muestra `importeTotalDealComputablesTexto` y tooltip con `notaImporteTotalDealComputables`. |
 | **T&M** | Nota bajo importe cuando viene `notaInterpretacionImporte`. |
 | **JSON** | Bloque colapsable “Visualizar JSON RAW generado por Claude” con subtítulo de depuración y área `<pre>` con scroll. |
 

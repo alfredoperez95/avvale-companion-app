@@ -12,6 +12,10 @@ const PUBLIC_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 export interface DownloadResult {
   saved: string[];
   failed: { url: string; error: string }[];
+  /** URLs de HubSpot (requieren sesión; no se descargan en servidor). */
+  skippedHubSpot: string[];
+  /** Ya existía un adjunto con la misma `originalUrl` para esta activación. */
+  skippedAlreadyPresent: string[];
 }
 
 @Injectable()
@@ -160,6 +164,15 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
   async saveActivationAttachments(activationId: string, urls: string[]): Promise<DownloadResult> {
     const saved: string[] = [];
     const failed: { url: string; error: string }[] = [];
+    const skippedHubSpot: string[] = [];
+    const skippedAlreadyPresent: string[] = [];
+
+    const existing = await this.prisma.activationAttachment.findMany({
+      where: { activationId },
+      select: { originalUrl: true },
+    });
+    const alreadyImported = new Set(existing.map((e) => e.originalUrl.trim()).filter(Boolean));
+
     const activationDir = path.join(this.baseDir, 'activations', activationId);
     await this.ensureDir(activationDir);
 
@@ -167,6 +180,11 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
       const trimmed = originalUrl.trim();
       if (!trimmed) continue;
       if (this.isHubSpotUrl(trimmed)) {
+        skippedHubSpot.push(trimmed);
+        continue;
+      }
+      if (alreadyImported.has(trimmed)) {
+        skippedAlreadyPresent.push(trimmed);
         continue;
       }
       try {
@@ -203,6 +221,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
           },
         });
         saved.push(trimmed);
+        alreadyImported.add(trimmed);
       } catch (e) {
         failed.push({
           url: trimmed,
@@ -210,7 +229,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
         });
       }
     }
-    return { saved, failed };
+    return { saved, failed, skippedHubSpot, skippedAlreadyPresent };
   }
 
   /** Guarda un archivo subido desde el navegador (p. ej. descargado por el usuario desde HubSpot). */

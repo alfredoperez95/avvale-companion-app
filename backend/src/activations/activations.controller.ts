@@ -56,6 +56,12 @@ export class ActivationsController {
     return attachment;
   }
 
+  /** Descarga URLs escaneadas (no HubSpot) y las guarda como adjuntos en servidor. */
+  @Post(':id/attachments/import-scanned-urls')
+  async importScannedUrls(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.activationsService.importScannedAttachmentUrls(id, user.userId);
+  }
+
   @Get(':id/attachments/:attachmentId')
   async getAttachmentFile(
     @CurrentUser() user: UserPayload,

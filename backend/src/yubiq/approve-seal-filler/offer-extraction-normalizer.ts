@@ -98,6 +98,28 @@ function computeImporteTotalCompromiso(params: {
   };
 }
 
+/**
+ * Proyecto one-shot + licencia/suscripción anual (una vez cada línea), cuando no hay total de compromiso mensual.
+ * No suma AMS ni otros accesorios (deben ir solo en observaciones).
+ */
+function computeImporteTotalDealComputables(params: {
+  compromiso: { total: number; texto: string; nota: string } | null;
+  proyectoN: number | null;
+  anualN: number | null;
+}): { total: number; texto: string; nota: string } | null {
+  const { compromiso, proyectoN, anualN } = params;
+  if (compromiso) return null;
+  const p = proyectoN ?? 0;
+  const a = anualN ?? 0;
+  if (p <= 0 || a <= 0) return null;
+  const total = Math.round(p + a);
+  return {
+    total,
+    texto: formatEuroEsEnteros(total),
+    nota: `Total computable para Approve & Seal (proyecto + licencia/suscripción anual): ${formatEuroEsEnteros(p)} + ${formatEuroEsEnteros(a)} = ${formatEuroEsEnteros(total)}.`,
+  };
+}
+
 export function normalizeAreaCompania(raw: unknown): AreaCompania | null {
   if (raw == null) return null;
   const s = String(raw).trim();
@@ -157,6 +179,7 @@ export function normalizeClaudeExtraction(
 
   const proyectoN = parseEuroAmountToNumber(parsed.importeProyectoEuros);
   const mensualN = parseEuroAmountToNumber(parsed.importeMensualEuros);
+  const anualLicN = parseEuroAmountToNumber(parsed.importeSuscripcionOlicenciaAnualEuros);
   const mesesN = parseMesesCompromiso(parsed.periodoCompromisoMeses);
   const textoCompromiso = (parsed.periodoCompromisoTexto ?? '').trim() || null;
 
@@ -166,6 +189,13 @@ export function normalizeClaudeExtraction(
     meses: mesesN,
     textoCompromiso,
   });
+
+  const dealComputables = computeImporteTotalDealComputables({
+    compromiso,
+    proyectoN,
+    anualN: anualLicN,
+  });
+
   if (!compromiso) {
     if (
       (proyectoN != null || mensualN != null) &&
@@ -217,6 +247,13 @@ export function normalizeClaudeExtraction(
             importeTotalConCompromisoNumerico: Math.round(compromiso.total),
             importeTotalConCompromisoTexto: compromiso.texto,
             notaImporteCompromiso: compromiso.nota,
+          }
+        : {}),
+      ...(dealComputables
+        ? {
+            importeTotalDealComputablesNumerico: dealComputables.total,
+            importeTotalDealComputablesTexto: dealComputables.texto,
+            notaImporteTotalDealComputables: dealComputables.nota,
           }
         : {}),
       dealType: normalizeDealType((parsed as any).dealType),

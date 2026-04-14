@@ -25,6 +25,10 @@ export type ClaudeOfferExtraction = {
   importeTotalConCompromisoNumerico?: number | null;
   importeTotalConCompromisoTexto?: string | null;
   notaImporteCompromiso?: string | null;
+  /** Proyecto + licencia/suscripción anual (€) cuando no aplica total de compromiso mensual. */
+  importeTotalDealComputablesNumerico?: number | null;
+  importeTotalDealComputablesTexto?: string | null;
+  notaImporteTotalDealComputables?: string | null;
   /** Aviso: varias opciones/rangos; se usa el escenario de mayor importe. */
   notaMultiplesOpcionesPrecio?: string;
   numeroOpcionesPrecioEstimado?: number | null;

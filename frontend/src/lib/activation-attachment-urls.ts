@@ -18,3 +18,13 @@ export function parseAttachmentNames(attachmentNames: string | null): string[] {
   }
 }
 
+/** Misma regla que el backend: URLs de HubSpot no se descargan en servidor sin sesión. */
+export function isHubSpotAttachmentUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.hostname === 'app.hubspot.com' || u.hostname.endsWith('.hubspot.com');
+  } catch {
+    return false;
+  }
+}
+

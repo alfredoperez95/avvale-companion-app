@@ -191,7 +191,6 @@ export default function YubiqApproveSealFillerPage() {
     setLastFileName('');
     setPromptPreview('');
     setLog([]);
-
     if (!credentialStatus?.configured) {
       setError('Falta configurar la API key de Anthropic en tu perfil.');
       setPhase('error');

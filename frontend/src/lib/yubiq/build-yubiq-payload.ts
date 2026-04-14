@@ -41,9 +41,16 @@ export function buildYubiqPayload(input: BuildYubiqPayloadInput): BuildYubiqPayl
   const compromisoNum = extraction.importeTotalConCompromisoNumerico;
   const useCompromisoTotal =
     typeof compromisoNum === 'number' && Number.isFinite(compromisoNum) && compromisoNum > 0;
+  const dealComputablesNum = extraction.importeTotalDealComputablesNumerico;
+  const useDealComputablesTotal =
+    !useCompromisoTotal &&
+    typeof dealComputablesNum === 'number' &&
+    Number.isFinite(dealComputablesNum) &&
+    dealComputablesNum > 0;
   const tmNum = extraction.importeRevenueTmSinJornadasNumerico;
   const useTmSinJornadasRevenue =
     !useCompromisoTotal &&
+    !useDealComputablesTotal &&
     typeof tmNum === 'number' &&
     Number.isFinite(tmNum) &&
     tmNum > 0;
@@ -54,17 +61,27 @@ export function buildYubiqPayload(input: BuildYubiqPayloadInput): BuildYubiqPayl
         revenue: String(Math.round(compromisoNum)),
         warnings: [] as string[],
       }
-    : useTmSinJornadasRevenue
+    : useDealComputablesTotal
       ? {
-          amount: String(Math.round(tmNum)),
+          amount: String(Math.round(dealComputablesNum)),
           currency: 'EUR',
-          revenue: String(Math.round(tmNum)),
+          revenue: String(Math.round(dealComputablesNum)),
           warnings: [] as string[],
         }
-      : parseAmountAndCurrency(extraction.importeOferta ?? '');
+      : useTmSinJornadasRevenue
+        ? {
+            amount: String(Math.round(tmNum)),
+            currency: 'EUR',
+            revenue: String(Math.round(tmNum)),
+            warnings: [] as string[],
+          }
+        : parseAmountAndCurrency(extraction.importeOferta ?? '');
   warnings.push(...amountParsed.warnings);
   if (useCompromisoTotal) {
     warnings.push('revenue_from_importe_total_compromiso');
+  }
+  if (useDealComputablesTotal) {
+    warnings.push('revenue_from_importe_total_deal_computables');
   }
   if (useTmSinJornadasRevenue) {
     warnings.push('revenue_from_tm_sin_jornadas_min');

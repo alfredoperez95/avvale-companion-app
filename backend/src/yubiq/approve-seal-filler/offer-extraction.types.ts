@@ -28,6 +28,11 @@ export type ClaudeOfferExtractionInternal = {
   /** Cuota mensual recurrente (€), si consta. */
   importeMensualEuros?: number | string | null;
   /**
+   * Suscripción o licencia de producto facturada **por año** (una línea anual), en €.
+   * No incluir AMS, bolsa de horas opcional ni otros servicios accesorios no esenciales del core ofertado.
+   */
+  importeSuscripcionOlicenciaAnualEuros?: number | string | null;
+  /**
    * Duración del compromiso en meses (p. ej. 3 años → 36).
    * El modelo debe inferirla del texto del documento.
    */
@@ -70,6 +75,13 @@ export type ClaudeOfferExtraction = {
   importeTotalConCompromisoTexto?: string | null;
   /** Explica el cálculo o cita el compromiso del documento. */
   notaImporteCompromiso?: string | null;
+  /**
+   * Total € (proyecto + licencia/suscripción anual) cuando aplica y no hay total de compromiso mensual.
+   * Prioridad de revenue Yubiq entre compromiso y T&M.
+   */
+  importeTotalDealComputablesNumerico?: number | null;
+  importeTotalDealComputablesTexto?: string | null;
+  notaImporteTotalDealComputables?: string | null;
   /** Aviso fijo si hay varias opciones/rangos de precio (escenario de mayor importe). */
   notaMultiplesOpcionesPrecio?: string;
   /** Recuento opcional expuesto para UI (p. ej. badge). */

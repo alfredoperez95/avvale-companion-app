@@ -200,6 +200,26 @@ describe('buildYubiqPayload', () => {
     expect(payload.prefill.segment).toBe('');
   });
 
+  it('usa total computable (proyecto + licencia anual) para revenue cuando viene calculado', () => {
+    const extraction: ClaudeOfferExtraction = {
+      ...sampleExtraction,
+      importeOferta:
+        '35.900 € (implementación) + 8.000 € (licencias)\n43.900 €',
+      importeTotalDealComputablesNumerico: 43_900,
+      importeTotalDealComputablesTexto: '43.900 €',
+      notaImporteTotalDealComputables:
+        'Total computable para Approve & Seal (proyecto + licencia/suscripción anual): 35.900 € + 8.000 € = 43.900 €.',
+    };
+    const { warnings, payload } = buildYubiqPayload({
+      extraction,
+      fileName: 'oferta.pdf',
+      now: new Date('2026-04-02T12:00:00.000Z'),
+    });
+    expect(payload.document.amount).toBe('43900');
+    expect(payload.prefill.revenue).toBe('43900');
+    expect(warnings).toContain('revenue_from_importe_total_deal_computables');
+  });
+
   it('usa importe total de compromiso para revenue cuando viene calculado', () => {
     const extraction: ClaudeOfferExtraction = {
       ...sampleExtraction,
@@ -217,6 +237,22 @@ describe('buildYubiqPayload', () => {
     expect(payload.document.amount).toBe('17030');
     expect(payload.prefill.revenue).toBe('17030');
     expect(warnings).toContain('revenue_from_importe_total_compromiso');
+  });
+
+  it('prioriza total de compromiso sobre total computable proyecto+anual si vienen ambos', () => {
+    const extraction: ClaudeOfferExtraction = {
+      ...sampleExtraction,
+      importeTotalConCompromisoNumerico: 17_030,
+      importeTotalDealComputablesNumerico: 43_900,
+    };
+    const { warnings, payload } = buildYubiqPayload({
+      extraction,
+      fileName: 'oferta.pdf',
+      now: new Date('2026-04-02T12:00:00.000Z'),
+    });
+    expect(payload.document.amount).toBe('17030');
+    expect(warnings).toContain('revenue_from_importe_total_compromiso');
+    expect(warnings).not.toContain('revenue_from_importe_total_deal_computables');
   });
 
   it('usa 10.000 € como revenue cuando aplica T&M sin jornadas', () => {

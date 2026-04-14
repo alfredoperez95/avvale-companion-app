@@ -27,6 +27,21 @@ function buildSubject(projectName: string, client: string | null, activationNumb
 }
 
 const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
+
+/** Misma semántica que el parse de `attachmentUrls` en frontend (`activation-attachment-urls`). */
+function parseActivationAttachmentUrlsField(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.map((u) => String(u).trim()).filter(Boolean);
+    }
+    return [String(parsed).trim()].filter(Boolean);
+  } catch {
+    return raw.split(/[\n,]/).map((u) => u.trim()).filter(Boolean);
+  }
+}
+
 type ProjectJpResolution = { name: string; email: string; source: 'AUTO' | 'MANUAL' } | null;
 type ActivationRecipients = { recipientTo: string; recipientCc: string | null };
 
@@ -545,6 +560,24 @@ export class ActivationsService {
     }
 
     return this.findOneByIdAndUser(activationId, userId);
+  }
+
+  /**
+   * Descarga en servidor las URLs escaneadas guardadas en la activación (excluye HubSpot)
+   * y las registra como adjuntos; omite URLs ya importadas.
+   */
+  async importScannedAttachmentUrls(activationId: string, userId: string) {
+    const activation = await this.findOneByIdAndUser(activationId, userId);
+    const urls = parseActivationAttachmentUrlsField(activation.attachmentUrls);
+    if (urls.length === 0) {
+      return {
+        saved: [] as string[],
+        failed: [] as { url: string; error: string }[],
+        skippedHubSpot: [] as string[],
+        skippedAlreadyPresent: [] as string[],
+      };
+    }
+    return this.attachmentsService.saveActivationAttachments(activationId, urls);
   }
 
   /** Elimina una activación solo si pertenece al usuario. */

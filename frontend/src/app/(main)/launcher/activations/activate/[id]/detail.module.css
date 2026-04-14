@@ -146,6 +146,58 @@
   background: color-mix(in srgb, var(--fiori-nav-bg) 45%, var(--fiori-surface));
 }
 
+.urlActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fiori-space-2);
+  align-items: center;
+  margin-top: var(--fiori-space-3);
+}
+
+.importFeedback {
+  margin: var(--fiori-space-3) 0 0;
+  padding: var(--fiori-space-3);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  border: 1px solid var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 50%, var(--fiori-surface));
+}
+
+.importFeedbackSuccess {
+  border-color: color-mix(in srgb, #107e3e 35%, var(--fiori-border));
+  background: color-mix(in srgb, #107e3e 8%, var(--fiori-surface));
+}
+
+.importFeedbackWarning {
+  border-color: color-mix(in srgb, #e9730c 40%, var(--fiori-border));
+  background: color-mix(in srgb, #fef7f1 70%, var(--fiori-surface));
+}
+
+.importFeedbackError {
+  border-color: color-mix(in srgb, var(--fiori-error) 35%, var(--fiori-border));
+  background: color-mix(in srgb, var(--fiori-error) 6%, var(--fiori-surface));
+}
+
+.importFeedback p {
+  margin: 0 0 0.5rem;
+}
+
+.importFeedback p:last-child {
+  margin-bottom: 0;
+}
+
+.importFailedList {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--fiori-text-secondary);
+}
+
+.importFailedList li {
+  margin: 0.2rem 0;
+  word-break: break-all;
+}
+
 .areaList {
   margin: 0;
   padding: 0;
@@ -446,6 +498,46 @@
   margin-top: var(--fiori-space-1);
   font-size: 0.75rem;
   color: var(--fiori-text-secondary);
+}
+
+.extensionBridge {
+  margin-top: var(--fiori-space-4);
+  padding-top: var(--fiori-space-3);
+  border-top: 1px dashed var(--fiori-border-light);
+}
+
+.extensionBridgeStatus {
+  margin: var(--fiori-space-2) 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+}
+
+.extensionBridgeWait {
+  margin: var(--fiori-space-2) 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--fiori-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.extensionBridgeHint {
+  margin: var(--fiori-space-2) 0 0;
+  padding: var(--fiori-space-2) var(--fiori-space-3);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--fiori-text);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 55%, var(--fiori-surface));
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+}
+
+.inlineCode {
+  font-size: 0.85em;
+  font-family: ui-monospace, monospace;
+  background: color-mix(in srgb, var(--fiori-nav-bg) 60%, var(--fiori-surface));
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
