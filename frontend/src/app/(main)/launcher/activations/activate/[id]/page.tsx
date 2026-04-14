@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, apiUpload, redirectToLogin } from '@/lib/api';
@@ -64,6 +65,9 @@ export default function ActivationDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [uploadToast, setUploadToast] = useState<null | { kind: 'success'; message: string }>(null);
+  const [toastPortalHost, setToastPortalHost] = useState<HTMLElement | null>(null);
   const [sanitizedBody, setSanitizedBody] = useState<string | null>(null);
   const [showDiscardExtensionConfirm, setShowDiscardExtensionConfirm] = useState(false);
   const [discardExtensionBusy, setDiscardExtensionBusy] = useState(false);
@@ -109,6 +113,24 @@ export default function ActivationDetailPage() {
     const t = window.setTimeout(() => setShowExtensionAlreadyImportedTip(false), 2200);
     return () => window.clearTimeout(t);
   }, [showExtensionAlreadyImportedTip]);
+
+  useEffect(() => {
+    setToastPortalHost(document.body);
+  }, []);
+
+  useEffect(() => {
+    if (!uploadToast) return;
+    const t = window.setTimeout(() => setUploadToast(null), 3200);
+    return () => window.clearTimeout(t);
+  }, [uploadToast]);
+
+  useEffect(() => {
+    if (extensionBridge.phase !== 'done') return;
+    setUploadToast({
+      kind: 'success',
+      message: 'Importación completada. Los adjuntos ya están disponibles para el envío.',
+    });
+  }, [extensionBridge.phase]);
 
   const performSend = async () => {
     if (!id) return;
@@ -223,8 +245,10 @@ export default function ActivationDetailPage() {
     const files = e.target.files;
     if (!id || !files?.length) return;
     setUploadError('');
+    setUploadToast(null);
     setUploading(true);
     setUploadProgress(0);
+    setShowUploadProgress(true);
     let failed = false;
     const allFiles = Array.from(files);
     const totalBytes = allFiles.reduce((acc, file) => acc + Math.max(file.size, 1), 0);
@@ -247,9 +271,16 @@ export default function ActivationDetailPage() {
         uploadedBytes += Math.max(file.size, 1);
         setUploadProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
       }
-      if (!failed) refetchActivation();
+      if (!failed) {
+        refetchActivation();
+        setUploadToast({
+          kind: 'success',
+          message: 'Carga completada. Los adjuntos ya están disponibles para el envío.',
+        });
+      }
     } finally {
       setUploading(false);
+      setShowUploadProgress(false);
       e.target.value = '';
     }
   };
@@ -665,6 +696,12 @@ export default function ActivationDetailPage() {
               <span className={styles.uploadProgressText}>{uploadProgress}%</span>
             </div>
           ) : null}
+          {!uploading && showUploadProgress ? (
+            <div className={styles.uploadProgressWrap} aria-live="polite">
+              <div className={styles.uploadProgressBar} style={{ width: `${uploadProgress}%` }} />
+              <span className={styles.uploadProgressText}>{uploadProgress}%</span>
+            </div>
+          ) : null}
           {uploadError ? <p className={styles.errorMsg}>{uploadError}</p> : null}
         </div>,
       )}
@@ -814,6 +851,17 @@ export default function ActivationDetailPage() {
           </div>
         </div>
       ) : null}
+      {uploadToast && toastPortalHost
+        ? createPortal(
+            <div className={styles.toastWrap} aria-live="polite" aria-atomic="true">
+              <div className={styles.toast}>
+                <span className={styles.toastTitle}>Adjuntos</span>
+                <span className={styles.toastMessage}>{uploadToast.message}</span>
+              </div>
+            </div>,
+            toastPortalHost,
+          )
+        : null}
     </main>
   );
 }
