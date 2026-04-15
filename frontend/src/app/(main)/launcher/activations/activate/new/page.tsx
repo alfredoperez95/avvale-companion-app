@@ -55,6 +55,16 @@ function selectedLabel(item: SelectedItem): string {
   return item.type === 'area' ? item.areaName : `${item.areaName} › ${item.subAreaName}`;
 }
 
+function hasRichTextContent(html: string): boolean {
+  const normalized = (html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .trim();
+  return normalized.length > 0;
+}
+
 export default function NewActivationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -926,7 +936,7 @@ export default function NewActivationPage() {
         {error ? <p className={styles.error}>{error}</p> : null}
         <div className={styles.formFooter}>
           <p className={styles.formFooterHint}>
-            El borrador requiere áreas, importe, tipo de oportunidad y una plantilla seleccionada.
+            El borrador requiere áreas, importe y tipo de oportunidad. Además, selecciona una plantilla o escribe un cuerpo manual.
           </p>
           <div className={styles.formFooterActions}>
             <Link href="/launcher/activations/activate" className={styles.btnSecondary}>
@@ -934,7 +944,13 @@ export default function NewActivationPage() {
             </Link>
             <button
               type="submit"
-              disabled={loading || selected.length === 0 || !form.projectAmount.trim() || !form.projectType || !selectedTemplateId}
+              disabled={
+                loading ||
+                selected.length === 0 ||
+                !form.projectAmount.trim() ||
+                !form.projectType ||
+                (!selectedTemplateId && !hasRichTextContent(form.body))
+              }
               className={styles.btnPrimary}
             >
               {loading ? 'Guardando…' : 'Guardar borrador'}
