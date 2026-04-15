@@ -20,6 +20,21 @@ if (process.env.NODE_ENV === 'production' && !process.env.INTERNAL_API_URL?.trim
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  async headers() {
+    return [
+      {
+        source: '/extension/avvale-companion-extension.zip',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Expires', value: '0' },
+        ],
+      },
+    ];
+  },
   /**
    * Rewrites a `http://localhost:4000` en dev usan un proxy con timeout por defecto (~30s).
    * El chat RFQ y otras rutas que esperan al LLM pueden superarlo → ECONNRESET / "socket hang up".
