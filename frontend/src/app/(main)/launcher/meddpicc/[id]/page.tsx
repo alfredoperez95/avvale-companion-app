@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch, apiUpload } from '@/lib/api';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
@@ -14,6 +15,7 @@ import {
   sanitizeEuroDigitsFromInput,
 } from '@/lib/euro-deal-value';
 import { MeddpiccContextDropzone } from '@/components/meddpicc/MeddpiccContextDropzone';
+import { MeddpiccDimensionsScoreChart } from '@/components/meddpicc/MeddpiccDimensionsScoreChart';
 import { MEDDPICC_DIMENSIONS, MEDDPICC_SCORE_LABELS } from '@/lib/meddpicc-dimensions';
 import styles from '../meddpicc.module.css';
 
@@ -77,6 +79,52 @@ function emptyAnswers(): Record<string, string> {
   return o;
 }
 
+function CollapsibleAiSection({
+  sectionId,
+  title,
+  expanded,
+  onToggle,
+  children,
+}: {
+  sectionId: string;
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const headId = `ai-section-head-${sectionId}`;
+  return (
+    <div className={`${styles.aiBlock} ${expanded ? styles.aiBlockExpandOpen : ''}`}>
+      <button
+        type="button"
+        className={styles.aiBlockToggle}
+        id={headId}
+        aria-expanded={expanded}
+        aria-controls={`ai-section-panel-${sectionId}`}
+        onClick={onToggle}
+      >
+        <h3 className={styles.aiBlockToggleTitle}>{title}</h3>
+        <span className={styles.aiBlockChevron} aria-hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M9 18l6-6-6-6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </button>
+      {expanded ? (
+        <div id={`ai-section-panel-${sectionId}`} className={styles.aiBlockBody} role="region" aria-labelledby={headId}>
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function MeddpiccDealDetailPage() {
   const params = useParams();
   const id = typeof params.id === 'string' ? params.id : '';
@@ -110,6 +158,11 @@ export default function MeddpiccDealDetailPage() {
   /** Solo un bloque de markdown visible a la vez (por id de adjunto). */
   const [openMdAttachmentId, setOpenMdAttachmentId] = useState<string | null>(null);
   const skipInitialAccordionScroll = useRef(true);
+  /** Bloques .aiBlock plegados por defecto; se abren al pulsar la cabecera. */
+  const [aiBlockOpen, setAiBlockOpen] = useState<Record<string, boolean>>({});
+  const toggleAiBlock = useCallback((key: string) => {
+    setAiBlockOpen((p) => ({ ...p, [key]: !p[key] }));
+  }, []);
 
   useEffect(() => {
     const ids = new Set((deal?.attachments ?? []).map((x) => x.id));
@@ -577,9 +630,15 @@ export default function MeddpiccDealDetailPage() {
             </button>
           </div>
 
+          <MeddpiccDimensionsScoreChart scores={scores} />
+
           {history.length > 0 && (
-            <div className={styles.aiBlock}>
-              <h3>Historial de puntuaciones</h3>
+            <CollapsibleAiSection
+              sectionId="history"
+              title="Historial de puntuaciones"
+              expanded={Boolean(aiBlockOpen.history)}
+              onToggle={() => toggleAiBlock('history')}
+            >
               <ul className={styles.historyList}>
                 {history.map((h) => (
                   <li key={h.id} className={styles.historyItem}>
@@ -589,7 +648,7 @@ export default function MeddpiccDealDetailPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </CollapsibleAiSection>
           )}
         </>
       )}
@@ -597,39 +656,55 @@ export default function MeddpiccDealDetailPage() {
       {tab === 'ai' && (
         <>
           <h2 className={`${styles.sectionHeading} ${styles.sectionHeadingTab}`}>Resumen del análisis IA</h2>
-          <div className={styles.aiBlock}>
-            <h3>Valoración global</h3>
+          <CollapsibleAiSection
+            sectionId="ai-global"
+            title="Valoración global"
+            expanded={Boolean(aiBlockOpen['ai-global'])}
+            onToggle={() => toggleAiBlock('ai-global')}
+          >
             <p>{aiAssessment || 'Aún no hay análisis. Ejecuta «Analizar con IA» desde la pestaña Evaluación.'}</p>
-          </div>
+          </CollapsibleAiSection>
           {aiStrengths.length > 0 && (
-            <div className={styles.aiBlock}>
-              <h3>Fortalezas</h3>
+            <CollapsibleAiSection
+              sectionId="ai-strengths"
+              title="Fortalezas"
+              expanded={Boolean(aiBlockOpen['ai-strengths'])}
+              onToggle={() => toggleAiBlock('ai-strengths')}
+            >
               <ul className={styles.listPlain}>
                 {aiStrengths.map((x, i) => (
                   <li key={i}>{String(x)}</li>
                 ))}
               </ul>
-            </div>
+            </CollapsibleAiSection>
           )}
           {aiRisks.length > 0 && (
-            <div className={styles.aiBlock}>
-              <h3>Riesgos</h3>
+            <CollapsibleAiSection
+              sectionId="ai-risks"
+              title="Riesgos"
+              expanded={Boolean(aiBlockOpen['ai-risks'])}
+              onToggle={() => toggleAiBlock('ai-risks')}
+            >
               <ul className={styles.listPlain}>
                 {aiRisks.map((x, i) => (
                   <li key={i}>{String(x)}</li>
                 ))}
               </ul>
-            </div>
+            </CollapsibleAiSection>
           )}
           {aiNext.length > 0 && (
-            <div className={styles.aiBlock}>
-              <h3>Próximas preguntas sugeridas</h3>
+            <CollapsibleAiSection
+              sectionId="ai-next"
+              title="Próximas preguntas sugeridas"
+              expanded={Boolean(aiBlockOpen['ai-next'])}
+              onToggle={() => toggleAiBlock('ai-next')}
+            >
               <ul className={styles.listPlain}>
                 {aiNext.map((x, i) => (
                   <li key={i}>{String(x)}</li>
                 ))}
               </ul>
-            </div>
+            </CollapsibleAiSection>
           )}
           <p className={styles.resultsMeta} style={{ marginTop: 'var(--fiori-space-2)' }}>
             Escala de referencia por score: {MEDDPICC_SCORE_LABELS[5]} (5) = punto medio.

@@ -1,0 +1,273 @@
+.wrap {
+  margin-bottom: var(--fiori-space-4);
+  padding: var(--fiori-space-4) var(--fiori-space-5);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.75rem;
+  background: var(--fiori-surface);
+  box-shadow: var(--fiori-shadow-1, 0 1px 3px rgb(0 0 0 / 5%));
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--fiori-space-3) var(--fiori-space-4);
+  margin-bottom: var(--fiori-space-4);
+}
+
+.titleBlock {
+  flex: 1;
+  min-width: min(100%, 14rem);
+}
+
+.title {
+  margin: 0 0 var(--fiori-space-1);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--fiori-text);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+}
+
+.viewToggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--fiori-shell-bg) 8%, var(--fiori-surface));
+}
+
+.viewBtn {
+  padding: 0.4rem 0.7rem;
+  border: none;
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--fiori-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.viewBtn + .viewBtn {
+  border-left: 1px solid var(--fiori-border-light);
+}
+
+.viewBtn:hover {
+  color: var(--fiori-text);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 10%, transparent);
+}
+
+.viewBtn:focus-visible {
+  outline: 2px solid color-mix(in srgb, #0854a0 55%, var(--fiori-border-light));
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+.viewBtnActive {
+  color: var(--fiori-text);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 18%, var(--fiori-surface));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viewBtn {
+    transition: none;
+  }
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fiori-space-2);
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) 2rem;
+  gap: var(--fiori-space-2);
+  align-items: center;
+  z-index: 1;
+  padding: 0.15rem 0;
+}
+
+.row:hover,
+.row:focus-within {
+  z-index: 4;
+}
+
+.key {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--fiori-text-secondary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  height: 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fiori-nav-bg) 50%, var(--fiori-surface));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--fiori-border-light) 80%, transparent);
+}
+
+.bar {
+  height: 100%;
+  min-width: 0;
+  border-radius: 999px;
+  transition: width 0.28s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    transition: none;
+  }
+}
+
+.val {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fiori-text);
+  text-align: right;
+}
+
+.tooltip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  padding: var(--fiori-space-3);
+  border-radius: 0.5rem;
+  border: 1px solid var(--fiori-border-light);
+  background: var(--fiori-surface);
+  box-shadow: 0 0.35rem 1.25rem rgb(0 0 0 / 12%);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text);
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s ease;
+}
+
+.row:hover .tooltip,
+.row:focus-within .tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip {
+    transition: none;
+  }
+}
+
+.tooltipName {
+  margin: 0 0 var(--fiori-space-2);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--fiori-text);
+}
+
+.tooltipScore {
+  margin: 0 0 var(--fiori-space-2);
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+}
+
+.tooltipDesc {
+  margin: 0 0 var(--fiori-space-2);
+  color: var(--fiori-text);
+}
+
+.tooltipGuide {
+  margin: 0;
+  padding-top: var(--fiori-space-2);
+  border-top: 1px solid var(--fiori-border-light);
+  font-size: 0.75rem;
+  color: var(--fiori-text-secondary);
+}
+
+.tooltipGuide strong {
+  color: var(--fiori-text);
+  font-weight: 600;
+}
+
+/* —— Vista mapa radial (octágono) —— */
+
+.radarWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--fiori-space-3);
+}
+
+.radarSvg {
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+  display: block;
+}
+
+.radarRing {
+  stroke: color-mix(in srgb, var(--fiori-border-light) 92%, var(--fiori-text));
+  stroke-width: 0.35;
+  stroke-opacity: 0.55;
+}
+
+.radarAxis {
+  stroke: color-mix(in srgb, var(--fiori-border-light) 85%, var(--fiori-text-secondary));
+  stroke-width: 0.35;
+  stroke-opacity: 0.65;
+}
+
+.radarArea {
+  fill: color-mix(in srgb, #6366f1 22%, transparent);
+  stroke: none;
+}
+
+.radarOutline {
+  stroke: #6366f1;
+  stroke-width: 0.85;
+  stroke-linejoin: round;
+}
+
+.radarLabel {
+  font-size: 3.75px;
+  font-weight: 700;
+  fill: var(--fiori-text-secondary);
+  pointer-events: none;
+}
+
+.radarHint {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--fiori-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radarArea,
+  .radarOutline {
+    transition: none;
+  }
+}
