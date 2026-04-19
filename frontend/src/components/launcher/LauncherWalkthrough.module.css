@@ -126,8 +126,9 @@
   object-fit: contain;
 }
 
-/* Alineado con .btnPrimary de formularios (Fiori), más bajo que el estándar 2.5rem */
-.extensionInstallBtn {
+/* Alineado con .btnPrimary de formularios (Fiori), más bajo que el estándar 2.5rem.
+   Usar `a.extensionInstallBtn` para ganar a los `a` / `a:hover` globales (color de enlace). */
+a.extensionInstallBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -139,38 +140,40 @@
   border-radius: 0.375rem;
   border: none;
   background: var(--fiori-shell-bg);
-  color: var(--fiori-text-inverse);
+  color: #fff;
   text-decoration: none;
   cursor: pointer;
   box-sizing: border-box;
   box-shadow: 0 2px 6px rgb(0 0 0 / 12%);
   transition:
     background 0.15s ease,
+    color 0.15s ease,
     box-shadow 0.15s ease,
     transform 0.12s ease;
 }
 
-.extensionInstallBtn:hover {
+a.extensionInstallBtn:link,
+a.extensionInstallBtn:visited {
+  color: #fff;
+}
+
+a.extensionInstallBtn:hover {
   background: #0854a0;
-  color: var(--fiori-text-inverse);
+  color: #fff;
   text-decoration: none;
   box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
   transform: translateY(-1px);
 }
 
-.extensionInstallBtn:link,
-.extensionInstallBtn:visited {
-  color: var(--fiori-text-inverse);
-}
-
-.extensionInstallBtn:active {
-  color: var(--fiori-text-inverse);
+a.extensionInstallBtn:active {
+  color: #fff;
   transform: translateY(0);
 }
 
-.extensionInstallBtn:focus-visible {
+a.extensionInstallBtn:focus-visible {
   outline: 2px solid var(--fiori-shell-bg);
   outline-offset: 2px;
+  color: #fff;
 }
 
 .docLink {
