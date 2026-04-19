@@ -22,84 +22,6 @@ type LauncherWalkthroughProps = {
   onClose: (reason: 'later' | 'permanent') => void;
 };
 
-const CHROME_EXTENSIONS_URL = 'chrome://extensions';
-
-async function copyTextToClipboard(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'fixed';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      return ok;
-    } catch {
-      return false;
-    }
-  }
-}
-
-/** Bloque copiar `chrome://extensions` (instalación manual / modo desarrollador). */
-function ChromeExtensionsInstallBlock() {
-  const [copied, setCopied] = useState(false);
-  const [err, setErr] = useState(false);
-
-  const handleCopy = async () => {
-    setErr(false);
-    const ok = await copyTextToClipboard(CHROME_EXTENSIONS_URL);
-    if (ok) {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2200);
-    } else {
-      setErr(true);
-    }
-  };
-
-  return (
-    <div className={styles.chromeUrlBlock}>
-      <p className={styles.chromeUrlNote}>
-        Ve a <strong>ajustes/extensiones</strong>, o <strong>copia este enlace</strong> y pégalo en la{' '}
-        <strong>barra de direcciones</strong> de Chrome.
-      </p>
-      <div className={styles.chromeUrlRow}>
-        <code className={styles.chromeUrlText} title={CHROME_EXTENSIONS_URL}>
-          {CHROME_EXTENSIONS_URL}
-        </code>
-        <button
-          type="button"
-          className={styles.copyChromeUrlBtn}
-          onClick={() => void handleCopy()}
-          aria-label={`Copiar ${CHROME_EXTENSIONS_URL} al portapapeles`}
-        >
-          {copied ? 'Copiado' : 'Copiar enlace'}
-        </button>
-      </div>
-      {(copied || err) ? (
-        <p
-          className={`${styles.chromeUrlFeedback} ${copied ? styles.chromeUrlFeedbackSuccess : styles.chromeUrlFeedbackError}`}
-          role="status"
-          aria-live="polite"
-        >
-          {copied ? (
-            <>
-              Enlace copiado. Pégalo en la <strong>barra de direcciones</strong> de Chrome.
-            </>
-          ) : (
-            'No se pudo copiar. Selecciona el texto manualmente.'
-          )}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 function WalkthroughStepExtensionBody() {
   const [probe, setProbe] = useState<'checking' | 'yes' | 'no'>('checking');
 
@@ -122,7 +44,7 @@ function WalkthroughStepExtensionBody() {
         <p>
           Ya puedes usar las funciones que dependen de la extensión (por ejemplo integraciones con{' '}
           <strong>HubSpot</strong> o el envío de datos a <strong>Yubiq</strong>). No necesitas instalar nada más en este
-          paso.
+          paso. La extensión es <strong>100% compatible con Microsoft Edge</strong> (mismo motor que Chrome).
         </p>
         {EXT_HELP_URL ? (
           <a className={styles.docLink} href={EXT_HELP_URL} target="_blank" rel="noopener noreferrer">
@@ -136,8 +58,8 @@ function WalkthroughStepExtensionBody() {
   return (
     <>
       <p>
-        La extensión <strong>Avvale Companion</strong> para Chrome enlaza esta web con flujos como el envío de datos a
-        Yubiq. <strong>Está publicada en Chrome Web Store</strong>:{' '}
+        La extensión <strong>Avvale Companion</strong> enlaza esta web con flujos como el envío de datos a Yubiq.{' '}
+        <strong>Está publicada en Chrome Web Store</strong>:{' '}
         <a
           href={CHROME_WEB_STORE_COMPANION_URL}
           className={styles.inlineDocLink}
@@ -147,18 +69,10 @@ function WalkthroughStepExtensionBody() {
         >
           abre la ficha oficial
         </a>{' '}
-        en una pestaña nueva e instálala con <strong>Añadir a Chrome</strong>. Si necesitas el paquete para pruebas
-        internas, también puedes{' '}
-        <a
-          href="/extension/avvale-companion-extension.zip"
-          className={styles.inlineDocLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Descargar ZIP de la extensión"
-        >
-          descargar el ZIP
-        </a>
-        .
+        en una pestaña nueva e instálala desde el navegador (<strong>Añadir a Chrome</strong> en Chrome; en Microsoft
+        Edge suele mostrarse como <strong>Obtener</strong> al usar la misma tienda).{' '}
+        <strong>Es 100% compatible con Microsoft Edge</strong> (mismo motor Chromium que Chrome): mismo complemento,
+        mismo comportamiento.
       </p>
       {probe === 'checking' ? (
         <p className={styles.extensionProbe} role="status" aria-live="polite">
@@ -173,7 +87,7 @@ function WalkthroughStepExtensionBody() {
       ) : null}
       {probe === 'no' ? (
         <>
-          <p>Pasos habituales en Chrome:</p>
+          <p>Pasos habituales (Chrome o Microsoft Edge):</p>
           <ol className={styles.extensionInstallSteps}>
             <li>
               Abre{' '}
@@ -185,42 +99,15 @@ function WalkthroughStepExtensionBody() {
               >
                 Avvale Companion en Chrome Web Store
               </a>{' '}
-              (nueva pestaña).
+              (nueva pestaña). En Edge, permite extensiones de otras tiendas si el navegador te lo solicita.
             </li>
             <li>
-              Pulsa <strong>Añadir a Chrome</strong> y confirma la instalación.
+              Pulsa <strong>Añadir a Chrome</strong> (Chrome) u <strong>Obtener</strong> (Edge) y confirma la instalación.
             </li>
             <li>
               Vuelve a esta pestaña y <strong>recarga</strong> si la extensión sigue sin detectarse.
             </li>
           </ol>
-          <details className={styles.extensionManualDetails}>
-            <summary>Instalación manual (ZIP o carpeta desempaquetada)</summary>
-            <p className={styles.extensionManualLead}>
-              Útil para desarrollo o si tu equipo distribuye el build sin pasar por la tienda: descarga el{' '}
-              <a
-                href="/extension/avvale-companion-extension.zip"
-                className={styles.inlineDocLink}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                ZIP
-              </a>
-              , descomprímelo y en <code>chrome://extensions</code> usa <strong>Cargar desempaquetada</strong>.
-            </p>
-            <ul className={styles.extensionManualList}>
-              <li>
-                <ChromeExtensionsInstallBlock />
-              </li>
-              <li>
-                Activa <strong>Modo desarrollador</strong>
-              </li>
-              <li>
-                Pulsa <strong>Cargar desempaquetada</strong> y elige la <strong>carpeta del paquete</strong> (build o ZIP
-                descomprimido).
-              </li>
-            </ul>
-          </details>
         </>
       ) : null}
       {(probe === 'checking' || probe === 'no') && EXT_HELP_URL ? (

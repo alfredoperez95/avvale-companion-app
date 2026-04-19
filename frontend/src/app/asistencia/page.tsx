@@ -106,7 +106,9 @@ export default function AsistenciaPage() {
           <p className={styles.p}>
             Para enlaces que requieren autenticación del usuario (por ejemplo, HubSpot), el servidor no puede descargar
             el documento. En esos casos, la app usa una <strong>extensión del navegador</strong> que descarga con tu sesión
-            y devuelve el binario a la web para subirlo al servidor.
+            y devuelve el binario a la web para subirlo al servidor. La extensión <strong>Avvale Companion</strong> está en{' '}
+            <strong>Chrome Web Store</strong> y es <strong>100% compatible con Microsoft Edge</strong> (mismo motor
+            Chromium que Chrome).
           </p>
           <ul className={styles.list}>
             <li>
