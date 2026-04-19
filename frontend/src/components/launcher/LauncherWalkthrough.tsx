@@ -13,6 +13,10 @@ const EXT_HELP_URL =
     ? process.env.NEXT_PUBLIC_LAUNCHER_EXTENSION_HELP_URL.trim()
     : '';
 
+/** Ficha oficial en Chrome Web Store (instalación recomendada). */
+const CHROME_WEB_STORE_COMPANION_URL =
+  'https://chromewebstore.google.com/detail/avvale-companion/afpdgamffgonkjblodeiefibbobmaibg';
+
 type LauncherWalkthroughProps = {
   open: boolean;
   onClose: (reason: 'later' | 'permanent') => void;
@@ -42,7 +46,7 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/** Bloque copiar `chrome://extensions` (solo se muestra si la extensión no está detectada). */
+/** Bloque copiar `chrome://extensions` (instalación manual / modo desarrollador). */
 function ChromeExtensionsInstallBlock() {
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState(false);
@@ -133,17 +137,26 @@ function WalkthroughStepExtensionBody() {
     <>
       <p>
         La extensión <strong>Avvale Companion</strong> para Chrome enlaza esta web con flujos como el envío de datos a
-        Yubiq. <strong>Aún no está publicada en Chrome Web Store</strong>, pero puedes instalarla en{' '}
-        <strong>modo desarrollador</strong>
-        {' desde '}
+        Yubiq. <strong>Está publicada en Chrome Web Store</strong>:{' '}
+        <a
+          href={CHROME_WEB_STORE_COMPANION_URL}
+          className={styles.inlineDocLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Avvale Companion en Chrome Web Store"
+        >
+          abre la ficha oficial
+        </a>{' '}
+        en una pestaña nueva e instálala con <strong>Añadir a Chrome</strong>. Si necesitas el paquete para pruebas
+        internas, también puedes{' '}
         <a
           href="/extension/avvale-companion-extension.zip"
-          className={styles.docLink}
+          className={styles.inlineDocLink}
           target="_blank"
           rel="noopener noreferrer"
           title="Descargar ZIP de la extensión"
         >
-          este enlace
+          descargar el ZIP
         </a>
         .
       </p>
@@ -154,28 +167,60 @@ function WalkthroughStepExtensionBody() {
       ) : null}
       {probe === 'no' ? (
         <p className={`${styles.extensionProbe} ${styles.extensionProbeMuted}`} role="status">
-          No se ha detectado la extensión aquí (o aún no incluye la señal de presencia). Si ya la instalaste, recarga la
-          página.
+          No se ha detectado la extensión en esta pestaña (o aún no responde al test de presencia). Si acabas de
+          instalarla desde Chrome Web Store, <strong>recarga la página</strong>.
         </p>
       ) : null}
       {probe === 'no' ? (
         <>
           <p>Pasos habituales en Chrome:</p>
-          <ul>
+          <ol className={styles.extensionInstallSteps}>
             <li>
-              <ChromeExtensionsInstallBlock />
+              Abre{' '}
+              <a
+                href={CHROME_WEB_STORE_COMPANION_URL}
+                className={styles.inlineDocLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Avvale Companion en Chrome Web Store
+              </a>{' '}
+              (nueva pestaña).
             </li>
             <li>
-              Activa <strong>Modo desarrollador</strong>
+              Pulsa <strong>Añadir a Chrome</strong> y confirma la instalación.
             </li>
             <li>
-              Pulsa <strong>Cargar desempaquetada</strong> y elige la <strong>carpeta del paquete</strong> que te indique
-              tu equipo (build o ZIP descomprimido).
+              Vuelve a esta pestaña y <strong>recarga</strong> si la extensión sigue sin detectarse.
             </li>
-          </ul>
-          <p>
-            Tras instalarla, <strong>recarga esta página</strong> si la extensión no se detecta.
-          </p>
+          </ol>
+          <details className={styles.extensionManualDetails}>
+            <summary>Instalación manual (ZIP o carpeta desempaquetada)</summary>
+            <p className={styles.extensionManualLead}>
+              Útil para desarrollo o si tu equipo distribuye el build sin pasar por la tienda: descarga el{' '}
+              <a
+                href="/extension/avvale-companion-extension.zip"
+                className={styles.inlineDocLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                ZIP
+              </a>
+              , descomprímelo y en <code>chrome://extensions</code> usa <strong>Cargar desempaquetada</strong>.
+            </p>
+            <ul className={styles.extensionManualList}>
+              <li>
+                <ChromeExtensionsInstallBlock />
+              </li>
+              <li>
+                Activa <strong>Modo desarrollador</strong>
+              </li>
+              <li>
+                Pulsa <strong>Cargar desempaquetada</strong> y elige la <strong>carpeta del paquete</strong> (build o ZIP
+                descomprimido).
+              </li>
+            </ul>
+          </details>
         </>
       ) : null}
       {(probe === 'checking' || probe === 'no') && EXT_HELP_URL ? (

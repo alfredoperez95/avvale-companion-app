@@ -97,6 +97,75 @@
   color: var(--fiori-text-secondary);
 }
 
+.inlineDocLink {
+  font-weight: 600;
+  color: var(--fiori-link);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.inlineDocLink:hover {
+  color: color-mix(in srgb, var(--fiori-link) 88%, #000);
+}
+
+.extensionInstallSteps {
+  margin: 0 0 var(--fiori-space-3);
+  padding-left: 1.35rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fiori-text);
+}
+
+.extensionInstallSteps li {
+  margin-bottom: var(--fiori-space-2);
+}
+
+.extensionInstallSteps li:last-child {
+  margin-bottom: 0;
+}
+
+.extensionManualDetails {
+  margin: var(--fiori-space-3) 0;
+  padding: var(--fiori-space-3);
+  border-radius: 0.5rem;
+  border: 1px solid var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-surface) 96%, var(--fiori-shell-bg));
+}
+
+.extensionManualDetails summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--fiori-text);
+}
+
+.extensionManualDetails[open] summary {
+  margin-bottom: var(--fiori-space-2);
+}
+
+.extensionManualLead {
+  margin: 0 0 var(--fiori-space-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+}
+
+.extensionManualList {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fiori-text);
+}
+
+.extensionManualList li {
+  margin-bottom: var(--fiori-space-2);
+}
+
+.extensionManualList li:last-child {
+  margin-bottom: 0;
+}
+
 .chromeUrlBlock {
   margin-top: var(--fiori-space-2);
   padding: var(--fiori-space-3);
