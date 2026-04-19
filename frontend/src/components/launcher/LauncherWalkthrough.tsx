@@ -44,7 +44,7 @@ function WalkthroughStepExtensionBody() {
         <p>
           Ya puedes usar las funciones que dependen de la extensión (por ejemplo integraciones con{' '}
           <strong>HubSpot</strong> o el envío de datos a <strong>Yubiq</strong>). No necesitas instalar nada más en este
-          paso. La extensión es <strong>100% compatible con Microsoft Edge</strong> (mismo motor que Chrome).
+          paso. Es totalmente compatible con Microsoft Edge.
         </p>
         {EXT_HELP_URL ? (
           <a className={styles.docLink} href={EXT_HELP_URL} target="_blank" rel="noopener noreferrer">
@@ -58,22 +58,42 @@ function WalkthroughStepExtensionBody() {
   return (
     <>
       <p>
-        La extensión <strong>Avvale Companion</strong> enlaza esta web con flujos como el envío de datos a Yubiq.{' '}
-        <strong>Está publicada en Chrome Web Store</strong>:{' '}
-        <a
-          href={CHROME_WEB_STORE_COMPANION_URL}
-          className={styles.inlineDocLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Avvale Companion en Chrome Web Store"
-        >
-          abre la ficha oficial
-        </a>{' '}
-        en una pestaña nueva e instálala desde el navegador (<strong>Añadir a Chrome</strong> en Chrome; en Microsoft
-        Edge suele mostrarse como <strong>Obtener</strong> al usar la misma tienda).{' '}
-        <strong>Es 100% compatible con Microsoft Edge</strong> (mismo motor Chromium que Chrome): mismo complemento,
-        mismo comportamiento.
+        La extensión <strong>Avvale Companion</strong> conecta esta web con distintos flujos, como la extracción de
+        información desde HubSpot o el envío de datos a Yubiq. Está disponible en la Chrome Web Store, donde puedes
+        instalarla fácilmente desde tu navegador.
       </p>
+      <div className={styles.extensionInstallWrap}>
+        <div className={styles.extensionInstallRow}>
+          <a
+            href={CHROME_WEB_STORE_COMPANION_URL}
+            className={styles.extensionInstallBtn}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instalar Avvale Companion desde Chrome Web Store (se abre en una pestaña nueva)"
+          >
+            Instalar
+          </a>
+          <div className={styles.extensionBrowserIcons}>
+            <img
+              src="/img/browser-google-chrome.svg"
+              alt="Google Chrome"
+              width={20}
+              height={20}
+              className={styles.browserIcon}
+              decoding="async"
+            />
+            <img
+              src="/img/browser-microsoft-edge.svg"
+              alt="Microsoft Edge"
+              width={20}
+              height={20}
+              className={styles.browserIcon}
+              decoding="async"
+            />
+          </div>
+        </div>
+      </div>
+      <p>Es totalmente compatible con Microsoft Edge.</p>
       {probe === 'checking' ? (
         <p className={styles.extensionProbe} role="status" aria-live="polite">
           Comprobando si la extensión está activa en esta página…
@@ -84,31 +104,6 @@ function WalkthroughStepExtensionBody() {
           No se ha detectado la extensión en esta pestaña (o aún no responde al test de presencia). Si acabas de
           instalarla desde Chrome Web Store, <strong>recarga la página</strong>.
         </p>
-      ) : null}
-      {probe === 'no' ? (
-        <>
-          <p>Pasos habituales (Chrome o Microsoft Edge):</p>
-          <ol className={styles.extensionInstallSteps}>
-            <li>
-              Abre{' '}
-              <a
-                href={CHROME_WEB_STORE_COMPANION_URL}
-                className={styles.inlineDocLink}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Avvale Companion en Chrome Web Store
-              </a>{' '}
-              (nueva pestaña). En Edge, permite extensiones de otras tiendas si el navegador te lo solicita.
-            </li>
-            <li>
-              Pulsa <strong>Añadir a Chrome</strong> (Chrome) u <strong>Obtener</strong> (Edge) y confirma la instalación.
-            </li>
-            <li>
-              Vuelve a esta pestaña y <strong>recarga</strong> si la extensión sigue sin detectarse.
-            </li>
-          </ol>
-        </>
       ) : null}
       {(probe === 'checking' || probe === 'no') && EXT_HELP_URL ? (
         <a className={styles.docLink} href={EXT_HELP_URL} target="_blank" rel="noopener noreferrer">

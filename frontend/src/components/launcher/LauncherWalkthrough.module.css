@@ -97,31 +97,80 @@
   color: var(--fiori-text-secondary);
 }
 
-.inlineDocLink {
-  font-weight: 600;
-  color: var(--fiori-link);
-  text-decoration: underline;
-  text-underline-offset: 0.12em;
-}
-
-.inlineDocLink:hover {
-  color: color-mix(in srgb, var(--fiori-link) 88%, #000);
-}
-
-.extensionInstallSteps {
+.extensionInstallWrap {
   margin: 0 0 var(--fiori-space-3);
-  padding-left: 1.35rem;
+}
+
+.extensionInstallRow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  max-width: 100%;
+}
+
+.extensionBrowserIcons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.125rem 0 0.125rem var(--fiori-space-3);
+  border-left: 1px solid var(--fiori-border-light);
+}
+
+.browserIcon {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+}
+
+/* Alineado con .btnPrimary de formularios (Fiori), más bajo que el estándar 2.5rem */
+.extensionInstallBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0 var(--fiori-space-4);
   font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--fiori-text);
+  font-weight: 600;
+  line-height: 1.25;
+  border-radius: 0.375rem;
+  border: none;
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-text-inverse);
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 12%);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
 }
 
-.extensionInstallSteps li {
-  margin-bottom: var(--fiori-space-2);
+.extensionInstallBtn:hover {
+  background: #0854a0;
+  color: var(--fiori-text-inverse);
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  transform: translateY(-1px);
 }
 
-.extensionInstallSteps li:last-child {
-  margin-bottom: 0;
+.extensionInstallBtn:link,
+.extensionInstallBtn:visited {
+  color: var(--fiori-text-inverse);
+}
+
+.extensionInstallBtn:active {
+  color: var(--fiori-text-inverse);
+  transform: translateY(0);
+}
+
+.extensionInstallBtn:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
 }
 
 .docLink {
