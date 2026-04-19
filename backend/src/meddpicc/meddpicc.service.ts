@@ -88,10 +88,14 @@ export class MeddpiccService {
     }
   }
 
+  private commercialLabelFromProfile(user: { name: string | null; lastName: string | null }): string | null {
+    const parts = [user.name, user.lastName].filter(Boolean);
+    return parts.length ? parts.join(' ') : null;
+  }
+
   private formatCommercialLabel(deal: { ownerLabel: string | null }, user: { name: string | null; lastName: string | null }) {
     if (deal.ownerLabel?.trim()) return deal.ownerLabel.trim();
-    const parts = [user.name, user.lastName].filter(Boolean);
-    return parts.length ? parts.join(' ') : 'Usuario';
+    return this.commercialLabelFromProfile(user) ?? 'Usuario';
   }
 
   private serializeDeal(deal: DealWithUser, opts?: { includeOwner?: boolean }) {
@@ -219,21 +223,36 @@ export class MeddpiccService {
 
   async create(actor: UserPayload, dto: CreateMeddpiccDealDto) {
     let targetUserId = actor.userId;
+    let ownerProfile: { name: string | null; lastName: string | null };
+
     if (dto.forUserId) {
       if (!isAdmin(actor.role)) {
         throw new ForbiddenException('Solo administradores pueden asignar el deal a otro usuario');
       }
-      const u = await this.prisma.user.findUnique({ where: { id: dto.forUserId } });
+      const u = await this.prisma.user.findUnique({
+        where: { id: dto.forUserId },
+        select: { name: true, lastName: true },
+      });
       if (!u) throw new BadRequestException('Usuario destino no encontrado');
       targetUserId = dto.forUserId;
+      ownerProfile = { name: u.name, lastName: u.lastName };
+    } else {
+      const u = await this.prisma.user.findUnique({
+        where: { id: actor.userId },
+        select: { name: true, lastName: true },
+      });
+      if (!u) throw new InternalServerErrorException('Usuario no encontrado');
+      ownerProfile = { name: u.name, lastName: u.lastName };
     }
+
+    const ownerLabel = this.commercialLabelFromProfile(ownerProfile);
 
     const deal = await this.prisma.meddpiccDeal.create({
       data: {
         userId: targetUserId,
         name: dto.name.trim(),
         company: dto.company?.trim() ?? '',
-        ownerLabel: dto.ownerLabel?.trim() || null,
+        ownerLabel,
         value: dto.value?.trim() ?? '',
         context: dto.context?.trim() ?? null,
         scores: {},
@@ -284,12 +303,6 @@ export class MeddpiccService {
       data: {
         name: dto.name?.trim() ?? existing.name,
         company: dto.company !== undefined ? dto.company.trim() : existing.company,
-        ownerLabel:
-          dto.ownerLabel === undefined
-            ? existing.ownerLabel
-            : dto.ownerLabel === null
-              ? null
-              : dto.ownerLabel.trim() || null,
         value: dto.value !== undefined ? dto.value.trim() : existing.value,
         context: dto.context === undefined ? existing.context : dto.context,
         scores: nextScores as unknown as Prisma.InputJsonValue,

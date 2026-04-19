@@ -11,12 +11,6 @@ export class CreateMeddpiccDealDto {
   @MaxLength(512)
   company?: string;
 
-  /** Etiqueta comercial libre (opcional). */
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  ownerLabel?: string;
-
   @IsOptional()
   @IsString()
   @MaxLength(200)

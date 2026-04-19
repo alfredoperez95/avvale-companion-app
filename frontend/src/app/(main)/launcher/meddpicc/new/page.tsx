@@ -19,7 +19,6 @@ export default function MeddpiccNewPage() {
   const isAdmin = user?.role === 'ADMIN';
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
-  const [ownerLabel, setOwnerLabel] = useState('');
   const [valueEuroDigits, setValueEuroDigits] = useState('');
   const [context, setContext] = useState('');
   const [forUserId, setForUserId] = useState('');
@@ -37,7 +36,6 @@ export default function MeddpiccNewPage() {
       const body: Record<string, unknown> = {
         name: name.trim(),
         company: company.trim(),
-        ownerLabel: ownerLabel.trim() || undefined,
         value: euroDigitsToStored(valueEuroDigits),
         context: context.trim() || undefined,
       };
@@ -78,7 +76,9 @@ export default function MeddpiccNewPage() {
       <div className={styles.dimCard} style={{ marginTop: 'var(--fiori-space-5)' }}>
         <h2 className={styles.sectionHeading}>Datos del deal</h2>
         <p className={styles.dealCardMeta} style={{ marginBottom: 'var(--fiori-space-4)' }}>
-          Los campos básicos y el contexto; en la ficha podrás adjuntar archivos para enriquecer el análisis IA.
+          Los campos básicos y el contexto; en la ficha podrás adjuntar archivos para enriquecer el análisis IA. La etiqueta de
+          comercial se asigna sola según el nombre del perfil del usuario propietario del deal (tú, o el usuario indicado si eres
+          administrador).
         </p>
         <div className={styles.formGrid}>
           <div>
@@ -92,18 +92,6 @@ export default function MeddpiccNewPage() {
               Empresa
             </label>
             <input id="md-company" className={styles.input} value={company} onChange={(e) => setCompany(e.target.value)} />
-          </div>
-          <div>
-            <label className={styles.fieldLabel} htmlFor="md-owner">
-              Comercial (etiqueta)
-            </label>
-            <input
-              id="md-owner"
-              className={styles.input}
-              value={ownerLabel}
-              onChange={(e) => setOwnerLabel(e.target.value)}
-              placeholder="Opcional; si vacío se usa tu nombre de perfil"
-            />
           </div>
           <div>
             <label className={styles.fieldLabel} htmlFor="md-value">

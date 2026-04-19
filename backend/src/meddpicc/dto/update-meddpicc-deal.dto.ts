@@ -14,11 +14,6 @@ export class UpdateMeddpiccDealDto {
   @IsOptional()
   @IsString()
   @MaxLength(200)
-  ownerLabel?: string | null;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
   value?: string;
 
   @IsOptional()

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch, apiUpload } from '@/lib/api';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
@@ -13,6 +13,7 @@ import {
   formatEuroDigitsForDisplay,
   sanitizeEuroDigitsFromInput,
 } from '@/lib/euro-deal-value';
+import { MeddpiccContextDropzone } from '@/components/meddpicc/MeddpiccContextDropzone';
 import { MEDDPICC_DIMENSIONS, MEDDPICC_SCORE_LABELS } from '@/lib/meddpicc-dimensions';
 import styles from '../meddpicc.module.css';
 
@@ -91,7 +92,6 @@ export default function MeddpiccDealDetailPage() {
 
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
-  const [ownerLabel, setOwnerLabel] = useState('');
   const [valueEuroDigits, setValueEuroDigits] = useState('');
   const [context, setContext] = useState('');
   const [scores, setScores] = useState<Record<string, number>>(emptyScores);
@@ -107,6 +107,31 @@ export default function MeddpiccDealDetailPage() {
   const [attachmentToDelete, setAttachmentToDelete] = useState<AttachmentRow | null>(null);
   const [deleteAttachBusy, setDeleteAttachBusy] = useState(false);
   const [openDimKey, setOpenDimKey] = useState<string | null>('M');
+  /** Solo un bloque de markdown visible a la vez (por id de adjunto). */
+  const [openMdAttachmentId, setOpenMdAttachmentId] = useState<string | null>(null);
+  const skipInitialAccordionScroll = useRef(true);
+
+  useEffect(() => {
+    const ids = new Set((deal?.attachments ?? []).map((x) => x.id));
+    if (openMdAttachmentId && !ids.has(openMdAttachmentId)) {
+      setOpenMdAttachmentId(null);
+    }
+  }, [deal?.attachments, openMdAttachmentId]);
+
+  useEffect(() => {
+    if (!openDimKey) return;
+    if (skipInitialAccordionScroll.current) {
+      skipInitialAccordionScroll.current = false;
+      return;
+    }
+    const el = document.getElementById(`dim-section-${openDimKey}`);
+    if (!el) return;
+    const reduceMotion =
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    });
+  }, [openDimKey]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -124,7 +149,6 @@ export default function MeddpiccDealDetailPage() {
       setHistory(data.history ?? []);
       setName(d.name);
       setCompany(d.company);
-      setOwnerLabel(d.ownerLabel ?? '');
       setValueEuroDigits(euroDigitsFromStored(d.value));
       setContext(d.context ?? '');
       const es = emptyScores();
@@ -155,7 +179,6 @@ export default function MeddpiccDealDetailPage() {
         body: JSON.stringify({
           name: name.trim(),
           company: company.trim(),
-          ownerLabel: ownerLabel.trim() || null,
           value: euroDigitsToStored(valueEuroDigits),
           context: context.trim() || null,
           scores,
@@ -362,12 +385,6 @@ export default function MeddpiccDealDetailPage() {
             <input id="ed-co" className={styles.input} value={company} onChange={(e) => setCompany(e.target.value)} />
           </div>
           <div>
-            <label className={styles.fieldLabel} htmlFor="ed-ol">
-              Comercial (etiqueta)
-            </label>
-            <input id="ed-ol" className={styles.input} value={ownerLabel} onChange={(e) => setOwnerLabel(e.target.value)} />
-          </div>
-          <div>
             <label className={styles.fieldLabel} htmlFor="ed-val">
               Valor (€)
             </label>
@@ -391,26 +408,14 @@ export default function MeddpiccDealDetailPage() {
         </div>
 
         <div className={styles.attachSection}>
-          <h3 className={styles.attachSectionTitle}>Adjuntos para el contexto</h3>
-          <p className={styles.attachHint}>
-            Adjunta PDF, Excel (.xlsx, .xls), Word (.docx) o correo (.eml). El contenido se extrae a Markdown y se incluye
-            junto al texto anterior en el análisis IA (hasta 25 adjuntos por deal, 25 MB por archivo).
-          </p>
-          <div className={styles.attachRow}>
-            <input
-              className={styles.fileInput}
-              type="file"
-              multiple
-              accept=".pdf,.xlsx,.xls,.xlsm,.docx,.eml,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,message/rfc822"
-              disabled={uploadBusy}
-              onChange={(e) => {
-                const list = e.target.files;
-                void uploadAttachments(list);
-                e.target.value = '';
-              }}
-            />
-            {uploadBusy && <span className={styles.dealCardMeta}>Subiendo y extrayendo texto…</span>}
+          <div className={styles.attachSectionHead}>
+            <h3 className={styles.attachSectionTitle}>Adjuntos para el contexto</h3>
+            <p className={styles.attachSectionDesc}>
+              El contenido extraído se combina con el contexto libre y se usa en el análisis IA. Misma experiencia de carga que
+              en Yubiq Approve & Seal Filler: arrastra archivos o elígelos desde el equipo.
+            </p>
           </div>
+          <MeddpiccContextDropzone uploading={uploadBusy} onFilesSelected={(list) => void uploadAttachments(list)} />
           {(deal?.attachments?.length ?? 0) > 0 && (
             <ul className={styles.attachList}>
               {(deal?.attachments ?? []).map((a) => (
@@ -429,7 +434,29 @@ export default function MeddpiccDealDetailPage() {
                   <p className={styles.attachItemMeta}>
                     {a.mimeType} · {formatDate(a.createdAt)}
                   </p>
-                  <pre className={styles.mdPreview}>{a.extractedMarkdown}</pre>
+                  <button
+                    type="button"
+                    className={styles.mdPreviewToggle}
+                    id={`md-toggle-${a.id}`}
+                    aria-expanded={openMdAttachmentId === a.id}
+                    aria-controls={`md-preview-${a.id}`}
+                    disabled={uploadBusy || deleteAttachBusy}
+                    onClick={() =>
+                      setOpenMdAttachmentId((prev) => (prev === a.id ? null : a.id))
+                    }
+                  >
+                    {openMdAttachmentId === a.id ? 'Ocultar markdown' : 'Ver markdown'}
+                  </button>
+                  {openMdAttachmentId === a.id && (
+                    <pre
+                      id={`md-preview-${a.id}`}
+                      className={styles.mdPreview}
+                      role="region"
+                      aria-labelledby={`md-toggle-${a.id}`}
+                    >
+                      {a.extractedMarkdown}
+                    </pre>
+                  )}
                 </li>
               ))}
             </ul>
@@ -468,6 +495,7 @@ export default function MeddpiccDealDetailPage() {
             return (
               <section
                 key={dim.key}
+                id={`dim-section-${dim.key}`}
                 className={`${styles.dimCard} ${styles.dimCardAccordion} ${isOpen ? styles.dimCardOpen : ''}`}
                 style={{ borderLeft: `4px solid ${dim.color}` }}
               >
