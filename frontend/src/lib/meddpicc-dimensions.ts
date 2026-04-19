@@ -5,7 +5,6 @@ export type MeddpiccDimensionDef = {
   key: string;
   name: string;
   color: string;
-  icon: string;
   description: string;
   questions: MeddpiccQuestionDef[];
   scoreGuide: Record<number, string>;
@@ -16,7 +15,6 @@ export const MEDDPICC_DIMENSIONS: MeddpiccDimensionDef[] = [
     key: 'M',
     name: 'Metrics',
     color: '#6366f1',
-    icon: '📊',
     description: 'Metricas cuantificables del impacto de negocio',
     questions: [
       { id: 'M1', q: '¿Cual es el impacto economico del problema que resolvemos?', hint: 'Busca cifras concretas: ahorro, ingresos, eficiencia.' },
@@ -29,7 +27,6 @@ export const MEDDPICC_DIMENSIONS: MeddpiccDimensionDef[] = [
     key: 'E',
     name: 'Economic Buyer',
     color: '#8b5cf6',
-    icon: '💰',
     description: 'Quien tiene el poder de decision y el presupuesto',
     questions: [
       { id: 'E1', q: '¿Hemos identificado al Economic Buyer (persona con poder de firma)?', hint: 'CEO, CFO, CIO, VP... quien firma el cheque.' },
@@ -42,7 +39,6 @@ export const MEDDPICC_DIMENSIONS: MeddpiccDimensionDef[] = [
     key: 'D1',
     name: 'Decision Criteria',
     color: '#ec4899',
-    icon: '📋',
     description: 'Criterios tecnicos y de negocio para la decision',
     questions: [
       { id: 'D1_1', q: '¿Conocemos los criterios de decision tecnicos del cliente?', hint: 'Requisitos tecnicos, integraciones, compliance.' },
@@ -55,7 +51,6 @@ export const MEDDPICC_DIMENSIONS: MeddpiccDimensionDef[] = [
     key: 'D2',
     name: 'Decision Process',
     color: '#f43f5e',
-    icon: '🔄',
     description: 'Pasos y timeline del proceso de decision',
     questions: [
       { id: 'D2_1', q: '¿Conocemos las fases del proceso de decision?', hint: 'Evaluacion, shortlist, POC, negociacion, firma.' },
@@ -68,7 +63,6 @@ export const MEDDPICC_DIMENSIONS: MeddpiccDimensionDef[] = [
     key: 'P',
     name: 'Paper Process',
     color: '#f97316',
-    icon: '📝',
     description: 'Proceso legal y de procurement',
     questions: [
       { id: 'P1', q: '¿Conocemos el proceso de compras/procurement?', hint: 'Licitacion, compras directas, acuerdo marco.' },
@@ -81,7 +75,6 @@ export const MEDDPICC_DIMENSIONS: MeddpiccDimensionDef[] = [
     key: 'I',
     name: 'Identified Pain',
     color: '#14b8a6',
-    icon: '🔥',
     description: 'El dolor de negocio que impulsa la iniciativa',
     questions: [
       { id: 'I1', q: '¿Cual es el dolor principal del cliente?', hint: 'Problema concreto que les cuesta dinero o tiempo.' },
@@ -94,7 +87,6 @@ export const MEDDPICC_DIMENSIONS: MeddpiccDimensionDef[] = [
     key: 'C1',
     name: 'Champion',
     color: '#22c55e',
-    icon: '🏆',
     description: 'Nuestro aliado interno en la organizacion del cliente',
     questions: [
       { id: 'C1_1', q: '¿Tenemos un champion dentro de la organizacion?', hint: 'Alguien que nos defiende internamente.' },
@@ -107,7 +99,6 @@ export const MEDDPICC_DIMENSIONS: MeddpiccDimensionDef[] = [
     key: 'C2',
     name: 'Competition',
     color: '#64748b',
-    icon: '⚔️',
     description: 'Panorama competitivo y nuestra posicion',
     questions: [
       { id: 'C2_1', q: '¿Sabemos contra quien competimos?', hint: 'Competidores directos, alternativas internas, status quo.' },

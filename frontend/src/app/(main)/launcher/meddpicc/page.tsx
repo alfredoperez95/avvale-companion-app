@@ -164,17 +164,36 @@ export default function MeddpiccListPage() {
         </div>
       )}
 
-      {error && <p className={styles.errorText}>{error}</p>}
+      {error && <p className={styles.inlineError}>{error}</p>}
 
-      {listLoadingVisible && <p className={styles.dealCardMeta}>Cargando…</p>}
+      {listLoadingVisible && (
+        <div className={styles.loadingSkeleton} aria-busy="true" aria-live="polite" aria-label="Cargando listado de deals">
+          <span className="sr-only">Cargando…</span>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={styles.skeletonCard}>
+              <div className={styles.skeletonLine} style={{ width: '72%' }} />
+              <div className={styles.skeletonLine} style={{ width: '48%' }} />
+              <div className={styles.skeletonLine} style={{ width: '56%' }} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {!loading && !error && deals.length === 0 && (
         <div className={styles.emptyState}>
-          <p>No hay deals todavía. Crea el primero para empezar a cualificar.</p>
+          <p className={styles.emptyStateLead}>Aún no hay oportunidades</p>
+          <p>Crea tu primer deal para empezar a cualificar con MEDDPICC y el análisis con IA.</p>
         </div>
       )}
 
       {!loading && deals.length > 0 && (
+        <>
+          <div className={styles.resultsToolbar}>
+            <p className={styles.resultsTitle}>
+              {deals.length === 1 ? '1 oportunidad' : `${deals.length} oportunidades`}
+            </p>
+            <p className={styles.resultsMeta}>Pulsa una tarjeta para abrir la ficha.</p>
+          </div>
         <div className={styles.dealGrid}>
           {deals.map((d) => (
             <Link key={d.id} href={`/launcher/meddpicc/${d.id}`} className={styles.dealCard}>
@@ -192,6 +211,7 @@ export default function MeddpiccListPage() {
             </Link>
           ))}
         </div>
+        </>
       )}
     </div>
   );

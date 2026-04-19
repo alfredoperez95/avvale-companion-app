@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
+import {
+  euroDigitsToStored,
+  formatEuroDigitsForDisplay,
+  sanitizeEuroDigitsFromInput,
+} from '@/lib/euro-deal-value';
 import { useUser } from '@/contexts/UserContext';
 import styles from '../meddpicc.module.css';
 
@@ -15,7 +20,7 @@ export default function MeddpiccNewPage() {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [ownerLabel, setOwnerLabel] = useState('');
-  const [value, setValue] = useState('');
+  const [valueEuroDigits, setValueEuroDigits] = useState('');
   const [context, setContext] = useState('');
   const [forUserId, setForUserId] = useState('');
   const [busy, setBusy] = useState(false);
@@ -33,7 +38,7 @@ export default function MeddpiccNewPage() {
         name: name.trim(),
         company: company.trim(),
         ownerLabel: ownerLabel.trim() || undefined,
-        value: value.trim(),
+        value: euroDigitsToStored(valueEuroDigits),
         context: context.trim() || undefined,
       };
       if (isAdmin && forUserId.trim()) body.forUserId = forUserId.trim();
@@ -71,6 +76,10 @@ export default function MeddpiccNewPage() {
       />
 
       <div className={styles.dimCard} style={{ marginTop: 'var(--fiori-space-5)' }}>
+        <h2 className={styles.sectionHeading}>Datos del deal</h2>
+        <p className={styles.dealCardMeta} style={{ marginBottom: 'var(--fiori-space-4)' }}>
+          Los campos básicos y el contexto; en la ficha podrás adjuntar archivos para enriquecer el análisis IA.
+        </p>
         <div className={styles.formGrid}>
           <div>
             <label className={styles.fieldLabel} htmlFor="md-name">
@@ -98,9 +107,18 @@ export default function MeddpiccNewPage() {
           </div>
           <div>
             <label className={styles.fieldLabel} htmlFor="md-value">
-              Valor estimado
+              Valor estimado (€)
             </label>
-            <input id="md-value" className={styles.input} value={value} onChange={(e) => setValue(e.target.value)} placeholder="Ej: 250.000 €" />
+            <input
+              id="md-value"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              className={`${styles.input} ${styles.inputEuro}`}
+              value={formatEuroDigitsForDisplay(valueEuroDigits)}
+              onChange={(e) => setValueEuroDigits(sanitizeEuroDigitsFromInput(e.target.value))}
+              placeholder="0 €"
+            />
           </div>
         </div>
         {isAdmin && (
@@ -132,7 +150,7 @@ export default function MeddpiccNewPage() {
           />
         </div>
         {error && (
-          <p className={styles.errorText} style={{ marginTop: 'var(--fiori-space-3)' }}>
+          <p className={styles.inlineError} style={{ marginTop: 'var(--fiori-space-3)' }}>
             {error}
           </p>
         )}

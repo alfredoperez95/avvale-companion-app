@@ -6,6 +6,13 @@ import { apiFetch, apiUpload } from '@/lib/api';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { useUser } from '@/contexts/UserContext';
+import { MeddpiccDimensionIcon } from '@/lib/meddpicc-dimension-icon';
+import {
+  euroDigitsFromStored,
+  euroDigitsToStored,
+  formatEuroDigitsForDisplay,
+  sanitizeEuroDigitsFromInput,
+} from '@/lib/euro-deal-value';
 import { MEDDPICC_DIMENSIONS, MEDDPICC_SCORE_LABELS } from '@/lib/meddpicc-dimensions';
 import styles from '../meddpicc.module.css';
 
@@ -85,7 +92,7 @@ export default function MeddpiccDealDetailPage() {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [ownerLabel, setOwnerLabel] = useState('');
-  const [value, setValue] = useState('');
+  const [valueEuroDigits, setValueEuroDigits] = useState('');
   const [context, setContext] = useState('');
   const [scores, setScores] = useState<Record<string, number>>(emptyScores);
   const [answers, setAnswers] = useState<Record<string, string>>(emptyAnswers);
@@ -99,6 +106,7 @@ export default function MeddpiccDealDetailPage() {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [attachmentToDelete, setAttachmentToDelete] = useState<AttachmentRow | null>(null);
   const [deleteAttachBusy, setDeleteAttachBusy] = useState(false);
+  const [openDimKey, setOpenDimKey] = useState<string | null>('M');
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -117,7 +125,7 @@ export default function MeddpiccDealDetailPage() {
       setName(d.name);
       setCompany(d.company);
       setOwnerLabel(d.ownerLabel ?? '');
-      setValue(d.value);
+      setValueEuroDigits(euroDigitsFromStored(d.value));
       setContext(d.context ?? '');
       const es = emptyScores();
       const mergedScores = { ...es, ...(typeof d.scores === 'object' && d.scores ? d.scores : {}) };
@@ -148,7 +156,7 @@ export default function MeddpiccDealDetailPage() {
           name: name.trim(),
           company: company.trim(),
           ownerLabel: ownerLabel.trim() || null,
-          value: value.trim(),
+          value: euroDigitsToStored(valueEuroDigits),
           context: context.trim() || null,
           scores,
           answers,
@@ -162,6 +170,7 @@ export default function MeddpiccDealDetailPage() {
       }
       const data = (await res.json()) as { deal: DealApi };
       setDeal(data.deal);
+      setValueEuroDigits(euroDigitsFromStored(data.deal.value));
     } catch {
       setError('Error de red');
     } finally {
@@ -278,7 +287,21 @@ export default function MeddpiccDealDetailPage() {
   if (loading && !deal) {
     return (
       <div className={styles.page}>
-        <p className={styles.dealCardMeta}>Cargando…</p>
+        <PageBreadcrumb>
+          <PageBackLink href="/launcher/meddpicc">
+            <ChevronBackIcon />
+            MEDDPICC
+          </PageBackLink>
+        </PageBreadcrumb>
+        <div className={styles.loadingSkeleton} style={{ marginTop: 'var(--fiori-space-4)' }} aria-busy="true" aria-label="Cargando deal">
+          <span className="sr-only">Cargando…</span>
+          <div className={styles.skeletonCard}>
+            <div className={styles.skeletonLine} style={{ width: '55%' }} />
+            <div className={styles.skeletonLine} style={{ width: '100%' }} />
+            <div className={styles.skeletonLine} style={{ width: '88%' }} />
+            <div className={styles.skeletonLine} style={{ width: '40%' }} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -292,7 +315,9 @@ export default function MeddpiccDealDetailPage() {
             MEDDPICC
           </PageBackLink>
         </PageBreadcrumb>
-        <p className={styles.errorText}>{error}</p>
+        <p className={styles.inlineError} style={{ marginTop: 'var(--fiori-space-4)' }}>
+          {error}
+        </p>
       </div>
     );
   }
@@ -318,12 +343,10 @@ export default function MeddpiccDealDetailPage() {
         }
       />
 
-      {error && (
-        <p className={styles.errorText} style={{ marginTop: 'var(--fiori-space-3)' }}>
-          {error}
-        </p>
-      )}
+      <div className={styles.detailMain}>
+      {error && <p className={styles.inlineError}>{error}</p>}
 
+      <h2 className={styles.sectionHeading}>Datos generales</h2>
       <div className={styles.detailHeader}>
         <div className={styles.formGrid}>
           <div>
@@ -346,9 +369,18 @@ export default function MeddpiccDealDetailPage() {
           </div>
           <div>
             <label className={styles.fieldLabel} htmlFor="ed-val">
-              Valor
+              Valor (€)
             </label>
-            <input id="ed-val" className={styles.input} value={value} onChange={(e) => setValue(e.target.value)} />
+            <input
+              id="ed-val"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              className={`${styles.input} ${styles.inputEuro}`}
+              value={formatEuroDigitsForDisplay(valueEuroDigits)}
+              onChange={(e) => setValueEuroDigits(sanitizeEuroDigitsFromInput(e.target.value))}
+              placeholder="0 €"
+            />
           </div>
         </div>
         <div style={{ marginTop: 'var(--fiori-space-3)' }}>
@@ -359,6 +391,7 @@ export default function MeddpiccDealDetailPage() {
         </div>
 
         <div className={styles.attachSection}>
+          <h3 className={styles.attachSectionTitle}>Adjuntos para el contexto</h3>
           <p className={styles.attachHint}>
             Adjunta PDF, Excel (.xlsx, .xls), Word (.docx) o correo (.eml). El contenido se extrae a Markdown y se incluye
             junto al texto anterior en el análisis IA (hasta 25 adjuntos por deal, 25 MB por archivo).
@@ -406,15 +439,11 @@ export default function MeddpiccDealDetailPage() {
 
       <div className={styles.aiBar}>
         <div>
-          <strong>Análisis IA</strong>
+          <span className={styles.aiBarTitle}>Análisis con IA</span>
           {lastAnalysis ? (
-            <p className={styles.dealCardMeta} style={{ margin: '0.25rem 0 0' }}>
-              Último: {formatDate(lastAnalysis)}
-            </p>
+            <p className={styles.aiBarBody}>Último análisis: {formatDate(lastAnalysis)}</p>
           ) : (
-            <p className={styles.dealCardMeta} style={{ margin: '0.25rem 0 0' }}>
-              Se usa la clave Anthropic guardada en tu perfil.
-            </p>
+            <p className={styles.aiBarBody}>Se usa la clave Anthropic guardada en tu perfil.</p>
           )}
         </div>
         <button type="button" className={styles.primaryBtn} onClick={() => setAnalyzeOpen(true)}>
@@ -433,44 +462,83 @@ export default function MeddpiccDealDetailPage() {
 
       {tab === 'eval' && (
         <>
-          {MEDDPICC_DIMENSIONS.map((dim) => (
-            <section key={dim.key} className={styles.dimCard} style={{ borderLeft: `4px solid ${dim.color}` }}>
-              <div className={styles.dimHead}>
-                <span aria-hidden>{dim.icon}</span>
-                <h2 className={styles.detailTitle} style={{ margin: 0, fontSize: '1.05rem' }}>
-                  {dim.name}
-                </h2>
-                <label className={styles.fieldLabel} htmlFor={`sc-${dim.key}`} style={{ marginLeft: 'auto' }}>
-                  Score (0–10)
-                </label>
-                <input
-                  id={`sc-${dim.key}`}
-                  type="number"
-                  min={0}
-                  max={10}
-                  className={`${styles.input} ${styles.dimScore}`}
-                  value={scores[dim.key] ?? 0}
-                  onChange={(e) => {
-                    const v = Math.min(10, Math.max(0, parseInt(e.target.value, 10) || 0));
-                    setScores((s) => ({ ...s, [dim.key]: v }));
-                  }}
-                />
-              </div>
-              <p className={styles.scoreHint}>{dim.description}</p>
-              {dim.questions.map((q) => (
-                <div key={q.id} className={styles.questionBlock}>
-                  <p className={styles.questionLabel}>{q.q}</p>
-                  <p className={styles.questionHint}>{q.hint}</p>
-                  <textarea
-                    className={styles.textarea}
-                    rows={3}
-                    value={answers[q.id] ?? ''}
-                    onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
-                  />
+          <h2 className={`${styles.sectionHeading} ${styles.sectionHeadingTab}`}>Evaluación MEDDPICC</h2>
+          {MEDDPICC_DIMENSIONS.map((dim) => {
+            const isOpen = openDimKey === dim.key;
+            return (
+              <section
+                key={dim.key}
+                className={`${styles.dimCard} ${styles.dimCardAccordion} ${isOpen ? styles.dimCardOpen : ''}`}
+                style={{ borderLeft: `4px solid ${dim.color}` }}
+              >
+                <div className={styles.dimCardHeaderRow}>
+                  <button
+                    type="button"
+                    className={styles.dimCardTitleBtn}
+                    id={`dim-trigger-${dim.key}`}
+                    aria-expanded={isOpen}
+                    aria-controls={`dim-panel-${dim.key}`}
+                    onClick={() => setOpenDimKey((prev) => (prev === dim.key ? null : dim.key))}
+                  >
+                    <span className={styles.dimCardTitleIcon} style={{ color: dim.color }} aria-hidden>
+                      <MeddpiccDimensionIcon dimensionKey={dim.key} size={20} />
+                    </span>
+                    <span className={styles.dimCardTitleText}>{dim.name}</span>
+                    <span className={styles.dimChevron} aria-hidden>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <path
+                          d="M9 18l6-6-6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+                  <div className={styles.dimCardScoreWrap}>
+                    <label className={styles.fieldLabel} htmlFor={`sc-${dim.key}`} style={{ marginBottom: 0 }}>
+                      Score (0–10)
+                    </label>
+                    <input
+                      id={`sc-${dim.key}`}
+                      type="number"
+                      min={0}
+                      max={10}
+                      className={`${styles.input} ${styles.dimScore}`}
+                      value={scores[dim.key] ?? 0}
+                      onChange={(e) => {
+                        const v = Math.min(10, Math.max(0, parseInt(e.target.value, 10) || 0));
+                        setScores((s) => ({ ...s, [dim.key]: v }));
+                      }}
+                    />
+                  </div>
                 </div>
-              ))}
-            </section>
-          ))}
+                {isOpen && (
+                  <div
+                    id={`dim-panel-${dim.key}`}
+                    role="region"
+                    aria-labelledby={`dim-trigger-${dim.key}`}
+                    className={styles.dimCardPanel}
+                  >
+                    <p className={styles.scoreHint}>{dim.description}</p>
+                    {dim.questions.map((q) => (
+                      <div key={q.id} className={styles.questionBlock}>
+                        <p className={styles.questionLabel}>{q.q}</p>
+                        <p className={styles.questionHint}>{q.hint}</p>
+                        <textarea
+                          className={styles.textarea}
+                          rows={3}
+                          value={answers[q.id] ?? ''}
+                          onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
 
           <div className={styles.toolbar}>
             <button type="button" className={styles.primaryBtn} disabled={saveBusy} onClick={() => void saveAll()}>
@@ -500,6 +568,7 @@ export default function MeddpiccDealDetailPage() {
 
       {tab === 'ai' && (
         <>
+          <h2 className={`${styles.sectionHeading} ${styles.sectionHeadingTab}`}>Resumen del análisis IA</h2>
           <div className={styles.aiBlock}>
             <h3>Valoración global</h3>
             <p>{aiAssessment || 'Aún no hay análisis. Ejecuta «Analizar con IA» desde la pestaña Evaluación.'}</p>
@@ -534,36 +603,34 @@ export default function MeddpiccDealDetailPage() {
               </ul>
             </div>
           )}
-          <p className={styles.dealCardMeta}>
+          <p className={styles.resultsMeta} style={{ marginTop: 'var(--fiori-space-2)' }}>
             Escala de referencia por score: {MEDDPICC_SCORE_LABELS[5]} (5) = punto medio.
           </p>
         </>
       )}
 
+      </div>
+
       {analyzeOpen && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1000,
-            background: 'rgb(0 0 0 / 35%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1rem',
-          }}
+          className={styles.modalOverlay}
           role="presentation"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget && !analyzeBusy) setAnalyzeOpen(false);
           }}
         >
           <div
-            className={styles.dimCard}
-            style={{ maxWidth: '32rem', width: '100%' }}
+            className={`${styles.dimCard} ${styles.analyzeDialog} ${styles.modalPanel}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="analyze-title"
+            aria-busy={analyzeBusy}
           >
+            {analyzeBusy && (
+              <div className={styles.analyzeBusyStrip} aria-hidden>
+                <span className="sr-only">Análisis en curso</span>
+              </div>
+            )}
             <h2 id="analyze-title" className={styles.detailTitle}>
               Analizar con IA
             </h2>
@@ -574,10 +641,23 @@ export default function MeddpiccDealDetailPage() {
               value={additionalCtx}
               onChange={(e) => setAdditionalCtx(e.target.value)}
               placeholder="Notas adicionales…"
+              disabled={analyzeBusy}
             />
             <div className={styles.toolbar}>
-              <button type="button" className={styles.primaryBtn} disabled={analyzeBusy} onClick={() => void runAnalyze()}>
-                {analyzeBusy ? 'Analizando…' : 'Ejecutar análisis'}
+              <button
+                type="button"
+                className={`${styles.primaryBtn} ${analyzeBusy ? styles.primaryBtnBusy : ''}`}
+                disabled={analyzeBusy}
+                onClick={() => void runAnalyze()}
+              >
+                {analyzeBusy ? (
+                  <>
+                    <span className={styles.primaryBtnSpinner} aria-hidden />
+                    Analizando…
+                  </>
+                ) : (
+                  'Ejecutar análisis'
+                )}
               </button>
               <button type="button" className={styles.ghostBtn} disabled={analyzeBusy} onClick={() => setAnalyzeOpen(false)}>
                 Cancelar
