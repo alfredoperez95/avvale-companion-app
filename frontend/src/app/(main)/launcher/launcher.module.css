@@ -336,7 +336,8 @@
 .tileAccentActivations,
 .tileAccentPipeline,
 .tileAccentYubiq,
-.tileAccentRfq {
+.tileAccentRfq,
+.tileAccentMeddpicc {
   border-top: 3px solid var(--fiori-shell-bg);
 }
 
@@ -493,6 +494,10 @@
   content: "\e1a2";
 }
 
+:global([data-theme="fiori"]) .tileIconMeddpicc::before {
+  content: "\e1b4";
+}
+
 /* Microsoft: icono tipo documento/app en el tile de Activaciones */
 :global([data-theme="microsoft"]) .tileIcon::before {
   content: "\e026";
@@ -504,6 +509,10 @@
 
 :global([data-theme="microsoft"]) .tileIconRfq::before {
   content: "\e1a2";
+}
+
+:global([data-theme="microsoft"]) .tileIconMeddpicc::before {
+  content: "\e1b4";
 }
 
 .tileLink:hover .tileCta {

@@ -17,7 +17,8 @@ export type IconName =
   | 'table'
   | 'listBullet'
   | 'listNumber'
-  | 'emoji';
+  | 'emoji'
+  | 'meddpicc';
 
 interface IconProps {
   name: IconName;
@@ -49,6 +50,7 @@ const FIORI_ICON_CLASS: Record<IconName, string> = {
   listBullet: 'sap-icon--list',
   listNumber: 'sap-icon--numbered-list',
   emoji: 'sap-icon--list',
+  meddpicc: 'sap-icon--target-group',
 };
 
 /** Icono lista numerada al estilo ref: números grandes, guiones cortos, mucho espacio vertical */
@@ -120,6 +122,8 @@ const FLUENT_SVG_PATH: Record<IconName, string> = {
   listBullet: 'M3 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0 5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0 5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM6 6.5h9v1H6v-1zm0 5h9v1H6v-1zm0 5h9v1H6v-1z',
   listNumber: '', /* dibujado por ListNumberIconSvg (1, 2, 3 + líneas) */
   emoji: '', /* dibujado por EmojiIconSvg (carita outline) */
+  meddpicc:
+    'M10 3a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm0 1a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0 1a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z',
 };
 
 export function Icon({ name, className, size = 24, 'aria-hidden': ariaHidden = true }: IconProps) {

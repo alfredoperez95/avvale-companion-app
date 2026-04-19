@@ -102,6 +102,27 @@ const fioriTabsRfqAnalysis: {
   },
 ];
 
+const fioriTabsMeddpicc: {
+  href: string;
+  label: string;
+  icon?: IconName;
+  iconOnly?: boolean;
+  isActive: (pathname: string | null) => boolean;
+}[] = [
+  fioriTabHome,
+  {
+    href: '/launcher/meddpicc',
+    label: 'MEDDPICC',
+    isActive: (p) =>
+      p != null && p.startsWith('/launcher/meddpicc') && !p.startsWith('/launcher/meddpicc/new'),
+  },
+  {
+    href: '/launcher/meddpicc/new',
+    label: 'Nuevo deal',
+    isActive: (p) => p != null && p.startsWith('/launcher/meddpicc/new'),
+  },
+];
+
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
   const n = (name ?? '').trim();
   const l = (lastName ?? '').trim();
@@ -125,6 +146,7 @@ function getPageHeader(pathname: string | null): { title: string } {
   }
   if (pathname.startsWith('/launcher/yubiq')) return { title: 'Yubiq' };
   if (pathname.startsWith('/launcher/rfq-analysis')) return { title: 'Análisis RFQs' };
+  if (pathname.startsWith('/launcher/meddpicc')) return { title: 'MEDDPICC' };
   if (pathname.startsWith('/launcher/activations/activate')) return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/configuration')) return { title: 'Configuración' };
   if (pathname.startsWith('/admin')) return { title: 'Administración' };
@@ -149,9 +171,11 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
         ? fioriTabsAdmin
         : pathname?.startsWith('/launcher/rfq-analysis')
           ? fioriTabsRfqAnalysis
-          : pathname?.startsWith('/launcher/yubiq')
-            ? fioriTabsYubiq
-            : fioriTabsActivations;
+          : pathname?.startsWith('/launcher/meddpicc')
+            ? fioriTabsMeddpicc
+            : pathname?.startsWith('/launcher/yubiq')
+              ? fioriTabsYubiq
+              : fioriTabsActivations;
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
 
@@ -272,7 +296,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
                           ? true
                           : pathname?.startsWith('/admin')
                             ? tab.href === '/launcher' || user?.role === 'ADMIN'
-                            : pathname?.startsWith('/launcher/yubiq')
+                            : pathname?.startsWith('/launcher/yubiq') || pathname?.startsWith('/launcher/meddpicc')
                               ? true
                               : tab.href !== '/launcher/activations/configuration' || !!user
                       )

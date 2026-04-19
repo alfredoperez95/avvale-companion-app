@@ -30,14 +30,30 @@ import { apiFetch } from '@/lib/api';
 import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './launcher.module.css';
 
-const DEFAULT_TILE_ORDER: LauncherTileId[] = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis'];
+const LAUNCHER_TILE_IDS_ALL: LauncherTileId[] = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc'];
+const DEFAULT_TILE_ORDER: LauncherTileId[] = [...LAUNCHER_TILE_IDS_ALL];
 
 function normalizeTileOrder(raw: unknown): LauncherTileId[] {
-  if (!Array.isArray(raw) || raw.length !== 4) return [...DEFAULT_TILE_ORDER];
-  const allowed = new Set<string>(['activations', 'pipeline', 'yubiq', 'rfqAnalysis']);
-  if (new Set(raw).size !== 4) return [...DEFAULT_TILE_ORDER];
-  if (!raw.every((x) => typeof x === 'string' && allowed.has(x))) return [...DEFAULT_TILE_ORDER];
-  return raw as LauncherTileId[];
+  const allowed = new Set<string>(LAUNCHER_TILE_IDS_ALL);
+  if (!Array.isArray(raw)) return [...DEFAULT_TILE_ORDER];
+  const filtered = raw.filter((x): x is string => typeof x === 'string' && allowed.has(x));
+  const unique = [...new Set(filtered)];
+  if (
+    unique.length === LAUNCHER_TILE_IDS_ALL.length &&
+    new Set(unique).size === LAUNCHER_TILE_IDS_ALL.length &&
+    LAUNCHER_TILE_IDS_ALL.every((id) => unique.includes(id))
+  ) {
+    return unique as LauncherTileId[];
+  }
+  const legacyFour = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis'] as const;
+  if (
+    unique.length === 4 &&
+    new Set(unique).size === 4 &&
+    unique.every((id) => legacyFour.includes(id as (typeof legacyFour)[number]))
+  ) {
+    return [...(unique as LauncherTileId[]), 'meddpicc'];
+  }
+  return [...DEFAULT_TILE_ORDER];
 }
 
 const TILE_ACCENT: Record<LauncherTileId, string> = {
@@ -45,6 +61,7 @@ const TILE_ACCENT: Record<LauncherTileId, string> = {
   pipeline: styles.tileAccentPipeline,
   yubiq: styles.tileAccentYubiq,
   rfqAnalysis: styles.tileAccentRfq,
+  meddpicc: styles.tileAccentMeddpicc,
 };
 
 function TileLink({
@@ -54,7 +71,7 @@ function TileLink({
 }: {
   id: LauncherTileId;
   tileClassName?: string;
-  /** Sin clave Anthropic: mosaicos de IA no navegan (Yubiq, RFQ). */
+  /** Sin clave Anthropic: mosaicos de IA no navegan (Yubiq, RFQ, MEDDPICC). */
   locked?: boolean;
 }) {
   const accent = TILE_ACCENT[id];
@@ -198,6 +215,50 @@ function TileLink({
           </article>
         </Link>
       );
+    case 'meddpicc':
+      if (locked) {
+        const lockedTile = `${styles.tile} ${accent} ${styles.tileLocked} ${tileClassName ?? ''}`.trim();
+        return (
+          <div
+            className={styles.tileLinkDisabled}
+            aria-labelledby="tile-meddpicc-heading"
+            aria-describedby="tile-meddpicc-locked-hint"
+            role="group"
+          >
+            <article className={lockedTile}>
+              <h2 id="tile-meddpicc-heading" className={styles.tileTitle}>
+                MEDDPICC
+              </h2>
+              <p className={styles.tileDesc}>
+                Cualificación de oportunidades B2B: ocho dimensiones MEDDPICC, puntuación y análisis con IA sobre el contexto del deal.
+              </p>
+              <p id="tile-meddpicc-locked-hint" className={styles.tileLockedHint}>
+                Activa tu clave de API de Anthropic en{' '}
+                <Link href="/profile#perfil-ai-credentials" className={styles.tileLockedLink}>
+                  Perfil → AI Credentials
+                </Link>{' '}
+                para usar este módulo.
+              </p>
+              <span className={styles.tileCtaLocked}>Requiere API IA</span>
+              <span className={`${styles.tileIcon} ${styles.tileIconMeddpicc}`} aria-hidden="true" />
+            </article>
+          </div>
+        );
+      }
+      return (
+        <Link href="/launcher/meddpicc" className={styles.tileLink} aria-labelledby="tile-meddpicc-heading">
+          <article className={tile}>
+            <h2 id="tile-meddpicc-heading" className={styles.tileTitle}>
+              MEDDPICC
+            </h2>
+            <p className={styles.tileDesc}>
+              Cualificación de oportunidades B2B: ocho dimensiones MEDDPICC, puntuación y análisis con IA sobre el contexto del deal.
+            </p>
+            <span className={styles.tileCta}>Abrir módulo →</span>
+            <span className={`${styles.tileIcon} ${styles.tileIconMeddpicc}`} aria-hidden="true" />
+          </article>
+        </Link>
+      );
     default:
       return null;
   }
@@ -225,7 +286,7 @@ function SortableTile({
   reorderMode: boolean;
   aiLocked: boolean;
 }) {
-  const tileLocked = aiLocked && (id === 'yubiq' || id === 'rfqAnalysis');
+  const tileLocked = aiLocked && (id === 'yubiq' || id === 'rfqAnalysis' || id === 'meddpicc');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled: !reorderMode,
@@ -522,7 +583,7 @@ export default function LauncherPage() {
         <ul className={styles.tilesGrid} role="list">
           {order.map((id) => (
             <li key={id} className={styles.sortableItemStatic} role="listitem">
-              <TileLink id={id} locked={aiLocked && (id === 'yubiq' || id === 'rfqAnalysis')} />
+              <TileLink id={id} locked={aiLocked && (id === 'yubiq' || id === 'rfqAnalysis' || id === 'meddpicc')} />
             </li>
           ))}
         </ul>
