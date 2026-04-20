@@ -42,6 +42,7 @@ export default function MeddpiccNewPage() {
   /** Archivos en cola: se suben tras crear el deal (misma API que en la ficha). */
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [attachmentUploadBusy, setAttachmentUploadBusy] = useState(false);
+  const [attachPanelOpen, setAttachPanelOpen] = useState(false);
   const pendingFilesRef = useRef<File[]>([]);
   pendingFilesRef.current = pendingFiles;
 
@@ -91,6 +92,7 @@ export default function MeddpiccNewPage() {
       return;
     }
     setPendingFiles([...prev, ...incoming]);
+    setAttachPanelOpen(true);
   };
 
   const removePendingFile = (index: number) => {
@@ -255,39 +257,77 @@ export default function MeddpiccNewPage() {
 
         <div className={styles.attachSection}>
           <div className={styles.attachSectionHead}>
-            <h3 className={styles.attachSectionTitle}>Adjuntos para el contexto (opcional)</h3>
-            <p className={styles.attachSectionDesc}>
-              Misma experiencia que en la ficha del deal: al crear, los archivos se suben y el texto se extrae a Markdown para
-              combinarlo con el contexto libre en el análisis IA. Hasta {MAX_MEDDPICC_ATTACHMENTS} archivos por deal; 25&nbsp;MB
-              por archivo.
-            </p>
-          </div>
-          <MeddpiccContextDropzone
-            disabled={busy}
-            uploading={attachmentUploadBusy}
-            onFilesSelected={(list) => addPendingFiles(list)}
-          />
-          {pendingFiles.length > 0 ? (
-            <ul className={styles.attachList}>
-              {pendingFiles.map((f, i) => (
-                <li key={`${f.name}-${f.size}-${i}`} className={styles.attachItem}>
-                  <div className={styles.attachItemHead}>
-                    <p className={styles.attachItemName}>{f.name}</p>
-                    <button
-                      type="button"
-                      className={styles.removeAttachBtn}
-                      disabled={busy}
-                      onClick={() => removePendingFile(i)}
-                    >
-                      Quitar
-                    </button>
+            <div className={styles.attachSectionHeadGrid}>
+              <div className={styles.attachSectionHeadLeft}>
+                <div className={styles.attachSectionTitleRow}>
+                  <div className={styles.attachSectionTitleGroup}>
+                    <h3 id="meddpicc-attach-heading" className={styles.attachSectionTitle}>
+                      Adjuntos para el contexto (opcional)
+                    </h3>
                   </div>
-                  <p className={styles.attachItemMeta}>
-                    {(f.size / (1024 * 1024)).toFixed(1)} MB · pendiente de subir al crear el deal
-                  </p>
-                </li>
-              ))}
-            </ul>
+                </div>
+                <p className={styles.attachSectionDesc}>
+                  Misma experiencia que en la ficha del deal: al crear, los archivos se suben y el texto se extrae a Markdown para
+                  combinarlo con el contexto libre en el análisis IA. Hasta {MAX_MEDDPICC_ATTACHMENTS} archivos por deal; 25&nbsp;MB
+                  por archivo.
+                </p>
+              </div>
+              <div className={styles.attachSectionHeadRight}>
+                <span
+                  className={styles.attachCountBadge}
+                  aria-live="polite"
+                  title="Archivos en cola para subir al crear el deal"
+                >
+                  {pendingFiles.length}/{MAX_MEDDPICC_ATTACHMENTS}
+                </span>
+                <button
+                  type="button"
+                  className={styles.primaryBtn}
+                  aria-expanded={attachPanelOpen}
+                  aria-controls="meddpicc-attach-panel"
+                  disabled={busy}
+                  onClick={() => setAttachPanelOpen((o) => !o)}
+                >
+                  {attachPanelOpen ? 'Ocultar' : pendingFiles.length > 0 ? 'Editar adjuntos' : 'Añadir adjuntos'}
+                </button>
+              </div>
+            </div>
+          </div>
+          {attachPanelOpen ? (
+            <div
+              id="meddpicc-attach-panel"
+              className={styles.attachExpandPanel}
+              role="region"
+              aria-labelledby="meddpicc-attach-heading"
+            >
+              <MeddpiccContextDropzone
+                disabled={busy}
+                uploading={attachmentUploadBusy}
+                onFilesSelected={(list) => addPendingFiles(list)}
+              />
+              {pendingFiles.length > 0 ? (
+                <ul className={styles.attachList}>
+                  {pendingFiles.map((f, i) => (
+                    <li key={`${f.name}-${f.size}-${i}`} className={styles.attachItem}>
+                      <div className={styles.attachItemHead}>
+                        <p className={styles.attachItemName}>{f.name}</p>
+                        <button
+                          type="button"
+                          className={styles.removeAttachBtn}
+                          disabled={busy}
+                          onClick={() => removePendingFile(i)}
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                      <p className={styles.attachItemMeta}>
+                        {(f.size / (1024 * 1024)).toFixed(1)} MB · pendiente de subir al crear el deal
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           ) : null}
         </div>
 

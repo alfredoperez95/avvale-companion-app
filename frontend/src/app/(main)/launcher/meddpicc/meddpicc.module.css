@@ -441,8 +441,17 @@
 }
 
 .textarea {
-  min-height: 8rem;
-  resize: vertical;
+  /* Evita colapsos por inline styles de autosize */
+  height: auto !important;
+  min-height: 4.25rem;
+  resize: none;
+  line-height: 1.55;
+  padding: 0.65rem 0.75rem;
+  font-family: inherit;
+}
+
+.textarea::placeholder {
+  color: color-mix(in srgb, var(--fiori-text-secondary) 85%, transparent);
 }
 
 .primaryBtn {
@@ -1049,11 +1058,46 @@
   margin-bottom: 0;
 }
 
+.attachSectionHeadGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--fiori-space-4);
+  align-items: stretch;
+}
+
+.attachSectionHeadLeft {
+  min-width: 0;
+}
+
+.attachSectionHeadRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between; /* badge arriba, botón abajo */
+  gap: var(--fiori-space-2);
+  min-width: 10rem;
+}
+
 .attachSectionTitleRow {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: stretch;
+  justify-content: flex-start;
   gap: var(--fiori-space-3);
+  flex-wrap: wrap;
+}
+
+.attachSectionTitleGroup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--fiori-space-3);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* Reemplazado por `.attachSectionHeadRight` (badge arriba, botón abajo). */
+.attachSectionActionsInline {
+  display: none;
 }
 
 .attachCountBadge {
@@ -1073,6 +1117,21 @@
 
 .attachSectionActions {
   margin-top: var(--fiori-space-4);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+@media (max-width: 52rem) {
+  .attachSectionHeadGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .attachSectionHeadRight {
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-width: 0;
+  }
 }
 
 .attachExpandPanel {
