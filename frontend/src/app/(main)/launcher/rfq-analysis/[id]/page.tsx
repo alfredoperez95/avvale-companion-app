@@ -1005,7 +1005,13 @@ export default function RfqAnalysisDetailPage() {
               <div className={styles.chatShell}>
                 <div className={styles.chatHeaderBar}>
                   <span className={styles.chatAvatar} aria-hidden>
-                    AV
+                    <img
+                      src="/img/Claude_AI_symbol.svg"
+                      alt=""
+                      width={22}
+                      height={22}
+                      className={styles.chatAvatarIcon}
+                    />
                   </span>
                   <div className={styles.chatHeaderText}>
                     <div className={styles.chatHeaderTitle}>Asistente de análisis</div>
@@ -1111,10 +1117,28 @@ export default function RfqAnalysisDetailPage() {
                       {chatBusy ? (
                         <Fragment>
                           <span className={styles.chatSendSpinner} aria-hidden />
-                          Enviando…
+                          <span>Enviando…</span>
+                          <img
+                            src="/img/Claude_AI_symbol.svg"
+                            alt=""
+                            width={18}
+                            height={18}
+                            className={styles.primaryBtnClaudeIcon}
+                            aria-hidden
+                          />
                         </Fragment>
                       ) : (
-                        'Enviar'
+                        <>
+                          <span>Enviar</span>
+                          <img
+                            src="/img/Claude_AI_symbol.svg"
+                            alt=""
+                            width={18}
+                            height={18}
+                            className={styles.primaryBtnClaudeIcon}
+                            aria-hidden
+                          />
+                        </>
                       )}
                     </button>
                   </div>

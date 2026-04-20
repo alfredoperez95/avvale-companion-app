@@ -396,11 +396,21 @@ export default function YubiqApproveSealFillerPage() {
               <div className={styles.actionsToolbar}>
                 <div className={styles.actionsMain}>
                   <button type="button" className={styles.btnPrimary} onClick={runAnalyze} disabled={!canAnalyze}>
-                    {phase === 'uploading'
-                      ? 'Subiendo…'
-                      : phase === 'extracting' || phase === 'analyzing'
-                        ? 'Analizando…'
-                        : 'Analizar PDF'}
+                    <span>
+                      {phase === 'uploading'
+                        ? 'Subiendo…'
+                        : phase === 'extracting' || phase === 'analyzing'
+                          ? 'Analizando…'
+                          : 'Analizar PDF'}
+                    </span>
+                    <img
+                      src="/img/Claude_AI_symbol.svg"
+                      alt=""
+                      width={18}
+                      height={18}
+                      className={styles.primaryBtnClaudeIcon}
+                      aria-hidden
+                    />
                   </button>
                   <button
                     type="button"

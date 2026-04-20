@@ -182,10 +182,28 @@ export default function RfqAnalysisNewPage() {
                   {busy ? (
                     <>
                       <span className={styles.btnSpinner} aria-hidden />
-                      {phase ?? 'Enviando…'}
+                      <span>{phase ?? 'Enviando…'}</span>
+                      <img
+                        src="/img/Claude_AI_symbol.svg"
+                        alt=""
+                        width={18}
+                        height={18}
+                        className={styles.primaryBtnClaudeIcon}
+                        aria-hidden
+                      />
                     </>
                   ) : (
-                    'Crear y analizar'
+                    <>
+                      <span>Crear y analizar</span>
+                      <img
+                        src="/img/Claude_AI_symbol.svg"
+                        alt=""
+                        width={18}
+                        height={18}
+                        className={styles.primaryBtnClaudeIcon}
+                        aria-hidden
+                      />
+                    </>
                   )}
                 </button>
                 <Link href="/launcher/rfq-analysis" className={styles.secondaryBtn}>

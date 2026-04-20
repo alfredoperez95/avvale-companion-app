@@ -120,49 +120,62 @@ export default function MeddpiccListPage() {
         }
       />
 
-      {stats && (
-        <div className={styles.statsRow}>
-          <div className={styles.statCard}>
-            <div className={styles.statValue}>{stats.total}</div>
-            <div className={styles.statLabel}>Deals activos (ámbito actual)</div>
-          </div>
-          {isAdmin && stats.byUser.length > 0 && (
-            <div className={styles.statCard}>
-              <div className={styles.statLabel}>Por usuario</div>
-              <ul className={styles.listPlain} style={{ listStyle: 'none', paddingLeft: 0 }}>
-                {stats.byUser.slice(0, 6).map((u) => (
-                  <li key={u.userId}>
-                    <strong>{u.email}</strong>: {u.count}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      {isAdmin && (
+      {!loading && (isAdmin || stats) ? (
         <div className={styles.filtersCard}>
-          <label className={styles.fieldLabel} htmlFor="meddpicc-filter-user">
-            Filtrar por usuario (admin)
-          </label>
-          <select
-            id="meddpicc-filter-user"
-            className={styles.select}
-            value={filterUserId}
-            onChange={(e) => setFilterUserId(e.target.value)}
-            style={{ maxWidth: '24rem' }}
-          >
-            <option value="">Todos los usuarios</option>
-            {adminUsers.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.email}
-                {u.name || u.lastName ? ` (${[u.name, u.lastName].filter(Boolean).join(' ')})` : ''}
-              </option>
-            ))}
-          </select>
+          <div className={styles.listHeroToolbar}>
+            <div className={styles.listHeroToolbarStart}>
+              {stats ? (
+                <>
+                  <div className={styles.listStatHighlight}>
+                    <div className={styles.statValue}>{stats.total}</div>
+                    <div className={styles.statLabel}>Deals activos (ámbito actual)</div>
+                  </div>
+                  {isAdmin && stats.byUser.length > 0 ? (
+                    <div className={styles.listStatByUser}>
+                      <div className={styles.statLabel}>Por usuario</div>
+                      <ul className={styles.listPlain}>
+                        {stats.byUser.slice(0, 6).map((u) => (
+                          <li key={u.userId}>
+                            <strong>{u.email}</strong>: {u.count}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </>
+              ) : isAdmin ? (
+                <p className={styles.listStatsMuted}>Estadísticas no disponibles</p>
+              ) : null}
+            </div>
+            {isAdmin ? (
+              <div className={styles.listHeroToolbarEnd}>
+                <div className={styles.filterBarEmbedBar}>
+                  <div className={styles.filterEmbedField}>
+                    <label className={styles.filterEmbedLabel} htmlFor="meddpicc-filter-user">
+                      Filtrar por usuario (admin)
+                    </label>
+                    <select
+                      id="meddpicc-filter-user"
+                      className={styles.filterEmbedSelect}
+                      value={filterUserId}
+                      onChange={(e) => setFilterUserId(e.target.value)}
+                      aria-label="Filtrar por usuario"
+                    >
+                      <option value="">Todos los usuarios</option>
+                      {adminUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.email}
+                          {u.name || u.lastName ? ` (${[u.name, u.lastName].filter(Boolean).join(' ')})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
-      )}
+      ) : null}
 
       {error && <p className={styles.inlineError}>{error}</p>}
 
@@ -180,10 +193,16 @@ export default function MeddpiccListPage() {
       )}
 
       {!loading && !error && deals.length === 0 && (
-        <div className={styles.emptyState}>
-          <p className={styles.emptyStateLead}>Aún no hay oportunidades</p>
-          <p>Crea tu primer deal para empezar a cualificar con MEDDPICC y el análisis con IA.</p>
-        </div>
+        <section className={styles.emptyState} aria-label="Sin oportunidades">
+          <div className={styles.emptyStateIcon} aria-hidden />
+          <h2 className={styles.emptyStateTitle}>Aún no hay oportunidades</h2>
+          <p className={styles.emptyStateText}>
+            Crea tu primer deal para empezar a cualificar con MEDDPICC y el análisis con IA.
+          </p>
+          <Link href="/launcher/meddpicc/new" className={`${styles.primaryBtn} ${styles.emptyStateCta}`}>
+            Crear primer deal
+          </Link>
+        </section>
       )}
 
       {!loading && deals.length > 0 && (

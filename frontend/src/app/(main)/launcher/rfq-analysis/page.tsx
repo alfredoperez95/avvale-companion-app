@@ -267,8 +267,8 @@ export default function RfqAnalysisListPage() {
           <div className={styles.emptyStateIcon} aria-hidden />
           <h2 className={styles.emptyStateTitle}>Aún no hay workspaces</h2>
           <p className={styles.emptyStateText}>
-            Crea un análisis para subir fuentes y obtener el insight estructurado, o envía documentación al buzón
-            configurado (Make → webhook) si está activo en tu entorno.
+            Crea un análisis para subir fuentes y obtener el insight estructurado, o envía documentación al buzón configurado
+            de correo configurado.
           </p>
           <Link href="/launcher/rfq-analysis/new" className={`${styles.primaryBtn} ${styles.emptyStateCta}`}>
             Crear primer análisis

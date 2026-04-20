@@ -25,16 +25,18 @@ function DocumentsGlyph() {
 type Props = {
   /** Subida en curso: desactiva la zona y muestra estado en el copy. */
   uploading?: boolean;
+  /** Desactiva la zona sin copiar de «subiendo» (p. ej. otro paso del formulario en curso). */
+  disabled?: boolean;
   onFilesSelected: (files: FileList) => void;
 };
 
 /**
  * Misma estética que Yubiq Approve & Seal Filler / RFQ: borde discontinuo, gradiente, arrastrar y soltar.
  */
-export function MeddpiccContextDropzone({ uploading, onFilesSelected }: Props) {
+export function MeddpiccContextDropzone({ uploading, disabled, onFilesSelected }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(false);
-  const isDisabled = Boolean(uploading);
+  const isDisabled = Boolean(uploading || disabled);
 
   const pick = () => inputRef.current?.click();
 
@@ -88,10 +90,22 @@ export function MeddpiccContextDropzone({ uploading, onFilesSelected }: Props) {
       <div className={dz.iconWrap}>
         <DocumentsGlyph />
       </div>
-      <div className={dz.title}>{uploading ? 'Subiendo y extrayendo texto…' : 'Arrastra y suelta archivos aquí'}</div>
-      <div className={dz.hint}>{uploading ? 'Espera a que termine la subida.' : 'o elige uno o varios desde el equipo'}</div>
+      <div className={dz.title}>
+        {uploading
+          ? 'Subiendo y extrayendo texto…'
+          : disabled
+            ? 'Espera a terminar el paso actual'
+            : 'Arrastra y suelta archivos aquí'}
+      </div>
+      <div className={dz.hint}>
+        {uploading
+          ? 'Espera a que termine la subida.'
+          : disabled
+            ? 'Cuando puedas de nuevo, añade archivos a la cola o pulsa Crear deal.'
+            : 'o elige uno o varios desde el equipo'}
+      </div>
       <button type="button" className={dz.btnPrimary} onClick={pick} disabled={isDisabled}>
-        {uploading ? 'Procesando…' : 'Seleccionar archivos'}
+        {uploading ? 'Procesando…' : disabled ? 'No disponible' : 'Seleccionar archivos'}
       </button>
       <div className={dz.meta}>
         PDF, Excel, Word (.docx), correo (.eml) · El texto se extrae a Markdown · Hasta 25 adjuntos por deal · 25&nbsp;MB por archivo

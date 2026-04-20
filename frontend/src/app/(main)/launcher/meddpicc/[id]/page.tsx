@@ -157,6 +157,8 @@ export default function MeddpiccDealDetailPage() {
   const [openDimKey, setOpenDimKey] = useState<string | null>('M');
   /** Solo un bloque de markdown visible a la vez (por id de adjunto). */
   const [openMdAttachmentId, setOpenMdAttachmentId] = useState<string | null>(null);
+  /** Panel de dropzone + lista: compacto por defecto (solo título, texto y botón). */
+  const [attachPanelOpen, setAttachPanelOpen] = useState(false);
   const skipInitialAccordionScroll = useRef(true);
   /** Bloques .aiBlock plegados por defecto; se abren al pulsar la cabecera. */
   const [aiBlockOpen, setAiBlockOpen] = useState<Record<string, boolean>>({});
@@ -299,6 +301,7 @@ export default function MeddpiccDealDetailPage() {
       }
       const data = (await res.json()) as { deal: DealApi };
       setDeal(data.deal);
+      setAttachPanelOpen(true);
     } catch {
       setError('Error de red al subir archivos');
     } finally {
@@ -359,6 +362,14 @@ export default function MeddpiccDealDetailPage() {
     const n = [o.name, o.lastName].filter(Boolean).join(' ');
     return `${o.email}${n ? ` · ${n}` : ''}`;
   }, [deal]);
+
+  const attachmentCount = deal?.attachments?.length ?? 0;
+  const attachmentCountLabel =
+    attachmentCount === 0
+      ? '0 archivos'
+      : attachmentCount === 1
+        ? '1 archivo'
+        : `${attachmentCount} archivos`;
 
   if (loading && !deal) {
     return (
@@ -424,7 +435,7 @@ export default function MeddpiccDealDetailPage() {
 
       <h2 className={styles.sectionHeading}>Datos generales</h2>
       <div className={styles.detailHeader}>
-        <div className={styles.formGrid}>
+        <div className={styles.formGridThree}>
           <div>
             <label className={styles.fieldLabel} htmlFor="ed-name">
               Nombre
@@ -452,68 +463,102 @@ export default function MeddpiccDealDetailPage() {
               placeholder="0 €"
             />
           </div>
-        </div>
-        <div style={{ marginTop: 'var(--fiori-space-3)' }}>
-          <label className={styles.fieldLabel} htmlFor="ed-ctx">
-            Contexto del deal
-          </label>
-          <textarea id="ed-ctx" className={styles.textarea} rows={6} value={context} onChange={(e) => setContext(e.target.value)} />
+          <div className={styles.formGridRowFull}>
+            <label className={styles.fieldLabel} htmlFor="ed-ctx">
+              Contexto del deal
+            </label>
+            <textarea id="ed-ctx" className={styles.textarea} rows={6} value={context} onChange={(e) => setContext(e.target.value)} />
+          </div>
         </div>
 
         <div className={styles.attachSection}>
           <div className={styles.attachSectionHead}>
-            <h3 className={styles.attachSectionTitle}>Adjuntos para el contexto</h3>
+            <div className={styles.attachSectionTitleRow}>
+              <h3 id="meddpicc-attach-heading" className={styles.attachSectionTitle}>
+                Adjuntos para el contexto
+              </h3>
+              <span
+                className={styles.attachCountBadge}
+                aria-live="polite"
+                title="Archivos incluidos en el contexto del análisis"
+              >
+                {attachmentCountLabel}
+              </span>
+            </div>
             <p className={styles.attachSectionDesc}>
-              El contenido extraído se combina con el contexto libre y se usa en el análisis IA. Misma experiencia de carga que
-              en Yubiq Approve & Seal Filler: arrastra archivos o elígelos desde el equipo.
+              El contenido extraído se combina con el contexto libre y se usa en el análisis IA: arrastra archivos o elígelos desde el equipo.
             </p>
           </div>
-          <MeddpiccContextDropzone uploading={uploadBusy} onFilesSelected={(list) => void uploadAttachments(list)} />
-          {(deal?.attachments?.length ?? 0) > 0 && (
-            <ul className={styles.attachList}>
-              {(deal?.attachments ?? []).map((a) => (
-                <li key={a.id} className={styles.attachItem}>
-                  <div className={styles.attachItemHead}>
-                    <p className={styles.attachItemName}>{a.fileName}</p>
-                    <button
-                      type="button"
-                      className={styles.removeAttachBtn}
-                      disabled={uploadBusy || deleteAttachBusy}
-                      onClick={() => setAttachmentToDelete(a)}
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                  <p className={styles.attachItemMeta}>
-                    {a.mimeType} · {formatDate(a.createdAt)}
-                  </p>
-                  <button
-                    type="button"
-                    className={styles.mdPreviewToggle}
-                    id={`md-toggle-${a.id}`}
-                    aria-expanded={openMdAttachmentId === a.id}
-                    aria-controls={`md-preview-${a.id}`}
-                    disabled={uploadBusy || deleteAttachBusy}
-                    onClick={() =>
-                      setOpenMdAttachmentId((prev) => (prev === a.id ? null : a.id))
-                    }
-                  >
-                    {openMdAttachmentId === a.id ? 'Ocultar markdown' : 'Ver markdown'}
-                  </button>
-                  {openMdAttachmentId === a.id && (
-                    <pre
-                      id={`md-preview-${a.id}`}
-                      className={styles.mdPreview}
-                      role="region"
-                      aria-labelledby={`md-toggle-${a.id}`}
-                    >
-                      {a.extractedMarkdown}
-                    </pre>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className={styles.attachSectionActions}>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              aria-expanded={attachPanelOpen}
+              aria-controls="meddpicc-attach-panel"
+              onClick={() => setAttachPanelOpen((o) => !o)}
+            >
+              {attachPanelOpen
+                ? 'Ocultar'
+                : (deal?.attachments?.length ?? 0) > 0
+                  ? 'Editar adjuntos'
+                  : 'Añadir'}
+            </button>
+          </div>
+          {attachPanelOpen ? (
+            <div
+              id="meddpicc-attach-panel"
+              className={styles.attachExpandPanel}
+              role="region"
+              aria-labelledby="meddpicc-attach-heading"
+            >
+              <MeddpiccContextDropzone uploading={uploadBusy} onFilesSelected={(list) => void uploadAttachments(list)} />
+              {(deal?.attachments?.length ?? 0) > 0 && (
+                <ul className={styles.attachList}>
+                  {(deal?.attachments ?? []).map((a) => (
+                    <li key={a.id} className={styles.attachItem}>
+                      <div className={styles.attachItemHead}>
+                        <p className={styles.attachItemName}>{a.fileName}</p>
+                        <button
+                          type="button"
+                          className={styles.removeAttachBtn}
+                          disabled={uploadBusy || deleteAttachBusy}
+                          onClick={() => setAttachmentToDelete(a)}
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                      <p className={styles.attachItemMeta}>
+                        {a.mimeType} · {formatDate(a.createdAt)}
+                      </p>
+                      <button
+                        type="button"
+                        className={styles.mdPreviewToggle}
+                        id={`md-toggle-${a.id}`}
+                        aria-expanded={openMdAttachmentId === a.id}
+                        aria-controls={`md-preview-${a.id}`}
+                        disabled={uploadBusy || deleteAttachBusy}
+                        onClick={() =>
+                          setOpenMdAttachmentId((prev) => (prev === a.id ? null : a.id))
+                        }
+                      >
+                        {openMdAttachmentId === a.id ? 'Ocultar markdown' : 'Ver markdown'}
+                      </button>
+                      {openMdAttachmentId === a.id && (
+                        <pre
+                          id={`md-preview-${a.id}`}
+                          className={styles.mdPreview}
+                          role="region"
+                          aria-labelledby={`md-toggle-${a.id}`}
+                        >
+                          {a.extractedMarkdown}
+                        </pre>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -527,7 +572,15 @@ export default function MeddpiccDealDetailPage() {
           )}
         </div>
         <button type="button" className={styles.primaryBtn} onClick={() => setAnalyzeOpen(true)}>
-          Analizar con IA
+          <span>Analizar con IA</span>
+          <img
+            src="/img/Claude_AI_symbol.svg"
+            alt=""
+            width={18}
+            height={18}
+            className={styles.primaryBtnClaudeIcon}
+            aria-hidden
+          />
         </button>
       </div>
 
@@ -699,11 +752,11 @@ export default function MeddpiccDealDetailPage() {
               expanded={Boolean(aiBlockOpen['ai-next'])}
               onToggle={() => toggleAiBlock('ai-next')}
             >
-              <ul className={styles.listPlain}>
+              <ol className={styles.suggestedQuestionsList}>
                 {aiNext.map((x, i) => (
                   <li key={i}>{String(x)}</li>
                 ))}
-              </ul>
+              </ol>
             </CollapsibleAiSection>
           )}
           <p className={styles.resultsMeta} style={{ marginTop: 'var(--fiori-space-2)' }}>
