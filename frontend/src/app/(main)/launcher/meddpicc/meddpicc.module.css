@@ -1177,6 +1177,30 @@
   color: var(--fiori-text-secondary);
 }
 
+.aiBarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fiori-space-2);
+}
+
+.aiBarSecondaryBtn {
+  appearance: none;
+  border: 1px solid var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 10%, var(--fiori-surface));
+  color: var(--fiori-text);
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.aiBarSecondaryBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .dimCard {
   margin-bottom: var(--fiori-space-4);
   padding: var(--fiori-space-4);
@@ -2079,6 +2103,35 @@
   border-radius: 0.5rem;
   background: color-mix(in srgb, var(--fiori-nav-bg) 12%, var(--fiori-surface));
   border: 1px solid var(--fiori-border-light);
+}
+
+.convaiDebugRow {
+  display: flex;
+  gap: var(--fiori-space-2);
+  align-items: center;
+  margin-top: var(--fiori-space-3);
+}
+
+.convaiDebugBtn {
+  appearance: none;
+  border: 1px solid var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 10%, var(--fiori-surface));
+  color: var(--fiori-text);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.convaiDebugBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.convaiDebugHint {
+  font-size: 0.8125rem;
+  color: var(--fiori-text-secondary);
+  margin: 0;
 }
 
 /* Aviso persistente no modal: esquina inferior derecha (respuestas ≠ último análisis) */

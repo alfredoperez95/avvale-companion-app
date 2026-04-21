@@ -547,6 +547,29 @@ export default function MeddpiccDealDetailPage() {
     }
   };
 
+  const convaiDebugEnabled = process.env.NEXT_PUBLIC_ENABLE_CONVAI_WEBHOOK_DEBUG === 'true';
+  const [convaiSimBusy, setConvaiSimBusy] = useState(false);
+
+  const simulateConvaiWebhook = async () => {
+    if (!id) return;
+    setConvaiSimBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`/api/meddpicc/deals/${id}/convai/simulate-post-call`, { method: 'POST' });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { message?: string | string[] };
+        const msg = Array.isArray(j.message) ? j.message.join(', ') : j.message;
+        setError(msg || 'No se pudo simular el webhook');
+        return;
+      }
+      await load();
+    } catch {
+      setError('Error de red');
+    } finally {
+      setConvaiSimBusy(false);
+    }
+  };
+
   const runAnalyze = async () => {
     if (!id) return;
     setAnalyzeBusy(true);
@@ -1152,22 +1175,36 @@ export default function MeddpiccDealDetailPage() {
             <p className={styles.aiBarBody}>Se usa la clave Anthropic guardada en tu perfil.</p>
           )}
         </div>
-        <button
-          type="button"
-          className={styles.primaryBtn}
-          onClick={() => setAnalyzeOpen(true)}
-          aria-label={analyzeActionLabel}
-        >
-          <span>{analyzeActionLabel}</span>
-          <img
-            src="/img/Claude_AI_symbol.svg"
-            alt=""
-            width={18}
-            height={18}
-            className={styles.primaryBtnClaudeIcon}
-            aria-hidden
-          />
-        </button>
+        <div className={styles.aiBarActions}>
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            onClick={() => setAnalyzeOpen(true)}
+            aria-label={analyzeActionLabel}
+          >
+            <span>{analyzeActionLabel}</span>
+            <img
+              src="/img/Claude_AI_symbol.svg"
+              alt=""
+              width={18}
+              height={18}
+              className={styles.primaryBtnClaudeIcon}
+              aria-hidden
+            />
+          </button>
+          {convaiDebugEnabled ? (
+            <button
+              type="button"
+              className={styles.aiBarSecondaryBtn}
+              onClick={() => void simulateConvaiWebhook()}
+              disabled={convaiSimBusy || !id}
+              aria-label="Simular webhook (debug)"
+              title="Inserta una llamada simulada en notes.convaiLastCall"
+            >
+              {convaiSimBusy ? 'Simulando…' : 'Simular webhook (debug)'}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className={styles.tabs}>

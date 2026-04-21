@@ -74,4 +74,13 @@ export class MeddpiccController {
   analyze(@CurrentUser() user: UserPayload, @Param('id') id: string, @Body() dto: AnalyzeMeddpiccDealDto) {
     return this.meddpicc.analyze(user, id, dto);
   }
+
+  /**
+   * Debug local: simula un evento `post_call_transcription` (sin HMAC) para verificar qué persiste el backend.
+   * Protegido por JWT y además requiere `ALLOW_CONVAI_WEBHOOK_SIMULATE=true`.
+   */
+  @Post(':id/convai/simulate-post-call')
+  simulateConvaiPostCall(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.meddpicc.simulateConvaiPostCall(user, id);
+  }
 }

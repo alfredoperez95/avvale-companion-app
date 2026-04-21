@@ -9,6 +9,7 @@ import {
 import type { MeddpiccDeal, MeddpiccDealAttachment } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
@@ -758,5 +759,49 @@ export class MeddpiccService {
 
     this.logger.log(`ConvAI webhook: guardado deal=${dealId} conversation_id=${conversationId}`);
     return { duplicate: false };
+  }
+
+  async simulateConvaiPostCall(actor: UserPayload, dealId: string): Promise<{ ok: true; conversationId: string }> {
+    const allow = this.config.get<string>('ALLOW_CONVAI_WEBHOOK_SIMULATE')?.trim() === 'true';
+    if (!allow) {
+      throw new ForbiddenException('Simulación desactivada (ALLOW_CONVAI_WEBHOOK_SIMULATE=true)');
+    }
+
+    const deal = await this.loadDealOrThrow(dealId, { includeAttachments: false });
+    this.assertCanAccess(actor, deal.userId);
+
+    const conversationId = `sim_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
+    const now = Math.floor(Date.now() / 1000);
+
+    const event: Record<string, unknown> = {
+      type: 'post_call_transcription',
+      event_timestamp: now,
+      data: {
+        agent_id: 'simulated',
+        conversation_id: conversationId,
+        status: 'done',
+        transcript: [
+          { role: 'agent', message: `Hola ${deal.company || deal.name}. Vamos a cerrar huecos MEDDPICC.`, time_in_call_secs: 0 },
+          { role: 'user', message: 'Perfecto. Empecemos por Metrics.', time_in_call_secs: 3 },
+          { role: 'agent', message: '¿Qué rango de presupuesto y horizonte temporal manejáis?', time_in_call_secs: 8 },
+        ],
+        metadata: { call_duration_secs: 42 },
+        analysis: {
+          transcript_summary:
+            'Sesión simulada: se inicia la conversación y se hace una pregunta concreta para cerrar huecos MEDDPICC.',
+          data_collection_results: {
+            meddpicc_next_focus: 'Metrics',
+            budget_hint: 'Pendiente',
+          },
+          call_successful: 'success',
+        },
+        conversation_initiation_client_data: {
+          dynamic_variables: { deal_id: dealId },
+        },
+      },
+    };
+
+    await this.ingestConvaiPostCallEvent(event);
+    return { ok: true, conversationId };
   }
 }
