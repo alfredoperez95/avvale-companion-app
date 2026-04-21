@@ -39,6 +39,9 @@ Campo scoreJustifications (obligatorio para cada dimension M, E, D1, D2, P, I, C
 - No te limites a repetir la etiqueta de la escala: interpreta el contenido como haria un director de ventas.
 Responde SOLO con JSON valido, sin markdown, sin explicaciones fuera del JSON.`;
 
+/** Orden alineado con frontend MEDDPICC_DIMENSIONS (8 dimensiones). */
+export const MEDDPICC_DIMENSION_KEYS = ['M', 'E', 'D1', 'D2', 'P', 'I', 'C1', 'C2'] as const;
+
 export function buildMeddpiccUserPrompt(params: {
   name: string;
   company: string;
