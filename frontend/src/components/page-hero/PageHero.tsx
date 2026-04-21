@@ -21,11 +21,17 @@ export function PageBackLink({ href, children, className }: { href: string; chil
 export function PageHero({
   title,
   subtitle,
+  meta,
   actions,
+  actionsClassName,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
+  /** Contenido adicional bajo el subtítulo (p. ej. fechas o metadatos). */
+  meta?: ReactNode;
   actions?: ReactNode;
+  /** Clase opcional en el contenedor de acciones (p. ej. alineación). */
+  actionsClassName?: string;
 }) {
   return (
     <header className={styles.hero}>
@@ -35,8 +41,11 @@ export function PageHero({
           {subtitle != null && subtitle !== '' ? (
             <div className={styles.subtitle}>{subtitle}</div>
           ) : null}
+          {meta != null && meta !== '' ? <div className={styles.heroMeta}>{meta}</div> : null}
         </div>
-        {actions ? <div className={styles.heroActions}>{actions}</div> : null}
+        {actions ? (
+          <div className={actionsClassName ? `${styles.heroActions} ${actionsClassName}` : styles.heroActions}>{actions}</div>
+        ) : null}
       </div>
     </header>
   );

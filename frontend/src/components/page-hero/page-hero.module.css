@@ -78,8 +78,16 @@
 
 .subtitle {
   margin: 0;
-  max-width: 42rem;
+  max-width: 52rem;
   color: var(--fiori-text-secondary);
   font-size: 0.9375rem;
   line-height: 1.45;
+}
+
+.heroMeta {
+  margin: var(--fiori-space-2) 0 0;
+  max-width: 52rem;
+  color: var(--fiori-text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }

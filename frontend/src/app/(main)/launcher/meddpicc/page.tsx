@@ -112,7 +112,7 @@ export default function MeddpiccListPage() {
       </PageBreadcrumb>
       <PageHero
         title="MEDDPICC"
-        subtitle="Cualificación de oportunidades con las ocho dimensiones MEDDPICC y análisis con IA usando la clave Anthropic de tu perfil."
+        subtitle="Cualificación de oportunidades mediante la metodología MEDDPICC, que valida las ocho dimensiones clave del proceso de venta (ROI, decisor, proceso, dolor, etc.), combinada con análisis con IA usando la clave Anthropic de tu perfil para priorizar y acelerar el cierre de deals."
         actions={
           <Link href="/launcher/meddpicc/new" className={styles.primaryBtn}>
             Nuevo deal
@@ -130,18 +130,6 @@ export default function MeddpiccListPage() {
                     <div className={styles.statValue}>{stats.total}</div>
                     <div className={styles.statLabel}>Deals activos (ámbito actual)</div>
                   </div>
-                  {isAdmin && stats.byUser.length > 0 ? (
-                    <div className={styles.listStatByUser}>
-                      <div className={styles.statLabel}>Por usuario</div>
-                      <ul className={styles.listPlain}>
-                        {stats.byUser.slice(0, 6).map((u) => (
-                          <li key={u.userId}>
-                            <strong>{u.email}</strong>: {u.count}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
                 </>
               ) : isAdmin ? (
                 <p className={styles.listStatsMuted}>Estadísticas no disponibles</p>

@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import { json, urlencoded } from 'express';
+import { json, urlencoded, type Request } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -23,7 +23,14 @@ async function bootstrap() {
       }),
     );
   }
-  app.use(json({ limit: HTTP_BODY_LIMIT }));
+  app.use(
+    json({
+      limit: HTTP_BODY_LIMIT,
+      verify: (req: Request, _res, buf: Buffer) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
   app.use(urlencoded({ limit: HTTP_BODY_LIMIT, extended: true }));
 
   app.useGlobalPipes(

@@ -1,11 +1,11 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo } from 'react';
 import type { MeddpiccDimensionDef } from '@/lib/meddpicc-dimensions';
 import { MEDDPICC_DIMENSIONS } from '@/lib/meddpicc-dimensions';
 import styles from './MeddpiccDimensionsScoreChart.module.css';
 
-function guideLineForScore(dim: MeddpiccDimensionDef, score: number): string {
+export function guideLineForScore(dim: MeddpiccDimensionDef, score: number): string {
   const keys = Object.keys(dim.scoreGuide)
     .map(Number)
     .filter((k) => Number.isFinite(k))
@@ -23,12 +23,6 @@ function clampScore(raw: unknown): number {
   const n = typeof raw === 'number' && Number.isFinite(raw) ? raw : 0;
   return Math.min(10, Math.max(0, n));
 }
-
-type Props = {
-  scores: Record<string, number>;
-};
-
-type ViewMode = 'bars' | 'radar';
 
 const RADAR_VB = 100;
 const RADAR_CX = 50;
@@ -71,7 +65,7 @@ function axisLine(index: number, n: number): { x1: number; y1: number; x2: numbe
   };
 }
 
-function MeddpiccRadarChart({ scores }: { scores: Record<string, number> }) {
+export function MeddpiccRadarChart({ scores }: { scores: Record<string, number> }) {
   const titleId = useId();
   const n = MEDDPICC_DIMENSIONS.length;
 
@@ -125,7 +119,6 @@ function MeddpiccRadarChart({ scores }: { scores: Record<string, number> }) {
         {points.map((p) => (
           <circle
             key={p.dim.key}
-            className={styles.radarDot}
             cx={p.x}
             cy={p.y}
             r={1.35}
@@ -158,92 +151,5 @@ function MeddpiccRadarChart({ scores }: { scores: Record<string, number> }) {
         Octágono con una arista por dimensión MEDDPICC; la distancia al centro es el score (0 en el centro, 10 en el borde).
       </p>
     </div>
-  );
-}
-
-export function MeddpiccDimensionsScoreChart({ scores }: Props) {
-  const [view, setView] = useState<ViewMode>('bars');
-
-  const sectionLabel =
-    view === 'bars'
-      ? 'Gráfico de puntuación MEDDPICC por dimensión, escala 0 a 10, vista de barras'
-      : 'Gráfico de puntuación MEDDPICC por dimensión, escala 0 a 10, vista mapa radial';
-
-  return (
-    <section className={styles.wrap} aria-label={sectionLabel}>
-      <header className={styles.head}>
-        <div className={styles.titleBlock}>
-          <h3 className={styles.title}>Puntuación por dimensión</h3>
-          <p className={styles.subtitle}>
-            {view === 'bars'
-              ? 'Barras según el score actual (0–10). Pasa el cursor por cada fila para ver la descripción y la referencia de la escala.'
-              : 'Mapa radial (octágono): cada vértice es una dimensión; el área muestra el equilibrio del deal. Pasa el cursor por los puntos para ver el score.'}
-          </p>
-        </div>
-        <div className={styles.viewToggle} role="group" aria-label="Tipo de visualización">
-          <button
-            type="button"
-            className={view === 'bars' ? `${styles.viewBtn} ${styles.viewBtnActive}` : styles.viewBtn}
-            onClick={() => setView('bars')}
-            aria-pressed={view === 'bars'}
-          >
-            Barras
-          </button>
-          <button
-            type="button"
-            className={view === 'radar' ? `${styles.viewBtn} ${styles.viewBtnActive}` : styles.viewBtn}
-            onClick={() => setView('radar')}
-            aria-pressed={view === 'radar'}
-            title="Mapa de posicionamiento tipo radar (octágono MEDDPICC)"
-          >
-            Mapa radial
-          </button>
-        </div>
-      </header>
-
-      {view === 'bars' ? (
-        <div className={styles.grid}>
-          {MEDDPICC_DIMENSIONS.map((dim) => {
-            const raw = scores[dim.key];
-            const v = clampScore(raw);
-            const pct = v * 10;
-            const guide = guideLineForScore(dim, v);
-            const tipId = `score-tip-${dim.key}`;
-            return (
-              <div
-                key={dim.key}
-                className={styles.row}
-                tabIndex={0}
-                aria-describedby={tipId}
-              >
-                <span className={styles.key} title={dim.name}>
-                  {dim.key}
-                </span>
-                <div className={styles.track} aria-hidden>
-                  <div className={styles.bar} style={{ width: `${pct}%`, backgroundColor: dim.color }} />
-                </div>
-                <span className={styles.val}>{v}</span>
-                <div id={tipId} className={styles.tooltip} role="tooltip">
-                  <p className={styles.tooltipName} style={{ color: dim.color }}>
-                    {dim.name}
-                  </p>
-                  <p className={styles.tooltipScore}>
-                    Score actual: <strong>{v}/10</strong>
-                  </p>
-                  <p className={styles.tooltipDesc}>{dim.description}</p>
-                  {guide ? (
-                    <p className={styles.tooltipGuide}>
-                      <strong>Escala de la dimensión</strong>: {guide}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <MeddpiccRadarChart scores={scores} />
-      )}
-    </section>
   );
 }
