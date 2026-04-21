@@ -4,5 +4,5 @@ import type { AnthropicModelChoice } from '../yubiq/approve-seal-filler/anthropi
 export function getMeddpiccModel(config: ConfigService): AnthropicModelChoice {
   const raw = config.get<string>('MEDDPICC_MODEL')?.trim().toLowerCase();
   if (raw === 'sonnet' || raw === 'opus' || raw === 'haiku') return raw;
-  return 'sonnet';
+  return 'haiku';
 }

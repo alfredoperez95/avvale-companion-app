@@ -8,6 +8,7 @@ import { CreateMeddpiccDealDto } from './dto/create-meddpicc-deal.dto';
 import { UpdateMeddpiccDealDto } from './dto/update-meddpicc-deal.dto';
 import { AnalyzeMeddpiccDealDto } from './dto/analyze-meddpicc-deal.dto';
 import { ClientConvaiTranscriptDto } from './dto/client-convai-transcript.dto';
+import { FetchElevenlabsConversationDto } from './dto/fetch-elevenlabs-conversation.dto';
 
 @Controller('meddpicc/deals')
 @UseGuards(JwtAuthGuard)
@@ -95,5 +96,18 @@ export class MeddpiccController {
     @Body() dto: ClientConvaiTranscriptDto,
   ) {
     return this.meddpicc.applyClientConvaiTranscript(user, id, dto);
+  }
+
+  /**
+   * Obtiene la conversación desde la API de ElevenLabs (GET /v1/convai/conversations/…) y la persiste como el webhook.
+   * Requiere `ELEVENLABS_API_KEY` en el backend (xi-api-key).
+   */
+  @Post(':id/convai/import-from-elevenlabs')
+  importConvaiFromElevenLabs(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @Body() dto: FetchElevenlabsConversationDto,
+  ) {
+    return this.meddpicc.importConvaiFromElevenLabsApi(user, id, dto.conversationId);
   }
 }

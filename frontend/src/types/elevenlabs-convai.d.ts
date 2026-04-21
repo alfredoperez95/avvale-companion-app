@@ -10,6 +10,10 @@ declare module 'react' {
         'dynamic-variables'?: string;
         'override-first-message'?: string;
         'override-language'?: string;
+        /** Muestra el ID de conversación en la UI (necesario para leer `conv_…` tras colgar). */
+        'show-conversation-id'?: string;
+        /** Oculta la franja «Powered by ElevenLabs» del widget (embed oficial). */
+        'disable-banner'?: string;
         /** Ver docs widget: conversationStarted, conversationEnded */
         startConversation?: () => void;
         endConversation?: () => void;
