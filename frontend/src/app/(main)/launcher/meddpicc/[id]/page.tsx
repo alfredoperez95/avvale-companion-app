@@ -66,6 +66,59 @@ type HistoryRow = {
   createdAt: string;
 };
 
+/** Agrupa filas consecutivas en el tiempo (misma nota) como una sola ejecución (p. ej. análisis IA que escribe N dimensiones). */
+const HISTORY_EXECUTION_GAP_MS = 5000;
+
+type HistoryExecutionGroup = {
+  key: string;
+  /** Instante representativo (última fila del lote). */
+  at: string;
+  note: string | null;
+  rows: HistoryRow[];
+};
+
+function groupHistoryByExecution(rows: HistoryRow[]): HistoryExecutionGroup[] {
+  if (rows.length === 0) return [];
+  const sorted = [...rows].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  const batches: HistoryRow[][] = [];
+  let cur: HistoryRow[] = [sorted[0]!];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1]!;
+    const row = sorted[i]!;
+    const dt = new Date(row.createdAt).getTime() - new Date(prev.createdAt).getTime();
+    const sameNote = (row.note ?? '') === (prev.note ?? '');
+    if (dt <= HISTORY_EXECUTION_GAP_MS && sameNote) {
+      cur.push(row);
+    } else {
+      batches.push(cur);
+      cur = [row];
+    }
+  }
+  batches.push(cur);
+
+  return batches
+    .map((batch, i) => {
+      const last = batch[batch.length - 1]!;
+      const note = last.note;
+      const key = `${last.createdAt}-${note ?? ''}-${i}`;
+      return { key, at: last.createdAt, note, rows: batch };
+    })
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+}
+
+function historyRowsToDimensionMap(rows: HistoryRow[]): Map<string, HistoryRow> {
+  const m = new Map<string, HistoryRow>();
+  const sorted = [...rows].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  for (const r of sorted) {
+    m.set(r.dimension, r);
+  }
+  return m;
+}
+
 function formatDate(iso: string): string {
   try {
     const d = new Date(iso);
@@ -111,6 +164,28 @@ function meddpiccAggregatePercent(scores: Record<string, number>): number {
   return Math.round((sum / (keys.length * 10)) * 100);
 }
 
+/** Resumen numérico del lote: total MEDDPICC si hay snapshot completo; si no, media de las dimensiones listadas. */
+function historyExecutionSummary(dimMap: Map<string, HistoryRow>): { label: string; pct: number } | null {
+  const scores: Record<string, number> = {};
+  let n = 0;
+  let sum = 0;
+  for (const dim of MEDDPICC_DIMENSIONS) {
+    const row = dimMap.get(dim.key);
+    if (row?.score == null) continue;
+    scores[dim.key] = row.score;
+    n += 1;
+    sum += row.score;
+  }
+  if (n === 0) return null;
+  if (n === MEDDPICC_DIMENSIONS.length) {
+    return { label: 'Total MEDDPICC', pct: meddpiccAggregatePercent(scores) };
+  }
+  return {
+    label: 'Media (dimensiones en este cambio)',
+    pct: Math.round((sum / (n * 10)) * 100),
+  };
+}
+
 function dealHealthFromPercent(pct: number): { label: string; tone: 'weak' | 'mid' | 'good' | 'great' } {
   if (pct < 35) return { label: 'Deal débil — alto riesgo', tone: 'weak' };
   if (pct < 50) return { label: 'Deal frágil — riesgo elevado', tone: 'weak' };
@@ -144,23 +219,11 @@ function attentionStrengthLabel(score: number): string {
   return 'A vigilar';
 }
 
-const STRATEGY_DIM_EMOJI: Record<string, string> = {
-  M: '📊',
-  E: '💰',
-  D1: '📋',
-  D2: '🔄',
-  P: '📝',
-  I: '🔥',
-  C1: '🏆',
-  C2: '⚔️',
-};
-
 type StrategyBannerTone = 'critical' | 'warning' | 'caution' | 'positive';
 
 type StrategyActionRow = {
   dimensionKey: string;
   name: string;
-  emoji: string;
   score: number;
   advice: string;
 };
@@ -188,10 +251,10 @@ function defaultStrategyBanner(pct: number): { tone: StrategyBannerTone; title: 
   const tone: StrategyBannerTone =
     h.tone === 'weak' ? 'critical' : h.tone === 'mid' ? 'warning' : h.tone === 'good' ? 'caution' : 'positive';
   const titles: Record<StrategyBannerTone, string> = {
-    critical: '🚨 Deal en riesgo — acción urgente',
-    warning: '⚠️ Deal frágil — prioriza cerrar gaps',
-    caution: '📌 Deal mejorable — trabajo por delante',
-    positive: '✅ Deal sólido — mantén el ritmo',
+    critical: 'Deal en riesgo — acción urgente',
+    warning: 'Deal frágil — prioriza cerrar gaps',
+    caution: 'Deal mejorable — trabajo por delante',
+    positive: 'Deal sólido — mantén el ritmo',
   };
   const bodies: Record<StrategyBannerTone, string> = {
     critical:
@@ -218,13 +281,11 @@ function parseStrategyActionRows(raw: unknown): StrategyActionRow[] {
       typeof o.name === 'string' && o.name.trim() ? o.name.trim() : dim?.name ?? dimensionKey;
     const advice = typeof o.advice === 'string' ? o.advice.trim() : '';
     if (!advice) continue;
-    const emoji =
-      typeof o.emoji === 'string' && o.emoji.trim() ? o.emoji.trim() : STRATEGY_DIM_EMOJI[dimensionKey] ?? '📌';
     let score = 0;
     if (typeof o.score === 'number' && Number.isFinite(o.score)) score = o.score;
     else if (typeof o.score === 'string') score = Number(o.score);
     score = Math.min(10, Math.max(0, Math.round(Number.isFinite(score) ? score : 0)));
-    out.push({ dimensionKey, name, emoji, score, advice });
+    out.push({ dimensionKey, name, score, advice });
   }
   return out;
 }
@@ -238,7 +299,6 @@ function fallbackCriticalActions(scores: Record<string, number>): StrategyAction
     .map(({ d, s }) => ({
       dimensionKey: d.key,
       name: d.name,
-      emoji: STRATEGY_DIM_EMOJI[d.key] ?? '📌',
       score: s,
       advice:
         'Esta dimensión está débil en la evaluación. Completa las respuestas guía y ejecuta «Analizar con IA» para obtener un plan de acción detallado.',
@@ -254,7 +314,6 @@ function fallbackAreasToReinforce(scores: Record<string, number>): StrategyActio
     .map(({ d, s }) => ({
       dimensionKey: d.key,
       name: d.name,
-      emoji: STRATEGY_DIM_EMOJI[d.key] ?? '📌',
       score: s,
       advice:
         'Refuerza esta dimensión antes del cierre: valida datos con el cliente y vuelve a ejecutar el análisis con IA.',
@@ -376,6 +435,64 @@ function CollapsibleAiSection({
   );
 }
 
+/** IDs ConvAI: `conv_` + alfanumérico (longitud variable según ElevenLabs). */
+const ELEVENLABS_CONV_ID_STRICT = /^(?:ID:\s*)?(conv_[a-z0-9]+)$/i;
+const ELEVENLABS_CONV_ID_IN_TEXT = /ID:\s*(conv_[a-z0-9]+)/i;
+const ELEVENLABS_CONV_ID_FALLBACK = /\b(conv_[a-z0-9]{12,})\b/i;
+
+/** Sondeo del embed (shadow DOM) y reintentos API cuando ElevenLabs sigue en «processing». */
+const ELEVENLABS_CONVAI_POLL_MS = 2000;
+
+/**
+ * Lee el `conv_…` del shadow del widget (pantalla «You ended…» / «ID: conv_…» en span.break-all).
+ * ElevenLabs no envía esto por un evento fiable; dependemos del DOM interno.
+ */
+function extractElevenLabsConversationIdFromHost(host: Element | null): string | null {
+  if (!host) return null;
+  const sr = host.shadowRoot;
+  if (!sr) return null;
+
+  const spans = sr.querySelectorAll('span.break-all, [class*="break-all"]');
+  for (const el of spans) {
+    const raw = (el.textContent ?? '').trim();
+    let m = raw.match(ELEVENLABS_CONV_ID_STRICT);
+    if (m) return m[1];
+    m = raw.match(ELEVENLABS_CONV_ID_IN_TEXT);
+    if (m) return m[1];
+    m = raw.match(ELEVENLABS_CONV_ID_FALLBACK);
+    if (m) return m[1];
+  }
+
+  const flat = (sr.textContent ?? '').replace(/\s+/g, ' ').trim();
+  let m = flat.match(ELEVENLABS_CONV_ID_IN_TEXT);
+  if (m) return m[1];
+  m = flat.match(ELEVENLABS_CONV_ID_FALLBACK);
+  return m ? m[1] : null;
+}
+
+async function waitForConversationIdInConvaiWidget(
+  host: Element | null,
+  opts?: { hintId?: string; timeoutMs?: number; intervalMs?: number },
+): Promise<string | null> {
+  const hint = opts?.hintId?.trim();
+  if (hint) {
+    const hm =
+      hint.match(ELEVENLABS_CONV_ID_IN_TEXT) ??
+      hint.match(ELEVENLABS_CONV_ID_FALLBACK) ??
+      hint.match(/^(conv_[a-z0-9]+)$/i);
+    if (hm) return hm[1];
+  }
+  const timeoutMs = opts?.timeoutMs ?? 180_000;
+  const intervalMs = opts?.intervalMs ?? ELEVENLABS_CONVAI_POLL_MS;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const found = extractElevenLabsConversationIdFromHost(host);
+    if (found) return found;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  return extractElevenLabsConversationIdFromHost(host);
+}
+
 export default function MeddpiccDealDetailPage() {
   const params = useParams();
   const id = typeof params.id === 'string' ? params.id : '';
@@ -426,6 +543,12 @@ export default function MeddpiccDealDetailPage() {
   const convaiPollAbortRef = useRef(false);
   /** Polling en segundo plano tras interactuar con el embed (el widget a veces no emite `conversationEnded`). */
   const convaiFpWatchRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Evita reimportar el mismo conv_ tras varios eventos de fin. Se resetea en conversationStarted. */
+  const lastAutoImportedConvaiIdRef = useRef<string | null>(null);
+  /** El embed puede disparar varios nombres de evento al colgar; una sola pasada por fin de sesión. */
+  const convaiSessionEndBurstRef = useRef(false);
+  /** Sondeo periódico del shadow DOM buscando `ID: conv_…` hasta importar o agotar tiempo. */
+  const convaiShadowConvIdWatchRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipInitialAccordionScroll = useRef(true);
   /** Bloques .aiBlock plegados por defecto; se abren al pulsar la cabecera. */
   const [aiBlockOpen, setAiBlockOpen] = useState<Record<string, boolean>>({});
@@ -555,14 +678,18 @@ export default function MeddpiccDealDetailPage() {
     }
   };
 
-  const convaiDebugEnabled = true;
-  const [convaiSimBusy, setConvaiSimBusy] = useState(false);
   const [convaiEndModalOpen, setConvaiEndModalOpen] = useState(false);
   const [convaiEndModalLoading, setConvaiEndModalLoading] = useState(false);
   const [convaiEndModalData, setConvaiEndModalData] = useState<Record<string, unknown> | null>(null);
   const [convaiSyncBusy, setConvaiSyncBusy] = useState(false);
   const [convaiClientPaste, setConvaiClientPaste] = useState('');
   const [convaiClientBusy, setConvaiClientBusy] = useState(false);
+  const [convaiElevenImportId, setConvaiElevenImportId] = useState('');
+  const [convaiImportBusy, setConvaiImportBusy] = useState(false);
+  const convaiImportBusyRef = useRef(false);
+  useEffect(() => {
+    convaiImportBusyRef.current = convaiImportBusy;
+  }, [convaiImportBusy]);
 
   const pollForNewConvaiAfterCall = useCallback(
     async (baselineFingerprint: string): Promise<Record<string, unknown> | null> => {
@@ -592,6 +719,13 @@ export default function MeddpiccDealDetailPage() {
     if (convaiFpWatchRef.current) {
       clearInterval(convaiFpWatchRef.current);
       convaiFpWatchRef.current = null;
+    }
+  }, []);
+
+  const clearConvaiShadowConversationIdWatch = useCallback(() => {
+    if (convaiShadowConvIdWatchRef.current) {
+      clearInterval(convaiShadowConvIdWatchRef.current);
+      convaiShadowConvIdWatchRef.current = null;
     }
   }, []);
 
@@ -636,6 +770,8 @@ export default function MeddpiccDealDetailPage() {
   );
 
   useEffect(() => () => clearConvaiFpWatch(), [clearConvaiFpWatch]);
+
+  useEffect(() => () => clearConvaiShadowConversationIdWatch(), [clearConvaiShadowConversationIdWatch]);
 
   const handleConvaiConversationEnded = useCallback(async () => {
     clearConvaiFpWatch();
@@ -684,6 +820,118 @@ export default function MeddpiccDealDetailPage() {
     }
   }, [id, load]);
 
+  const importFromElevenLabsByConversationId = useCallback(
+    async (conversationIdRaw: string) => {
+      const conversationId = conversationIdRaw.trim();
+      if (!id || !conversationId) return;
+      setConvaiImportBusy(true);
+      setError(null);
+      const maxAttempts = 36;
+      const delayMs = ELEVENLABS_CONVAI_POLL_MS;
+      try {
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          const res = await apiFetch(`/api/meddpicc/deals/${id}/convai/import-from-elevenlabs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conversationId }),
+          });
+          if (res.ok) {
+            const j = (await res.json()) as { duplicate?: boolean };
+            lastAutoImportedConvaiIdRef.current = conversationId;
+            clearConvaiShadowConversationIdWatch();
+            const d = await load();
+            if (j.duplicate) {
+              setError('Esta conversación ya estaba guardada en el deal.');
+            } else if (d?.notes && typeof d.notes === 'object' && !Array.isArray(d.notes)) {
+              const raw = (d.notes as Record<string, unknown>).convaiLastCall;
+              if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+                setConvaiEndModalOpen(true);
+                setConvaiEndModalLoading(false);
+                setConvaiEndModalData(raw as Record<string, unknown>);
+              }
+            }
+            return;
+          }
+          const errBody = (await res.json().catch(() => ({}))) as { message?: string | string[] };
+          const msgRaw = Array.isArray(errBody.message) ? errBody.message.join(' ') : errBody.message ?? '';
+          const msg = String(msgRaw);
+          const isProcessing = res.status === 400 && msg.includes('PROCESSING_RETRY');
+          if (isProcessing && attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, delayMs));
+            continue;
+          }
+          if (isProcessing && attempt === maxAttempts) {
+            setError(
+              'ElevenLabs sigue procesando la transcripción tras varios intentos. Prueba de nuevo en un minuto o pega el texto manualmente.',
+            );
+            return;
+          }
+          if (res.status === 503 && /ELEVENLABS_API_KEY/i.test(msg)) {
+            setError(
+              'Falta ELEVENLABS_API_KEY en el backend para importar por ID. Configúrala y reinicia el servidor.',
+            );
+            return;
+          }
+          setError(msg || 'No se pudo importar la conversación desde ElevenLabs');
+          return;
+        }
+      } catch {
+        setError('Error de red');
+      } finally {
+        setConvaiImportBusy(false);
+      }
+    },
+    [id, load, clearConvaiShadowConversationIdWatch],
+  );
+
+  /**
+   * Lee periódicamente el shadow del widget (bloque «You ended…» / «ID: conv_…») e intenta importar.
+   * ElevenLabs no expone un evento estable con el ID; esto complementa el intento tras `conversationEnded`.
+   */
+  const startConvaiShadowConversationIdWatch = useCallback(() => {
+    if (convaiShadowConvIdWatchRef.current) return;
+    if (!id) return;
+    let ticks = 0;
+    const maxTicks = 200;
+    convaiShadowConvIdWatchRef.current = setInterval(() => {
+      ticks += 1;
+      if (ticks > maxTicks) {
+        clearConvaiShadowConversationIdWatch();
+        return;
+      }
+      const host = convaiWidgetRef.current;
+      const cid = extractElevenLabsConversationIdFromHost(host);
+      if (!cid) return;
+      if (cid === lastAutoImportedConvaiIdRef.current) return;
+      if (convaiImportBusyRef.current) return;
+      setConvaiElevenImportId(cid);
+      void importFromElevenLabsByConversationId(cid);
+    }, ELEVENLABS_CONVAI_POLL_MS);
+  }, [id, clearConvaiShadowConversationIdWatch, importFromElevenLabsByConversationId]);
+
+  const importConvaiFromElevenLabsApi = useCallback(async () => {
+    if (!convaiElevenImportId.trim()) return;
+    await importFromElevenLabsByConversationId(convaiElevenImportId.trim());
+  }, [convaiElevenImportId, importFromElevenLabsByConversationId]);
+
+  /** Tras colgar (usuario o agente): localiza `conv_…` en el widget y llama a la API de ElevenLabs. */
+  const tryAutoImportFromElevenLabsAfterEnd = useCallback(
+    async (hintFromEvent?: string) => {
+      if (!id) return;
+      const host = convaiWidgetRef.current;
+      const convId = await waitForConversationIdInConvaiWidget(host, {
+        hintId: hintFromEvent,
+        timeoutMs: 180_000,
+        intervalMs: ELEVENLABS_CONVAI_POLL_MS,
+      });
+      if (!convId) return;
+      if (lastAutoImportedConvaiIdRef.current === convId) return;
+      setConvaiElevenImportId(convId);
+      await importFromElevenLabsByConversationId(convId);
+    },
+    [id, importFromElevenLabsByConversationId],
+  );
+
   const submitClientConvaiTranscript = async () => {
     if (!id || !convaiClientPaste.trim()) return;
     setConvaiClientBusy(true);
@@ -706,26 +954,6 @@ export default function MeddpiccDealDetailPage() {
       setError('Error de red');
     } finally {
       setConvaiClientBusy(false);
-    }
-  };
-
-  const simulateConvaiWebhook = async () => {
-    if (!id) return;
-    setConvaiSimBusy(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`/api/meddpicc/deals/${id}/convai/simulate-post-call`, { method: 'POST' });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { message?: string | string[] };
-        const msg = Array.isArray(j.message) ? j.message.join(', ') : j.message;
-        setError(msg || 'No se pudo simular el webhook');
-        return;
-      }
-      await load();
-    } catch {
-      setError('Error de red');
-    } finally {
-      setConvaiSimBusy(false);
     }
   };
 
@@ -871,19 +1099,49 @@ export default function MeddpiccDealDetailPage() {
   useEffect(() => {
     const el = convaiWidgetRef.current;
     if (!el || !id) return;
-    const onEnd = () => {
-      void handleConvaiConversationEnded();
+    const onStarted = () => {
+      lastAutoImportedConvaiIdRef.current = null;
+      convaiSessionEndBurstRef.current = false;
+      clearConvaiShadowConversationIdWatch();
+      startConvaiShadowConversationIdWatch();
     };
-    const names = ['conversationEnded', 'call-ended', 'convai-call-ended', 'session-ended'];
-    for (const n of names) {
+    const onEnd = (ev: Event) => {
+      if (convaiSessionEndBurstRef.current) return;
+      convaiSessionEndBurstRef.current = true;
+      window.setTimeout(() => {
+        convaiSessionEndBurstRef.current = false;
+      }, 2500);
+      void handleConvaiConversationEnded();
+      const ce = ev as CustomEvent<{ conversationId?: string }>;
+      const hint = typeof ce.detail?.conversationId === 'string' ? ce.detail.conversationId : undefined;
+      void tryAutoImportFromElevenLabsAfterEnd(hint);
+      startConvaiShadowConversationIdWatch();
+    };
+    const endNames = [
+      'conversationEnded',
+      'call-ended',
+      'convai-call-ended',
+      'session-ended',
+      'convai-conversation-ended',
+    ];
+    el.addEventListener('conversationStarted', onStarted as EventListener);
+    for (const n of endNames) {
       el.addEventListener(n, onEnd as EventListener);
     }
     return () => {
-      for (const n of names) {
+      el.removeEventListener('conversationStarted', onStarted as EventListener);
+      for (const n of endNames) {
         el.removeEventListener(n, onEnd as EventListener);
       }
     };
-  }, [id, handleConvaiConversationEnded, convaiDynamicVariablesJson]);
+  }, [
+    id,
+    handleConvaiConversationEnded,
+    convaiDynamicVariablesJson,
+    tryAutoImportFromElevenLabsAfterEnd,
+    clearConvaiShadowConversationIdWatch,
+    startConvaiShadowConversationIdWatch,
+  ]);
 
   const convaiPendingCount = useMemo(() => {
     let n = 0;
@@ -1000,6 +1258,7 @@ export default function MeddpiccDealDetailPage() {
   }, [deal]);
 
   const aggregatePct = useMemo(() => meddpiccAggregatePercent(scores), [scores]);
+  const historyGrouped = useMemo(() => groupHistoryByExecution(history), [history]);
   const dealHealth = useMemo(() => dealHealthFromPercent(aggregatePct), [aggregatePct]);
 
   const strategyDealBanner = useMemo(
@@ -1204,45 +1463,76 @@ export default function MeddpiccDealDetailPage() {
         actionsClassName={styles.dealHeroPageActions}
       />
 
-      <div className={styles.detailMain}>
-      {error && <p className={styles.inlineError}>{error}</p>}
-
       <section className={styles.convaiSection} aria-labelledby="meddpicc-convai-heading">
-        <h2 id="meddpicc-convai-heading" className={styles.sectionHeading}>
-          Asistente de voz (MEDDPICC)
-        </h2>
-        <p className={styles.convaiHint}>
-          La app envía a ElevenLabs el cliente, importe, propietario (nombre), contexto y las respuestas ya rellenadas;
-          el foco debe ser solo lo pendiente. El UUID del deal va también en <code className={styles.convaiCode}>user-id</code>{' '}
-          del widget (como <code className={styles.convaiCode}>user_id</code> en el webhook) para que la transcripción se
-          guarde aunque el JSON de variables dinámicas sea muy grande. En el agente, usa en el prompt las variables (p. ej.{' '}
-          <code className={styles.convaiCode}>{'{{cliente}}'}</code>, <code className={styles.convaiCode}>{'{{importe_deal}}'}</code>,{' '}
-          <code className={styles.convaiCode}>{'{{meddpicc_pendiente}}'}</code>
-          …) listadas en <code className={styles.convaiCode}>meddpicc-convai-context.ts</code>. Tras cada llamada, el
-          webhook <code className={styles.convaiCode}>POST /webhooks/elevenlabs/meddpicc</code> (secreto en backend) puede
-          guardar aquí el resumen y la transcripción.
-        </p>
-        <div
-          className={styles.convaiEmbed}
-          onPointerDownCapture={() => {
-            const baseline = lastConvaiFingerprintRef.current;
-            startConvaiFpWatchFromBaseline(baseline);
-          }}
-        >
-          {convaiDynamicVariablesJson ? (
-            <>
-              <elevenlabs-convai
-                ref={convaiWidgetRef}
-                key={convaiDynamicVariablesJson}
-                agent-id="agent_6301kpq853thfbnrmnzy95tv1qqj"
-                user-id={id}
-                dynamic-variables={convaiDynamicVariablesJson}
-                override-language="es"
-                override-first-message={convaiFirstMessage}
-              />
-              <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="lazyOnload" />
-            </>
+        <header className={styles.convaiSectionHeader}>
+          <h2 id="meddpicc-convai-heading" className={`${styles.sectionHeading} ${styles.convaiSectionHeading}`}>
+            Asistente de voz
+          </h2>
+          {convaiLastCallFromWebhook ? (
+            <div className={styles.convaiWebhookNote}>
+              <h3 className={styles.convaiWebhookHeading}>Última conversación guardada</h3>
+              <p className={styles.convaiWebhookUseHint}>
+                Este resumen y la transcripción forman parte del deal. Al ejecutar <strong>Analizar con IA</strong> o{' '}
+                <strong>Re-analizar con IA</strong>, el modelo los usa junto con tus respuestas y el contexto.
+              </p>
+              <p className={styles.convaiWebhookMeta}>
+                {convaiLastCallFromWebhook.receivedAt
+                  ? new Date(convaiLastCallFromWebhook.receivedAt).toLocaleString('es-ES', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })
+                  : '—'}
+                {convaiLastCallFromWebhook.durationSecs != null
+                  ? ` · ${convaiLastCallFromWebhook.durationSecs}s`
+                  : ''}
+                {convaiLastCallFromWebhook.conversationId
+                  ? ` · id ${convaiLastCallFromWebhook.conversationId.slice(0, 12)}…`
+                  : ''}
+              </p>
+              {convaiLastCallFromWebhook.summary ? (
+                <p className={styles.convaiWebhookSummary}>{convaiLastCallFromWebhook.summary}</p>
+              ) : null}
+              {convaiLastCallFromWebhook.transcriptMarkdown ? (
+                <details className={styles.convaiWebhookDetails}>
+                  <summary>Transcripción</summary>
+                  <pre className={styles.convaiWebhookTranscript}>{convaiLastCallFromWebhook.transcriptMarkdown}</pre>
+                </details>
+              ) : null}
+            </div>
           ) : null}
+          <p className={styles.convaiLead}>
+            Habla con el asistente sobre este deal: tiene el contexto (cliente, importe, notas y lo que ya has rellenado en
+            MEDDPICC) y te orienta sobre lo que sigue pendiente. Al terminar la llamada, el resumen y la transcripción se
+            guardan aquí y se tendrán en cuenta cuando ejecutes el análisis con IA.
+          </p>
+        </header>
+        <div className={styles.convaiEmbedShell}>
+          <div
+            className={styles.convaiEmbed}
+            onPointerDownCapture={() => {
+              const baseline = lastConvaiFingerprintRef.current;
+              startConvaiFpWatchFromBaseline(baseline);
+              clearConvaiShadowConversationIdWatch();
+              startConvaiShadowConversationIdWatch();
+            }}
+          >
+            {convaiDynamicVariablesJson ? (
+              <>
+                <elevenlabs-convai
+                  ref={convaiWidgetRef}
+                  key={convaiDynamicVariablesJson}
+                  agent-id="agent_6301kpq853thfbnrmnzy95tv1qqj"
+                  user-id={id}
+                  dynamic-variables={convaiDynamicVariablesJson}
+                  show-conversation-id="true"
+                  disable-banner="true"
+                  override-language="es"
+                  override-first-message={convaiFirstMessage}
+                />
+                <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="lazyOnload" />
+              </>
+            ) : null}
+          </div>
         </div>
         <div className={styles.convaiToolbar}>
           <button
@@ -1254,65 +1544,76 @@ export default function MeddpiccDealDetailPage() {
             {convaiSyncBusy ? 'Sincronizando…' : 'Sincronizar transcripción'}
           </button>
           <p className={styles.convaiToolbarHint}>
-            Tras colgar, la transcripción llega por webhook; si no ves nada, pulsa sincronizar o espera (también vigilamos
-            el servidor unos minutos al usar el widget).
+            Si al colgar no ves aún el resumen abajo, espera unos segundos o pulsa sincronizar. También actualizamos el deal
+            automáticamente durante unos minutos tras usar el asistente.
           </p>
         </div>
-        <details className={styles.convaiClientFallback}>
-          <summary>Si el webhook falló: pegar transcripción</summary>
-          <p className={styles.convaiClientFallbackHint}>
-            Solo si ElevenLabs no pudo notificar al servidor. El texto se guarda en el deal como última sesión de voz.
-          </p>
-          <textarea
-            className={styles.convaiClientFallbackTextarea}
-            rows={5}
-            value={convaiClientPaste}
-            onChange={(e) => setConvaiClientPaste(e.target.value)}
-            placeholder="Pega aquí la transcripción…"
-            disabled={convaiClientBusy}
-          />
-          <button
-            type="button"
-            className={styles.convaiClientFallbackBtn}
-            disabled={convaiClientBusy || !convaiClientPaste.trim() || !id}
-            onClick={() => void submitClientConvaiTranscript()}
-          >
-            {convaiClientBusy ? 'Guardando…' : 'Guardar en el deal'}
-          </button>
-        </details>
-        {convaiLastCallFromWebhook ? (
-          <div className={styles.convaiWebhookNote}>
-            <h3 className={styles.convaiWebhookHeading}>Última llamada sincronizada</h3>
-            <p className={styles.convaiWebhookUseHint}>
-              Este contenido queda en el deal. Al pulsar «Analizar con IA» o «Re-analizar con IA», el modelo lo recibe como
-              evidencia adicional junto con tus respuestas y el contexto.
+        <details className={styles.convaiRecoverDetails}>
+          <summary className={styles.convaiRecoverSummary}>
+            ¿No aparece la transcripción? Recuperarla con el ID de conversación
+          </summary>
+          <div className={styles.convaiRecoverBody}>
+            <p className={styles.convaiRecoverIntro}>
+              Si el asistente muestra un identificador de conversación (por ejemplo <span className={styles.convaiMono}>conv_…</span>
+              ), puedes pegarlo aquí para traer la transcripción desde ElevenLabs.
             </p>
-            <p className={styles.convaiWebhookMeta}>
-              {convaiLastCallFromWebhook.receivedAt
-                ? new Date(convaiLastCallFromWebhook.receivedAt).toLocaleString('es-ES', {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                  })
-                : '—'}
-              {convaiLastCallFromWebhook.durationSecs != null
-                ? ` · ${convaiLastCallFromWebhook.durationSecs}s`
-                : ''}
-              {convaiLastCallFromWebhook.conversationId
-                ? ` · id ${convaiLastCallFromWebhook.conversationId.slice(0, 12)}…`
-                : ''}
+            <label className={styles.convaiImportLabel} htmlFor="convai-eleven-import-id">
+              ID de conversación
+            </label>
+            <div className={styles.convaiImportControls}>
+              <input
+                id="convai-eleven-import-id"
+                className={styles.convaiImportInput}
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="conv_…"
+                value={convaiElevenImportId}
+                onChange={(e) => setConvaiElevenImportId(e.target.value)}
+                disabled={convaiImportBusy}
+              />
+              <button
+                type="button"
+                className={styles.convaiImportBtn}
+                disabled={convaiImportBusy || !convaiElevenImportId.trim() || !id}
+                onClick={() => void importConvaiFromElevenLabsApi()}
+              >
+                {convaiImportBusy ? 'Importando…' : 'Importar'}
+              </button>
+            </div>
+            <p className={styles.convaiImportHint}>
+              Si ElevenLabs aún está procesando la llamada, puedes reintentar en unos segundos.
             </p>
-            {convaiLastCallFromWebhook.summary ? (
-              <p className={styles.convaiWebhookSummary}>{convaiLastCallFromWebhook.summary}</p>
-            ) : null}
-            {convaiLastCallFromWebhook.transcriptMarkdown ? (
-              <details className={styles.convaiWebhookDetails}>
-                <summary>Transcripción</summary>
-                <pre className={styles.convaiWebhookTranscript}>{convaiLastCallFromWebhook.transcriptMarkdown}</pre>
-              </details>
-            ) : null}
           </div>
-        ) : null}
+        </details>
+        <details className={styles.convaiClientFallback}>
+          <summary className={styles.convaiClientFallbackSummary}>Pegar la transcripción a mano</summary>
+          <div className={styles.convaiClientFallbackBody}>
+            <p className={styles.convaiClientFallbackHint}>
+              Solo si no se ha podido guardar automáticamente. El texto se registra como última sesión de voz de este deal.
+            </p>
+            <textarea
+              className={styles.convaiClientFallbackTextarea}
+              rows={5}
+              value={convaiClientPaste}
+              onChange={(e) => setConvaiClientPaste(e.target.value)}
+              placeholder="Pega aquí la transcripción…"
+              disabled={convaiClientBusy}
+            />
+            <button
+              type="button"
+              className={styles.convaiClientFallbackBtn}
+              disabled={convaiClientBusy || !convaiClientPaste.trim() || !id}
+              onClick={() => void submitClientConvaiTranscript()}
+            >
+              {convaiClientBusy ? 'Guardando…' : 'Guardar en el deal'}
+            </button>
+          </div>
+        </details>
       </section>
+
+      <div className={styles.detailMain}>
+      {error && <p className={styles.inlineError}>{error}</p>}
 
       <section id="meddpicc-deal-detail" aria-label="Datos generales del deal">
       <h2 className={styles.sectionHeading}>Datos generales</h2>
@@ -1487,18 +1788,6 @@ export default function MeddpiccDealDetailPage() {
               aria-hidden
             />
           </button>
-          {convaiDebugEnabled ? (
-            <button
-              type="button"
-              className={styles.aiBarSecondaryBtn}
-              onClick={() => void simulateConvaiWebhook()}
-              disabled={convaiSimBusy || !id}
-              aria-label="Simular webhook (debug)"
-              title="Inserta una llamada simulada en notes.convaiLastCall"
-            >
-              {convaiSimBusy ? 'Simulando…' : 'Simular webhook (debug)'}
-            </button>
-          ) : null}
         </div>
       </div>
 
@@ -1741,22 +2030,51 @@ export default function MeddpiccDealDetailPage() {
             </button>
           </div>
 
-          {history.length > 0 && (
+          {historyGrouped.length > 0 && (
             <CollapsibleAiSection
               sectionId="history"
               title="Historial de puntuaciones"
               expanded={Boolean(aiBlockOpen.history)}
               onToggle={() => toggleAiBlock('history')}
             >
-              <ul className={styles.historyList}>
-                {history.map((h) => (
-                  <li key={h.id} className={styles.historyItem}>
-                    {formatDate(h.createdAt)} — <strong>{h.dimension}</strong>
-                    {h.score != null ? `: ${h.score}/10` : ''}
-                    {h.note ? ` · ${h.note}` : ''}
-                  </li>
-                ))}
-              </ul>
+              <div className={styles.historyExecutionList}>
+                {historyGrouped.map((g) => {
+                  const dimMap = historyRowsToDimensionMap(g.rows);
+                  const summary = historyExecutionSummary(dimMap);
+                  return (
+                    <article key={g.key} className={styles.historyExecutionBlock}>
+                      <header className={styles.historyExecutionHead}>
+                        <div className={styles.historyExecutionWhen}>{formatDate(g.at)}</div>
+                        {g.note ? (
+                          <div className={styles.historyExecutionNote}>{g.note}</div>
+                        ) : null}
+                        {summary ? (
+                          <div className={styles.historyExecutionTotal}>
+                            <span className={styles.historyExecutionTotalLabel}>{summary.label}</span>
+                            <span className={styles.historyExecutionTotalPct}>{summary.pct}%</span>
+                          </div>
+                        ) : null}
+                      </header>
+                      <ul className={styles.historyDimList}>
+                        {MEDDPICC_DIMENSIONS.map((dim) => {
+                          const row = dimMap.get(dim.key);
+                          if (!row || row.score == null) return null;
+                          const dimPct = Math.round((row.score / 10) * 100);
+                          return (
+                            <li key={row.id} className={styles.historyDimItem}>
+                              <span className={styles.historyDimKey}>{dim.key}</span>
+                              <span className={styles.historyDimScores}>
+                                {row.score}/10
+                                <span className={styles.historyDimPct}> ({dimPct}%)</span>
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </article>
+                  );
+                })}
+              </div>
             </CollapsibleAiSection>
           )}
         </>
@@ -1964,7 +2282,20 @@ export default function MeddpiccDealDetailPage() {
 
             {lastAnalysis && (aiAssessment.trim() || aiRisks.length > 0 || aiStrengths.length > 0) ? (
               <div className={styles.strategyCardIndigo}>
-                <h3 className={styles.strategyValoracionTitle}>🤖 Valoración IA</h3>
+                <h3 className={styles.strategyValoracionTitle}>
+                  <span className={styles.strategyValoracionTitleText}>Valoración</span>
+                  <span className={styles.strategyValoracionBadge}>
+                    <img
+                      src="/img/Claude_AI_symbol.svg"
+                      alt=""
+                      width={12}
+                      height={12}
+                      className={styles.strategyValoracionBadgeClaude}
+                      aria-hidden
+                    />
+                    IA
+                  </span>
+                </h3>
                 {aiAssessment.trim() ? (
                   <p className={styles.strategyValoracionLead}>{aiAssessment}</p>
                 ) : null}
@@ -1974,9 +2305,7 @@ export default function MeddpiccDealDetailPage() {
                     <ul className={styles.strategyRiskList}>
                       {aiRisks.map((x, i) => (
                         <li key={i} className={styles.strategyRiskItem}>
-                          <span className={styles.strategyRiskGlyph} aria-hidden>
-                            ⚠
-                          </span>
+                          <span className={styles.strategyRiskBullet} aria-hidden />
                           <span>{String(x)}</span>
                         </li>
                       ))}
@@ -1989,9 +2318,7 @@ export default function MeddpiccDealDetailPage() {
                     <ul className={styles.strategyStrengthList}>
                       {aiStrengths.map((x, i) => (
                         <li key={i} className={styles.strategyStrengthItem}>
-                          <span className={styles.strategyStrengthGlyph} aria-hidden>
-                            ✓
-                          </span>
+                          <span className={styles.strategyStrengthCheck} aria-hidden />
                           <span>{String(x)}</span>
                         </li>
                       ))}
@@ -2011,18 +2338,23 @@ export default function MeddpiccDealDetailPage() {
 
             {strategyCritical.length > 0 ? (
               <div className={styles.strategyCardCriticalWrap}>
-                <h3 className={styles.strategySectionTitleCritical}>🔴 Acciones críticas — Próximos pasos</h3>
+                <h3 className={styles.strategySectionTitleCritical}>Acciones críticas — Próximos pasos</h3>
                 <div className={styles.strategyActionList}>
                   {strategyCritical.map((row) => {
                     const badgeScore = Math.min(
                       10,
                       Math.max(0, Math.round(scores[row.dimensionKey] ?? row.score)),
                     );
+                    const dimDef = MEDDPICC_DIMENSIONS.find((d) => d.key === row.dimensionKey);
                     return (
                       <div key={`crit-${row.dimensionKey}`} className={styles.strategyActionCardCritical}>
                         <div className={styles.strategyActionCardHead}>
-                          <span className={styles.strategyActionEmoji} aria-hidden>
-                            {row.emoji}
+                          <span
+                            className={styles.strategyActionDimIcon}
+                            style={dimDef ? { color: dimDef.color } : undefined}
+                            aria-hidden
+                          >
+                            <MeddpiccDimensionIcon dimensionKey={row.dimensionKey} size={20} />
                           </span>
                           <span className={styles.strategyActionDimName}>{row.name}</span>
                           <span className={styles.strategyActionBadgeCritical}>{badgeScore}/10</span>
@@ -2037,18 +2369,23 @@ export default function MeddpiccDealDetailPage() {
 
             {strategyAreas.length > 0 ? (
               <div className={styles.strategyCardAmberWrap}>
-                <h3 className={styles.strategySectionTitleAmber}>🟡 Áreas a reforzar</h3>
+                <h3 className={styles.strategySectionTitleAmber}>Áreas a reforzar</h3>
                 <div className={styles.strategyActionList}>
                   {strategyAreas.map((row) => {
                     const badgeScore = Math.min(
                       10,
                       Math.max(0, Math.round(scores[row.dimensionKey] ?? row.score)),
                     );
+                    const dimDef = MEDDPICC_DIMENSIONS.find((d) => d.key === row.dimensionKey);
                     return (
                       <div key={`area-${row.dimensionKey}`} className={styles.strategyActionCardAmber}>
                         <div className={styles.strategyActionCardHead}>
-                          <span className={styles.strategyActionEmoji} aria-hidden>
-                            {row.emoji}
+                          <span
+                            className={styles.strategyActionDimIcon}
+                            style={dimDef ? { color: dimDef.color } : undefined}
+                            aria-hidden
+                          >
+                            <MeddpiccDimensionIcon dimensionKey={row.dimensionKey} size={20} />
                           </span>
                           <span className={styles.strategyActionDimName}>{row.name}</span>
                           <span className={styles.strategyActionBadgeAmber}>{badgeScore}/10</span>
@@ -2063,16 +2400,14 @@ export default function MeddpiccDealDetailPage() {
 
             {aiNext.length > 0 ? (
               <div className={styles.strategyCardQuestions}>
-                <h3 className={styles.strategySectionTitleQuestions}>💬 Preguntas para el próximo seguimiento</h3>
+                <h3 className={styles.strategySectionTitleQuestions}>Preguntas para el próximo seguimiento</h3>
                 <p className={styles.strategyQuestionsTagline}>
-                  <span aria-hidden>🤖</span> Generadas por IA basándose en los gaps del deal
+                  Generadas por IA a partir de los huecos detectados en el deal.
                 </p>
                 <ul className={styles.strategyQuestionList}>
                   {aiNext.map((x, i) => (
                     <li key={i} className={styles.strategyQuestionItem}>
-                      <span className={styles.strategyQuestionArrow} aria-hidden>
-                        →
-                      </span>
+                      <span className={styles.strategyQuestionLead} aria-hidden />
                       <p className={styles.strategyQuestionText}>{String(x)}</p>
                     </li>
                   ))}

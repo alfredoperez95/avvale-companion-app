@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { MeddpiccDeal, MeddpiccDealAttachment } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
@@ -18,7 +19,7 @@ import { CreateMeddpiccDealDto } from './dto/create-meddpicc-deal.dto';
 import { UpdateMeddpiccDealDto } from './dto/update-meddpicc-deal.dto';
 import { AnalyzeMeddpiccDealDto } from './dto/analyze-meddpicc-deal.dto';
 import { ClientConvaiTranscriptDto } from './dto/client-convai-transcript.dto';
-import { buildMeddpiccUserPrompt, MEDDPICC_SYSTEM } from './meddpicc.constants';
+import { buildMeddpiccUserPrompt, MEDDPICC_DIMENSION_KEYS, MEDDPICC_SYSTEM } from './meddpicc.constants';
 import { getMeddpiccModel } from './meddpicc.config';
 import { buildCombinedDealContextForPrompt, buildVoiceSessionContextForPrompt } from './meddpicc-context';
 import { MeddpiccStorageService } from './meddpicc-storage.service';
@@ -58,6 +59,13 @@ function asNumberRecord(json: Prisma.JsonValue | null | undefined): Record<strin
 function asNotesRecord(json: Prisma.JsonValue | null | undefined): Record<string, unknown> {
   if (json == null || typeof json !== 'object' || Array.isArray(json)) return {};
   return { ...json } as Record<string, unknown>;
+}
+
+/** Puntuación 0–10 para persistir en historial MEDDPICC. */
+function meddpiccHistoryScore(n: unknown): number {
+  const x = typeof n === 'number' ? n : Number(n);
+  if (!Number.isFinite(x)) return 0;
+  return Math.min(10, Math.max(0, Math.round(x)));
 }
 
 /**
@@ -211,6 +219,38 @@ export class MeddpiccService {
   private assertCanAccess(actor: UserPayload, dealUserId: string) {
     if (!isAdmin(actor.role) && dealUserId !== actor.userId) {
       throw new ForbiddenException('No tienes permiso para este deal');
+    }
+  }
+
+  /**
+   * ElevenLabs suele devolver `transcript_summary` en inglés. Traduce al español con la misma
+   * clave Anthropic del propietario del deal (análisis MEDDPICC). Si no hay clave o falla la API, se deja el texto original.
+   */
+  private async ensureConvaiSummarySpanish(text: string | null, dealUserId: string): Promise<string | null> {
+    if (text == null) return null;
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    try {
+      const apiKey = await this.creds.getApiKeyPlainOrThrow(dealUserId);
+      const { text: out } = await this.anthropic.completeMessages({
+        apiKey,
+        model: 'haiku',
+        maxTokens: 2048,
+        system:
+          'Traduce al español el texto que recibes (resumen pos-llamada de una conversación comercial). ' +
+          'Si ya está en español, devuélvelo igual o con ligeros arreglos de redacción. ' +
+          'Responde únicamente con el texto del resumen, sin título ni comillas ni explicación.',
+        messages: [{ role: 'user', content: trimmed }],
+      });
+      const t = out.trim();
+      return t || trimmed;
+    } catch (e) {
+      if (e instanceof NotFoundException) {
+        this.logger.debug('ConvAI resumen: propietario del deal sin clave Anthropic; se mantiene el idioma original');
+      } else {
+        this.logger.warn(`ConvAI resumen ES: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      return trimmed;
     }
   }
 
@@ -399,24 +439,28 @@ export class MeddpiccService {
 
     const oldScores = asNumberRecord(existing.scores);
     const newScores = dto.scores != null ? { ...oldScores, ...dto.scores } : undefined;
+    const nextScores = newScores ?? asNumberRecord(existing.scores);
 
     if (dto.scores != null) {
       const note = dto.scoreChangeNote?.trim() || null;
-      for (const dim of Object.keys(dto.scores)) {
-        if (dto.scores[dim] !== oldScores[dim]) {
-          await this.prisma.meddpiccHistory.create({
-            data: {
-              dealId: id,
-              dimension: dim,
-              score: dto.scores[dim] ?? null,
-              note,
-            },
-          });
+      let anyMeddpiccChange = false;
+      for (const dim of MEDDPICC_DIMENSION_KEYS) {
+        if ((nextScores[dim] ?? 0) !== (oldScores[dim] ?? 0)) {
+          anyMeddpiccChange = true;
+          break;
         }
       }
+      if (anyMeddpiccChange) {
+        await this.prisma.meddpiccHistory.createMany({
+          data: MEDDPICC_DIMENSION_KEYS.map((dim) => ({
+            dealId: id,
+            dimension: dim,
+            score: meddpiccHistoryScore(nextScores[dim]),
+            note,
+          })),
+        });
+      }
     }
-
-    const nextScores = newScores ?? asNumberRecord(existing.scores);
     const nextAnswers =
       dto.answers != null ? { ...asStringRecord(existing.answers), ...dto.answers } : asStringRecord(existing.answers);
     const nextNotes =
@@ -650,17 +694,22 @@ export class MeddpiccService {
       answersAtLastAnalysis: mergedAnswers as unknown as Prisma.InputJsonValue,
     };
 
-    for (const dim of Object.keys(mergedScores)) {
-      if (mergedScores[dim] !== currentScores[dim]) {
-        await this.prisma.meddpiccHistory.create({
-          data: {
-            dealId: id,
-            dimension: dim,
-            score: mergedScores[dim] ?? null,
-            note: 'AI analysis',
-          },
-        });
+    let anyMeddpiccScoreChange = false;
+    for (const dim of MEDDPICC_DIMENSION_KEYS) {
+      if ((mergedScores[dim] ?? 0) !== (currentScores[dim] ?? 0)) {
+        anyMeddpiccScoreChange = true;
+        break;
       }
+    }
+    if (anyMeddpiccScoreChange) {
+      await this.prisma.meddpiccHistory.createMany({
+        data: MEDDPICC_DIMENSION_KEYS.map((dim) => ({
+          dealId: id,
+          dimension: dim,
+          score: meddpiccHistoryScore(mergedScores[dim] ?? currentScores[dim] ?? 0),
+          note: 'AI analysis',
+        })),
+      });
     }
 
     const updated = await this.prisma.meddpiccDeal.update({
@@ -716,7 +765,7 @@ export class MeddpiccService {
 
     const deal = await this.prisma.meddpiccDeal.findUnique({
       where: { id: dealId },
-      select: { id: true, notes: true },
+      select: { id: true, notes: true, userId: true },
     });
     if (!deal) {
       this.logger.warn(`ConvAI webhook: deal no encontrado id=${dealId}`);
@@ -739,8 +788,11 @@ export class MeddpiccService {
         ? (analysisRaw as Record<string, unknown>)
         : {};
 
-    const summary =
+    let summary =
       typeof analysis.transcript_summary === 'string' ? analysis.transcript_summary.trim() : null;
+    if (summary) {
+      summary = await this.ensureConvaiSummarySpanish(summary, deal.userId);
+    }
     const dataCollectionRaw = analysis.data_collection_results;
     const dataCollectionResults =
       dataCollectionRaw != null && typeof dataCollectionRaw === 'object' && !Array.isArray(dataCollectionRaw)
@@ -883,7 +935,7 @@ export class MeddpiccService {
     }
 
     const summaryRaw = dto.summary?.trim();
-    const summary = summaryRaw ? summaryRaw : null;
+    const summary = summaryRaw ? await this.ensureConvaiSummarySpanish(summaryRaw, deal.userId) : null;
 
     const callEntry = {
       conversationId,
@@ -917,5 +969,111 @@ export class MeddpiccService {
 
     this.logger.log(`ConvAI client transcript: guardado deal=${dealId} conversation_id=${conversationId}`);
     return { ok: true, duplicate: false, conversationId };
+  }
+
+  /**
+   * Descarga una conversación ConvAI por ID (API ElevenLabs) y la ingiere con la misma lógica que el webhook post-llamada.
+   * Útil cuando el webhook no llegó pero la conversación ya existe en ElevenLabs.
+   */
+  async importConvaiFromElevenLabsApi(
+    actor: UserPayload,
+    dealId: string,
+    conversationIdInput: string,
+  ): Promise<{ ok: true; duplicate: boolean; conversationId: string; status?: string }> {
+    const cid = conversationIdInput.trim();
+    if (!cid) {
+      throw new BadRequestException('conversationId es obligatorio');
+    }
+
+    const apiKey = this.config.get<string>('ELEVENLABS_API_KEY')?.trim();
+    if (!apiKey) {
+      throw new ServiceUnavailableException(
+        'ELEVENLABS_API_KEY no está configurada en el servidor. Añádela al backend para importar conversaciones por ID.',
+      );
+    }
+
+    const deal = await this.loadDealOrThrow(dealId, { includeAttachments: false });
+    this.assertCanAccess(actor, deal.userId);
+
+    const baseRaw = this.config.get<string>('ELEVENLABS_API_BASE_URL')?.trim().replace(/\/$/, '');
+    const base = baseRaw || 'https://api.elevenlabs.io';
+    const url = `${base}/v1/convai/conversations/${encodeURIComponent(cid)}`;
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'GET',
+        headers: { 'xi-api-key': apiKey },
+      });
+    } catch (e) {
+      this.logger.error(`ElevenLabs GET conversation: red ${String(e)}`);
+      throw new InternalServerErrorException('No se pudo contactar con la API de ElevenLabs');
+    }
+
+    if (res.status === 404) {
+      throw new NotFoundException(
+        'Conversación no encontrada en ElevenLabs (ID incorrecto o sin permiso con esta API key).',
+      );
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      this.logger.warn(`ElevenLabs GET conversation ${res.status}: ${text.slice(0, 500)}`);
+      throw new BadRequestException(`ElevenLabs respondió ${res.status}`);
+    }
+
+    const data = (await res.json()) as Record<string, unknown>;
+
+    const resolvedDealId = extractMeddpiccDealIdFromConvaiData(data);
+    if (!resolvedDealId || !MEDDPICC_DEAL_UUID_RE.test(resolvedDealId)) {
+      throw new BadRequestException(
+        'Esta conversación no incluye user_id ni deal_id en variables dinámicas vinculables a un deal (la llamada debe iniciarse desde este deal con user-id / dynamic-variables).',
+      );
+    }
+    if (resolvedDealId !== dealId) {
+      throw new ForbiddenException('Esta conversación pertenece a otro deal.');
+    }
+
+    const status = typeof data.status === 'string' ? data.status : '';
+    if (status === 'in-progress' || status === 'initiated') {
+      throw new BadRequestException(
+        'La conversación sigue en curso en ElevenLabs; espera a que termine e inténtalo de nuevo.',
+      );
+    }
+
+    const transcript = data.transcript;
+    const hasTranscript = Array.isArray(transcript) && transcript.length > 0;
+
+    if (status === 'processing' && !hasTranscript) {
+      throw new BadRequestException(
+        'PROCESSING_RETRY: ElevenLabs aún está generando la transcripción. Vuelve a intentar en unos segundos.',
+      );
+    }
+
+    if (!hasTranscript && status === 'failed') {
+      throw new BadRequestException('La conversación figura como fallida y no hay transcripción disponible.');
+    }
+
+    if (!hasTranscript) {
+      throw new BadRequestException('La conversación no tiene transcripción todavía; inténtalo más tarde.');
+    }
+
+    let eventTs = Math.floor(Date.now() / 1000);
+    const meta = data.metadata;
+    if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+      const st = (meta as Record<string, unknown>).start_time_unix_secs;
+      if (typeof st === 'number' && Number.isFinite(st)) eventTs = st;
+    }
+
+    const event: Record<string, unknown> = {
+      type: 'post_call_transcription',
+      event_timestamp: eventTs,
+      data,
+    };
+
+    const { duplicate } = await this.ingestConvaiPostCallEvent(event);
+    const outId = typeof data.conversation_id === 'string' ? data.conversation_id.trim() : cid;
+    this.logger.log(`ConvAI import API: guardado deal=${dealId} conversation_id=${outId}`);
+    return { ok: true, duplicate, conversationId: outId, ...(status ? { status } : {}) };
   }
 }
