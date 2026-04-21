@@ -2055,6 +2055,100 @@
   display: block;
 }
 
+.convaiToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--fiori-space-3);
+  margin-top: var(--fiori-space-3);
+}
+
+.convaiToolbarBtn {
+  flex-shrink: 0;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: 1px solid var(--fiori-border-light);
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  cursor: pointer;
+}
+
+.convaiToolbarBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--fiori-nav-bg) 12%, var(--fiori-surface));
+}
+
+.convaiToolbarBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.convaiToolbarHint {
+  flex: 1 1 12rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+}
+
+.convaiClientFallback {
+  margin-top: var(--fiori-space-3);
+  padding: var(--fiori-space-3);
+  border-radius: 0.5rem;
+  border: 1px dashed var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 6%, var(--fiori-surface));
+}
+
+.convaiClientFallback summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+}
+
+.convaiClientFallbackHint {
+  margin: var(--fiori-space-2) 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+}
+
+.convaiClientFallbackTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: var(--fiori-space-2);
+  padding: var(--fiori-space-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-family: ui-monospace, monospace;
+  border-radius: 0.5rem;
+  border: 1px solid var(--fiori-border-light);
+  background: var(--fiori-surface);
+  color: var(--fiori-text);
+  resize: vertical;
+}
+
+.convaiClientFallbackBtn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--fiori-nav-bg);
+  color: var(--fiori-on-nav, #fff);
+  cursor: pointer;
+}
+
+.convaiClientFallbackBtn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.convaiClientFallbackBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .convaiWebhookNote {
   margin-top: var(--fiori-space-4);
   padding-top: var(--fiori-space-4);
@@ -2066,6 +2160,77 @@
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--fiori-text);
+}
+
+.convaiWebhookUseHint {
+  margin: 0 0 var(--fiori-space-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+}
+
+.convaiEndModalStatus {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fiori-text-secondary);
+}
+
+.convaiEndModalBody {
+  max-height: min(70vh, 28rem);
+  overflow: auto;
+  text-align: left;
+}
+
+.convaiEndModalSummary {
+  margin: 0 0 var(--fiori-space-3);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--fiori-text);
+}
+
+.convaiEndModalLabel {
+  margin: 0 0 var(--fiori-space-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fiori-text-secondary);
+}
+
+.convaiEndModalPreJson {
+  margin: 0 0 var(--fiori-space-3);
+  padding: var(--fiori-space-2);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow: auto;
+  max-height: 10rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--fiori-nav-bg) 10%, var(--fiori-surface));
+  border: 1px solid var(--fiori-border-light);
+}
+
+.convaiEndModalDetails {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.convaiEndModalDetails summary {
+  cursor: pointer;
+  margin-bottom: var(--fiori-space-2);
+  color: var(--fiori-text-secondary);
+}
+
+.convaiEndModalPre {
+  margin: 0;
+  max-height: 14rem;
+  overflow: auto;
+  padding: var(--fiori-space-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--fiori-nav-bg) 8%, var(--fiori-surface));
+  border: 1px solid var(--fiori-border-light);
 }
 
 .convaiWebhookMeta {

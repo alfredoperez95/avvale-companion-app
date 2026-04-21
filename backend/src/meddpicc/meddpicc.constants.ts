@@ -69,7 +69,7 @@ ${params.context?.trim() ? params.context.trim() : 'Sin contexto proporcionado'}
 
 ${answersText ? `RESPUESTAS PREVIAS:\n${answersText}` : ''}
 ${scoresText ? `SCORES ACTUALES: ${scoresText}` : ''}
-${params.additionalContext ? `INFORMACION ADICIONAL:\n${params.additionalContext}` : ''}
+${params.additionalContext ? `INFORMACION ADICIONAL (notas del usuario y/o sesión de voz ConvAI):\n${params.additionalContext}` : ''}
 
 dealStatusBanner (obligatorio):
 - Objeto con "tone": uno de "critical", "warning", "caution", "positive" segun salud global del deal y peores dimensiones.
@@ -113,6 +113,7 @@ Devuelve EXACTAMENTE este JSON (sin backticks, sin markdown):
 }
 
 REGLAS:
+- Si en INFORMACION ADICIONAL hay una seccion "Evidencia de la ultima sesion de voz", usala para inferir o completar respuestas y ajustar scores cuando haya datos claros en esa transcripcion o resumen.
 - Solo rellena answers donde haya evidencia en el contexto. Deja vacio ("") donde no hay datos.
 - NO inventes informacion.
 - Mantiene las respuestas previas del usuario si existen.

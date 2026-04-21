@@ -17,9 +17,10 @@ import { UserPayload } from '../auth/decorators/user-payload';
 import { CreateMeddpiccDealDto } from './dto/create-meddpicc-deal.dto';
 import { UpdateMeddpiccDealDto } from './dto/update-meddpicc-deal.dto';
 import { AnalyzeMeddpiccDealDto } from './dto/analyze-meddpicc-deal.dto';
+import { ClientConvaiTranscriptDto } from './dto/client-convai-transcript.dto';
 import { buildMeddpiccUserPrompt, MEDDPICC_SYSTEM } from './meddpicc.constants';
 import { getMeddpiccModel } from './meddpicc.config';
-import { buildCombinedDealContextForPrompt } from './meddpicc-context';
+import { buildCombinedDealContextForPrompt, buildVoiceSessionContextForPrompt } from './meddpicc-context';
 import { MeddpiccStorageService } from './meddpicc-storage.service';
 import { MeddpiccExtractService } from './meddpicc-extract.service';
 
@@ -122,6 +123,14 @@ const MEDDPICC_DEAL_UUID_RE =
 const CONVAI_TRANSCRIPT_MAX_CHARS = 120_000;
 
 function convaiTranscriptToMarkdown(transcript: unknown): string {
+  if (typeof transcript === 'string') {
+    const t = transcript.trim();
+    if (!t) return '';
+    if (t.length > CONVAI_TRANSCRIPT_MAX_CHARS) {
+      return `${t.slice(0, CONVAI_TRANSCRIPT_MAX_CHARS)}\n\n…[transcripción recortada por tamaño]`;
+    }
+    return t;
+  }
   if (!Array.isArray(transcript)) return '';
   const lines: string[] = [];
   for (const turn of transcript) {
@@ -138,13 +147,38 @@ function convaiTranscriptToMarkdown(transcript: unknown): string {
   return md;
 }
 
+/**
+ * Identifica el deal MEDDPICC en el payload post-llamada.
+ * 1) `conversation_initiation_client_data.dynamic_variables.deal_id` (si el JSON del widget llegó bien).
+ * 2) `data.user_id` — el widget envía el atributo `user-id` como `user_id` (recomendado: UUID corto, no depende del tamaño de dynamic-variables).
+ */
 function extractMeddpiccDealIdFromConvaiData(data: Record<string, unknown>): string {
-  const init = data.conversation_initiation_client_data;
-  if (!init || typeof init !== 'object' || Array.isArray(init)) return '';
-  const dyn = (init as Record<string, unknown>).dynamic_variables;
-  if (!dyn || typeof dyn !== 'object' || Array.isArray(dyn)) return '';
-  const idRaw = (dyn as Record<string, unknown>).deal_id;
-  return typeof idRaw === 'string' ? idRaw.trim() : '';
+  const normalizeUuid = (s: string): string => {
+    const t = s.trim();
+    return MEDDPICC_DEAL_UUID_RE.test(t) ? t : '';
+  };
+
+  const fromDyn = (): string => {
+    const init = data.conversation_initiation_client_data;
+    if (!init || typeof init !== 'object' || Array.isArray(init)) return '';
+    const dyn = (init as Record<string, unknown>).dynamic_variables;
+    if (!dyn || typeof dyn !== 'object' || Array.isArray(dyn)) return '';
+    const idRaw = (dyn as Record<string, unknown>).deal_id;
+    return typeof idRaw === 'string' ? normalizeUuid(idRaw) : '';
+  };
+
+  const fromUserId = (): string => {
+    const uid = data.user_id;
+    return typeof uid === 'string' ? normalizeUuid(uid) : '';
+  };
+
+  const a = fromDyn();
+  if (a) return a;
+
+  const b = fromUserId();
+  if (b) return b;
+
+  return '';
 }
 
 @Injectable()
@@ -508,6 +542,10 @@ export class MeddpiccService {
       })),
     );
 
+    const prevNotesForAnalyze = asNotesRecord(deal.notes);
+    const voiceForAnalyze = buildVoiceSessionContextForPrompt(prevNotesForAnalyze);
+    const additionalMerged = [dto.additionalContext?.trim(), voiceForAnalyze].filter(Boolean).join('\n\n');
+
     const userPrompt = buildMeddpiccUserPrompt({
       name: deal.name,
       company: deal.company,
@@ -516,7 +554,7 @@ export class MeddpiccService {
       context: contextForPrompt || null,
       currentAnswers,
       currentScores,
-      additionalContext: dto.additionalContext?.trim(),
+      additionalContext: additionalMerged || undefined,
     });
 
     const model = getMeddpiccModel(this.config);
@@ -650,7 +688,8 @@ export class MeddpiccService {
    * Idempotente por `conversation_id` (reintentos del webhook).
    */
   async ingestConvaiPostCallEvent(event: Record<string, unknown>): Promise<{ duplicate: boolean }> {
-    if (event.type !== 'post_call_transcription') {
+    const evType = typeof event.type === 'string' ? event.type.trim().toLowerCase() : '';
+    if (evType !== 'post_call_transcription') {
       return { duplicate: false };
     }
 
@@ -669,7 +708,9 @@ export class MeddpiccService {
 
     const dealId = extractMeddpiccDealIdFromConvaiData(data);
     if (!dealId || !MEDDPICC_DEAL_UUID_RE.test(dealId)) {
-      this.logger.warn(`ConvAI webhook: deal_id ausente o no UUID (${dealId || 'vacío'})`);
+      this.logger.warn(
+        `ConvAI webhook: no se pudo resolver deal (dynamic_variables.deal_id o data.user_id UUID). user_id recibido=${typeof data.user_id === 'string' ? `${String(data.user_id).slice(0, 8)}…` : '—'}`,
+      );
       return { duplicate: false };
     }
 
@@ -779,6 +820,7 @@ export class MeddpiccService {
       data: {
         agent_id: 'simulated',
         conversation_id: conversationId,
+        user_id: dealId,
         status: 'done',
         transcript: [
           { role: 'agent', message: `Hola ${deal.company || deal.name}. Vamos a cerrar huecos MEDDPICC.`, time_in_call_secs: 0 },
@@ -803,5 +845,77 @@ export class MeddpiccService {
 
     await this.ingestConvaiPostCallEvent(event);
     return { ok: true, conversationId };
+  }
+
+  /**
+   * Guarda transcripción (y opcionalmente resumen) desde el cliente cuando el webhook de ElevenLabs no llega.
+   * Misma forma en `notes.convaiLastCall` que el webhook para que el análisis IA la vea igual.
+   */
+  async applyClientConvaiTranscript(
+    actor: UserPayload,
+    dealId: string,
+    dto: ClientConvaiTranscriptDto,
+  ): Promise<{ ok: true; duplicate: boolean; conversationId: string }> {
+    const deal = await this.loadDealOrThrow(dealId, { includeAttachments: false });
+    this.assertCanAccess(actor, deal.userId);
+
+    let transcriptMarkdown = dto.transcriptMarkdown.trim();
+    if (!transcriptMarkdown) {
+      throw new BadRequestException('transcriptMarkdown es obligatorio');
+    }
+    if (transcriptMarkdown.length > CONVAI_TRANSCRIPT_MAX_CHARS) {
+      transcriptMarkdown = `${transcriptMarkdown.slice(0, CONVAI_TRANSCRIPT_MAX_CHARS)}\n\n…[transcripción recortada por tamaño]`;
+    }
+
+    let conversationId = dto.conversationId?.trim() ?? '';
+    if (!conversationId) {
+      conversationId = `client_${randomUUID().replace(/-/g, '').slice(0, 32)}`;
+    }
+
+    const prevNotes = asNotesRecord(deal.notes);
+    const seenRaw = prevNotes.convaiWebhookConversationIds;
+    const seen: string[] = Array.isArray(seenRaw)
+      ? seenRaw.filter((x): x is string => typeof x === 'string')
+      : [];
+    if (seen.includes(conversationId)) {
+      this.logger.log(`ConvAI client transcript: duplicado conversation_id=${conversationId} deal=${dealId}`);
+      return { ok: true, duplicate: true, conversationId };
+    }
+
+    const summaryRaw = dto.summary?.trim();
+    const summary = summaryRaw ? summaryRaw : null;
+
+    const callEntry = {
+      conversationId,
+      eventTimestamp: null as number | null,
+      receivedAt: new Date().toISOString(),
+      summary,
+      transcriptMarkdown,
+      dataCollectionResults: {} as Record<string, unknown>,
+      callSuccessful: null as string | null,
+      durationSecs: null as number | null,
+      ingestSource: 'client' as const,
+    };
+
+    const prevCallsRaw = prevNotes.convaiCalls;
+    const prevCalls = Array.isArray(prevCallsRaw) ? [...prevCallsRaw] : [];
+    prevCalls.unshift(callEntry);
+    const convaiCalls = prevCalls.slice(0, 10);
+    const nextSeen = [...seen, conversationId].slice(-200);
+
+    const nextNotes = {
+      ...prevNotes,
+      convaiLastCall: callEntry,
+      convaiCalls,
+      convaiWebhookConversationIds: nextSeen,
+    };
+
+    await this.prisma.meddpiccDeal.update({
+      where: { id: dealId },
+      data: { notes: nextNotes as unknown as Prisma.InputJsonValue },
+    });
+
+    this.logger.log(`ConvAI client transcript: guardado deal=${dealId} conversation_id=${conversationId}`);
+    return { ok: true, duplicate: false, conversationId };
   }
 }

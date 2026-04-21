@@ -3,6 +3,8 @@
  *
  * Variables string que envía la companion (definirlas en el agente ElevenLabs como "Dynamic variables"):
  * - `deal_id` — UUID del deal (para webhooks / APIs).
+ *   En la página del deal también se envía el atributo del widget `user-id` = mismo UUID; ElevenLabs lo reenvía como
+ *   `user_id` en el webhook y el backend lo usa si `dynamic-variables` falla por tamaño o parseo.
  * - `nombre_deal` — Nombre de la oportunidad.
  * - `cliente` — Empresa / cliente.
  * - `importe_deal` — Valor en € formateado (es-ES) o "No indicado".
@@ -10,6 +12,13 @@
  * - `contexto_deal` — Texto libre de contexto (recortado si es muy largo).
  * - `meddpicc_respondido` — Bloque con preguntas guía ya contestadas (no re-interrogar).
  * - `meddpicc_pendiente` — Lista explícita de huecos MEDDPICC sin respuesta (priorizar la sesión aquí).
+ * - `meddpicc_ia_resumen` — Resumen del último análisis IA (si existe).
+ * - `meddpicc_ia_riesgos` — Riesgos detectados por IA (bullets).
+ * - `meddpicc_ia_fortalezas` — Fortalezas detectadas por IA (bullets).
+ * - `meddpicc_ia_proximas_preguntas` — Próximas preguntas sugeridas por IA (bullets).
+ * - `meddpicc_ia_acciones_criticas` — Acciones críticas / plan (texto compacto, si existe).
+ * - `meddpicc_ia_areas_reforzar` — Áreas a reforzar (texto compacto, si existe).
+ * - `meddpicc_ia_banner` — Banner/estado estratégico del deal (si existe).
  *
  * En el system prompt / primera instrucción del agente, referencia con dobles llaves, p. ej. {{cliente}}.
  */
@@ -31,6 +40,26 @@ export function ownerFirstNameOnly(owner: ConvaiDealOwner): string {
 const DEFAULT_MAX_CONTEXT = 8000;
 const DEFAULT_MAX_BLOCK = 12000;
 
+function bulletsFromUnknownList(raw: unknown, maxItems: number): string {
+  if (!Array.isArray(raw)) return '';
+  const items = raw
+    .map((x) => (x != null && typeof x !== 'object' ? String(x).trim() : ''))
+    .filter(Boolean)
+    .slice(0, maxItems);
+  return items.map((x) => `• ${x}`).join('\n');
+}
+
+function compactJsonish(raw: unknown, maxChars: number): string {
+  if (!raw) return '';
+  if (typeof raw === 'string') return raw.trim().slice(0, maxChars);
+  try {
+    const s = JSON.stringify(raw);
+    return (s ?? '').slice(0, maxChars);
+  } catch {
+    return '';
+  }
+}
+
 export function buildMeddpiccConvaiDynamicPayload(params: {
   dealId: string;
   dealName: string;
@@ -39,6 +68,7 @@ export function buildMeddpiccConvaiDynamicPayload(params: {
   context: string;
   owner: ConvaiDealOwner;
   answers: Record<string, string>;
+  notes?: Record<string, unknown>;
   maxContextChars?: number;
   maxListChars?: number;
 }): Record<string, string> {
@@ -81,6 +111,15 @@ export function buildMeddpiccConvaiDynamicPayload(params: {
   }
 
   const importe = formatEuroDigitsForDisplay(params.valueEuroDigits).trim();
+  const notes = params.notes ?? {};
+
+  const iaResumen = typeof notes.aiAssessment === 'string' ? notes.aiAssessment.trim() : '';
+  const iaRiesgos = bulletsFromUnknownList(notes.aiRisks, 12);
+  const iaFortalezas = bulletsFromUnknownList(notes.aiStrengths, 12);
+  const iaNext = bulletsFromUnknownList(notes.aiNextQuestions, 12);
+  const iaAccionesCriticas = compactJsonish(notes.aiCriticalActions, 8000);
+  const iaAreasReforzar = compactJsonish(notes.aiAreasToReinforce, 8000);
+  const iaBanner = compactJsonish(notes.dealStatusBanner, 4000);
 
   return {
     deal_id: params.dealId,
@@ -91,6 +130,13 @@ export function buildMeddpiccConvaiDynamicPayload(params: {
     contexto_deal: ctx || '(Sin contexto libre en el deal.)',
     meddpicc_respondido: meddpiccRespondido,
     meddpicc_pendiente: meddpiccPendiente,
+    meddpicc_ia_resumen: iaResumen || '(Aún no hay resumen IA guardado.)',
+    meddpicc_ia_riesgos: iaRiesgos || '(Sin riesgos IA guardados.)',
+    meddpicc_ia_fortalezas: iaFortalezas || '(Sin fortalezas IA guardadas.)',
+    meddpicc_ia_proximas_preguntas: iaNext || '(Sin próximas preguntas IA guardadas.)',
+    meddpicc_ia_acciones_criticas: iaAccionesCriticas || '(Sin plan de acciones críticas guardado.)',
+    meddpicc_ia_areas_reforzar: iaAreasReforzar || '(Sin áreas a reforzar guardadas.)',
+    meddpicc_ia_banner: iaBanner || '(Sin banner/estado estratégico guardado.)',
   };
 }
 

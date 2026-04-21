@@ -7,6 +7,7 @@ import { MeddpiccService } from './meddpicc.service';
 import { CreateMeddpiccDealDto } from './dto/create-meddpicc-deal.dto';
 import { UpdateMeddpiccDealDto } from './dto/update-meddpicc-deal.dto';
 import { AnalyzeMeddpiccDealDto } from './dto/analyze-meddpicc-deal.dto';
+import { ClientConvaiTranscriptDto } from './dto/client-convai-transcript.dto';
 
 @Controller('meddpicc/deals')
 @UseGuards(JwtAuthGuard)
@@ -82,5 +83,17 @@ export class MeddpiccController {
   @Post(':id/convai/simulate-post-call')
   simulateConvaiPostCall(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.meddpicc.simulateConvaiPostCall(user, id);
+  }
+
+  /**
+   * Guarda transcripción (y opcionalmente resumen) desde el navegador si el webhook post-llamada no llegó.
+   */
+  @Post(':id/convai/client-transcript')
+  applyClientConvaiTranscript(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @Body() dto: ClientConvaiTranscriptDto,
+  ) {
+    return this.meddpicc.applyClientConvaiTranscript(user, id, dto);
   }
 }

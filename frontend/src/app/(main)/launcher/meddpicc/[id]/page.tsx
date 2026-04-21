@@ -420,6 +420,12 @@ export default function MeddpiccDealDetailPage() {
   const [editingDimScoreKey, setEditingDimScoreKey] = useState<string | null>(null);
   const answerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const dimScoreInputRef = useRef<HTMLInputElement | null>(null);
+  const convaiWidgetRef = useRef<HTMLElement | null>(null);
+  /** Huella JSON de `notes.convaiLastCall` para detectar nueva sesión tras el webhook. */
+  const lastConvaiFingerprintRef = useRef<string>('null');
+  const convaiPollAbortRef = useRef(false);
+  /** Polling en segundo plano tras interactuar con el embed (el widget a veces no emite `conversationEnded`). */
+  const convaiFpWatchRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipInitialAccordionScroll = useRef(true);
   /** Bloques .aiBlock plegados por defecto; se abren al pulsar la cabecera. */
   const [aiBlockOpen, setAiBlockOpen] = useState<Record<string, boolean>>({});
@@ -469,15 +475,15 @@ export default function MeddpiccDealDetailPage() {
     });
   }, [editingDimScoreKey]);
 
-  const load = useCallback(async () => {
-    if (!id) return;
+  const load = useCallback(async (): Promise<DealApi | null> => {
+    if (!id) return null;
     setLoading(true);
     setError(null);
     try {
       const res = await apiFetch(`/api/meddpicc/deals/${id}`);
       if (!res.ok) {
         setError('No se pudo cargar el deal');
-        return;
+        return null;
       }
       const data = (await res.json()) as { deal: DealApi; history: HistoryRow[] };
       const d = data.deal;
@@ -493,8 +499,10 @@ export default function MeddpiccDealDetailPage() {
       const ea = emptyAnswers();
       const ans = typeof d.answers === 'object' && d.answers ? (d.answers as Record<string, string>) : {};
       setAnswers({ ...ea, ...ans });
+      return d;
     } catch {
       setError('Error de red');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -547,8 +555,159 @@ export default function MeddpiccDealDetailPage() {
     }
   };
 
-  const convaiDebugEnabled = process.env.NEXT_PUBLIC_ENABLE_CONVAI_WEBHOOK_DEBUG === 'true';
+  const convaiDebugEnabled = true;
   const [convaiSimBusy, setConvaiSimBusy] = useState(false);
+  const [convaiEndModalOpen, setConvaiEndModalOpen] = useState(false);
+  const [convaiEndModalLoading, setConvaiEndModalLoading] = useState(false);
+  const [convaiEndModalData, setConvaiEndModalData] = useState<Record<string, unknown> | null>(null);
+  const [convaiSyncBusy, setConvaiSyncBusy] = useState(false);
+  const [convaiClientPaste, setConvaiClientPaste] = useState('');
+  const [convaiClientBusy, setConvaiClientBusy] = useState(false);
+
+  const pollForNewConvaiAfterCall = useCallback(
+    async (baselineFingerprint: string): Promise<Record<string, unknown> | null> => {
+      if (!id) return null;
+      convaiPollAbortRef.current = false;
+      for (let attempt = 0; attempt < 36; attempt++) {
+        if (convaiPollAbortRef.current) return null;
+        await new Promise((r) => setTimeout(r, 1700));
+        if (convaiPollAbortRef.current) return null;
+        const res = await apiFetch(`/api/meddpicc/deals/${id}`);
+        if (!res.ok) continue;
+        const data = (await res.json()) as { deal: DealApi };
+        const n = data.deal.notes;
+        const raw = n && typeof n === 'object' && !Array.isArray(n) ? (n as Record<string, unknown>).convaiLastCall : null;
+        const fp = JSON.stringify(raw ?? null);
+        if (fp !== baselineFingerprint && fp !== 'null') {
+          await load();
+          return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null;
+        }
+      }
+      return null;
+    },
+    [id, load],
+  );
+
+  const clearConvaiFpWatch = useCallback(() => {
+    if (convaiFpWatchRef.current) {
+      clearInterval(convaiFpWatchRef.current);
+      convaiFpWatchRef.current = null;
+    }
+  }, []);
+
+  /** Tras pulsar en el embed, vigila el deal hasta que el webhook actualice `convaiLastCall` (≈3 min). */
+  const startConvaiFpWatchFromBaseline = useCallback(
+    (baselineFingerprint: string) => {
+      clearConvaiFpWatch();
+      if (!id) return;
+      let attempts = 0;
+      const maxAttempts = 72;
+      convaiFpWatchRef.current = setInterval(() => {
+        attempts += 1;
+        if (attempts > maxAttempts) {
+          clearConvaiFpWatch();
+          return;
+        }
+        void (async () => {
+          const res = await apiFetch(`/api/meddpicc/deals/${id}`);
+          if (!res.ok) return;
+          const data = (await res.json()) as { deal: DealApi };
+          const n = data.deal.notes;
+          const raw =
+            n && typeof n === 'object' && !Array.isArray(n)
+              ? (n as Record<string, unknown>).convaiLastCall
+              : null;
+          const fp = JSON.stringify(raw ?? null);
+          if (fp !== baselineFingerprint && fp !== 'null') {
+            clearConvaiFpWatch();
+            await load();
+            const latest =
+              raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null;
+            if (latest) {
+              setConvaiEndModalOpen(true);
+              setConvaiEndModalLoading(false);
+              setConvaiEndModalData(latest);
+            }
+          }
+        })();
+      }, 2500);
+    },
+    [id, load, clearConvaiFpWatch],
+  );
+
+  useEffect(() => () => clearConvaiFpWatch(), [clearConvaiFpWatch]);
+
+  const handleConvaiConversationEnded = useCallback(async () => {
+    clearConvaiFpWatch();
+    const baseline = lastConvaiFingerprintRef.current;
+    convaiPollAbortRef.current = false;
+    setConvaiEndModalOpen(true);
+    setConvaiEndModalLoading(true);
+    setConvaiEndModalData(null);
+    const found = await pollForNewConvaiAfterCall(baseline);
+    setConvaiEndModalLoading(false);
+    setConvaiEndModalData(found);
+  }, [clearConvaiFpWatch, pollForNewConvaiAfterCall]);
+
+  const closeConvaiEndModal = useCallback(() => {
+    convaiPollAbortRef.current = true;
+    clearConvaiFpWatch();
+    setConvaiEndModalOpen(false);
+    setConvaiEndModalLoading(false);
+    setConvaiEndModalData(null);
+  }, [clearConvaiFpWatch]);
+
+  const syncConvaiTranscription = useCallback(async () => {
+    if (!id) return;
+    setConvaiSyncBusy(true);
+    setError(null);
+    try {
+      const d = await load();
+      if (!d) return;
+      const raw =
+        d.notes && typeof d.notes === 'object' && !Array.isArray(d.notes)
+          ? (d.notes as Record<string, unknown>).convaiLastCall
+          : null;
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        setConvaiEndModalOpen(true);
+        setConvaiEndModalLoading(false);
+        setConvaiEndModalData(raw as Record<string, unknown>);
+      } else {
+        setError(
+          'Todavía no hay transcripción en el servidor. Espera unos segundos tras colgar, vuelve a pulsar o pega el texto en «Si el webhook falló».',
+        );
+      }
+    } catch {
+      setError('Error de red');
+    } finally {
+      setConvaiSyncBusy(false);
+    }
+  }, [id, load]);
+
+  const submitClientConvaiTranscript = async () => {
+    if (!id || !convaiClientPaste.trim()) return;
+    setConvaiClientBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`/api/meddpicc/deals/${id}/convai/client-transcript`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcriptMarkdown: convaiClientPaste.trim() }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { message?: string | string[] };
+        const msg = Array.isArray(j.message) ? j.message.join(', ') : j.message;
+        setError(msg || 'No se pudo guardar la transcripción');
+        return;
+      }
+      setConvaiClientPaste('');
+      await load();
+    } catch {
+      setError('Error de red');
+    } finally {
+      setConvaiClientBusy(false);
+    }
+  };
 
   const simulateConvaiWebhook = async () => {
     if (!id) return;
@@ -704,9 +863,27 @@ export default function MeddpiccDealDetailPage() {
       context,
       owner: deal?.owner,
       answers,
+      notes,
     });
     return JSON.stringify(payload);
-  }, [id, name, company, valueEuroDigits, context, deal?.owner, answers]);
+  }, [id, name, company, valueEuroDigits, context, deal?.owner, answers, notes]);
+
+  useEffect(() => {
+    const el = convaiWidgetRef.current;
+    if (!el || !id) return;
+    const onEnd = () => {
+      void handleConvaiConversationEnded();
+    };
+    const names = ['conversationEnded', 'call-ended', 'convai-call-ended', 'session-ended'];
+    for (const n of names) {
+      el.addEventListener(n, onEnd as EventListener);
+    }
+    return () => {
+      for (const n of names) {
+        el.removeEventListener(n, onEnd as EventListener);
+      }
+    };
+  }, [id, handleConvaiConversationEnded, convaiDynamicVariablesJson]);
 
   const convaiPendingCount = useMemo(() => {
     let n = 0;
@@ -740,6 +917,16 @@ export default function MeddpiccDealDetailPage() {
     return { summary, receivedAt, transcriptMarkdown, durationSecs, conversationId };
   }, [notes]);
 
+  const hasConvaiVoiceStored = Boolean(convaiLastCallFromWebhook);
+
+  useEffect(() => {
+    const raw =
+      deal?.notes && typeof deal.notes === 'object' && !Array.isArray(deal.notes)
+        ? (deal.notes as Record<string, unknown>).convaiLastCall
+        : undefined;
+    lastConvaiFingerprintRef.current = JSON.stringify(raw ?? null);
+  }, [deal?.notes]);
+
   const staleCornerTitleId = useId();
 
   const scoreJustificationsByDim = useMemo((): Record<string, string> => {
@@ -752,6 +939,58 @@ export default function MeddpiccDealDetailPage() {
     return out;
   }, [notes]);
   const analyzeActionLabel = lastAnalysis ? 'Re-analizar con IA' : 'Analizar con IA';
+
+  const convaiEndModalDescription = useMemo(() => {
+    if (convaiEndModalLoading) {
+      return (
+        <p className={styles.convaiEndModalStatus}>
+          Recibiendo resumen y transcripción desde el servidor (webhook post-llamada)…
+        </p>
+      );
+    }
+    if (!convaiEndModalData) {
+      return (
+        <p className={styles.convaiEndModalStatus}>
+          Aún no hay datos nuevos en el deal; el webhook puede tardar unos segundos. También puedes revisar la sección
+          «Última llamada sincronizada» debajo del asistente de voz.
+        </p>
+      );
+    }
+    const summary =
+      typeof convaiEndModalData.summary === 'string' ? convaiEndModalData.summary.trim() : '';
+    const tr =
+      typeof convaiEndModalData.transcriptMarkdown === 'string'
+        ? convaiEndModalData.transcriptMarkdown
+        : '';
+    const dc = convaiEndModalData.dataCollectionResults;
+    let dcBlock: ReactNode = null;
+    if (dc != null && typeof dc === 'object' && !Array.isArray(dc)) {
+      try {
+        dcBlock = (
+          <pre className={styles.convaiEndModalPreJson}>{JSON.stringify(dc, null, 2)}</pre>
+        );
+      } catch {
+        dcBlock = null;
+      }
+    }
+    return (
+      <div className={styles.convaiEndModalBody}>
+        {summary ? <p className={styles.convaiEndModalSummary}>{summary}</p> : null}
+        {dcBlock ? (
+          <>
+            <p className={styles.convaiEndModalLabel}>Datos recogidos (data collection)</p>
+            {dcBlock}
+          </>
+        ) : null}
+        {tr ? (
+          <details className={styles.convaiEndModalDetails} open>
+            <summary>Transcripción</summary>
+            <pre className={styles.convaiEndModalPre}>{tr}</pre>
+          </details>
+        ) : null}
+      </div>
+    );
+  }, [convaiEndModalLoading, convaiEndModalData]);
 
   const ownerLine = useMemo(() => {
     if (!deal?.owner) return null;
@@ -974,19 +1213,29 @@ export default function MeddpiccDealDetailPage() {
         </h2>
         <p className={styles.convaiHint}>
           La app envía a ElevenLabs el cliente, importe, propietario (nombre), contexto y las respuestas ya rellenadas;
-          el foco debe ser solo lo pendiente. En el agente ElevenLabs, usa en el prompt las variables dinámicas (p. ej.{' '}
+          el foco debe ser solo lo pendiente. El UUID del deal va también en <code className={styles.convaiCode}>user-id</code>{' '}
+          del widget (como <code className={styles.convaiCode}>user_id</code> en el webhook) para que la transcripción se
+          guarde aunque el JSON de variables dinámicas sea muy grande. En el agente, usa en el prompt las variables (p. ej.{' '}
           <code className={styles.convaiCode}>{'{{cliente}}'}</code>, <code className={styles.convaiCode}>{'{{importe_deal}}'}</code>,{' '}
           <code className={styles.convaiCode}>{'{{meddpicc_pendiente}}'}</code>
           …) listadas en <code className={styles.convaiCode}>meddpicc-convai-context.ts</code>. Tras cada llamada, el
           webhook <code className={styles.convaiCode}>POST /webhooks/elevenlabs/meddpicc</code> (secreto en backend) puede
           guardar aquí el resumen y la transcripción.
         </p>
-        <div className={styles.convaiEmbed}>
+        <div
+          className={styles.convaiEmbed}
+          onPointerDownCapture={() => {
+            const baseline = lastConvaiFingerprintRef.current;
+            startConvaiFpWatchFromBaseline(baseline);
+          }}
+        >
           {convaiDynamicVariablesJson ? (
             <>
               <elevenlabs-convai
+                ref={convaiWidgetRef}
                 key={convaiDynamicVariablesJson}
                 agent-id="agent_6301kpq853thfbnrmnzy95tv1qqj"
+                user-id={id}
                 dynamic-variables={convaiDynamicVariablesJson}
                 override-language="es"
                 override-first-message={convaiFirstMessage}
@@ -995,9 +1244,49 @@ export default function MeddpiccDealDetailPage() {
             </>
           ) : null}
         </div>
+        <div className={styles.convaiToolbar}>
+          <button
+            type="button"
+            className={styles.convaiToolbarBtn}
+            disabled={convaiSyncBusy || !id}
+            onClick={() => void syncConvaiTranscription()}
+          >
+            {convaiSyncBusy ? 'Sincronizando…' : 'Sincronizar transcripción'}
+          </button>
+          <p className={styles.convaiToolbarHint}>
+            Tras colgar, la transcripción llega por webhook; si no ves nada, pulsa sincronizar o espera (también vigilamos
+            el servidor unos minutos al usar el widget).
+          </p>
+        </div>
+        <details className={styles.convaiClientFallback}>
+          <summary>Si el webhook falló: pegar transcripción</summary>
+          <p className={styles.convaiClientFallbackHint}>
+            Solo si ElevenLabs no pudo notificar al servidor. El texto se guarda en el deal como última sesión de voz.
+          </p>
+          <textarea
+            className={styles.convaiClientFallbackTextarea}
+            rows={5}
+            value={convaiClientPaste}
+            onChange={(e) => setConvaiClientPaste(e.target.value)}
+            placeholder="Pega aquí la transcripción…"
+            disabled={convaiClientBusy}
+          />
+          <button
+            type="button"
+            className={styles.convaiClientFallbackBtn}
+            disabled={convaiClientBusy || !convaiClientPaste.trim() || !id}
+            onClick={() => void submitClientConvaiTranscript()}
+          >
+            {convaiClientBusy ? 'Guardando…' : 'Guardar en el deal'}
+          </button>
+        </details>
         {convaiLastCallFromWebhook ? (
           <div className={styles.convaiWebhookNote}>
             <h3 className={styles.convaiWebhookHeading}>Última llamada sincronizada</h3>
+            <p className={styles.convaiWebhookUseHint}>
+              Este contenido queda en el deal. Al pulsar «Analizar con IA» o «Re-analizar con IA», el modelo lo recibe como
+              evidencia adicional junto con tus respuestas y el contexto.
+            </p>
             <p className={styles.convaiWebhookMeta}>
               {convaiLastCallFromWebhook.receivedAt
                 ? new Date(convaiLastCallFromWebhook.receivedAt).toLocaleString('es-ES', {
@@ -1174,6 +1463,12 @@ export default function MeddpiccDealDetailPage() {
           ) : (
             <p className={styles.aiBarBody}>Se usa la clave Anthropic guardada en tu perfil.</p>
           )}
+          {hasConvaiVoiceStored ? (
+            <p className={styles.aiBarBody}>
+              Hay una sesión de voz guardada (resumen y transcripción). Se tendrá en cuenta automáticamente al ejecutar{' '}
+              <strong>Analizar / Re-analizar con IA</strong>.
+            </p>
+          ) : null}
         </div>
         <div className={styles.aiBarActions}>
           <button
@@ -1885,6 +2180,16 @@ export default function MeddpiccDealDetailPage() {
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={convaiEndModalOpen}
+        title={convaiEndModalLoading ? 'Sesión de voz finalizando…' : 'Sesión de voz finalizada'}
+        description={convaiEndModalDescription}
+        cancelLabel="Cerrar"
+        confirmLabel="Entendido"
+        onConfirm={closeConvaiEndModal}
+        onCancel={closeConvaiEndModal}
+      />
 
       <ConfirmDialog
         open={deleteOpen}
