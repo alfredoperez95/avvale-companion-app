@@ -2,6 +2,11 @@
  * Diálogo de confirmación (Fiori): mismo lenguaje visual que modales en admin.
  * z-index por encima de otros modales (p. ej. edición 1000).
  */
+/** Por encima de widgets flotantes (p. ej. ElevenLabs ConvAI ~1e9). Opcional vía `overlayClassName`. */
+.overlayAboveEmbeds {
+  z-index: 2147483646;
+}
+
 .overlay {
   position: fixed;
   inset: 0;

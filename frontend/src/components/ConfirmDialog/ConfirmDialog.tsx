@@ -7,6 +7,8 @@ import styles from './ConfirmDialog.module.css';
 export type ConfirmDialogProps = {
   open: boolean;
   title: string;
+  /** Clase extra en el overlay (p. ej. z-index alto sobre widgets embebidos). */
+  overlayClassName?: string;
   /** Texto o contenido del cuerpo (uso habitual en la app). */
   message?: ReactNode;
   /** Contenido rico del cuerpo; si existe, tiene prioridad sobre `message`. */
@@ -30,6 +32,7 @@ export type ConfirmDialogProps = {
 export function ConfirmDialog({
   open,
   title,
+  overlayClassName,
   message,
   description,
   confirmLabel = 'Confirmar',
@@ -76,7 +79,11 @@ export function ConfirmDialog({
   };
 
   return (
-    <div className={styles.overlay} role="presentation" onClick={handleOverlayClick}>
+    <div
+      className={[styles.overlay, overlayClassName].filter(Boolean).join(' ')}
+      role="presentation"
+      onClick={handleOverlayClick}
+    >
       <div
         role="alertdialog"
         aria-modal="true"

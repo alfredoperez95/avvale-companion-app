@@ -1,12 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Script from 'next/script';
 import { apiFetch, apiUpload } from '@/lib/api';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import confirmDialogStyles from '@/components/ConfirmDialog/ConfirmDialog.module.css';
 import { useUser } from '@/contexts/UserContext';
 import { MeddpiccDimensionIcon } from '@/lib/meddpicc-dimension-icon';
 import {
@@ -538,6 +540,13 @@ export default function MeddpiccDealDetailPage() {
   const answerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const dimScoreInputRef = useRef<HTMLInputElement | null>(null);
   const convaiWidgetRef = useRef<HTMLElement | null>(null);
+  const convaiWidgetListenerCleanupRef = useRef<(() => void) | null>(null);
+  const convaiWidgetActionRef = useRef({
+    handleConvaiConversationEnded: async () => {},
+    tryAutoImportFromElevenLabsAfterEnd: async (_hint?: string) => {},
+    clearConvaiShadowConversationIdWatch: () => {},
+    startConvaiShadowConversationIdWatch: () => {},
+  });
   /** Huella JSON de `notes.convaiLastCall` para detectar nueva sesión tras el webhook. */
   const lastConvaiFingerprintRef = useRef<string>('null');
   const convaiPollAbortRef = useRef(false);
@@ -932,6 +941,53 @@ export default function MeddpiccDealDetailPage() {
     [id, importFromElevenLabsByConversationId],
   );
 
+  /**
+   * Ref callback: el `<elevenlabs-convai>` vive en portal en `document.body`; un `useEffect` con
+   * `convaiWidgetRef.current` a menudo corre antes de que exista el nodo y los eventos de fin de llamada no se enlazan.
+   */
+  const convaiWidgetHostCallback = useCallback((node: HTMLElement | null) => {
+    convaiWidgetListenerCleanupRef.current?.();
+    convaiWidgetListenerCleanupRef.current = null;
+    convaiWidgetRef.current = node;
+    if (!node || !id) return;
+
+    const onStarted = () => {
+      lastAutoImportedConvaiIdRef.current = null;
+      convaiSessionEndBurstRef.current = false;
+      convaiWidgetActionRef.current.clearConvaiShadowConversationIdWatch();
+      convaiWidgetActionRef.current.startConvaiShadowConversationIdWatch();
+    };
+    const onEnd = (ev: Event) => {
+      if (convaiSessionEndBurstRef.current) return;
+      convaiSessionEndBurstRef.current = true;
+      window.setTimeout(() => {
+        convaiSessionEndBurstRef.current = false;
+      }, 2500);
+      void convaiWidgetActionRef.current.handleConvaiConversationEnded();
+      const ce = ev as CustomEvent<{ conversationId?: string }>;
+      const hint = typeof ce.detail?.conversationId === 'string' ? ce.detail.conversationId : undefined;
+      void convaiWidgetActionRef.current.tryAutoImportFromElevenLabsAfterEnd(hint);
+      convaiWidgetActionRef.current.startConvaiShadowConversationIdWatch();
+    };
+    const endNames = [
+      'conversationEnded',
+      'call-ended',
+      'convai-call-ended',
+      'session-ended',
+      'convai-conversation-ended',
+    ];
+    node.addEventListener('conversationStarted', onStarted as EventListener);
+    for (const n of endNames) {
+      node.addEventListener(n, onEnd as EventListener);
+    }
+    convaiWidgetListenerCleanupRef.current = () => {
+      node.removeEventListener('conversationStarted', onStarted as EventListener);
+      for (const n of endNames) {
+        node.removeEventListener(n, onEnd as EventListener);
+      }
+    };
+  }, [id]);
+
   const submitClientConvaiTranscript = async () => {
     if (!id || !convaiClientPaste.trim()) return;
     setConvaiClientBusy(true);
@@ -1096,53 +1152,6 @@ export default function MeddpiccDealDetailPage() {
     return JSON.stringify(payload);
   }, [id, name, company, valueEuroDigits, context, deal?.owner, answers, notes]);
 
-  useEffect(() => {
-    const el = convaiWidgetRef.current;
-    if (!el || !id) return;
-    const onStarted = () => {
-      lastAutoImportedConvaiIdRef.current = null;
-      convaiSessionEndBurstRef.current = false;
-      clearConvaiShadowConversationIdWatch();
-      startConvaiShadowConversationIdWatch();
-    };
-    const onEnd = (ev: Event) => {
-      if (convaiSessionEndBurstRef.current) return;
-      convaiSessionEndBurstRef.current = true;
-      window.setTimeout(() => {
-        convaiSessionEndBurstRef.current = false;
-      }, 2500);
-      void handleConvaiConversationEnded();
-      const ce = ev as CustomEvent<{ conversationId?: string }>;
-      const hint = typeof ce.detail?.conversationId === 'string' ? ce.detail.conversationId : undefined;
-      void tryAutoImportFromElevenLabsAfterEnd(hint);
-      startConvaiShadowConversationIdWatch();
-    };
-    const endNames = [
-      'conversationEnded',
-      'call-ended',
-      'convai-call-ended',
-      'session-ended',
-      'convai-conversation-ended',
-    ];
-    el.addEventListener('conversationStarted', onStarted as EventListener);
-    for (const n of endNames) {
-      el.addEventListener(n, onEnd as EventListener);
-    }
-    return () => {
-      el.removeEventListener('conversationStarted', onStarted as EventListener);
-      for (const n of endNames) {
-        el.removeEventListener(n, onEnd as EventListener);
-      }
-    };
-  }, [
-    id,
-    handleConvaiConversationEnded,
-    convaiDynamicVariablesJson,
-    tryAutoImportFromElevenLabsAfterEnd,
-    clearConvaiShadowConversationIdWatch,
-    startConvaiShadowConversationIdWatch,
-  ]);
-
   const convaiPendingCount = useMemo(() => {
     let n = 0;
     for (const dim of MEDDPICC_DIMENSIONS) {
@@ -1209,8 +1218,8 @@ export default function MeddpiccDealDetailPage() {
     if (!convaiEndModalData) {
       return (
         <p className={styles.convaiEndModalStatus}>
-          Aún no hay datos nuevos en el deal; el webhook puede tardar unos segundos. También puedes revisar la sección
-          «Última llamada sincronizada» debajo del asistente de voz.
+          Aún no hay datos nuevos en el deal; el webhook puede tardar unos segundos. También puedes revisar{' '}
+          <strong>Última conversación guardada</strong> en la sección Asistente de voz.
         </p>
       );
     }
@@ -1235,20 +1244,32 @@ export default function MeddpiccDealDetailPage() {
       <div className={styles.convaiEndModalBody}>
         {summary ? <p className={styles.convaiEndModalSummary}>{summary}</p> : null}
         {dcBlock ? (
-          <>
-            <p className={styles.convaiEndModalLabel}>Datos recogidos (data collection)</p>
+          <details className={styles.convaiEndModalDetails}>
+            <summary>Datos recogidos (data collection)</summary>
             {dcBlock}
-          </>
+          </details>
         ) : null}
         {tr ? (
-          <details className={styles.convaiEndModalDetails} open>
+          <details className={styles.convaiEndModalDetails}>
             <summary>Transcripción</summary>
             <pre className={styles.convaiEndModalPre}>{tr}</pre>
           </details>
         ) : null}
+        <div className={styles.convaiEndModalAnalyzeRow}>
+          <button
+            type="button"
+            className={`${styles.primaryBtn} ${styles.convaiEndModalAnalyzeBtn}`}
+            onClick={() => {
+              closeConvaiEndModal();
+              setAnalyzeOpen(true);
+            }}
+          >
+            {analyzeActionLabel}
+          </button>
+        </div>
       </div>
     );
-  }, [convaiEndModalLoading, convaiEndModalData]);
+  }, [convaiEndModalLoading, convaiEndModalData, closeConvaiEndModal, analyzeActionLabel]);
 
   const ownerLine = useMemo(() => {
     if (!deal?.owner) return null;
@@ -1301,6 +1322,13 @@ export default function MeddpiccDealDetailPage() {
 
   /** Formulario «Datos generales» + adjuntos: oculto hasta pulsar lápiz en cabecera. */
   const [dealDetailEditorOpen, setDealDetailEditorOpen] = useState(false);
+  /** Widget ElevenLabs + bloque de transcripción: ocultos por defecto (icono ajustes). */
+  const [convaiToolsOpen, setConvaiToolsOpen] = useState(false);
+  /** Evita portal a `document.body` durante SSR / antes de hidratar. */
+  const [convaiWidgetPortalReady, setConvaiWidgetPortalReady] = useState(false);
+  useEffect(() => {
+    setConvaiWidgetPortalReady(true);
+  }, []);
 
   const toggleDealDetailEditor = useCallback(() => {
     setDealDetailEditorOpen((open) => {
@@ -1320,6 +1348,13 @@ export default function MeddpiccDealDetailPage() {
       return willOpen;
     });
   }, []);
+
+  convaiWidgetActionRef.current = {
+    handleConvaiConversationEnded,
+    tryAutoImportFromElevenLabsAfterEnd,
+    clearConvaiShadowConversationIdWatch,
+    startConvaiShadowConversationIdWatch,
+  };
 
   const attachmentCount = deal?.attachments?.length ?? 0;
   const attachmentCountLabel =
@@ -1465,9 +1500,48 @@ export default function MeddpiccDealDetailPage() {
 
       <section className={styles.convaiSection} aria-labelledby="meddpicc-convai-heading">
         <header className={styles.convaiSectionHeader}>
-          <h2 id="meddpicc-convai-heading" className={`${styles.sectionHeading} ${styles.convaiSectionHeading}`}>
-            Asistente de voz
-          </h2>
+          <div className={styles.convaiSectionHeadRow}>
+            <h2 id="meddpicc-convai-heading" className={`${styles.sectionHeading} ${styles.convaiSectionHeading}`}>
+              Asistente de voz
+            </h2>
+            <button
+              type="button"
+              className={`${styles.convaiToolsToggle} ${convaiToolsOpen ? styles.convaiToolsToggleActive : ''}`}
+              onClick={() => setConvaiToolsOpen((v) => !v)}
+              aria-expanded={convaiToolsOpen}
+              aria-controls="meddpicc-convai-tools"
+              title={
+                convaiToolsOpen
+                  ? 'Ocultar widget y opciones de transcripción'
+                  : 'Mostrar widget y opciones de transcripción'
+              }
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="sr-only">
+                {convaiToolsOpen ? 'Ocultar herramientas del asistente' : 'Mostrar herramientas del asistente'}
+              </span>
+            </button>
+          </div>
+          {!convaiToolsOpen ? (
+            <p className={styles.convaiToolsCollapsedHint}>
+              Widget y opciones de transcripción están ocultos. Pulsa el icono de ajustes para mostrarlos.
+            </p>
+          ) : null}
           {convaiLastCallFromWebhook ? (
             <div className={styles.convaiWebhookNote}>
               <h3 className={styles.convaiWebhookHeading}>Última conversación guardada</h3>
@@ -1490,7 +1564,27 @@ export default function MeddpiccDealDetailPage() {
                   : ''}
               </p>
               {convaiLastCallFromWebhook.summary ? (
-                <p className={styles.convaiWebhookSummary}>{convaiLastCallFromWebhook.summary}</p>
+                <div
+                  className={styles.convaiWebhookSummaryBox}
+                  role="region"
+                  aria-label="Resumen de la conversación generado con IA"
+                >
+                  <div className={styles.convaiWebhookSummaryHead}>
+                    <span className={styles.convaiWebhookSummaryLabel}>Resumen de la conversación</span>
+                    <span className={styles.strategyValoracionBadge}>
+                      <img
+                        src="/img/Claude_AI_symbol.svg"
+                        alt=""
+                        width={12}
+                        height={12}
+                        className={styles.strategyValoracionBadgeClaude}
+                        aria-hidden
+                      />
+                      IA
+                    </span>
+                  </div>
+                  <p className={styles.convaiWebhookSummaryBody}>{convaiLastCallFromWebhook.summary}</p>
+                </div>
               ) : null}
               {convaiLastCallFromWebhook.transcriptMarkdown ? (
                 <details className={styles.convaiWebhookDetails}>
@@ -1500,117 +1594,124 @@ export default function MeddpiccDealDetailPage() {
               ) : null}
             </div>
           ) : null}
-          <p className={styles.convaiLead}>
-            Habla con el asistente sobre este deal: tiene el contexto (cliente, importe, notas y lo que ya has rellenado en
-            MEDDPICC) y te orienta sobre lo que sigue pendiente. Al terminar la llamada, el resumen y la transcripción se
-            guardan aquí y se tendrán en cuenta cuando ejecutes el análisis con IA.
-          </p>
         </header>
-        <div className={styles.convaiEmbedShell}>
-          <div
-            className={styles.convaiEmbed}
-            onPointerDownCapture={() => {
-              const baseline = lastConvaiFingerprintRef.current;
-              startConvaiFpWatchFromBaseline(baseline);
-              clearConvaiShadowConversationIdWatch();
-              startConvaiShadowConversationIdWatch();
-            }}
-          >
-            {convaiDynamicVariablesJson ? (
-              <>
-                <elevenlabs-convai
-                  ref={convaiWidgetRef}
-                  key={convaiDynamicVariablesJson}
-                  agent-id="agent_6301kpq853thfbnrmnzy95tv1qqj"
-                  user-id={id}
-                  dynamic-variables={convaiDynamicVariablesJson}
-                  show-conversation-id="true"
-                  disable-banner="true"
-                  override-language="es"
-                  override-first-message={convaiFirstMessage}
-                />
-                <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="lazyOnload" />
-              </>
-            ) : null}
-          </div>
-        </div>
-        <div className={styles.convaiToolbar}>
-          <button
-            type="button"
-            className={styles.convaiToolbarBtn}
-            disabled={convaiSyncBusy || !id}
-            onClick={() => void syncConvaiTranscription()}
-          >
-            {convaiSyncBusy ? 'Sincronizando…' : 'Sincronizar transcripción'}
-          </button>
-          <p className={styles.convaiToolbarHint}>
-            Si al colgar no ves aún el resumen abajo, espera unos segundos o pulsa sincronizar. También actualizamos el deal
-            automáticamente durante unos minutos tras usar el asistente.
+        {convaiToolsOpen ? (
+          <div id="meddpicc-convai-tools" className={styles.convaiToolsPanel}>
+            <p className={styles.convaiLead}>
+              Habla con el asistente sobre este deal: tiene el contexto (cliente, importe, notas y lo que ya has rellenado en
+              MEDDPICC) y te orienta sobre lo que sigue pendiente. Al terminar la llamada, el resumen y la transcripción se
+              guardan aquí y se tendrán en cuenta cuando ejecutes el análisis con IA.
+            </p>
+            <div className={styles.convaiAftercall}>
+          <h3 className={styles.convaiAftercallHeading}>Transcripción en este deal</h3>
+          <p className={styles.convaiAftercallLead}>
+            Cuando cuelgues, el resumen puede tardar unos segundos en mostrarse. Si no lo ves, sincroniza; también
+            actualizamos el deal automáticamente unos minutos.
           </p>
-        </div>
-        <details className={styles.convaiRecoverDetails}>
-          <summary className={styles.convaiRecoverSummary}>
-            ¿No aparece la transcripción? Recuperarla con el ID de conversación
-          </summary>
-          <div className={styles.convaiRecoverBody}>
-            <p className={styles.convaiRecoverIntro}>
-              Si el asistente muestra un identificador de conversación (por ejemplo <span className={styles.convaiMono}>conv_…</span>
-              ), puedes pegarlo aquí para traer la transcripción desde ElevenLabs.
-            </p>
-            <label className={styles.convaiImportLabel} htmlFor="convai-eleven-import-id">
-              ID de conversación
-            </label>
-            <div className={styles.convaiImportControls}>
-              <input
-                id="convai-eleven-import-id"
-                className={styles.convaiImportInput}
-                type="text"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="conv_…"
-                value={convaiElevenImportId}
-                onChange={(e) => setConvaiElevenImportId(e.target.value)}
-                disabled={convaiImportBusy}
-              />
-              <button
-                type="button"
-                className={styles.convaiImportBtn}
-                disabled={convaiImportBusy || !convaiElevenImportId.trim() || !id}
-                onClick={() => void importConvaiFromElevenLabsApi()}
-              >
-                {convaiImportBusy ? 'Importando…' : 'Importar'}
-              </button>
-            </div>
-            <p className={styles.convaiImportHint}>
-              Si ElevenLabs aún está procesando la llamada, puedes reintentar en unos segundos.
-            </p>
-          </div>
-        </details>
-        <details className={styles.convaiClientFallback}>
-          <summary className={styles.convaiClientFallbackSummary}>Pegar la transcripción a mano</summary>
-          <div className={styles.convaiClientFallbackBody}>
-            <p className={styles.convaiClientFallbackHint}>
-              Solo si no se ha podido guardar automáticamente. El texto se registra como última sesión de voz de este deal.
-            </p>
-            <textarea
-              className={styles.convaiClientFallbackTextarea}
-              rows={5}
-              value={convaiClientPaste}
-              onChange={(e) => setConvaiClientPaste(e.target.value)}
-              placeholder="Pega aquí la transcripción…"
-              disabled={convaiClientBusy}
-            />
+          <div className={styles.convaiAftercallPrimary}>
             <button
               type="button"
-              className={styles.convaiClientFallbackBtn}
-              disabled={convaiClientBusy || !convaiClientPaste.trim() || !id}
-              onClick={() => void submitClientConvaiTranscript()}
+              className={styles.convaiSyncBtn}
+              disabled={convaiSyncBusy || !id}
+              onClick={() => void syncConvaiTranscription()}
             >
-              {convaiClientBusy ? 'Guardando…' : 'Guardar en el deal'}
+              {convaiSyncBusy ? 'Sincronizando…' : 'Sincronizar con el servidor'}
             </button>
           </div>
-        </details>
+          <p className={styles.convaiAftercallDividerLabel}>Si aún falta la transcripción</p>
+          <div className={styles.convaiFolds}>
+            <details className={styles.convaiFold}>
+              <summary className={styles.convaiFoldSummary}>Importar con ID de conversación</summary>
+              <div className={styles.convaiFoldBody}>
+                <p className={styles.convaiFoldIntro}>
+                  Copia el identificador que muestra el asistente al terminar (p. ej.{' '}
+                  <span className={styles.convaiMono}>conv_…</span>) y pégalo aquí.
+                </p>
+                <label className={styles.convaiImportLabel} htmlFor="convai-eleven-import-id">
+                  ID de conversación
+                </label>
+                <div className={styles.convaiImportControls}>
+                  <input
+                    id="convai-eleven-import-id"
+                    className={styles.convaiImportInput}
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="conv_…"
+                    value={convaiElevenImportId}
+                    onChange={(e) => setConvaiElevenImportId(e.target.value)}
+                    disabled={convaiImportBusy}
+                  />
+                  <button
+                    type="button"
+                    className={styles.convaiImportBtn}
+                    disabled={convaiImportBusy || !convaiElevenImportId.trim() || !id}
+                    onClick={() => void importConvaiFromElevenLabsApi()}
+                  >
+                    {convaiImportBusy ? 'Importando…' : 'Importar'}
+                  </button>
+                </div>
+                <p className={styles.convaiImportHint}>
+                  Si la llamada sigue procesándose, vuelve a intentar en unos segundos.
+                </p>
+              </div>
+            </details>
+            <details className={styles.convaiFold}>
+              <summary className={styles.convaiFoldSummary}>Pegar transcripción manualmente</summary>
+              <div className={styles.convaiFoldBody}>
+                <p className={styles.convaiFoldIntro}>
+                  Úsalo solo si no se ha guardado nada en el servidor. Se registrará como última sesión de voz del deal.
+                </p>
+                <textarea
+                  className={styles.convaiClientFallbackTextarea}
+                  rows={5}
+                  value={convaiClientPaste}
+                  onChange={(e) => setConvaiClientPaste(e.target.value)}
+                  placeholder="Pega aquí el texto de la conversación…"
+                  disabled={convaiClientBusy}
+                />
+                <button
+                  type="button"
+                  className={styles.convaiPasteSaveBtn}
+                  disabled={convaiClientBusy || !convaiClientPaste.trim() || !id}
+                  onClick={() => void submitClientConvaiTranscript()}
+                >
+                  {convaiClientBusy ? 'Guardando…' : 'Guardar en el deal'}
+                </button>
+              </div>
+            </details>
+          </div>
+        </div>
+          </div>
+        ) : null}
       </section>
+
+      {convaiWidgetPortalReady &&
+      convaiDynamicVariablesJson
+        ? createPortal(
+            <>
+              <elevenlabs-convai
+                ref={convaiWidgetHostCallback}
+                key={convaiDynamicVariablesJson}
+                agent-id="agent_6301kpq853thfbnrmnzy95tv1qqj"
+                user-id={id}
+                dynamic-variables={convaiDynamicVariablesJson}
+                show-conversation-id="true"
+                disable-banner="true"
+                override-language="es"
+                override-first-message={convaiFirstMessage}
+                onPointerDownCapture={() => {
+                  const baseline = lastConvaiFingerprintRef.current;
+                  startConvaiFpWatchFromBaseline(baseline);
+                  clearConvaiShadowConversationIdWatch();
+                  startConvaiShadowConversationIdWatch();
+                }}
+              />
+              <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="lazyOnload" />
+            </>,
+            document.body,
+          )
+        : null}
 
       <div className={styles.detailMain}>
       {error && <p className={styles.inlineError}>{error}</p>}
@@ -2422,61 +2523,64 @@ export default function MeddpiccDealDetailPage() {
 
       </div>
 
-      {analyzeOpen && (
-        <div
-          className={styles.modalOverlay}
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget && !analyzeBusy) setAnalyzeOpen(false);
-          }}
-        >
-          <div
-            className={`${styles.dimCard} ${styles.analyzeDialog} ${styles.modalPanel}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="analyze-title"
-            aria-busy={analyzeBusy}
-          >
-            {analyzeBusy && (
-              <div className={styles.analyzeBusyStrip} aria-hidden>
-                <span className="sr-only">Análisis en curso</span>
-              </div>
-            )}
-            <h2 id="analyze-title" className={styles.detailTitle}>
-              {analyzeActionLabel}
-            </h2>
-            <p className={styles.dealCardMeta}>Añade contexto opcional (reunión, emails) para reevaluar el deal.</p>
-            <textarea
-              className={styles.textarea}
-              rows={6}
-              value={additionalCtx}
-              onChange={(e) => setAdditionalCtx(e.target.value)}
-              placeholder="Notas adicionales…"
-              disabled={analyzeBusy}
-            />
-            <div className={styles.toolbar}>
-              <button
-                type="button"
-                className={`${styles.primaryBtn} ${analyzeBusy ? styles.primaryBtnBusy : ''}`}
-                disabled={analyzeBusy}
-                onClick={() => void runAnalyze()}
+      {analyzeOpen && convaiWidgetPortalReady
+        ? createPortal(
+            <div
+              className={`${styles.modalOverlay} ${styles.modalOverlayAboveConvaiEmbed}`}
+              role="presentation"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget && !analyzeBusy) setAnalyzeOpen(false);
+              }}
+            >
+              <div
+                className={`${styles.dimCard} ${styles.analyzeDialog} ${styles.modalPanel}`}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="analyze-title"
+                aria-busy={analyzeBusy}
               >
-                {analyzeBusy ? (
-                  <>
-                    <span className={styles.primaryBtnSpinner} aria-hidden />
-                    Analizando…
-                  </>
-                ) : (
-                  lastAnalysis ? 'Ejecutar re-análisis' : 'Ejecutar análisis'
+                {analyzeBusy && (
+                  <div className={styles.analyzeBusyStrip} aria-hidden>
+                    <span className="sr-only">Análisis en curso</span>
+                  </div>
                 )}
-              </button>
-              <button type="button" className={styles.ghostBtn} disabled={analyzeBusy} onClick={() => setAnalyzeOpen(false)}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                <h2 id="analyze-title" className={styles.detailTitle}>
+                  {analyzeActionLabel}
+                </h2>
+                <p className={styles.dealCardMeta}>Añade contexto opcional (reunión, emails) para reevaluar el deal.</p>
+                <textarea
+                  className={styles.textarea}
+                  rows={6}
+                  value={additionalCtx}
+                  onChange={(e) => setAdditionalCtx(e.target.value)}
+                  placeholder="Notas adicionales…"
+                  disabled={analyzeBusy}
+                />
+                <div className={styles.toolbar}>
+                  <button
+                    type="button"
+                    className={`${styles.primaryBtn} ${analyzeBusy ? styles.primaryBtnBusy : ''}`}
+                    disabled={analyzeBusy}
+                    onClick={() => void runAnalyze()}
+                  >
+                    {analyzeBusy ? (
+                      <>
+                        <span className={styles.primaryBtnSpinner} aria-hidden />
+                        Analizando…
+                      </>
+                    ) : (
+                      lastAnalysis ? 'Ejecutar re-análisis' : 'Ejecutar análisis'
+                    )}
+                  </button>
+                  <button type="button" className={styles.ghostBtn} disabled={analyzeBusy} onClick={() => setAnalyzeOpen(false)}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {showStaleCornerPanel ? (
         <div
@@ -2516,15 +2620,21 @@ export default function MeddpiccDealDetailPage() {
         </div>
       ) : null}
 
-      <ConfirmDialog
-        open={convaiEndModalOpen}
-        title={convaiEndModalLoading ? 'Sesión de voz finalizando…' : 'Sesión de voz finalizada'}
-        description={convaiEndModalDescription}
-        cancelLabel="Cerrar"
-        confirmLabel="Entendido"
-        onConfirm={closeConvaiEndModal}
-        onCancel={closeConvaiEndModal}
-      />
+      {convaiWidgetPortalReady
+        ? createPortal(
+            <ConfirmDialog
+              open={convaiEndModalOpen}
+              overlayClassName={confirmDialogStyles.overlayAboveEmbeds}
+              title={convaiEndModalLoading ? 'Sesión de voz finalizando…' : 'Sesión de voz finalizada'}
+              description={convaiEndModalDescription}
+              cancelLabel="Cerrar"
+              confirmLabel="Entendido"
+              onConfirm={closeConvaiEndModal}
+              onCancel={closeConvaiEndModal}
+            />,
+            document.body,
+          )
+        : null}
 
       <ConfirmDialog
         open={deleteOpen}

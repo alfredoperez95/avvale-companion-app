@@ -56,6 +56,11 @@
   backdrop-filter: blur(4px);
 }
 
+/** Junto con `.modalOverlay`: por encima del embed ElevenLabs ConvAI (~1e9). Debe declararse después en esta hoja para ganar el `z-index`. */
+.modalOverlayAboveConvaiEmbed {
+  z-index: 2147483646;
+}
+
 .modalPanel {
   width: 100%;
   max-width: 32rem;
@@ -2089,68 +2094,88 @@
   margin-bottom: var(--fiori-space-4);
 }
 
+.convaiSectionHeadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fiori-space-3);
+  margin-bottom: var(--fiori-space-2);
+}
+
+.convaiSectionHeadRow .convaiSectionHeading {
+  margin-bottom: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.convaiToolsToggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-radius: 0.5rem;
+  border: 1px solid var(--fiori-border-light);
+  background: var(--fiori-surface);
+  color: var(--fiori-text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.convaiToolsToggle:hover {
+  background: color-mix(in srgb, var(--fiori-nav-bg) 12%, var(--fiori-surface));
+  color: var(--fiori-text);
+  border-color: var(--fiori-border);
+}
+
+.convaiToolsToggleActive {
+  background: color-mix(in srgb, var(--fiori-link) 10%, var(--fiori-surface));
+  border-color: color-mix(in srgb, var(--fiori-link) 35%, var(--fiori-border-light));
+  color: var(--fiori-link);
+}
+
+.convaiToolsToggle:focus {
+  outline: none;
+}
+
+.convaiToolsToggle:focus-visible {
+  outline: 2px solid var(--fiori-link);
+  outline-offset: 2px;
+}
+
+.convaiToolsCollapsedHint {
+  margin: 0 0 var(--fiori-space-3);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+  max-width: 42rem;
+}
+
+.convaiToolsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: var(--fiori-space-2);
+  padding-top: var(--fiori-space-1);
+  border-top: 1px solid var(--fiori-border-light);
+}
+
 .convaiSectionHeading {
   margin-bottom: var(--fiori-space-2);
 }
 
 .convaiLead {
-  margin: 0;
+  margin: 0 0 var(--fiori-space-4);
   font-size: 0.875rem;
   line-height: 1.55;
   color: var(--fiori-text-secondary);
   max-width: 52rem;
-}
-
-.convaiEmbedShell {
-  border-radius: 0.75rem;
-  border: 1px solid var(--fiori-border-light);
-  background: color-mix(in srgb, var(--fiori-nav-bg) 5%, var(--fiori-surface));
-  padding: var(--fiori-space-3);
-}
-
-.convaiEmbed {
-  min-height: 5rem;
-  display: block;
-}
-
-.convaiEmbed :global(elevenlabs-convai) {
-  display: block;
-}
-
-.convaiRecoverDetails {
-  margin-top: var(--fiori-space-4);
-  border-radius: 0.5rem;
-  border: 1px solid var(--fiori-border-light);
-  background: color-mix(in srgb, var(--fiori-nav-bg) 4%, var(--fiori-surface));
-  overflow: hidden;
-}
-
-.convaiRecoverSummary {
-  padding: var(--fiori-space-3) var(--fiori-space-4);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--fiori-text);
-  list-style: none;
-}
-
-.convaiRecoverSummary::-webkit-details-marker {
-  display: none;
-}
-
-.convaiRecoverDetails[open] .convaiRecoverSummary {
-  border-bottom: 1px solid var(--fiori-border-light);
-}
-
-.convaiRecoverBody {
-  padding: var(--fiori-space-3) var(--fiori-space-4) var(--fiori-space-4);
-}
-
-.convaiRecoverIntro {
-  margin: 0 0 var(--fiori-space-3);
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--fiori-text-secondary);
 }
 
 .convaiMono {
@@ -2159,40 +2184,141 @@
   color: var(--fiori-text);
 }
 
-.convaiToolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--fiori-space-3);
-  margin-top: var(--fiori-space-3);
+/* Bloque unificado: sincronizar + alternativas (misma jerarquía visual) */
+.convaiAftercall {
+  margin-top: var(--fiori-space-4);
+  padding: var(--fiori-space-4);
+  border-radius: 0.75rem;
+  border: 1px solid var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 6%, var(--fiori-surface));
 }
 
-.convaiToolbarBtn {
-  flex-shrink: 0;
-  padding: 0.45rem 0.85rem;
+.convaiAftercallHeading {
+  margin: 0 0 var(--fiori-space-2);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--fiori-text);
+}
+
+.convaiAftercallLead {
+  margin: 0 0 var(--fiori-space-4);
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--fiori-text-secondary);
+}
+
+.convaiAftercallPrimary {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.convaiSyncBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 600;
   border-radius: 0.5rem;
-  border: 1px solid var(--fiori-border-light);
-  background: var(--fiori-surface);
-  color: var(--fiori-text);
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 35%, var(--fiori-border-light));
+  background: var(--fiori-shell-bg);
+  color: var(--fiori-text-inverse);
   cursor: pointer;
+  box-shadow: var(--fiori-shadow-1, 0 1px 2px rgb(0 0 0 / 6%));
 }
 
-.convaiToolbarBtn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--fiori-nav-bg) 12%, var(--fiori-surface));
+.convaiSyncBtn:hover:not(:disabled) {
+  filter: brightness(1.05);
 }
 
-.convaiToolbarBtn:disabled {
+.convaiSyncBtn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.convaiToolbarHint {
-  flex: 1 1 12rem;
-  margin: 0;
+.convaiAftercallDividerLabel {
+  margin: 0 0 var(--fiori-space-2);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fiori-text-secondary);
+}
+
+.convaiFolds {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fiori-space-2);
+}
+
+.convaiFold {
+  border-radius: 0.5rem;
+  border: 1px solid var(--fiori-border-light);
+  background: var(--fiori-surface);
+  overflow: hidden;
+  box-shadow: var(--fiori-shadow-1, 0 0 0 0.0625rem rgb(0 0 0 / 4%));
+}
+
+.convaiFoldSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fiori-space-3);
+  padding: var(--fiori-space-3) var(--fiori-space-4);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+  list-style: none;
+}
+
+.convaiFoldSummary::-webkit-details-marker {
+  display: none;
+}
+
+.convaiFoldSummary::after {
+  content: '';
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid var(--fiori-text-secondary);
+  border-bottom: 2px solid var(--fiori-text-secondary);
+  transform: rotate(45deg);
+  margin-top: -0.2rem;
+  opacity: 0.85;
+  transition: transform 0.18s ease;
+}
+
+.convaiFold[open] > .convaiFoldSummary::after {
+  transform: rotate(-135deg);
+  margin-top: 0.15rem;
+}
+
+.convaiFold[open] > .convaiFoldSummary {
+  border-bottom: 1px solid var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 5%, var(--fiori-surface));
+}
+
+.convaiFoldSummary:focus {
+  outline: none;
+}
+
+.convaiFoldSummary:focus-visible {
+  outline: 2px solid var(--fiori-link);
+  outline-offset: 2px;
+}
+
+.convaiFoldBody {
+  padding: var(--fiori-space-3) var(--fiori-space-4) var(--fiori-space-4);
+}
+
+.convaiFoldIntro {
+  margin: 0 0 var(--fiori-space-3);
   font-size: 0.8125rem;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--fiori-text-secondary);
 }
 
@@ -2251,42 +2377,6 @@
   color: var(--fiori-text-secondary);
 }
 
-.convaiClientFallback {
-  margin-top: var(--fiori-space-3);
-  border-radius: 0.5rem;
-  border: 1px dashed var(--fiori-border-light);
-  background: color-mix(in srgb, var(--fiori-nav-bg) 4%, var(--fiori-surface));
-  overflow: hidden;
-}
-
-.convaiClientFallbackSummary {
-  padding: var(--fiori-space-3) var(--fiori-space-4);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--fiori-text);
-  list-style: none;
-}
-
-.convaiClientFallbackSummary::-webkit-details-marker {
-  display: none;
-}
-
-.convaiClientFallback[open] .convaiClientFallbackSummary {
-  border-bottom: 1px dashed var(--fiori-border-light);
-}
-
-.convaiClientFallbackBody {
-  padding: var(--fiori-space-3) var(--fiori-space-4) var(--fiori-space-4);
-}
-
-.convaiClientFallbackHint {
-  margin: 0 0 var(--fiori-space-2);
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: var(--fiori-text-secondary);
-}
-
 .convaiClientFallbackTextarea {
   width: 100%;
   box-sizing: border-box;
@@ -2302,9 +2392,9 @@
   resize: vertical;
 }
 
-.convaiClientFallbackBtn {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.8125rem;
+.convaiPasteSaveBtn {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
   border-radius: 0.5rem;
   border: 1px solid var(--fiori-border-light);
@@ -2313,11 +2403,11 @@
   cursor: pointer;
 }
 
-.convaiClientFallbackBtn:hover:not(:disabled) {
+.convaiPasteSaveBtn:hover:not(:disabled) {
   filter: brightness(1.06);
 }
 
-.convaiClientFallbackBtn:disabled {
+.convaiPasteSaveBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -2354,20 +2444,20 @@
   max-height: min(70vh, 28rem);
   overflow: auto;
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fiori-space-3);
 }
 
 .convaiEndModalSummary {
-  margin: 0 0 var(--fiori-space-3);
+  margin: 0;
   font-size: 0.875rem;
   line-height: 1.55;
   color: var(--fiori-text);
 }
 
-.convaiEndModalLabel {
-  margin: 0 0 var(--fiori-space-2);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--fiori-text-secondary);
+.convaiEndModalDetails .convaiEndModalPreJson {
+  margin-bottom: 0;
 }
 
 .convaiEndModalPreJson {
@@ -2387,10 +2477,50 @@
   font-size: 0.875rem;
 }
 
+.convaiEndModalDetails[open] > .convaiEndModalPreJson,
+.convaiEndModalDetails[open] > .convaiEndModalPre {
+  margin-top: var(--fiori-space-2);
+}
+
 .convaiEndModalDetails summary {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
   cursor: pointer;
-  margin-bottom: var(--fiori-space-2);
+  margin-bottom: 0;
   color: var(--fiori-text-secondary);
+  font-weight: 600;
+  list-style: none;
+  user-select: none;
+}
+
+.convaiEndModalDetails summary::before {
+  content: '▸';
+  flex-shrink: 0;
+  font-size: 0.65em;
+  line-height: 1;
+  color: var(--fiori-text-secondary);
+  transition: transform 0.18s ease;
+  transform: rotate(0deg);
+}
+
+.convaiEndModalDetails[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.convaiEndModalDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.convaiEndModalAnalyzeRow {
+  margin-top: var(--fiori-space-1);
+  padding-top: var(--fiori-space-3);
+  border-top: 1px solid var(--fiori-border-light);
+}
+
+.convaiEndModalAnalyzeBtn {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .convaiEndModalPre {
@@ -2413,10 +2543,34 @@
   color: var(--fiori-text-secondary);
 }
 
-.convaiWebhookSummary {
-  margin: 0 0 var(--fiori-space-2);
+.convaiWebhookSummaryBox {
+  margin: var(--fiori-space-2) 0 var(--fiori-space-3);
+  padding: var(--fiori-space-3) var(--fiori-space-4);
+  border-radius: 0.625rem;
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 22%, var(--fiori-border-light));
+  background: color-mix(in srgb, var(--fiori-shell-bg) 7%, var(--fiori-surface));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--fiori-text) 4%, transparent);
+}
+
+.convaiWebhookSummaryHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: var(--fiori-space-2);
+}
+
+.convaiWebhookSummaryLabel {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--fiori-text);
+}
+
+.convaiWebhookSummaryBody {
+  margin: 0;
   font-size: 0.875rem;
-  line-height: 1.55;
+  line-height: 1.65;
   color: var(--fiori-text);
 }
 
