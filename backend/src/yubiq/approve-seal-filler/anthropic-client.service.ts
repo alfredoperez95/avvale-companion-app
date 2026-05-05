@@ -123,5 +123,81 @@ export class AnthropicClientService {
       '';
     return { text: String(text), modelId: id };
   }
+
+  /**
+   * Streaming (SSE) de /v1/messages; emite trozos de texto mientras el modelo responde.
+   */
+  async *streamMessageTextDeltas(params: {
+    apiKey: string;
+    model: AnthropicModelChoice;
+    system?: string;
+    messages: { role: 'user' | 'assistant'; content: string }[];
+    maxTokens?: number;
+  }): AsyncGenerator<string, void, void> {
+    let id = modelId(params.model);
+    try {
+      id = await this.resolveAvailableModelId(params.apiKey, params.model);
+    } catch {
+      // fallback
+    }
+    const body: Record<string, unknown> = {
+      model: id,
+      max_tokens: params.maxTokens ?? 4096,
+      temperature: 0.2,
+      stream: true,
+      messages: params.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    };
+    if (params.system?.trim()) {
+      body.system = params.system.trim();
+    }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'x-api-key': params.apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok || !res.body) {
+      const t = await res.text().catch(() => '');
+      const snippet = t.length > 400 ? `${t.slice(0, 400)}…` : t;
+      throw new Error(`Anthropic ${res.status}: ${snippet}`);
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      for (;;) {
+        const nl = buf.indexOf('\n');
+        if (nl < 0) break;
+        const line = buf.slice(0, nl);
+        buf = buf.slice(nl + 1);
+        const tline = line.trim();
+        if (!tline || !tline.startsWith('data:')) continue;
+        const dataStr = tline.slice(5).trim();
+        if (dataStr === '[DONE]') break;
+        try {
+          const ev = JSON.parse(dataStr) as {
+            type?: string;
+            delta?: { type?: string; text?: string };
+            message?: { content?: { type?: string; text?: string }[] };
+            content_block?: { type?: string; text?: string };
+          };
+          if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta' && ev.delta.text) {
+            yield ev.delta.text;
+          }
+        } catch {
+          /* line no JSON (keep-alive) */
+        }
+      }
+    }
+  }
 }
 

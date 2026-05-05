@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KYC — Iniciar sesión</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{font-family:'Inter',sans-serif;}</style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
+    <h1 class="text-2xl font-bold text-slate-900 mb-1">KYC</h1>
+    <p class="text-sm text-slate-500 mb-6">Inicia sesión para continuar.</p>
+    <form id="f" class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Email</label>
+        <input id="email" type="email" required autocomplete="username"
+               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Contraseña</label>
+        <input id="password" type="password" required autocomplete="current-password"
+               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      <button type="submit"
+              class="w-full rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2.5 transition">
+        Entrar
+      </button>
+      <div id="err" class="text-sm text-red-600 hidden"></div>
+    </form>
+  </div>
+<script>
+const f = document.getElementById('f');
+const errEl = document.getElementById('err');
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errEl.classList.add('hidden');
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      throw new Error(j.error || 'Error al iniciar sesión');
+    }
+    const { token, user } = await r.json();
+    localStorage.setItem('kyc_token', token);
+    localStorage.setItem('kyc_user', JSON.stringify(user));
+    window.location.href = '/';
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+});
+// If already logged in, redirect.
+if (localStorage.getItem('kyc_token')) {
+  fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('kyc_token') } })
+    .then((r) => r.json())
+    .then((j) => { if (j.authenticated) window.location.href = '/'; });
+}
+</script>
+</body>
+</html>

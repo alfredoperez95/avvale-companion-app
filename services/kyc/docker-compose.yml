@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kyc
+      POSTGRES_USER: kyc
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-kyc_secret}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kyc"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3388}:3388"
+    environment:
+      DATABASE_URL: postgres://kyc:${DB_PASSWORD:-kyc_secret}@db:5432/kyc
+      JWT_SECRET: ${JWT_SECRET:-change_me_to_a_long_random_string}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-30d}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@kyc.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-kycadmin2026}
+      ADMIN_NAME: ${ADMIN_NAME:-Admin}
+    volumes:
+      - kyc_sessions:/app/kyc-sessions
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  kyc_sessions:
