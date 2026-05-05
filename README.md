@@ -14,13 +14,14 @@ Aplicación web para **gestionar activaciones por correo**: borradores, destinat
 4. [Variables de entorno](#variables-de-entorno)
 5. [Paso 0 — Preparar `.env`](#paso-0--preparar-env)
 6. [Redis en desarrollo](#redis-en-desarrollo)
-7. [Desarrollo local](#desarrollo-local)
-8. [Docker (backend y frontend)](#docker-backend-y-frontend)
-9. [Producción — comprobaciones rápidas](#producción--comprobaciones-rápidas)
-10. [Flujo de envío y estados](#flujo-de-envío-y-estados)
-11. [Scripts útiles](#scripts-útiles)
-12. [Documentación adicional](#documentación-adicional)
-13. [API — resumen](#api--resumen)
+7. [KYC (opcional)](#kyc-opcional)
+8. [Desarrollo local](#desarrollo-local)
+9. [Docker (backend y frontend)](#docker-backend-y-frontend)
+10. [Producción — comprobaciones rápidas](#producción--comprobaciones-rápidas)
+11. [Flujo de envío y estados](#flujo-de-envío-y-estados)
+12. [Scripts útiles](#scripts-útiles)
+13. [Documentación adicional](#documentación-adicional)
+14. [API — resumen](#api--resumen)
 
 ---
 
@@ -151,6 +152,18 @@ npm run redis:dev    # docker compose -f docker-compose.dev.yml up -d
 ```
 
 Asegúrate de que `REDIS_URL` en `.env` apunte a ese Redis (por ejemplo `redis://127.0.0.1:6379/0`).
+
+---
+
+## KYC (opcional)
+
+Módulo **KYC (Client Knowledge)** con API **nativa en el backend** (Nest + Prisma + MySQL) y UI en el launcher (React) en [`/launcher/kyc`](frontend/src/app/(main)/launcher/kyc/). No requiere servicio Docker aparte. Detalle: [docs/KYC.md](docs/KYC.md).
+
+Aplicar migraciones Prisma desde `backend/` (`npx prisma migrate deploy`) para crear las tablas `kyc_*`. Opcional: variable `KYC_CHAT_MODEL` en el backend (`haiku` / `sonnet` / `opus`).
+
+En la app, el acceso al mosaico y a `/launcher/kyc` es solo para usuarios **ADMIN**; hace falta clave **Anthropic** en Perfil para el chat KYC.
+
+Un [docker-compose de referencia](docker-compose.kyc.yml) hacia un slice legado en `services/kyc/` existe solo por compatibilidad con pruebas antiguas; **no** es parte del despliegue normal de Companion.
 
 ---
 

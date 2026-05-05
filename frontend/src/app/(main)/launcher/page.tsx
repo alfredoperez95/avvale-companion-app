@@ -589,6 +589,32 @@ export default function LauncherPage() {
         </ul>
       )}
 
+      {user?.role === 'ADMIN' && !reorderMode && (
+        <section className={styles.adminKycSection} aria-label="KYC (solo administradores)">
+          <ul className={styles.tilesGrid} role="list">
+            <li className={styles.sortableItemStatic} role="listitem">
+              <Link
+                href="/launcher/kyc"
+                className={styles.tileLink}
+                aria-labelledby="tile-kyc-heading"
+              >
+                <article className={`${styles.tile} ${styles.tileAccentKyc}`}>
+                  <h2 id="tile-kyc-heading" className={styles.tileTitle}>
+                    KYC — Client Knowledge
+                  </h2>
+                  <p className={styles.tileDesc}>
+                    Base de cuentas, perfil comercial, organigrama, señales y chat de investigación (requiere servicio KYC y
+                    credenciales en el backend).
+                  </p>
+                  <span className={styles.tileCta}>Abrir KYC →</span>
+                  <span className={`${styles.tileIcon} ${styles.tileIconKyc}`} aria-hidden="true" />
+                </article>
+              </Link>
+            </li>
+          </ul>
+        </section>
+      )}
+
       <LauncherWalkthrough open={walkthroughOpen} onClose={handleWalkthroughClose} />
     </div>
   );

@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KYC — Workzone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] } } } }
+  </script>
+  <link rel="stylesheet" href="/shared.css">
+  <style>
+    .fade-in { animation: fadeIn .25s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .chat-msg-user { background: #0078d4; color: #fff; border-radius: 10px 10px 2px 10px; }
+    .chat-msg-ai { background: #f1f5f9; color: #0f172a; border-radius: 10px 10px 10px 2px; }
+    .bar { height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: linear-gradient(90deg, #0ea5e9, #0078d4); }
+    .jsonedit { font-family: ui-monospace, monospace; font-size: 11px; min-height: 120px; }
+    .org-node { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; min-width:180px; }
+    .org-edge { stroke:#94a3b8; stroke-width:1.2; fill:none; }
+    .org-edge.informal { stroke-dasharray: 4 3; }
+    .org-edge.aliado { stroke:#22c55e; } .org-edge.bloqueador { stroke:#ef4444; }
+    .org-edge.influencer { stroke:#f59e0b; } .org-edge.rival { stroke:#8b5cf6; }
+    .org-lane.lane-drop-hint { background:#eff6ff; box-shadow: inset 0 0 0 2px #60a5fa; }
+    .org-lane.lane-drop-hint .org-card { pointer-events:none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+  <!-- Command Bar -->
+  <div class="d-command-bar">
+    <h1>🔎 KYC — Client Knowledge</h1>
+    <div class="flex items-center gap-2">
+      <input id="search" placeholder="Buscar cliente..." class="text-sm border rounded-lg px-3 py-1.5 w-56" oninput="debouncedLoad()">
+      <button onclick="toggleStrategic()" id="strat-btn" class="d-btn d-btn-secondary d-btn-sm">★ Estratégicas</button>
+      <button onclick="openAddModal()" class="d-btn d-btn-primary d-btn-sm">+ Añadir</button>
+      <button onclick="openImportModal()" class="d-btn d-btn-secondary d-btn-sm">↑ Importar</button>
+      <button onclick="bulkDelete()" id="bulk-del-btn" class="d-btn d-btn-sm hidden" style="background:#ef4444;color:#fff;">× Eliminar (<span id="bulk-count">0</span>)</button>
+      <button onclick="toggleChat()" class="d-btn d-btn-secondary d-btn-sm">💬 Chat KYC</button>
+      <button onclick="openSettingsModal()" class="d-btn d-btn-secondary d-btn-sm" title="Ajustes / API key">⚙️</button>
+      <button onclick="logout()" class="d-btn d-btn-ghost d-btn-sm" title="Cerrar sesión">⏻</button>
+    </div>
+  </div>
+
+  <!-- Settings Modal (API key + cambiar contraseña) -->
+  <div id="modal-settings" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.4);" onclick="if(event.target===this)closeSettingsModal()">
+    <div class="bg-white rounded-xl w-[480px] max-w-full p-5">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-bold">Ajustes</h2>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600">×</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Anthropic API key</label>
+          <input id="set-apikey" type="password" placeholder="sk-ant-..." class="w-full border rounded px-3 py-2 text-sm font-mono">
+          <p class="text-xs text-slate-400 mt-1">Solo se guarda en este navegador (localStorage). Se envía al backend al usar el chat KYC.</p>
+        </div>
+        <div class="border-t pt-3">
+          <div class="text-xs font-semibold text-slate-700 mb-2">Cambiar contraseña</div>
+          <input id="set-pwd-current" type="password" placeholder="Contraseña actual" class="w-full border rounded px-3 py-2 text-sm mb-2">
+          <input id="set-pwd-new" type="password" placeholder="Nueva contraseña (mín. 8)" class="w-full border rounded px-3 py-2 text-sm">
+          <div id="set-pwd-msg" class="text-xs mt-1"></div>
+        </div>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button onclick="closeSettingsModal()" class="d-btn d-btn-secondary d-btn-sm">Cerrar</button>
+        <button onclick="saveSettings()" class="d-btn d-btn-primary d-btn-sm">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Modal -->
+  <div id="modal-add" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.4);" onclick="if(event.target===this)closeAddModal()">
+    <div class="bg-white rounded-xl w-[480px] max-w-full p-5">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-bold">Añadir cliente</h2>
+        <button onclick="closeAddModal()" class="text-slate-400 hover:text-slate-600">×</button>
+      </div>
+      <div class="flex gap-2 text-xs mb-4 border-b">
+        <button onclick="setAddTab('new')" id="add-tab-new" class="px-3 py-2 border-b-2 border-blue-600 font-semibold text-blue-700">Nuevo</button>
+        <button onclick="setAddTab('existing')" id="add-tab-existing" class="px-3 py-2 border-b-2 border-transparent text-slate-500">Existente (BBDD)</button>
+      </div>
+      <div id="add-tab-new-body" class="space-y-2">
+        <input id="add-name" placeholder="Nombre empresa *" class="w-full border rounded px-3 py-2 text-sm">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="add-sector" placeholder="Sector" class="border rounded px-3 py-2 text-sm">
+          <input id="add-city" placeholder="Ciudad" class="border rounded px-3 py-2 text-sm">
+        </div>
+        <input id="add-website" placeholder="Website (ej: acme.com)" class="w-full border rounded px-3 py-2 text-sm">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="add-revenue" placeholder="Facturación" class="border rounded px-3 py-2 text-sm">
+          <input id="add-employees" placeholder="Empleados" class="border rounded px-3 py-2 text-sm">
+        </div>
+        <textarea id="add-notes" placeholder="Notas" class="w-full border rounded px-3 py-2 text-sm" rows="2"></textarea>
+        <label class="flex items-center gap-2 text-xs"><input type="checkbox" id="add-strategic"> Marcar como ★ estratégica</label>
+      </div>
+      <div id="add-tab-existing-body" class="hidden space-y-2">
+        <input id="add-search" placeholder="Buscar en BBDD de empresas..." oninput="searchExisting()" class="w-full border rounded px-3 py-2 text-sm">
+        <div id="add-search-results" class="max-h-72 overflow-y-auto border rounded"></div>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button onclick="closeAddModal()" class="d-btn d-btn-secondary d-btn-sm">Cancelar</button>
+        <button onclick="submitAdd()" id="add-submit-btn" class="d-btn d-btn-primary d-btn-sm">Añadir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div id="modal-import" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.4);" onclick="if(event.target===this)closeImportModal()">
+    <div class="bg-white rounded-xl w-[560px] max-w-full p-5">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-bold">Importar clientes</h2>
+        <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-600">×</button>
+      </div>
+      <p class="text-xs text-slate-500 mb-2">Pega filas TSV/CSV. Primera fila = cabecera. Columnas reconocidas: <code>name, sector, city, country, website, revenue, employees</code>. Solo <code>name</code> es obligatoria.</p>
+      <textarea id="import-text" rows="10" class="w-full border rounded p-2 text-xs font-mono" placeholder="name&#9;sector&#9;city&#9;website&#10;Acme SA&#9;Retail&#9;Barcelona&#9;acme.com"></textarea>
+      <div id="import-result" class="text-xs mt-2"></div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button onclick="closeImportModal()" class="d-btn d-btn-secondary d-btn-sm">Cancelar</button>
+        <button onclick="submitImport()" class="d-btn d-btn-primary d-btn-sm">Importar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex" style="flex:1; min-height:0;">
+    <!-- LEFT: company list -->
+    <aside class="w-80 border-r bg-white overflow-y-auto" id="list-pane">
+      <div class="p-3 text-xs text-slate-400 border-b" id="list-count">Cargando…</div>
+      <div id="list-items"></div>
+    </aside>
+
+    <!-- CENTER: detail -->
+    <main class="flex-1 overflow-y-auto" id="detail-pane">
+      <div class="p-10 text-center text-slate-400 text-sm">Selecciona una empresa a la izquierda</div>
+    </main>
+
+    <!-- RIGHT: chat drawer -->
+    <aside id="chat-pane" class="hidden w-96 border-l bg-white flex-col" style="display:none;">
+      <div class="p-3 border-b flex items-center justify-between">
+        <div>
+          <div class="text-xs text-slate-400">Chat KYC</div>
+          <div class="text-sm font-semibold" id="chat-company-name">—</div>
+        </div>
+        <div class="flex gap-1">
+          <button onclick="newChatSession()" class="text-xs text-blue-600 hover:underline">Nueva</button>
+          <button onclick="toggleChat()" class="text-slate-400 hover:text-slate-600 px-2">×</button>
+        </div>
+      </div>
+      <div id="chat-sessions" class="px-3 py-2 border-b text-xs text-slate-500 flex gap-2 flex-wrap"></div>
+      <div id="chat-messages" class="flex-1 overflow-y-auto p-3 space-y-3 text-sm"></div>
+      <form id="chat-form" class="p-2 border-t flex gap-2" onsubmit="sendChat(event)">
+        <textarea id="chat-input" rows="1" placeholder="Investigar…" class="flex-1 border rounded-lg px-3 py-2 text-sm resize-none"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
+        <button class="d-btn d-btn-primary d-btn-sm" type="submit">Enviar</button>
+      </form>
+    </aside>
+  </div>
+
+<script>
+// ───────────────────────────────────────────────────────────────────────────
+// State
+// ───────────────────────────────────────────────────────────────────────────
+const state = {
+  companies: [],
+  selected: null,
+  tab: 'dashboard',
+  strategicOnly: false,
+  chatOpen: false,
+  chatSessionId: null,
+  chatSessions: [],
+  checked: new Set(),
+  addTab: 'new',
+};
+
+function getToken() { return localStorage.getItem('kyc_token') || ''; }
+function getApiKey() { return localStorage.getItem('kyc_anthropic_key') || ''; }
+function apiH() {
+  const h = { 'Content-Type': 'application/json' };
+  const t = getToken();
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+function logout() {
+  localStorage.removeItem('kyc_token');
+  localStorage.removeItem('kyc_user');
+  window.location.href = '/login.html';
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { ...apiH(), ...(opts.headers || {}) } });
+  if (r.status === 401) { logout(); throw new Error('unauthorized'); }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// Auth gate: redirect to login if no token.
+if (!getToken()) window.location.href = '/login.html';
+
+// ───────────────────────────────────────────────────────────────────────────
+// Settings modal (API key + password)
+// ───────────────────────────────────────────────────────────────────────────
+function openSettingsModal() {
+  document.getElementById('set-apikey').value = getApiKey();
+  document.getElementById('set-pwd-current').value = '';
+  document.getElementById('set-pwd-new').value = '';
+  document.getElementById('set-pwd-msg').textContent = '';
+  document.getElementById('modal-settings').classList.remove('hidden');
+}
+function closeSettingsModal() { document.getElementById('modal-settings').classList.add('hidden'); }
+async function saveSettings() {
+  const key = document.getElementById('set-apikey').value.trim();
+  localStorage.setItem('kyc_anthropic_key', key);
+  const cur = document.getElementById('set-pwd-current').value;
+  const nw = document.getElementById('set-pwd-new').value;
+  const msgEl = document.getElementById('set-pwd-msg');
+  if (cur || nw) {
+    try {
+      const r = await fetch('/api/auth/change-password', {
+        method: 'POST', headers: apiH(),
+        body: JSON.stringify({ currentPassword: cur, newPassword: nw }),
+      });
+      if (!r.ok) throw new Error((await r.json()).error || 'Error');
+      msgEl.textContent = 'Contraseña actualizada ✓';
+      msgEl.className = 'text-xs mt-1 text-green-600';
+      return;
+    } catch (e) {
+      msgEl.textContent = e.message;
+      msgEl.className = 'text-xs mt-1 text-red-600';
+      return;
+    }
+  }
+  closeSettingsModal();
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Company list
+// ───────────────────────────────────────────────────────────────────────────
+let debounceTimer;
+function debouncedLoad() { clearTimeout(debounceTimer); debounceTimer = setTimeout(loadCompanies, 250); }
+
+async function loadCompanies() {
+  const q = document.getElementById('search').value;
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (state.strategicOnly) params.set('strategic', 'true');
+  try {
+    state.companies = await api('/api/kyc/companies?' + params.toString());
+  } catch (e) {
+    document.getElementById('list-count').textContent = 'Error: ' + e.message;
+    return;
+  }
+  document.getElementById('list-count').textContent = `${state.companies.length} clientes`;
+  const html = state.companies.map((c) => `
+    <div class="px-3 py-2.5 border-b hover:bg-slate-50 ${state.selected?.company?.id === c.id ? 'bg-blue-50' : ''}">
+      <div class="flex items-start gap-2">
+        <input type="checkbox" class="mt-1" ${state.checked.has(c.id) ? 'checked' : ''} onchange="toggleCheck(${c.id})" onclick="event.stopPropagation()">
+        <div class="flex-1 cursor-pointer" onclick="selectCompany(${c.id})">
+          <div class="flex items-center justify-between gap-2">
+            <div class="font-medium text-sm truncate">${escapeHtml(c.name)}</div>
+            ${c.strategic ? '<span class="text-amber-500">★</span>' : ''}
+          </div>
+          <div class="text-xs text-slate-400 truncate">${escapeHtml(c.sector || '—')} · ${escapeHtml(c.city || '')}</div>
+          <div class="mt-1.5 bar"><span style="width:${c.completeness || 0}%"></span></div>
+          <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+            <span>${c.completeness || 0}% completo</span>
+            <span>${c.signal_count || 0} signals</span>
+          </div>
+          <button onclick="event.stopPropagation();startIntake(${c.id})" class="mt-1.5 w-full text-[11px] font-medium px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200">▶ Iniciar entrevista</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('list-items').innerHTML = html || '<div class="p-4 text-sm text-slate-400">Sin clientes. Pulsa "+ Añadir" o "↑ Importar".</div>';
+  refreshBulkBtn();
+}
+
+function toggleCheck(id) {
+  if (state.checked.has(id)) state.checked.delete(id);
+  else state.checked.add(id);
+  refreshBulkBtn();
+}
+function refreshBulkBtn() {
+  const btn = document.getElementById('bulk-del-btn');
+  const cnt = state.checked.size;
+  document.getElementById('bulk-count').textContent = cnt;
+  btn.classList.toggle('hidden', cnt === 0);
+}
+async function bulkDelete() {
+  const ids = Array.from(state.checked);
+  if (!ids.length) return;
+  if (!confirm(`¿Eliminar ${ids.length} cliente(s) del KYC?\n\nSe mantendrán en la BBDD de empresas para otras apps (contactos, campañas), solo se quitan del KYC con todo su perfil, organigrama, signals y chats.`)) return;
+  await api('/api/kyc/companies/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) });
+  state.checked.clear();
+  if (state.selected && ids.includes(state.selected.company.id)) {
+    state.selected = null;
+    document.getElementById('detail-pane').innerHTML = '<div class="p-10 text-center text-slate-400 text-sm">Selecciona un cliente</div>';
+  }
+  loadCompanies();
+}
+
+async function deleteOne(id) {
+  if (!confirm('¿Eliminar este cliente del KYC?')) return;
+  await api('/api/kyc/companies/' + id, { method: 'DELETE' });
+  if (state.selected?.company?.id === id) {
+    state.selected = null;
+    document.getElementById('detail-pane').innerHTML = '<div class="p-10 text-center text-slate-400 text-sm">Selecciona un cliente</div>';
+  }
+  loadCompanies();
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Add / Import modals
+// ───────────────────────────────────────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('modal-add').classList.remove('hidden');
+  setAddTab('new');
+}
+function closeAddModal() {
+  document.getElementById('modal-add').classList.add('hidden');
+  ['name','sector','city','website','revenue','employees','notes'].forEach((k) => { document.getElementById('add-' + k).value = ''; });
+  document.getElementById('add-strategic').checked = false;
+  document.getElementById('add-search').value = '';
+  document.getElementById('add-search-results').innerHTML = '';
+}
+function setAddTab(t) {
+  state.addTab = t;
+  document.getElementById('add-tab-new-body').classList.toggle('hidden', t !== 'new');
+  document.getElementById('add-tab-existing-body').classList.toggle('hidden', t !== 'existing');
+  document.getElementById('add-tab-new').className = 'px-3 py-2 border-b-2 ' + (t === 'new' ? 'border-blue-600 font-semibold text-blue-700' : 'border-transparent text-slate-500');
+  document.getElementById('add-tab-existing').className = 'px-3 py-2 border-b-2 ' + (t === 'existing' ? 'border-blue-600 font-semibold text-blue-700' : 'border-transparent text-slate-500');
+  document.getElementById('add-submit-btn').style.display = t === 'new' ? '' : 'none';
+}
+let existingTimer;
+function searchExisting() {
+  clearTimeout(existingTimer);
+  existingTimer = setTimeout(async () => {
+    const q = document.getElementById('add-search').value;
+    if (!q || q.length < 2) { document.getElementById('add-search-results').innerHTML = ''; return; }
+    const all = await api('/api/kyc/companies?all=true&q=' + encodeURIComponent(q));
+    const inactive = all.filter((c) => !c.kyc_active);
+    document.getElementById('add-search-results').innerHTML = inactive.length
+      ? inactive.slice(0, 30).map((c) => `
+          <div class="px-3 py-2 border-b text-sm hover:bg-slate-50 flex justify-between items-center">
+            <div>
+              <div class="font-medium">${escapeHtml(c.name)}</div>
+              <div class="text-xs text-slate-400">${escapeHtml(c.sector || '—')} · ${escapeHtml(c.city || '')}</div>
+            </div>
+            <button onclick="addExisting(${c.id})" class="text-xs bg-blue-600 text-white px-2 py-1 rounded">Añadir</button>
+          </div>`).join('')
+      : '<div class="p-3 text-xs text-slate-400">Sin resultados (o ya están en KYC).</div>';
+  }, 200);
+}
+async function addExisting(id) {
+  await api('/api/kyc/companies', { method: 'POST', body: JSON.stringify({ company_id: id, name: 'existing' }) });
+  closeAddModal();
+  loadCompanies();
+  selectCompany(id);
+}
+async function submitAdd() {
+  if (state.addTab !== 'new') return;
+  const name = document.getElementById('add-name').value.trim();
+  if (!name) return alert('Nombre requerido');
+  const body = {
+    name,
+    sector: document.getElementById('add-sector').value || null,
+    city: document.getElementById('add-city').value || null,
+    website: document.getElementById('add-website').value || null,
+    revenue: document.getElementById('add-revenue').value || null,
+    employees: document.getElementById('add-employees').value || null,
+    notes: document.getElementById('add-notes').value || null,
+    strategic: document.getElementById('add-strategic').checked,
+  };
+  try {
+    const r = await api('/api/kyc/companies', { method: 'POST', body: JSON.stringify(body) });
+    closeAddModal();
+    loadCompanies();
+    selectCompany(r.id);
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+function openImportModal() { document.getElementById('modal-import').classList.remove('hidden'); }
+function closeImportModal() {
+  document.getElementById('modal-import').classList.add('hidden');
+  document.getElementById('import-text').value = '';
+  document.getElementById('import-result').innerHTML = '';
+}
+function parseImportText(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+  const firstLine = lines[0];
+  const sep = firstLine.includes('\t') ? '\t' : (firstLine.includes(';') ? ';' : ',');
+  const headers = firstLine.split(sep).map((h) => h.trim().toLowerCase());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(sep);
+    const row = {};
+    headers.forEach((h, j) => { row[h] = (parts[j] || '').trim(); });
+    if (row.name || row.empresa || row.nombre) {
+      row.name = row.name || row.empresa || row.nombre;
+      rows.push(row);
+    }
+  }
+  return rows;
+}
+async function submitImport() {
+  const text = document.getElementById('import-text').value;
+  const rows = parseImportText(text);
+  if (!rows.length) { document.getElementById('import-result').innerHTML = '<span class="text-red-500">Sin filas válidas. Comprueba que hay una cabecera y al menos una columna "name".</span>'; return; }
+  document.getElementById('import-result').innerHTML = 'Importando ' + rows.length + '...';
+  try {
+    const r = await api('/api/kyc/companies/import', { method: 'POST', body: JSON.stringify({ companies: rows }) });
+    document.getElementById('import-result').innerHTML = `<span class="text-emerald-600">✓ ${r.activated} activados, ${r.imported} nuevos, ${r.skipped} saltados${r.errors.length ? ', ' + r.errors.length + ' errores' : ''}</span>`;
+    loadCompanies();
+    setTimeout(closeImportModal, 2000);
+  } catch (e) {
+    document.getElementById('import-result').innerHTML = '<span class="text-red-500">Error: ' + e.message + '</span>';
+  }
+}
+
+function toggleStrategic() {
+  state.strategicOnly = !state.strategicOnly;
+  document.getElementById('strat-btn').className = 'd-btn d-btn-sm ' + (state.strategicOnly ? 'd-btn-primary' : 'd-btn-secondary');
+  loadCompanies();
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Company detail
+// ───────────────────────────────────────────────────────────────────────────
+async function selectCompany(id) {
+  const data = await api('/api/kyc/companies/' + id);
+  // Postgres BIGINT fields arrive as strings; coerce the IDs we compare on.
+  if (data.org?.members) {
+    for (const m of data.org.members) {
+      m.id = m.id != null ? Number(m.id) : m.id;
+      m.reports_to_id = m.reports_to_id != null ? Number(m.reports_to_id) : null;
+      m.level = m.level != null ? Number(m.level) : null;
+    }
+  }
+  if (data.org?.relationships) {
+    for (const r of data.org.relationships) {
+      r.id = r.id != null ? Number(r.id) : r.id;
+      r.from_member_id = r.from_member_id != null ? Number(r.from_member_id) : r.from_member_id;
+      r.to_member_id = r.to_member_id != null ? Number(r.to_member_id) : r.to_member_id;
+    }
+  }
+  if (data.company?.id != null) data.company.id = Number(data.company.id);
+  state.selected = data;
+  document.getElementById('chat-company-name').textContent = data.company.name;
+  renderDetail();
+  loadCompanies();
+  if (state.chatOpen) loadChatSessions();
+}
+
+function renderDetail() {
+  const { company, profile, completeness, org, signals } = state.selected;
+  const hasProfile = !!profile;
+  document.getElementById('detail-pane').innerHTML = `
+    <div class="fade-in">
+      <div class="px-6 py-4 border-b bg-white flex items-start justify-between">
+        <div>
+          <h2 class="text-xl font-bold">${escapeHtml(company.name)}</h2>
+          <div class="text-sm text-slate-500 mt-1">
+            ${escapeHtml(company.sector || '—')} · ${escapeHtml(company.city || '')} · ${escapeHtml(company.country || '')}
+            ${company.website ? `· <a href="${escapeAttr(company.website)}" target="_blank" class="text-blue-600">${escapeHtml(company.website)}</a>` : ''}
+          </div>
+          <div class="mt-2 flex items-center gap-3">
+            <div class="text-xs text-slate-500">KYC ${completeness}%</div>
+            <div class="bar w-40"><span style="width:${completeness}%"></span></div>
+            ${profile?.strategic ? '<span class="text-amber-500 text-sm">★ Estratégica</span>' : ''}
+          </div>
+        </div>
+        <div class="flex gap-2">
+          ${!hasProfile ? `<button onclick="activateKyc(${company.id})" class="d-btn d-btn-primary d-btn-sm">Activar KYC</button>` : ''}
+          <button onclick="openReport(${company.id})" class="d-btn d-btn-secondary d-btn-sm">📄 Informe PDF</button>
+          <button onclick="enrichCompany(${company.id})" class="d-btn d-btn-secondary d-btn-sm">⟳ Enriquecer</button>
+          <button onclick="toggleStrategicCompany()" class="d-btn d-btn-secondary d-btn-sm">${profile?.strategic ? 'Quitar ★' : '★ Marcar'}</button>
+          <button onclick="deleteOne(${company.id})" class="d-btn d-btn-sm" style="background:#fee2e2;color:#991b1b;">× Eliminar</button>
+        </div>
+      </div>
+
+      <div class="px-6 border-b bg-white flex gap-4 text-sm">
+        ${[
+          ['dashboard','Dashboard'],
+          ['organigrama','Organigrama'],
+          ['stack','Stack'],
+          ['por_resolver', `Por resolver${(state.selected.open_questions?.length) ? ` <span class="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">${state.selected.open_questions.length}</span>` : ''}`],
+          ['signals','Signals'],
+          ['timeline','Timeline'],
+          ['news','News'],
+          ['meddpicc','MEDDPICC'],
+        ].map(([t,label]) => `
+          <button onclick="setTab('${t}')"
+            class="py-3 border-b-2 ${state.tab === t ? 'border-blue-600 text-blue-700 font-semibold' : 'border-transparent text-slate-500'}">
+            ${label}
+          </button>
+        `).join('')}
+      </div>
+
+      <div class="p-6" id="tab-content"></div>
+    </div>
+  `;
+  renderTab();
+}
+
+function setTab(t) { state.tab = t; renderTab(); }
+
+function renderTab() {
+  const el = document.getElementById('tab-content');
+  if (!state.selected) return;
+  const { profile, company, org, signals } = state.selected;
+  if (state.tab === 'dashboard') {
+    renderDashboard();
+  } else if (state.tab === 'organigrama') {
+    renderOrg();
+  } else if (state.tab === 'por_resolver') {
+    renderOpenQuestions();
+  } else if (state.tab === 'stack') {
+    renderStack();
+  } else if (state.tab === 'signals') {
+    el.innerHTML = signals.length
+      ? signals.map((s) => `
+          <div class="border-b py-3">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>${escapeHtml(s.source)} · ${s.sentiment || ''} ${s.rating ? '· ⭐ ' + s.rating : ''}</span>
+              <span>${s.published_at ? new Date(s.published_at).toLocaleDateString() : ''}</span>
+            </div>
+            <div class="font-medium text-sm">${s.source_url ? `<a href="${escapeAttr(s.source_url)}" target="_blank" class="text-blue-600">${escapeHtml(s.title || '(sin título)')}</a>` : escapeHtml(s.title || '(sin título)')}</div>
+            ${s.text ? `<div class="text-xs text-slate-500 mt-1">${escapeHtml(s.text.slice(0, 280))}</div>` : ''}
+          </div>
+        `).join('')
+      : '<div class="text-sm text-slate-400">Sin signals todavía. Pulsa ⟳ Enriquecer.</div>';
+  } else if (state.tab === 'timeline') {
+    loadTimeline();
+  } else if (state.tab === 'news' || state.tab === 'meddpicc') {
+    el.innerHTML = '<div class="text-sm text-slate-400">Módulo no incluido en esta versión.</div>';
+  }
+}
+
+async function loadTimeline() {
+  const el = document.getElementById('tab-content');
+  el.innerHTML = '<div class="text-sm text-slate-400">Cargando timeline…</div>';
+  try {
+    const items = await api('/api/kyc/companies/' + state.selected.company.id + '/timeline');
+    el.innerHTML = items.length ? items.map((it) => `
+      <div class="border-l-2 ${it.kind === 'signal' ? 'border-sky-400' : 'border-emerald-400'} pl-3 py-2 mb-2">
+        <div class="text-xs text-slate-400">${new Date(it.ts).toLocaleString()} · ${it.kind}${it.source ? ' · ' + escapeHtml(it.source) : ''}${it.type ? ' · ' + escapeHtml(it.type) : ''}</div>
+        <div class="text-sm">${escapeHtml(it.title || it.subject || it.summary || '(sin título)')}</div>
+      </div>`).join('') : '<div class="text-sm text-slate-400">Timeline vacío.</div>';
+  } catch (e) { el.innerHTML = '<div class="text-sm text-red-500">Error: ' + e.message + '</div>'; }
+}
+
+async function activateKyc(id) { await api('/api/kyc/companies/' + id + '/activate', { method: 'POST' }); selectCompany(id); }
+
+function openReport(id) {
+  window.open('/report.html?id=' + id + '&print=1', '_blank');
+}
+
+async function enrichCompany(id) {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Enriqueciendo…';
+  try { await api('/api/kyc/companies/' + id + '/enrich', { method: 'POST' }); }
+  catch (e) { alert('Error: ' + e.message); }
+  btn.disabled = false; btn.textContent = '⟳ Enriquecer';
+  selectCompany(id);
+}
+
+async function toggleStrategicCompany() {
+  const id = state.selected.company.id;
+  const s = !state.selected.profile?.strategic;
+  await api('/api/kyc/companies/' + id + '/profile', { method: 'PATCH', body: JSON.stringify({ strategic: s }) });
+  selectCompany(id);
+}
+
+async function saveProfile() {
+  const id = state.selected.company.id;
+  const body = { summary: document.getElementById('edit-summary').value };
+  for (const b of ['economics','business_model','customers','tech_stack','critical_processes','sector_context']) {
+    try { body[b] = JSON.parse(document.getElementById('edit-' + b).value || '{}'); }
+    catch { document.getElementById('save-msg').textContent = 'JSON inválido en ' + b; document.getElementById('save-msg').className = 'text-xs text-red-500'; return; }
+  }
+  try {
+    await api('/api/kyc/companies/' + id + '/profile', { method: 'PATCH', body: JSON.stringify(body) });
+    document.getElementById('save-msg').textContent = '✓ Guardado';
+    document.getElementById('save-msg').className = 'text-xs text-emerald-600';
+    selectCompany(id);
+  } catch (e) { document.getElementById('save-msg').textContent = 'Error: ' + e.message; }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Organigrama (simple SVG layout)
+// ───────────────────────────────────────────────────────────────────────────
+// ─── Drag & drop to create org relationships ───────────────────────────
+let orgDragSrcId = null;
+
+function orgDragStart(ev, memberId) {
+  orgDragSrcId = memberId;
+  try { ev.dataTransfer.setData('text/plain', String(memberId)); } catch {}
+  ev.dataTransfer.effectAllowed = 'link';
+  ev.currentTarget.classList.add('opacity-50');
+}
+function orgDragOver(ev, memberId) {
+  if (orgDragSrcId == null || orgDragSrcId === memberId) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  ev.dataTransfer.dropEffect = 'link';
+  ev.currentTarget.classList.add('ring-2','ring-blue-400','ring-offset-1');
+}
+function orgDragLeave(ev, memberId) {
+  ev.currentTarget.classList.remove('ring-2','ring-blue-400','ring-offset-1');
+}
+function orgDragEnd(ev) {
+  // Cleanup any lingering highlights
+  document.querySelectorAll('.org-card').forEach((n) => {
+    n.classList.remove('opacity-50','ring-2','ring-blue-400','ring-offset-1');
+  });
+  orgDragSrcId = null;
+}
+function orgDrop(ev, targetId) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  ev.currentTarget.classList.remove('ring-2','ring-blue-400','ring-offset-1');
+  const srcId = orgDragSrcId || parseInt(ev.dataTransfer.getData('text/plain'));
+  if (!srcId || srcId === targetId) { orgDragSrcId = null; return; }
+  openRelTypeMenu(srcId, targetId, ev.clientX, ev.clientY);
+  orgDragSrcId = null;
+}
+
+function openRelTypeMenu(srcId, targetId, x, y) {
+  const members = state.selected.org.members;
+  const src = members.find((m) => m.id === srcId);
+  const tgt = members.find((m) => m.id === targetId);
+  if (!src || !tgt) return;
+  // Remove any previous menu
+  const old = document.getElementById('rel-menu'); if (old) old.remove();
+  const REL_COLORS = { aliado:'#22c55e', bloqueador:'#ef4444', influencer:'#f59e0b', mentor:'#38bdf8', rival:'#8b5cf6', otro:'#94a3b8' };
+  const menu = document.createElement('div');
+  menu.id = 'rel-menu';
+  menu.className = 'fixed z-50 bg-white border rounded-xl shadow-xl p-3 text-sm';
+  menu.style.left = Math.min(x, window.innerWidth - 280) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight - 320) + 'px';
+  menu.style.width = '260px';
+  menu.innerHTML = `
+    <div class="text-xs text-slate-500 mb-2">
+      <strong class="text-slate-800">${escapeHtml(src.name)}</strong>
+      <span class="mx-1">→</span>
+      <strong class="text-slate-800">${escapeHtml(tgt.name)}</strong>
+    </div>
+    <div class="space-y-1">
+      <button onclick="applyFormalReport(${srcId}, ${targetId})" class="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 border border-blue-100 bg-blue-50/40">
+        <div class="text-[13px] font-semibold text-blue-700">⬆ Reporta a (jerarquía formal)</div>
+        <div class="text-[10px] text-slate-500">${escapeHtml(src.name)} pasa a reportar a ${escapeHtml(tgt.name)}</div>
+      </button>
+      <div class="text-[10px] uppercase text-slate-400 pt-2 pb-1">Relación informal</div>
+      ${Object.entries(REL_COLORS).map(([k, c]) => `
+        <button onclick="applyInformalRel(${srcId}, ${targetId}, '${k}')" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-50 flex items-center gap-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${c}"></span>
+          <span class="capitalize text-[12px]">${k}</span>
+        </button>
+      `).join('')}
+    </div>
+    <button onclick="document.getElementById('rel-menu').remove()" class="mt-2 w-full text-[11px] text-slate-400 hover:text-slate-600 py-1">Cancelar</button>
+  `;
+  document.body.appendChild(menu);
+  // Close on outside click
+  setTimeout(() => {
+    const closeHandler = (e) => {
+      if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('mousedown', closeHandler); }
+    };
+    document.addEventListener('mousedown', closeHandler);
+  }, 0);
+}
+
+async function applyFormalReport(srcId, targetId) {
+  document.getElementById('rel-menu')?.remove();
+  try {
+    // Auto-nivel: al reportar a X, el hijo pasa a nivel del padre + 1 (clamped 1..5)
+    const tgt = state.selected.org.members.find((m) => m.id === targetId);
+    const parentLvl = Number.isInteger(tgt?.level) ? tgt.level : 0;
+    const childLvl = Math.min(5, Math.max(1, (parentLvl || 0) + 1));
+    await api('/api/kyc/org/members/' + srcId, {
+      method: 'PATCH',
+      body: JSON.stringify({ reports_to_id: targetId, level: childLvl })
+    });
+    selectCompany(state.selected.company.id);
+  } catch (e) { alert('Error: ' + e.message); }
+}
+async function applyInformalRel(srcId, targetId, type) {
+  document.getElementById('rel-menu')?.remove();
+  try {
+    await api('/api/kyc/companies/' + state.selected.company.id + '/org/relationships', {
+      method: 'POST',
+      body: JSON.stringify({ from_member_id: srcId, to_member_id: targetId, type })
+    });
+    selectCompany(state.selected.company.id);
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+// Responsibility levels (swimlanes)
+const ORG_LEVELS = [
+  { level: 1, label: 'C-Suite',         hint: 'CEO · CFO · CTO · COO',     color: '#6366f1' },
+  { level: 2, label: 'VP / Dirección',  hint: 'VP · Director General',     color: '#0ea5e9' },
+  { level: 3, label: 'Director / Head', hint: 'Director de área · Head',   color: '#10b981' },
+  { level: 4, label: 'Manager',         hint: 'Team Lead · Responsable',   color: '#f59e0b' },
+  { level: 5, label: 'IC / Analyst',    hint: 'Individual contributor',    color: '#94a3b8' },
+  { level: 0, label: 'Sin asignar',     hint: 'Arrástralos a un nivel',    color: '#cbd5e1' },
+];
+
+// Group members by level (0 = sin asignar for null/undefined)
+function groupMembersByLevel(members) {
+  const buckets = {};
+  for (const L of ORG_LEVELS) buckets[L.level] = [];
+  for (const m of members) {
+    const lvl = Number.isInteger(m.level) && m.level >= 1 && m.level <= 5 ? m.level : 0;
+    buckets[lvl].push(m);
+  }
+  // Stable sort: parents first (reports_to grouping), then name
+  for (const k of Object.keys(buckets)) {
+    buckets[k].sort((a, b) => {
+      const pa = a.reports_to_id || 0, pb = b.reports_to_id || 0;
+      if (pa !== pb) return pa - pb;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }
+  return buckets;
+}
+
+// ─── Drop on swim lane → change level ──────────────────────────────────
+function laneDragOver(ev) {
+  if (orgDragSrcId == null) return;
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'move';
+  ev.currentTarget.classList.add('lane-drop-hint');
+}
+function laneDragLeave(ev) {
+  ev.currentTarget.classList.remove('lane-drop-hint');
+}
+async function laneDrop(ev, newLevel) {
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('lane-drop-hint');
+  const srcId = orgDragSrcId || parseInt(ev.dataTransfer.getData('text/plain'));
+  orgDragSrcId = null;
+  if (!srcId) return;
+  const m = state.selected.org.members.find((x) => x.id === srcId);
+  if (!m) return;
+  const current = Number.isInteger(m.level) ? m.level : 0;
+  if (current === newLevel) return;
+  try {
+    await api('/api/kyc/org/members/' + srcId, {
+      method: 'PATCH',
+      body: JSON.stringify({ level: newLevel === 0 ? null : newLevel })
+    });
+    selectCompany(state.selected.company.id);
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+function renderOrg() {
+  const { company, org } = state.selected;
+  const el = document.getElementById('tab-content');
+  const byId = Object.fromEntries(org.members.map((m) => [m.id, m]));
+  const members = org.members;
+
+  if (!members.length) {
+    el.innerHTML = `
+      <div class="flex justify-between items-center mb-3">
+        <div class="text-sm font-semibold">Organigrama</div>
+        <button onclick="addMemberPrompt()" class="d-btn d-btn-primary d-btn-sm">+ Miembro</button>
+      </div>
+      <div class="bg-white border rounded-xl p-10 text-center">
+        <div class="text-4xl mb-2">🏢</div>
+        <div class="text-sm text-slate-400">Organigrama vacío. Inicia una entrevista KYC o añade el primer miembro.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Area → color
+  const AREA_COLORS = {
+    'ceo':'#6366f1','dirección':'#6366f1','general':'#6366f1',
+    'it':'#0ea5e9','sistemas':'#0ea5e9','tecnología':'#0ea5e9','tech':'#0ea5e9',
+    'finanzas':'#10b981','financiero':'#10b981','cfo':'#10b981',
+    'operaciones':'#f59e0b','coo':'#f59e0b',
+    'comercial':'#ec4899','ventas':'#ec4899','marketing':'#ec4899',
+    'rrhh':'#8b5cf6','personas':'#8b5cf6','hr':'#8b5cf6',
+    'compras':'#14b8a6','procurement':'#14b8a6',
+  };
+  function areaColor(area) {
+    const a = (area || '').toLowerCase();
+    for (const k of Object.keys(AREA_COLORS)) if (a.includes(k)) return AREA_COLORS[k];
+    return '#64748b';
+  }
+
+  const REL_COLORS = { aliado:'#22c55e', bloqueador:'#ef4444', influencer:'#f59e0b', mentor:'#38bdf8', rival:'#8b5cf6', otro:'#94a3b8' };
+  const buckets = groupMembersByLevel(members);
+
+  // Render one lane with its member cards
+  function renderLane(L) {
+    const lanes = buckets[L.level] || [];
+    const cards = lanes.map((m) => {
+      const col = areaColor(m.area);
+      const initials = (m.name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+      const parent = m.reports_to_id ? byId[m.reports_to_id] : null;
+      return `
+        <div class="org-card relative bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition flex items-center gap-2 px-3 py-2 group cursor-grab active:cursor-grabbing"
+             style="border-top:3px solid ${col}; width:210px;"
+             draggable="true"
+             data-member-id="${m.id}"
+             ondragstart="orgDragStart(event, ${m.id})"
+             ondragover="orgDragOver(event, ${m.id})"
+             ondragleave="orgDragLeave(event, ${m.id})"
+             ondrop="orgDrop(event, ${m.id})"
+             ondragend="orgDragEnd(event)">
+          <div class="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 pointer-events-none" style="background:${col}">${escapeHtml(initials)}</div>
+          <div class="flex-1 min-w-0 pointer-events-none">
+            <div class="text-[12px] font-semibold text-slate-800 truncate">${escapeHtml(m.name)}</div>
+            <div class="text-[10px] text-slate-500 truncate">${escapeHtml(m.role || '—')}</div>
+            ${m.area ? `<div class="text-[9px] uppercase tracking-wide" style="color:${col}">${escapeHtml(m.area)}</div>` : ''}
+            ${parent ? `<div class="text-[9px] text-slate-400 truncate">⬆ ${escapeHtml(parent.name)}</div>` : ''}
+          </div>
+          <button onclick="event.stopPropagation();deleteMember(${m.id})" draggable="false" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 text-xs shrink-0 transition">×</button>
+        </div>
+      `;
+    }).join('');
+    const empty = !lanes.length
+      ? `<div class="text-[11px] text-slate-300 italic">Arrastra aquí para asignar ${L.label}</div>`
+      : '';
+    return `
+      <div class="org-lane relative flex items-stretch border-b border-slate-100 last:border-b-0 min-h-[100px]"
+           ondragover="laneDragOver(event)"
+           ondragleave="laneDragLeave(event)"
+           ondrop="laneDrop(event, ${L.level})">
+        <div class="shrink-0 w-40 p-3 flex flex-col justify-center border-r border-slate-100"
+             style="background:linear-gradient(90deg, ${L.color}14, transparent)">
+          <div class="text-[11px] font-bold uppercase tracking-wide" style="color:${L.color}">${L.label}</div>
+          <div class="text-[9px] text-slate-400 mt-0.5">${L.hint}</div>
+          <div class="text-[10px] text-slate-400 mt-1">${lanes.length} ${lanes.length === 1 ? 'persona' : 'personas'}</div>
+        </div>
+        <div class="flex-1 p-3 flex flex-wrap gap-3 content-start items-start">
+          ${cards || empty}
+        </div>
+      </div>
+    `;
+  }
+
+  const lanesHtml = ORG_LEVELS.map(renderLane).join('');
+
+  el.innerHTML = `
+    <div class="flex justify-between items-start mb-3 gap-4">
+      <div>
+        <div class="text-sm font-semibold">Organigrama · ${members.length} personas</div>
+        <div class="text-xs text-slate-400">Arrastra por nivel de responsabilidad · arrastra sobre otra persona para definir jerarquía o relación informal</div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="addRelPrompt()" class="d-btn d-btn-secondary d-btn-sm">+ Relación</button>
+        <button onclick="addMemberPrompt()" class="d-btn d-btn-primary d-btn-sm">+ Miembro</button>
+      </div>
+    </div>
+
+    <div class="mb-3 text-[11px] text-slate-500 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5">
+      💡 <strong>Tip:</strong> arrastra a una <strong>fila</strong> para cambiar el nivel · arrastra sobre <strong>otra persona</strong> para "reporta a" o relación informal (aliado, bloqueador…).
+    </div>
+
+    <!-- Leyenda -->
+    <div class="flex flex-wrap gap-2 mb-3 text-[10px]">
+      ${Object.entries(REL_COLORS).map(([k, c]) => `
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border">
+          <svg width="18" height="6"><line x1="0" y1="3" x2="18" y2="3" stroke="${c}" stroke-width="2" stroke-dasharray="3 2"/></svg>
+          <span class="capitalize text-slate-600">${k}</span>
+        </span>
+      `).join('')}
+    </div>
+
+    <!-- Swim lanes -->
+    <div class="bg-white border rounded-xl overflow-hidden">
+      ${lanesHtml}
+    </div>
+
+    ${org.relationships && org.relationships.length ? `
+      <div class="mt-4 bg-white border rounded-xl p-4">
+        <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Relaciones informales</div>
+        <div class="space-y-1">
+          ${org.relationships.map((r) => {
+            const f = byId[r.from_member_id], t = byId[r.to_member_id];
+            const col = REL_COLORS[r.type] || REL_COLORS.otro;
+            return `<div class="text-xs flex justify-between items-center">
+              <span><strong>${escapeHtml(f?.name || '?')}</strong> → <strong>${escapeHtml(t?.name || '?')}</strong>
+                <span class="ml-2 px-1.5 py-0.5 rounded-full text-white text-[10px]" style="background:${col}">${escapeHtml(r.type)}</span>
+              </span>
+              <button onclick="deleteRel(${r.id})" class="text-slate-300 hover:text-red-500">×</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    ` : ''}
+  `;
+}
+
+async function addMemberPrompt() {
+  const name = prompt('Nombre completo:'); if (!name) return;
+  const role = prompt('Rol / puesto:') || '';
+  const area = prompt('Área / dirección:') || '';
+  await api('/api/kyc/companies/' + state.selected.company.id + '/org/members', {
+    method: 'POST', body: JSON.stringify({ name, role, area })
+  });
+  selectCompany(state.selected.company.id);
+}
+async function deleteMember(id) {
+  if (!confirm('¿Eliminar miembro?')) return;
+  await api('/api/kyc/org/members/' + id, { method: 'DELETE' });
+  selectCompany(state.selected.company.id);
+}
+async function addRelPrompt() {
+  const members = state.selected.org.members;
+  if (members.length < 2) return alert('Añade al menos 2 miembros primero.');
+  const fromName = prompt('Desde (nombre):'); const toName = prompt('Hacia (nombre):');
+  const type = prompt('Tipo (aliado, bloqueador, influencer, mentor, rival, otro):') || 'otro';
+  const from = members.find((m) => m.name.toLowerCase().includes((fromName || '').toLowerCase()));
+  const to = members.find((m) => m.name.toLowerCase().includes((toName || '').toLowerCase()));
+  if (!from || !to) return alert('No encontré esos miembros.');
+  await api('/api/kyc/companies/' + state.selected.company.id + '/org/relationships', {
+    method: 'POST', body: JSON.stringify({ from_member_id: from.id, to_member_id: to.id, type })
+  });
+  selectCompany(state.selected.company.id);
+}
+async function deleteRel(id) {
+  await api('/api/kyc/org/relationships/' + id, { method: 'DELETE' });
+  selectCompany(state.selected.company.id);
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Dashboard (visual)
+// ───────────────────────────────────────────────────────────────────────────
+const BLOCK_META = {
+  economics:         { icon:'💰', label:'Economía',         color:'emerald' },
+  business_model:    { icon:'🧭', label:'Modelo de negocio', color:'sky' },
+  customers:         { icon:'👥', label:'Clientes',          color:'violet' },
+  tech_stack:        { icon:'⚙️', label:'Stack tecnológico', color:'amber' },
+  critical_processes:{ icon:'🔁', label:'Procesos críticos', color:'rose' },
+  sector_context:    { icon:'🌐', label:'Contexto sector',   color:'indigo' },
+};
+const BLOCK_COLOR_CLASSES = {
+  emerald:{ bar:'bg-emerald-500', chip:'bg-emerald-50 text-emerald-700 border-emerald-200', ring:'ring-emerald-200' },
+  sky:    { bar:'bg-sky-500',     chip:'bg-sky-50 text-sky-700 border-sky-200',             ring:'ring-sky-200' },
+  violet: { bar:'bg-violet-500',  chip:'bg-violet-50 text-violet-700 border-violet-200',    ring:'ring-violet-200' },
+  amber:  { bar:'bg-amber-500',   chip:'bg-amber-50 text-amber-800 border-amber-200',       ring:'ring-amber-200' },
+  rose:   { bar:'bg-rose-500',    chip:'bg-rose-50 text-rose-700 border-rose-200',          ring:'ring-rose-200' },
+  indigo: { bar:'bg-indigo-500',  chip:'bg-indigo-50 text-indigo-700 border-indigo-200',    ring:'ring-indigo-200' },
+};
+
+function prettyLabel(k) {
+  return String(k).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function renderValue(v) {
+  if (v === null || v === undefined || v === '') return '<span class="text-slate-300">—</span>';
+  if (Array.isArray(v)) {
+    if (!v.length) return '<span class="text-slate-300">—</span>';
+    return `<div class="flex flex-wrap gap-1 mt-0.5">${v.map((x) => {
+      const s = typeof x === 'object' ? JSON.stringify(x) : String(x);
+      return `<span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">${escapeHtml(s)}</span>`;
+    }).join('')}</div>`;
+  }
+  if (typeof v === 'object') {
+    return `<div class="pl-2 border-l-2 border-slate-100 space-y-0.5 mt-0.5">${Object.entries(v).map(([k, val]) =>
+      `<div class="text-xs"><span class="text-slate-400">${escapeHtml(prettyLabel(k))}:</span> <span class="text-slate-700">${renderValue(val)}</span></div>`
+    ).join('')}</div>`;
+  }
+  return `<span class="text-slate-800">${escapeHtml(String(v))}</span>`;
+}
+
+function renderBlockCard(blockKey, data) {
+  const meta = BLOCK_META[blockKey];
+  const col = BLOCK_COLOR_CLASSES[meta.color];
+  const isEmpty = !data || Object.keys(data).length === 0;
+  const filled = !isEmpty;
+  const body = isEmpty
+    ? `<div class="text-xs text-slate-400 italic">Sin datos. Usa el chat de entrevista para capturar o pulsa "+ Añadir".</div>`
+    : `<div class="space-y-1.5">${Object.entries(data).map(([k, v]) =>
+        `<div class="text-xs"><div class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">${escapeHtml(prettyLabel(k))}</div><div class="mt-0.5">${renderValue(v)}</div></div>`
+      ).join('')}</div>`;
+  return `
+    <div class="bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col h-[300px]">
+      <div class="px-4 py-3 border-b flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="text-lg">${meta.icon}</div>
+          <div class="text-sm font-semibold text-slate-700 truncate">${meta.label}</div>
+          ${filled ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full border ${col.chip} shrink-0">activo</span>` : '<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-50 text-slate-400 border border-slate-200 shrink-0">vacío</span>'}
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="expandBlock('${blockKey}')" title="Expandir" class="text-slate-400 hover:text-slate-700 text-sm leading-none">⛶</button>
+          <button onclick="toggleEditBlock('${blockKey}')" id="toggle-${blockKey}" class="text-[11px] text-blue-600 hover:underline">${filled ? 'Editar' : '+ Añadir'}</button>
+        </div>
+      </div>
+      <div class="p-4 flex-1 overflow-y-auto" id="view-${blockKey}">${body}</div>
+      <div class="p-4 flex-1 overflow-y-auto hidden" id="edit-${blockKey}-wrap">
+        <textarea id="edit-${blockKey}" class="w-full h-full border rounded-lg p-2 jsonedit">${escapeHtml(JSON.stringify(data || {}, null, 2))}</textarea>
+        <div class="mt-2 text-[10px] text-slate-400">JSON válido. Guarda con el botón inferior.</div>
+      </div>
+    </div>
+  `;
+}
+
+function expandBlock(blockKey) {
+  const meta = BLOCK_META[blockKey];
+  const data = state.selected?.profile?.[blockKey];
+  const isEmpty = !data || Object.keys(data).length === 0;
+  const body = isEmpty
+    ? `<div class="text-sm text-slate-400 italic">Sin datos.</div>`
+    : `<div class="space-y-3">${Object.entries(data).map(([k, v]) =>
+        `<div><div class="text-[11px] uppercase tracking-wide text-slate-500 font-semibold mb-1">${escapeHtml(prettyLabel(k))}</div><div class="text-sm text-slate-800">${renderValue(v)}</div></div>`
+      ).join('')}</div>`;
+  const old = document.getElementById('block-expand-modal');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'block-expand-modal';
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
+  modal.style.background = 'rgba(15,23,42,.55)';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl w-[720px] max-w-[92vw] max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="text-xl">${meta.icon}</div>
+          <div class="text-base font-semibold text-slate-800">${meta.label}</div>
+        </div>
+        <button onclick="document.getElementById('block-expand-modal').remove()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">×</button>
+      </div>
+      <div class="p-6 overflow-y-auto flex-1">${body}</div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function toggleEditBlock(key) {
+  const view = document.getElementById('view-' + key);
+  const edit = document.getElementById('edit-' + key + '-wrap');
+  const btn = document.getElementById('toggle-' + key);
+  const editing = !edit.classList.contains('hidden');
+  if (editing) {
+    edit.classList.add('hidden'); view.classList.remove('hidden'); btn.textContent = 'Editar';
+  } else {
+    edit.classList.remove('hidden'); view.classList.add('hidden'); btn.textContent = 'Ver';
+  }
+}
+
+function renderDashboard() {
+  const el = document.getElementById('tab-content');
+  const { company, profile, completeness, org, signals, open_questions } = state.selected;
+  if (!profile) {
+    el.innerHTML = '<div class="text-sm text-slate-400 bg-white border rounded-xl p-6 text-center">Activa KYC para empezar a construir el perfil.</div>';
+    return;
+  }
+  const blocks = ['economics','business_model','customers','tech_stack','critical_processes','sector_context'];
+  const openCount = (open_questions || []).length;
+  const memberCount = org?.members?.length || 0;
+  const signalCount = signals?.length || 0;
+  const lastEnriched = profile.last_enriched_at ? new Date(profile.last_enriched_at).toLocaleDateString() : '—';
+  const initials = (company.name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+
+  // Completeness ring (SVG)
+  const r = 34, c = 2 * Math.PI * r;
+  const off = c - (completeness / 100) * c;
+
+  el.innerHTML = `
+    <!-- HERO -->
+    <div class="mb-5 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+      <div class="px-5 py-4 flex items-start gap-4">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-base font-bold text-white shadow-sm shrink-0">${escapeHtml(initials)}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <div class="text-base font-bold text-slate-900 truncate">${escapeHtml(company.name)}</div>
+            ${profile.strategic ? '<span class="text-amber-500 text-sm">★</span>' : ''}
+          </div>
+          <div class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(company.sector || '—')} · ${escapeHtml(company.city || '')} · ${escapeHtml(company.country || '')}${company.website ? ` · <a href="${escapeAttr(company.website)}" target="_blank" class="text-blue-600 hover:underline">${escapeHtml(company.website)} ↗</a>` : ''}</div>
+          <div class="mt-2 text-[13px] text-slate-700 leading-snug line-clamp-3">${escapeHtml(profile.summary || 'Sin resumen todavía. Inicia una entrevista para generarlo automáticamente.')}</div>
+        </div>
+        <div class="flex flex-col items-center shrink-0">
+          <svg width="64" height="64" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="${r}" fill="none" stroke="#e2e8f0" stroke-width="7"/>
+            <circle cx="40" cy="40" r="${r}" fill="none" stroke="url(#g1)" stroke-width="7" stroke-linecap="round"
+                    stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 40 40)"/>
+            <defs><linearGradient id="g1" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#0ea5e9"/><stop offset="1" stop-color="#6366f1"/></linearGradient></defs>
+            <text x="40" y="47" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">${completeness}%</text>
+          </svg>
+          <div class="text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">Completado</div>
+        </div>
+      </div>
+      <div class="grid grid-cols-4 border-t border-slate-100 bg-slate-50/60 text-center">
+        <div class="py-2.5 border-r border-slate-100">
+          <div class="text-base font-bold text-slate-800">${memberCount}</div>
+          <div class="text-[9px] uppercase tracking-wider text-slate-500">Personas</div>
+        </div>
+        <div class="py-2.5 border-r border-slate-100">
+          <div class="text-base font-bold text-slate-800">${signalCount}</div>
+          <div class="text-[9px] uppercase tracking-wider text-slate-500">Signals</div>
+        </div>
+        <div class="py-2.5 border-r border-slate-100">
+          <div class="text-base font-bold ${openCount > 0 ? 'text-amber-600' : 'text-slate-800'}">${openCount}</div>
+          <div class="text-[9px] uppercase tracking-wider text-slate-500">Por resolver</div>
+        </div>
+        <div class="py-2.5">
+          <div class="text-base font-bold text-slate-800">${lastEnriched}</div>
+          <div class="text-[9px] uppercase tracking-wider text-slate-500">Último enrich</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY EDITOR (collapsed by default) -->
+    <div class="mb-6 bg-white rounded-xl border shadow-sm">
+      <div class="px-4 py-3 border-b flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="text-lg">📝</div>
+          <div class="text-sm font-semibold text-slate-700">Resumen ejecutivo</div>
+        </div>
+        <button onclick="document.getElementById('summary-edit-wrap').classList.toggle('hidden')" class="text-[11px] text-blue-600 hover:underline">Editar</button>
+      </div>
+      <div id="summary-edit-wrap" class="p-4 hidden">
+        <textarea id="edit-summary" class="w-full border rounded-lg p-2 text-sm" rows="4">${escapeHtml(profile.summary || '')}</textarea>
+      </div>
+    </div>
+
+    <!-- BLOCK CARDS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      ${blocks.map((b) => renderBlockCard(b, profile[b])).join('')}
+    </div>
+
+    <div class="mt-6 flex gap-2 items-center sticky bottom-4 bg-white/90 backdrop-blur border rounded-xl px-4 py-3 shadow-sm">
+      <button onclick="saveProfile()" class="d-btn d-btn-primary d-btn-sm">💾 Guardar cambios</button>
+      <button onclick="startIntake(${company.id})" class="d-btn d-btn-secondary d-btn-sm">🎙️ Entrevista</button>
+      <button onclick="enrichCompany(${company.id})" class="d-btn d-btn-secondary d-btn-sm">⟳ Enriquecer</button>
+      <span id="save-msg" class="text-xs text-slate-400 ml-auto"></span>
+    </div>
+  `;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Open questions (Por resolver)
+// ───────────────────────────────────────────────────────────────────────────
+function renderOpenQuestions() {
+  const el = document.getElementById('tab-content');
+  const qs = state.selected.open_questions || [];
+  const byTopic = qs.reduce((acc, q) => { (acc[q.topic] = acc[q.topic] || []).push(q); return acc; }, {});
+  const topics = Object.keys(byTopic);
+  el.innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <div class="text-sm font-semibold">Preguntas por resolver</div>
+        <div class="text-xs text-slate-400">${qs.length} abiertas · se añaden automáticamente desde el chat de entrevista</div>
+      </div>
+      <button onclick="addOpenQuestionPrompt()" class="d-btn d-btn-primary d-btn-sm">+ Añadir pregunta</button>
+    </div>
+    ${topics.length ? topics.map((t) => `
+      <div class="mb-5">
+        <div class="text-xs font-semibold uppercase text-slate-500 mb-2">${escapeHtml(t)}</div>
+        <div class="bg-white border rounded-xl divide-y">
+          ${byTopic[t].map((q) => `
+            <div class="p-3 flex items-start justify-between gap-3">
+              <div class="flex-1">
+                <div class="text-sm">${escapeHtml(q.question)}</div>
+                <div class="text-[10px] text-slate-400 mt-1">Prioridad ${q.priority} · ${q.source || 'intake'} · ${new Date(q.created_at).toLocaleDateString()}</div>
+              </div>
+              <div class="flex gap-1">
+                <button onclick="resolveOpenQuestion(${q.id})" class="text-[11px] px-2 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">✓ Resuelta</button>
+                <button onclick="skipOpenQuestion(${q.id})" class="text-[11px] px-2 py-1 rounded bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100">Omitir</button>
+                <button onclick="deleteOpenQuestion(${q.id})" class="text-slate-300 hover:text-red-500 text-sm px-1">×</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('') : '<div class="text-sm text-slate-400 bg-white border rounded-xl p-6 text-center">Sin preguntas pendientes. Inicia una entrevista desde la lista para generar preguntas automáticamente.</div>'}
+  `;
+}
+
+async function addOpenQuestionPrompt() {
+  const topic = prompt('Tema (tech_stack, organigrama, economics, business_model…):', 'tech_stack');
+  if (!topic) return;
+  const question = prompt('Pregunta:');
+  if (!question) return;
+  await api('/api/kyc/companies/' + state.selected.company.id + '/open-questions', {
+    method: 'POST', body: JSON.stringify({ topic, question, priority: 2, source: 'manual' })
+  });
+  selectCompany(state.selected.company.id);
+}
+async function resolveOpenQuestion(id) {
+  const answer = prompt('Respuesta (opcional):') || '';
+  await api('/api/kyc/open-questions/' + id, {
+    method: 'PATCH', body: JSON.stringify({ status: 'resolved', answer })
+  });
+  selectCompany(state.selected.company.id);
+}
+async function skipOpenQuestion(id) {
+  await api('/api/kyc/open-questions/' + id, {
+    method: 'PATCH', body: JSON.stringify({ status: 'skipped' })
+  });
+  selectCompany(state.selected.company.id);
+}
+async function deleteOpenQuestion(id) {
+  if (!confirm('¿Eliminar la pregunta?')) return;
+  await api('/api/kyc/open-questions/' + id, { method: 'DELETE' });
+  selectCompany(state.selected.company.id);
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Stack tecnológico (vista dedicada + botón de análisis)
+// ───────────────────────────────────────────────────────────────────────────
+function renderStack() {
+  const el = document.getElementById('tab-content');
+  const stack = state.selected.profile?.tech_stack || {};
+  const hasData = Object.keys(stack).length > 0;
+
+  if (!hasData) {
+    el.innerHTML = `
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-sm font-semibold">Stack tecnológico</div>
+        <button onclick="startIntake(${state.selected.company.id})" class="d-btn d-btn-primary d-btn-sm">🎙️ Entrevista</button>
+      </div>
+      <div class="bg-white border rounded-xl p-10 text-center">
+        <div class="text-4xl mb-2">⚙️</div>
+        <div class="text-sm text-slate-400">Sin datos de stack todavía. Inicia una entrevista para capturar ERP, CRM, cloud, BI y sistemas sectoriales.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Normalize: accept array or string for module/tool lists
+  const toArr = (v) => {
+    if (!v) return [];
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string') return v.split(/[,;·•|]/).map((s) => s.trim()).filter(Boolean);
+    return [String(v)];
+  };
+  const asStr = (v) => (v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v)));
+
+  const erp        = asStr(stack.erp);
+  const erpMods    = toArr(stack.erp_modulos || stack.modulos);
+  const crm        = asStr(stack.crm);
+  const cloud      = asStr(stack.cloud || stack.infra);
+  const bi         = asStr(stack.bi || stack.analytics);
+  const sectoriales= toArr(stack.sectoriales || stack.sectorial);
+  const integracion= asStr(stack.integracion || stack.middleware || stack.btp);
+  const dolores    = toArr(stack.dolores || stack.pain_points);
+  const partner    = asStr(stack.partner_actual || stack.partner);
+  const notas      = asStr(stack.notes || stack.notas);
+
+  // Known keys to exclude from "otros"
+  const KNOWN = new Set(['erp','erp_modulos','modulos','crm','cloud','infra','bi','analytics','sectoriales','sectorial','integracion','middleware','btp','dolores','pain_points','partner_actual','partner','notes','notas']);
+  const otros = Object.entries(stack).filter(([k]) => !KNOWN.has(k));
+
+  // Box builder
+  const box = (label, value, { color='slate', sub='', icon='' } = {}) => {
+    if (!value) return `<div class="flex-1 min-w-[140px] rounded-xl border-2 border-dashed border-${color}-200 bg-${color}-50/30 p-3 text-center"><div class="text-[10px] uppercase tracking-wider text-${color}-400 font-semibold">${icon} ${label}</div><div class="text-[11px] text-${color}-300 italic mt-1">sin datos</div></div>`;
+    return `<div class="flex-1 min-w-[140px] rounded-xl border-2 border-${color}-200 bg-gradient-to-br from-${color}-50 to-white shadow-sm p-3">
+      <div class="text-[10px] uppercase tracking-wider text-${color}-600 font-semibold">${icon} ${label}</div>
+      <div class="text-[13px] font-semibold text-slate-800 mt-0.5 break-words">${escapeHtml(value)}</div>
+      ${sub ? `<div class="mt-1.5 flex flex-wrap gap-1">${sub}</div>` : ''}
+    </div>`;
+  };
+  const chips = (arr, color='slate') => arr.map((x) =>
+    `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-${color}-100 text-${color}-700 border border-${color}-200">${escapeHtml(asStr(x))}</span>`
+  ).join('');
+
+  const layerHeader = (label, icon) => `
+    <div class="flex items-center gap-2 mb-2">
+      <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">${icon} ${label}</div>
+      <div class="flex-1 h-px bg-slate-200"></div>
+    </div>`;
+
+  const connector = `
+    <div class="flex justify-center py-1">
+      <svg width="14" height="18"><line x1="7" y1="0" x2="7" y2="14" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="2 2"/><polygon points="3,13 11,13 7,18" fill="#cbd5e1"/></svg>
+    </div>`;
+
+  el.innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <div class="text-sm font-semibold">Stack tecnológico</div>
+        <div class="text-xs text-slate-400">Arquitectura lógica por capas</div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="setTab('dashboard')" class="text-xs text-blue-600 hover:underline">Editar JSON →</button>
+      </div>
+    </div>
+
+    <!-- Badges superiores: partner + dolores -->
+    <div class="flex flex-wrap gap-2 mb-4">
+      ${partner ? `<div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 text-white text-xs"><span class="text-[10px] uppercase tracking-wider text-slate-400">Partner</span><span class="font-semibold">${escapeHtml(partner)}</span></div>` : ''}
+      ${dolores.length ? dolores.map((d) => `<div class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs">⚠️ ${escapeHtml(asStr(d))}</div>`).join('') : ''}
+    </div>
+
+    <!-- Diagrama por capas -->
+    <div class="bg-gradient-to-b from-slate-50 to-white border rounded-2xl p-5">
+      <!-- Capa 1: canales / CRM -->
+      ${layerHeader('Canales / Frontend', '🎨')}
+      <div class="flex gap-3 flex-wrap">
+        ${box('CRM', crm, { color:'pink', icon:'👥' })}
+      </div>
+
+      ${connector}
+
+      <!-- Capa 2: aplicaciones core -->
+      ${layerHeader('Aplicaciones de negocio', '💼')}
+      <div class="flex gap-3 flex-wrap">
+        ${box('ERP', erp, { color:'blue', icon:'🏛️', sub: chips(erpMods, 'blue') })}
+        ${sectoriales.length
+          ? `<div class="flex-1 min-w-[140px] rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm p-3">
+              <div class="text-[10px] uppercase tracking-wider text-violet-600 font-semibold">🧩 Sectoriales</div>
+              <div class="mt-1 flex flex-wrap gap-1">${chips(sectoriales,'violet')}</div>
+            </div>`
+          : box('Sectoriales', '', { color:'violet', icon:'🧩' })}
+      </div>
+
+      ${(integracion || erp) ? `
+        ${connector}
+        ${layerHeader('Integración / Middleware', '🔌')}
+        <div class="flex gap-3 flex-wrap">
+          ${box('Integración', integracion || '—', { color:'amber', icon:'🔗' })}
+        </div>
+      ` : ''}
+
+      ${connector}
+
+      <!-- Capa 3: analítica -->
+      ${layerHeader('Analítica / Datos', '📊')}
+      <div class="flex gap-3 flex-wrap">
+        ${box('BI', bi, { color:'emerald', icon:'📈' })}
+      </div>
+
+      ${connector}
+
+      <!-- Capa 4: infraestructura -->
+      ${layerHeader('Infraestructura', '☁️')}
+      <div class="flex gap-3 flex-wrap">
+        ${box('Cloud', cloud, { color:'sky', icon:'☁️' })}
+      </div>
+    </div>
+
+    ${(otros.length || notas) ? `
+      <div class="mt-4 bg-white border rounded-xl p-4">
+        ${notas ? `<div class="mb-3"><div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Notas</div><div class="text-xs text-slate-700">${escapeHtml(notas)}</div></div>` : ''}
+        ${otros.length ? `<div><div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Otros sistemas</div><div class="space-y-1">${otros.map(([k,v]) => `<div class="text-xs"><span class="text-slate-400">${escapeHtml(prettyLabel(k))}:</span> <span class="text-slate-700">${escapeHtml(asStr(v))}</span></div>`).join('')}</div></div>` : ''}
+      </div>
+    ` : ''}
+  `;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Chat
+// ───────────────────────────────────────────────────────────────────────────
+function toggleChat() {
+  state.chatOpen = !state.chatOpen;
+  document.getElementById('chat-pane').style.display = state.chatOpen ? 'flex' : 'none';
+  if (state.chatOpen && state.selected) loadChatSessions();
+}
+
+async function loadChatSessions() {
+  if (!state.selected) return;
+  const sessions = await api('/api/kyc/companies/' + state.selected.company.id + '/chat/sessions');
+  state.chatSessions = sessions;
+  document.getElementById('chat-sessions').innerHTML = sessions.length
+    ? sessions.map((s) => `<button onclick="openChatSession(${s.id})" class="px-2 py-1 rounded ${state.chatSessionId === s.id ? 'bg-blue-100 text-blue-700' : 'bg-slate-100'}">${escapeHtml(s.title || '#' + s.id)}</button>`).join('')
+    : '<span class="text-slate-400">Sin sesiones</span>';
+  if (!state.chatSessionId && sessions.length) openChatSession(sessions[0].id);
+  else if (!sessions.length) document.getElementById('chat-messages').innerHTML = '<div class="text-slate-400 text-center py-8">Pulsa "Nueva" para empezar</div>';
+}
+
+async function newChatSession() {
+  if (!state.selected) return alert('Selecciona una empresa primero.');
+  const s = await api('/api/kyc/companies/' + state.selected.company.id + '/chat/sessions', {
+    method: 'POST', body: JSON.stringify({ title: 'Sesión ' + new Date().toLocaleString() })
+  });
+  state.chatSessionId = s.id;
+  loadChatSessions();
+}
+
+async function startIntake(companyId) {
+  // 1. Select the company (loads detail pane)
+  if (!state.selected || state.selected.company.id !== companyId) {
+    await selectCompany(companyId);
+  }
+  // 2. Create an intake-type chat session
+  const s = await api('/api/kyc/companies/' + companyId + '/chat/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'intake', title: 'Entrevista guiada · ' + new Date().toLocaleDateString() })
+  });
+  state.chatSessionId = s.id;
+  // 3. Open chat drawer
+  if (!state.chatOpen) {
+    state.chatOpen = true;
+    document.getElementById('chat-pane').style.display = 'flex';
+  }
+  await loadChatSessions();
+  await openChatSession(s.id);
+  // 4. Auto-send the starter message to trigger the guided flow
+  const input = document.getElementById('chat-input');
+  input.value = '/iniciar';
+  const form = document.getElementById('chat-form') || input.closest('form');
+  if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+}
+
+async function openChatSession(id) {
+  state.chatSessionId = id;
+  const msgs = await api('/api/kyc/chat/sessions/' + id + '/messages');
+  const el = document.getElementById('chat-messages');
+  el.innerHTML = msgs.map(renderMsg).join('') || '<div class="text-slate-400 text-center py-8">Envía un mensaje para empezar</div>';
+  el.scrollTop = el.scrollHeight;
+  loadChatSessions();
+}
+
+function renderMsg(m) {
+  const cls = m.role === 'user' ? 'chat-msg-user ml-auto' : 'chat-msg-ai mr-auto';
+  return `<div class="${cls} px-3 py-2 max-w-[85%] whitespace-pre-wrap">${escapeHtml(m.content)}</div>`;
+}
+
+async function sendChat(ev) {
+  ev.preventDefault();
+  if (!state.chatSessionId) await newChatSession();
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim(); if (!message) return;
+  input.value = '';
+  const msgsEl = document.getElementById('chat-messages');
+  msgsEl.insertAdjacentHTML('beforeend', renderMsg({ role: 'user', content: message }));
+  const aiDiv = document.createElement('div');
+  aiDiv.className = 'chat-msg-ai mr-auto px-3 py-2 max-w-[85%] whitespace-pre-wrap';
+  aiDiv.textContent = '…';
+  msgsEl.appendChild(aiDiv);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  // Use fetch + manual SSE parsing (EventSource doesn't support POST)
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    aiDiv.textContent = 'Falta la API key de Anthropic. Ábrela en ⚙️ Ajustes.';
+    return;
+  }
+  const headers = { ...apiH(), 'X-Anthropic-Key': apiKey };
+  const r = await fetch('/api/kyc/chat/sessions/' + state.chatSessionId + '/stream', {
+    method: 'POST', headers, body: JSON.stringify({ message })
+  });
+  if (!r.ok) { aiDiv.textContent = 'Error: ' + await r.text(); return; }
+  const reader = r.body.getReader(); const dec = new TextDecoder();
+  let buf = ''; let accumulated = '';
+  aiDiv.textContent = '';
+  while (true) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf('\n\n')) >= 0) {
+      const evt = buf.slice(0, idx); buf = buf.slice(idx + 2);
+      const lines = evt.split('\n');
+      const eventName = (lines.find((l) => l.startsWith('event:')) || '').slice(6).trim();
+      const dataLine = (lines.find((l) => l.startsWith('data:')) || '').slice(5).trim();
+      if (!dataLine) continue;
+      try {
+        const data = JSON.parse(dataLine);
+        if (eventName === 'chunk') { accumulated += data.text || ''; aiDiv.textContent = accumulated; }
+        else if (eventName === 'error') { aiDiv.textContent += '\n[error] ' + data.error; }
+        else if (eventName === 'done') {
+          if (state.selected) selectCompany(state.selected.company.id);
+        }
+      } catch {}
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Utils
+// ───────────────────────────────────────────────────────────────────────────
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+function escapeAttr(s) { return escapeHtml(s); }
+
+// ───────────────────────────────────────────────────────────────────────────
+// Init
+// ───────────────────────────────────────────────────────────────────────────
+loadCompanies();
+</script>
+</body>
+</html>

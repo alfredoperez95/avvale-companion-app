@@ -18,6 +18,7 @@ import { AiCredentialsModule } from './ai-credentials/ai-credentials.module';
 import { YubiqModule } from './yubiq/yubiq.module';
 import { RfqAnalysisModule } from './rfq-analysis/rfq-analysis.module';
 import { MeddpiccModule } from './meddpicc/meddpicc.module';
+import { KycModule } from './kyc/kyc.module';
 import * as path from 'path';
 
 @Module({
@@ -58,6 +59,7 @@ import * as path from 'path';
     YubiqModule,
     RfqAnalysisModule,
     MeddpiccModule,
+    KycModule,
   ],
   controllers: [HealthController],
 })

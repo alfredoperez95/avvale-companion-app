@@ -1,0 +1,45 @@
+# Stack KYC legado (PostgreSQL + Node en `services/kyc/`).
+# NO es requerido para Avvale Companion: KYC vive en Nest + Prisma + MySQL (migración `kyc_*`).
+# Conservado solo para quien pruebe el slice Docker aislado; no hay proxy a este servicio en el producto.
+#
+# Uso (desde la raíz):
+#   docker compose -f docker-compose.kyc.yml up -d --build
+# API: http://127.0.0.1:3388 (KYC_PORT). Usuario admin del seed: ver variables KYC_* abajo.
+services:
+  kyc-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kyc
+      POSTGRES_USER: kyc
+      POSTGRES_PASSWORD: ${KYC_DB_PASSWORD:-kyc_secret}
+    volumes:
+      - kyc-pgdata:/var/lib/postgresql/data
+      - ./services/kyc/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kyc']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  kyc-app:
+    build: ./services/kyc
+    restart: unless-stopped
+    ports:
+      - '${KYC_PORT:-3388}:3388'
+    environment:
+      DATABASE_URL: postgres://kyc:${KYC_DB_PASSWORD:-kyc_secret}@kyc-db:5432/kyc
+      JWT_SECRET: ${KYC_JWT_SECRET:-kyc_jwt_dev_change_me}
+      JWT_EXPIRES_IN: ${KYC_JWT_EXPIRES_IN:-30d}
+      ADMIN_EMAIL: ${KYC_ADMIN_EMAIL:-admin@kyc.local}
+      ADMIN_PASSWORD: ${KYC_ADMIN_PASSWORD:-kycadmin2026}
+      ADMIN_NAME: ${KYC_ADMIN_NAME:-Admin}
+    volumes:
+      - kyc-sessions:/app/kyc-sessions
+    depends_on:
+      kyc-db:
+        condition: service_healthy
+
+volumes:
+  kyc-pgdata:
+  kyc-sessions:

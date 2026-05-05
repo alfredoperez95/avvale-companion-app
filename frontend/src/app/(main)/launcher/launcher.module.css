@@ -337,8 +337,13 @@
 .tileAccentPipeline,
 .tileAccentYubiq,
 .tileAccentRfq,
-.tileAccentMeddpicc {
+.tileAccentMeddpicc,
+.tileAccentKyc {
   border-top: 3px solid var(--fiori-shell-bg);
+}
+
+.adminKycSection {
+  margin-top: var(--fiori-space-6);
 }
 
 .tileTitle {
@@ -498,6 +503,10 @@
   content: "\e1b4";
 }
 
+:global([data-theme="fiori"]) .tileIconKyc::before {
+  content: "\e0c3";
+}
+
 /* Microsoft: icono tipo documento/app en el tile de Activaciones */
 :global([data-theme="microsoft"]) .tileIcon::before {
   content: "\e026";
@@ -513,6 +522,10 @@
 
 :global([data-theme="microsoft"]) .tileIconMeddpicc::before {
   content: "\e1b4";
+}
+
+:global([data-theme="microsoft"]) .tileIconKyc::before {
+  content: "\e0c3";
 }
 
 .tileLink:hover .tileCta {

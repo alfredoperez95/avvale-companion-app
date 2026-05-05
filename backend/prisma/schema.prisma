@@ -68,6 +68,8 @@ model User {
   rfqAnalyses        RfqAnalysis[]
   meddpiccDeals      MeddpiccDeal[]
   sentInvitations    UserInvitation[] @relation("UserInvitedBy")
+  kycChatSessions    KycChatSession[]
+  kycFacts           KycFact[]
 
   @@map("users")
 }
@@ -489,4 +491,253 @@ model EmailSignature {
   user User? @relation("UserEmailSignature", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("email_signature")
+}
+
+// ---------------------------------------------------------------------------
+// KYC (Client Knowledge) — tablas prefijadas kyc_*, espejo lógico de
+// services/kyc/init.sql; auth propia de KYC no se persiste (usa User de Companion).
+// ---------------------------------------------------------------------------
+
+enum KycOrgRelationType {
+  aliado
+  bloqueador
+  influencer
+  mentor
+  rival
+  otro
+}
+
+enum KycChatMessageRole {
+  user
+  assistant
+  system
+  tool
+}
+
+enum KycChatSessionType {
+  research
+  intake
+}
+
+enum KycOpenQuestionStatus {
+  open
+  resolved
+  skipped
+}
+
+enum KycSignalSentiment {
+  positive
+  neutral
+  negative
+  mixed
+}
+
+model KycCompany {
+  id        BigInt   @id @default(autoincrement())
+  name      String
+  sector    String?
+  industry  String?
+  city      String?
+  country   String?  @default("Spain")
+  website   String?
+  revenue   String?
+  employees String?
+  techStack String?  @map("tech_stack")
+  source    String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  profile           KycProfile?
+  contacts          KycContact[]
+  orgMembers        KycOrgMember[]
+  orgRelationships  KycOrgRelationship[]
+  signals           KycSignal[]
+  facts             KycFact[]
+  chatSessions      KycChatSession[]
+  openQuestions     KycOpenQuestion[]
+
+  @@index([name])
+  @@index([sector])
+  @@index([industry])
+  @@map("kyc_companies")
+}
+
+model KycContact {
+  id        BigInt   @id @default(autoincrement())
+  companyId BigInt?  @map("company_id")
+  firstName String   @map("first_name")
+  lastName  String?  @map("last_name")
+  email     String?
+  phone     String?
+  jobTitle  String?  @map("job_title")
+  linkedin  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company    KycCompany?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  orgMembers KycOrgMember[]
+
+  @@index([companyId])
+  @@map("kyc_contacts")
+}
+
+model KycProfile {
+  companyId         BigInt    @id @map("company_id")
+  economics         Json      @default("{}")
+  businessModel     Json      @default("{}") @map("business_model")
+  customers         Json      @default("{}")
+  techStack         Json      @default("{}") @map("tech_stack")
+  criticalProcesses Json      @default("{}") @map("critical_processes")
+  sectorContext     Json      @default("{}") @map("sector_context")
+  competencia       Json      @default("{}")
+  summary           String?   @db.Text
+  confidenceScore   Int?      @default(0) @map("confidence_score")
+  strategic         Boolean   @default(false)
+  lastEnrichedAt    DateTime? @map("last_enriched_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  company KycCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([strategic])
+  @@map("kyc_profiles")
+}
+
+model KycOrgMember {
+  id          BigInt   @id @default(autoincrement())
+  companyId   BigInt   @map("company_id")
+  contactId   BigInt?  @map("contact_id")
+  name        String
+  role        String?
+  area        String?
+  level       Int?
+  reportsToId BigInt?  @map("reports_to_id")
+  linkedin    String?
+  notes       String?  @db.Text
+  source      String?  @default("manual")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company    KycCompany   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact    KycContact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  reportsTo  KycOrgMember?  @relation("KycOrgHierarchy", fields: [reportsToId], references: [id], onDelete: SetNull)
+  reportees  KycOrgMember[] @relation("KycOrgHierarchy")
+  relFrom    KycOrgRelationship[] @relation("KycOrgRelFrom")
+  relTo      KycOrgRelationship[] @relation("KycOrgRelTo")
+
+  @@index([companyId])
+  @@index([reportsToId])
+  @@map("kyc_org_members")
+}
+
+model KycOrgRelationship {
+  id           BigInt   @id @default(autoincrement())
+  companyId    BigInt   @map("company_id")
+  fromMemberId BigInt   @map("from_member_id")
+  toMemberId   BigInt   @map("to_member_id")
+  type         KycOrgRelationType
+  strength     Int?     @default(3)
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  company    KycCompany  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fromMember KycOrgMember @relation("KycOrgRelFrom", fields: [fromMemberId], references: [id], onDelete: Cascade)
+  toMember   KycOrgMember @relation("KycOrgRelTo", fields: [toMemberId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("kyc_org_relationships")
+}
+
+model KycSignal {
+  id          BigInt   @id @default(autoincrement())
+  companyId   BigInt   @map("company_id")
+  source      String
+  sourceUrl   String?  @map("source_url") @db.Text
+  sentiment   KycSignalSentiment?
+  rating      Decimal? @db.Decimal(3, 1)
+  title       String?  @db.Text
+  text        String?  @db.Text
+  signalType  String?  @default("review") @map("signal_type")
+  publishedAt DateTime? @map("published_at")
+  capturedAt  DateTime  @default(now()) @map("captured_at")
+
+  company KycCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, capturedAt(sort: Desc)])
+  @@index([source])
+  @@map("kyc_signals")
+}
+
+model KycChatSession {
+  id          BigInt   @id @default(autoincrement())
+  companyId   BigInt   @map("company_id")
+  userId      String?  @map("user_id")
+  title       String?
+  workdir     String?  @db.Text
+  sessionType KycChatSessionType @default(research) @map("session_type")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company  KycCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user     User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages KycChatMessage[]
+
+  @@index([companyId, updatedAt(sort: Desc)])
+  @@map("kyc_chat_sessions")
+}
+
+model KycChatMessage {
+  id        BigInt   @id @default(autoincrement())
+  sessionId BigInt   @map("session_id")
+  role      KycChatMessageRole
+  content   String   @db.LongText
+  meta      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session KycChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  facts   KycFact[]
+
+  @@index([sessionId, id])
+  @@map("kyc_chat_messages")
+}
+
+model KycFact {
+  id            BigInt   @id @default(autoincrement())
+  companyId     BigInt   @map("company_id")
+  fieldPath     String   @map("field_path")
+  value         Json?
+  prevValue     Json?    @map("prev_value")
+  source        String
+  sourceRef     String?  @map("source_ref") @db.Text
+  confidence    Decimal? @db.Decimal(3, 2)
+  userId        String?  @map("user_id")
+  chatMessageId BigInt?  @map("chat_message_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  company     KycCompany     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  chatMessage KycChatMessage? @relation(fields: [chatMessageId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt(sort: Desc)])
+  @@index([companyId, fieldPath])
+  @@map("kyc_facts")
+}
+
+model KycOpenQuestion {
+  id         BigInt   @id @default(autoincrement())
+  companyId  BigInt   @map("company_id")
+  topic      String
+  question   String   @db.Text
+  priority   Int      @default(2)
+  status     KycOpenQuestionStatus @default(open)
+  answer     String?  @db.Text
+  source     String?  @default("intake")
+  createdAt  DateTime @default(now()) @map("created_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  company KycCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status, priority])
+  @@map("kyc_open_questions")
 }
