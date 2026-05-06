@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
-import { kycJson, kycStreamChat, kycLogout } from './kycApi';
+import { kycJson, kycStreamChat } from './kycApi';
 import { buildKycChatQuickActions } from './kycChatQuickActions';
 import { formatKycAssistantMessageHtml, stripKycProposedJsonFromChatText } from './kycChatMessageFormat';
 import { filterKycOrgChartMembers } from './kycOrgChartFilter';
@@ -100,6 +101,10 @@ function companyListMeta(c: { sector: string | null; city: string | null }) {
 }
 
 export default function KycWorkspace({ className }: KycWorkspaceProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const prevModalRef = useRef<'add' | 'import' | null>(null);
+
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [search, setSearch] = useState('');
   const [strategicOnly, setStrategicOnly] = useState(false);
@@ -114,8 +119,22 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   });
   const [checked, setChecked] = useState<Set<number>>(() => new Set());
 
-  const [modal, setModal] = useState<'add' | 'import' | 'settings' | null>(null);
+  const [modal, setModal] = useState<'add' | 'import' | null>(null);
   const [confirm, setConfirm] = useState<'delOne' | 'delBulk' | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get('nuevaEmpresa') === '1') {
+      setModal('add');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const prev = prevModalRef.current;
+    if (prev === 'add' && modal === null && searchParams.get('nuevaEmpresa') === '1') {
+      router.replace('/launcher/kyc', { scroll: false });
+    }
+    prevModalRef.current = modal;
+  }, [modal, searchParams, router]);
   const [importText, setImportText] = useState('');
   const [addName, setAddName] = useState('');
   const [addSector, setAddSector] = useState('');
@@ -490,19 +509,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
           )}
           <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={openChat}>
             Chat KYC
-          </button>
-          <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={() => setModal('settings')}>
-            Ajustes
-          </button>
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-            onClick={() => {
-              kycLogout();
-            }}
-            title="Cerrar sesión"
-          >
-            Cerrar sesión
           </button>
         </div>
       </div>
@@ -947,21 +953,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
               </button>
               <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={submitImport}>
                 Importar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {modal === 'settings' && (
-        <div className={styles.modalOverlay} onClick={() => setModal(null)} role="presentation">
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2>Ajustes</h2>
-            <p className={styles.hint}>
-              La clave de API de Anthropic se configura en <strong>Perfil → credenciales de IA</strong>.
-            </p>
-            <div className={styles.modalActions}>
-              <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setModal(null)}>
-                Entendido
               </button>
             </div>
           </div>

@@ -16,7 +16,7 @@ Si no hay nada que persistir, usa KYC_PROPOSED_JSON: [].
 **field_path admitidos (ejemplos)**
 - summary — texto del resumen ejecutivo.
 - org_member — value: { "name", "role?", "area?", "linkedin?", "notes?" }.
-- competencia_partner — value: { "partner_name", "ambitos?" (array: tecnico | funcional | estrategia), "detalle?", "analisis?", "momentum?" (bien | neutro | debil | riesgo: posicionamiento frente al cliente). Añade una fila en la vista «Competencia / partners» del resumen.
+- competencia_partner — value: { "partner_name", "ambitos?" (array: tecnico | funcional | estrategia), "detalle?", "analisis?", "momentum?" (bien | neutro | debil | riesgo: posicionamiento frente al cliente, es decir, cómo va frente a Avvale). Añade una fila en la vista «Competencia / partners» del resumen. Importante: hablamos de competidores/partners de Avvale en la cuenta (no “competencia del cliente”).
 - open_question — value: { "topic", "question", "priority?" }. topic debe ser uno de: economics | business_model | customers | tech_stack | critical_processes | sector_context | competencia | org | signals | general.
 - economics.* — p. ej. economics.revenue_model, economics.scale, economics.margins_notes.
 - business_model.* — p. ej. business_model.value_proposition, business_model.channels.
@@ -34,7 +34,7 @@ Objetivo: enriquecer conocimiento — organigrama, stack tecnológico, economía
 
 Herramientas no disponibles (solo texto): razona con el contexto; para lagunas reales propón **open_question** con topic canónico y redacción no duplicada respecto a las ya listadas. Si el interlocutor aporta datos, conviértelos en **field_path** + **value** en el JSON de cierre.
 
-**org_member:** únicamente personas internas de la empresa. Partners tecnológicos, consultoras y actor relevante en cuenta van en **competencia_partner** (nombre, ámbitos, detalle, análisis, momentum); **tech_stack** sigue siendo para sistemas y herramientas. No registres partners como org_member.`;
+**org_member:** únicamente personas internas de la empresa. Partners tecnológicos, consultoras y actores relevantes en cuenta (competidores/partners de Avvale) van en **competencia_partner** (nombre, ámbitos, detalle, análisis, momentum); **tech_stack** sigue siendo para sistemas y herramientas. No registres partners como org_member.`;
 
   const user = `## Contexto
 ${contextMd}
@@ -56,7 +56,7 @@ Conduces una conversación guiada en español: una pregunta clara por turno cuan
 
 Reglas:
 - Usa el contexto y el historial; no repitas preguntas ya listadas como abiertas ni hagas la misma pregunta con otras palabras.
-- **org_member** solo para personas **internas** (dirección, áreas, staff). Partners, consultoras y competidores relevantes en la cuenta van con **competencia_partner** (no como org_member). Stack y herramientas en **tech_stack**; huecos sin dato como **open_question** (topic competencia si aplica).
+- **org_member** solo para personas **internas** (dirección, áreas, staff). Partners, consultoras y competidores relevantes en la cuenta (respecto a Avvale) van con **competencia_partner** (no como org_member). Stack y herramientas en **tech_stack**; huecos sin dato como **open_question** (topic competencia si aplica).
 - Cuando el usuario responda con hechos, en la última línea incluye **KYC_PROPOSED_JSON** con **field_path** hacia el perfil (especialmente tech_stack y el resto de bloques) antes que nuevas open_question.
 - Si cierras con **Pendiente(s) para próxima sesión** y una lista de preguntas, duplica cada ítem en KYC_PROPOSED_JSON como **open_question** para que aparezcan en «Por resolver».
 - open_question: topic ∈ economics | business_model | customers | tech_stack | critical_processes | sector_context | competencia | org | signals | general.`;

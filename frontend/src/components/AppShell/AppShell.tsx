@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Footer } from '@/components/Footer/Footer';
 import { Icon, type IconName } from '@/components/Icon/Icon';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
@@ -128,13 +128,20 @@ const fioriTabsKyc: {
   label: string;
   icon?: IconName;
   iconOnly?: boolean;
-  isActive: (pathname: string | null) => boolean;
+  isActive: (pathname: string | null, searchParams?: { get: (key: string) => string | null } | null) => boolean;
 }[] = [
   fioriTabHome,
   {
     href: '/launcher/kyc',
     label: 'KYC',
-    isActive: (p) => p != null && p.startsWith('/launcher/kyc'),
+    isActive: (p, sp) =>
+      p != null && p.startsWith('/launcher/kyc') && sp?.get('nuevaEmpresa') !== '1',
+  },
+  {
+    href: '/launcher/kyc?nuevaEmpresa=1',
+    label: 'Añadir empresa',
+    isActive: (p, sp) =>
+      p != null && p.startsWith('/launcher/kyc') && sp?.get('nuevaEmpresa') === '1',
   },
 ];
 
@@ -177,6 +184,7 @@ interface AppShellProps {
 
 export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const initials = user ? getInitials(user.name, user.lastName, user.email) : '';
   const avatarUrl = useAvatarUrl(user?.avatarPath ?? null);
   const pageHeader = getPageHeader(pathname);
@@ -322,7 +330,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
                       )
                       .map((tab) => {
                         const { href, label, icon, iconOnly, isActive } = tab;
-                        const active = isActive(pathname);
+                        const active = isActive(pathname, searchParams);
                         const tabClass = active ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink;
                         if (iconOnly && icon === 'home') {
                           return (

@@ -495,7 +495,7 @@ model EmailSignature {
 
 // ---------------------------------------------------------------------------
 // KYC (Client Knowledge) — tablas prefijadas kyc_*, espejo lógico de
-// services/kyc/init.sql; auth propia de KYC no se persiste (usa User de Companion).
+// Esquema KYC en Companion; auth propia de KYC no se persiste (usa User de Companion).
 // ---------------------------------------------------------------------------
 
 enum KycOrgRelationType {

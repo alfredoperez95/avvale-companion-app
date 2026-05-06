@@ -365,11 +365,12 @@ export function KycOrgPanel({
           <div className={styles.orgTitle}>
             Organigrama · {visibleMembers.length} {visibleMembers.length === 1 ? 'persona' : 'personas'}
             {hiddenOrgCount > 0 ? (
-              <span className={styles.orgHiddenHint}> ({hiddenOrgCount} ocultas: partner tech / competencia)</span>
+              <span className={styles.orgHiddenHint}> ({hiddenOrgCount} ocultas: partner tech / competencia (Avvale))</span>
             ) : null}
           </div>
           <div className={styles.orgSub}>
-            Solo estructura interna. Partners tecnológicos y competencia no se muestran aquí (siguen en datos si los añadió el modelo).
+            Solo estructura interna. Partners tecnológicos y competencia (respecto a Avvale) no se muestran aquí (siguen en datos si los añadió el
+            modelo).
           </div>
         </div>
         <div className={styles.row}>

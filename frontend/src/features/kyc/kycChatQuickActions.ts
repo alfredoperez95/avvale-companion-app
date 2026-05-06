@@ -12,7 +12,11 @@ const INTAKE_ACTIONS: KycChatQuickAction[] = [
 const RESEARCH_ACTIONS: KycChatQuickAction[] = [
   { label: 'Síntesis', message: 'Haz un resumen ejecutivo de lo que sabemos y qué falta por aclarar.' },
   { label: 'Riesgos y señales', message: '¿Qué riesgos o señales comerciales destacarías?' },
-  { label: 'Competencia', message: '¿Cómo se sitúa frente a la competencia en su sector?' },
+  {
+    label: 'Competencia / partners (Avvale)',
+    message:
+      'Desde nuestro punto de vista (Avvale): ¿qué competidores y partners están presentes o influyen en la cuenta, y cómo están posicionados frente a nosotros?',
+  },
   { label: 'Stack tech', message: 'Resume el stack tecnológico inferido y qué conviene confirmar.' },
   { label: 'Próximos pasos', message: 'Propón pendientes concretos para la próxima sesión (lista numerada).' },
 ];

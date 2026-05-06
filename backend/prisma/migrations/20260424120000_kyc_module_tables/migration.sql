@@ -1,4 +1,4 @@
--- KYC: tablas kyc_* (equivalente lógico a services/kyc/init.sql, sin usuarios de auth KYC).
+-- KYC: tablas kyc_* (módulo nativo Companion; sin usuarios de auth KYC separados).
 -- Generado y revisado a partir de prisma migrate diff; defaults JSON alineados con @default en schema.
 
 -- CreateTable

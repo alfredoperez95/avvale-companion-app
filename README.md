@@ -161,9 +161,7 @@ Módulo **KYC (Client Knowledge)** con API **nativa en el backend** (Nest + Pris
 
 Aplicar migraciones Prisma desde `backend/` (`npx prisma migrate deploy`) para crear las tablas `kyc_*`. Opcional: variable `KYC_CHAT_MODEL` en el backend (`haiku` / `sonnet` / `opus`).
 
-En la app, el acceso al mosaico y a `/launcher/kyc` es solo para usuarios **ADMIN**; hace falta clave **Anthropic** en Perfil para el chat KYC.
-
-Un [docker-compose de referencia](docker-compose.kyc.yml) hacia un slice legado en `services/kyc/` existe solo por compatibilidad con pruebas antiguas; **no** es parte del despliegue normal de Companion.
+En la app, el mosaico KYC está en el launcher junto al resto de herramientas; hace falta clave **Anthropic** en Perfil (por usuario) para el chat KYC.
 
 ---
 

@@ -342,10 +342,6 @@
   border-top: 3px solid var(--fiori-shell-bg);
 }
 
-.adminKycSection {
-  margin-top: var(--fiori-space-6);
-}
-
 .tileTitle {
   font-size: 1.125rem;
   font-weight: 600;
@@ -503,8 +499,9 @@
   content: "\e1b4";
 }
 
+/* KYC: sap-icon customer-and-contacts (\e0de) */
 :global([data-theme="fiori"]) .tileIconKyc::before {
-  content: "\e0c3";
+  content: "\e0de";
 }
 
 /* Microsoft: icono tipo documento/app en el tile de Activaciones */
@@ -525,7 +522,7 @@
 }
 
 :global([data-theme="microsoft"]) .tileIconKyc::before {
-  content: "\e0c3";
+  content: "\e0de";
 }
 
 .tileLink:hover .tileCta {

@@ -30,8 +30,10 @@ import { apiFetch } from '@/lib/api';
 import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './launcher.module.css';
 
-const LAUNCHER_TILE_IDS_ALL: LauncherTileId[] = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc'];
+const LAUNCHER_TILE_IDS_ALL: LauncherTileId[] = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc', 'kyc'];
 const DEFAULT_TILE_ORDER: LauncherTileId[] = [...LAUNCHER_TILE_IDS_ALL];
+
+const LEGACY_FIVE_TILES = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc'] as const;
 
 function normalizeTileOrder(raw: unknown): LauncherTileId[] {
   const allowed = new Set<string>(LAUNCHER_TILE_IDS_ALL);
@@ -45,13 +47,18 @@ function normalizeTileOrder(raw: unknown): LauncherTileId[] {
   ) {
     return unique as LauncherTileId[];
   }
+  const legacyFiveOk =
+    unique.length === 5 &&
+    new Set(unique).size === 5 &&
+    LEGACY_FIVE_TILES.every((id) => unique.includes(id));
+  if (legacyFiveOk) return [...(unique as LauncherTileId[]), 'kyc'];
   const legacyFour = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis'] as const;
   if (
     unique.length === 4 &&
     new Set(unique).size === 4 &&
     unique.every((id) => legacyFour.includes(id as (typeof legacyFour)[number]))
   ) {
-    return [...(unique as LauncherTileId[]), 'meddpicc'];
+    return [...(unique as LauncherTileId[]), 'meddpicc', 'kyc'];
   }
   return [...DEFAULT_TILE_ORDER];
 }
@@ -62,6 +69,7 @@ const TILE_ACCENT: Record<LauncherTileId, string> = {
   yubiq: styles.tileAccentYubiq,
   rfqAnalysis: styles.tileAccentRfq,
   meddpicc: styles.tileAccentMeddpicc,
+  kyc: styles.tileAccentKyc,
 };
 
 function TileLink({
@@ -256,6 +264,22 @@ function TileLink({
             </p>
             <span className={styles.tileCta}>Abrir módulo →</span>
             <span className={`${styles.tileIcon} ${styles.tileIconMeddpicc}`} aria-hidden="true" />
+          </article>
+        </Link>
+      );
+    case 'kyc':
+      return (
+        <Link href="/launcher/kyc" className={styles.tileLink} aria-labelledby="tile-kyc-heading">
+          <article className={tile}>
+            <h2 id="tile-kyc-heading" className={styles.tileTitle}>
+              KYC — Client Knowledge
+            </h2>
+            <p className={styles.tileDesc}>
+              Base de cuentas, perfil comercial, organigrama, señales y chat de investigación. Actúa como punto central de otras
+              herramientas.
+            </p>
+            <span className={styles.tileCta}>Abrir KYC →</span>
+            <span className={`${styles.tileIcon} ${styles.tileIconKyc}`} aria-hidden="true" />
           </article>
         </Link>
       );
@@ -587,32 +611,6 @@ export default function LauncherPage() {
             </li>
           ))}
         </ul>
-      )}
-
-      {user?.role === 'ADMIN' && !reorderMode && (
-        <section className={styles.adminKycSection} aria-label="KYC (solo administradores)">
-          <ul className={styles.tilesGrid} role="list">
-            <li className={styles.sortableItemStatic} role="listitem">
-              <Link
-                href="/launcher/kyc"
-                className={styles.tileLink}
-                aria-labelledby="tile-kyc-heading"
-              >
-                <article className={`${styles.tile} ${styles.tileAccentKyc}`}>
-                  <h2 id="tile-kyc-heading" className={styles.tileTitle}>
-                    KYC — Client Knowledge
-                  </h2>
-                  <p className={styles.tileDesc}>
-                    Base de cuentas, perfil comercial, organigrama, señales y chat de investigación (requiere servicio KYC y
-                    credenciales en el backend).
-                  </p>
-                  <span className={styles.tileCta}>Abrir KYC →</span>
-                  <span className={`${styles.tileIcon} ${styles.tileIconKyc}`} aria-hidden="true" />
-                </article>
-              </Link>
-            </li>
-          </ul>
-        </section>
       )}
 
       <LauncherWalkthrough open={walkthroughOpen} onClose={handleWalkthroughClose} />

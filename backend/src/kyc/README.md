@@ -3,7 +3,7 @@
 ## Enfoque (nativo Companion)
 
 - **API HTTP** en Nest: [`KycController`](kyc.controller.ts) bajo `/kyc/*`. El front llama a `/api/kyc/...` (Next reescribe al backend sin el prefijo `/api` hacia el mismo path que Nest, según [next.config.ts](../../frontend/next.config.ts)).
-- **Autorización**: `JwtAuthGuard` + `AdminGuard` (solo **ADMIN**).
+- **Autorización**: `JwtAuthGuard` (usuario autenticado en Companion).
 - **Datos**: [`KycService`](kyc.service.ts) usa **Prisma** y las tablas `kyc_*` en **MySQL** (mismo `DATABASE_URL` que el resto de la app). No hay proxy ni `KYC_UPSTREAM_URL`.
 - **Anthropic (chat)**: el streaming del chat lee la clave del **usuario** en `UserAnthropicCredential` vía [`AnthropicCredentialsService`](../ai-credentials/anthropic/anthropic-credentials.service.ts). Modelo configurable con `KYC_CHAT_MODEL` (ver [`kyc.config.ts`](kyc.config.ts)).
 
@@ -27,6 +27,3 @@
 
 [docs/KYC.md](../../docs/KYC.md)
 
-## Stack legado (no requerido)
-
-El directorio `services/kyc/` en el monorepo conserva un prototipo Node+Postgres; **el producto no depende de él**. No configurar `KYC_UPSTREAM_URL` ni contenedor en el puerto 3388 para el flujo de Companion.

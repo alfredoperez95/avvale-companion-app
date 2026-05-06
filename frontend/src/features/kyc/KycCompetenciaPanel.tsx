@@ -262,11 +262,11 @@ export function KycCompetenciaPanel({ rows, onChange }: Props) {
               <span className={styles.objectSectionIcon} aria-hidden>
                 <KycIconTarget />
               </span>
-              <h2 className={styles.objectSectionTitle}>Competencia / partners</h2>
+              <h2 className={styles.objectSectionTitle}>Competencia / partners (Avvale)</h2>
             </div>
             <p className={styles.objectSectionSubtitle}>
-              Vista resumen por actor; amplía para leer el detalle. El mismo nombre no se duplica: se fusiona al salir del campo nombre o al
-              guardar.
+              Competidores y partners relevantes <strong>para nosotros</strong> en la cuenta (no “competencia del cliente”). Amplía para leer el
+              detalle. El mismo nombre no se duplica: se fusiona al salir del campo nombre o al guardar.
             </p>
           </div>
           <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary}`} onClick={addPartner}>
@@ -276,7 +276,9 @@ export function KycCompetenciaPanel({ rows, onChange }: Props) {
 
         {rows.length === 0 ? (
           <div className={styles.objectSectionBody}>
-            <p className={styles.objectSectionEmpty}>Registra consultoras, integradores u otros actores relevantes en la cuenta.</p>
+            <p className={styles.objectSectionEmpty}>
+              Registra consultoras, integradores, partners y competidores que influyen en la cuenta desde el punto de vista de Avvale.
+            </p>
           </div>
         ) : (
           <div className={`${styles.objectSectionBody} ${styles.competenciaList}`}>
@@ -295,7 +297,7 @@ export function KycCompetenciaPanel({ rows, onChange }: Props) {
                     <div className={styles.competenciaCardTop}>
                       <input
                         className={styles.input}
-                        placeholder="Nombre del partner / actor"
+                        placeholder="Nombre del actor (partner o competidor de Avvale)"
                         value={r.partner_name}
                         onChange={(e) => updateRow(r.localId, { partner_name: e.target.value })}
                         onBlur={handlePartnerNameBlur}

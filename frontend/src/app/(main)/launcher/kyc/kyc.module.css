@@ -1,15 +1,3 @@
-.forbidden {
-  padding: 2rem;
-  text-align: center;
-  max-width: 28rem;
-  margin: 0 auto;
-}
-
-.forbidden h1 {
-  font-size: 1.25rem;
-  margin-bottom: 0.5rem;
-}
-
 .frame {
   /* Se aplica al contenedor React (no iframe): no debe pisar el flex layout interno */
   display: flex;
