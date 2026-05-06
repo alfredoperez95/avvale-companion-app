@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import styles from './kyc-workspace.module.css';
 
 function toArr(v: unknown): string[] {
@@ -51,36 +52,115 @@ function prettyKeyLabel(key: string): string {
 const BANNER_KEYS = new Set(['partner_actual', 'partner', 'dolores', 'pain_points']);
 const NOTES_KEYS = new Set(['notes', 'notas']);
 
-/** Orden de secciones; la primera que declare una clave se queda con ella. */
-const STACK_SECTIONS: { title: string; keys: readonly string[] }[] = [
-  { title: 'Canales y relación con cliente', keys: ['crm', 'marketing', 'marketing_cloud', 'sales', 'channels'] },
-  { title: 'ERP y aplicaciones núcleo', keys: ['erp', 'erp_modulos', 'modulos', 'core'] },
-  { title: 'Personas y organización', keys: ['hris', 'hr', 'payroll', 'talent', 'workday'] },
-  { title: 'Finanzas', keys: ['finance_consolidation', 'finance', 'treasury', 'group_reporting', 'accounting'] },
-  { title: 'Analítica y datos', keys: ['bi', 'analytics', 'bi_reporting', 'reporting', 'data_warehouse', 'sac'] },
-  { title: 'Infraestructura', keys: ['cloud', 'infra', 'hosting', 'network'] },
-  { title: 'Activos y field service', keys: ['fsm', 'asset_management', 'eam', 'maintenance'] },
-  { title: 'Compras', keys: ['procurement', 'ariba', 'sourcing'] },
-  { title: 'Integraciones', keys: ['integrations', 'integracion', 'middleware', 'btp', 'api', 'apis'] },
-  { title: 'Desarrollo y partners tech', keys: ['dev_tools', 'development', 'vendor'] },
-  { title: 'Sectoriales', keys: ['sectoriales', 'sectorial'] },
+type StackSchemaItem = { id: string; label: string; keys: readonly string[] };
+type StackSchemaSection = { title: string; items: readonly StackSchemaItem[] };
+
+/**
+ * Esquema fijo para que el Stack sea homogéneo entre empresas.
+ * Las tarjetas se renderizan siempre; si falta dato, queda vacío (—).
+ */
+const STACK_SCHEMA: readonly StackSchemaSection[] = [
+  {
+    title: 'Canales y relación con cliente',
+    items: [
+      { id: 'crm', label: 'CRM', keys: ['crm'] },
+      { id: 'marketing', label: 'Marketing / automatización', keys: ['marketing', 'marketing_cloud'] },
+      { id: 'channels', label: 'Canales / ventas', keys: ['channels', 'sales'] },
+    ],
+  },
+  {
+    title: 'ERP y aplicaciones núcleo',
+    items: [
+      { id: 'erp', label: 'ERP', keys: ['erp'] },
+      { id: 'erp_modulos', label: 'Módulos ERP', keys: ['erp_modulos', 'modulos', 'modules'] },
+      { id: 'core', label: 'Aplicaciones core', keys: ['core'] },
+    ],
+  },
+  {
+    title: 'Analítica y datos',
+    items: [
+      { id: 'bi', label: 'BI / Analytics', keys: ['bi', 'analytics'] },
+      { id: 'reporting', label: 'Reporting', keys: ['bi_reporting', 'reporting'] },
+      { id: 'data_warehouse', label: 'Data warehouse', keys: ['data_warehouse', 'bw', 'bw4', 'bw4hana', 'sac'] },
+    ],
+  },
+  {
+    title: 'Infraestructura',
+    items: [
+      { id: 'cloud', label: 'Cloud / hosting', keys: ['cloud', 'hosting'] },
+      { id: 'infra', label: 'Infraestructura / red', keys: ['infra', 'network'] },
+      { id: 'security', label: 'Seguridad', keys: ['security', 'iam', 'identity', 'cyber'] },
+    ],
+  },
+  {
+    title: 'Integraciones',
+    items: [
+      { id: 'middleware', label: 'Middleware', keys: ['middleware', 'btp'] },
+      { id: 'integrations', label: 'Integraciones', keys: ['integrations', 'integracion', 'api', 'apis'] },
+    ],
+  },
+  {
+    title: 'Desarrollo y partners tech',
+    items: [
+      { id: 'dev_tools', label: 'Desarrollo y herramientas', keys: ['dev_tools', 'development'] },
+      { id: 'vendor', label: 'Partner / vendor tech', keys: ['vendor'] },
+    ],
+  },
+  {
+    title: 'Personas y organización',
+    items: [
+      { id: 'hris', label: 'RR.HH. / HRIS', keys: ['hris', 'hr', 'workday'] },
+      { id: 'payroll', label: 'Nóminas', keys: ['payroll'] },
+      { id: 'talent', label: 'Talento', keys: ['talent'] },
+    ],
+  },
+  {
+    title: 'Finanzas',
+    items: [
+      { id: 'finance_consolidation', label: 'Consolidación financiera', keys: ['finance_consolidation', 'group_reporting'] },
+      { id: 'finance', label: 'Finanzas / contabilidad', keys: ['finance', 'accounting'] },
+      { id: 'treasury', label: 'Tesorería', keys: ['treasury'] },
+    ],
+  },
+  {
+    title: 'Compras',
+    items: [
+      { id: 'procurement', label: 'Compras / Procurement', keys: ['procurement', 'sourcing'] },
+      { id: 'ariba', label: 'Ariba', keys: ['ariba'] },
+    ],
+  },
+  {
+    title: 'Activos y field service',
+    items: [
+      { id: 'asset_management', label: 'Gestión de activos', keys: ['asset_management', 'eam'] },
+      { id: 'fsm', label: 'Field Service (FSM)', keys: ['fsm'] },
+      { id: 'maintenance', label: 'Mantenimiento', keys: ['maintenance'] },
+    ],
+  },
+  {
+    title: 'Sectoriales',
+    items: [{ id: 'sectoriales', label: 'Sectoriales', keys: ['sectoriales', 'sectorial'] }],
+  },
 ];
 
 function normKey(k: string): string {
   return k.trim().toLowerCase().replace(/\s+/g, '_');
 }
 
-function buildKeyToSection(): Map<string, number> {
-  const m = new Map<string, number>();
-  STACK_SECTIONS.forEach((sec, idx) => {
-    for (const k of sec.keys) {
-      if (!m.has(k)) m.set(k, idx);
-    }
-  });
-  return m;
+function isEmptyStackValue(value: unknown): boolean {
+  if (value === null || value === undefined || value === '') return true;
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length === 0;
+  return false;
 }
 
-const KEY_TO_SECTION = buildKeyToSection();
+function pickFirstValue(stack: Record<string, unknown>, keys: readonly string[]): unknown {
+  for (const k of keys) {
+    const v = stack[k];
+    if (!isEmptyStackValue(v)) return v;
+  }
+  return null;
+}
 
 /** Campos que van en «Aclaraciones» (contexto, histórico, notas). */
 const CLARIFICATION_KEYS = new Set([
@@ -252,17 +332,6 @@ type Entry = { key: string; value: unknown };
 
 export function KycStackView({ techStack, onGotoDashboard }: { techStack: object; onGotoDashboard: () => void }) {
   const stack = techStack && typeof techStack === 'object' && !Array.isArray(techStack) ? (techStack as Record<string, unknown>) : {};
-  const hasData = Object.keys(stack).length > 0;
-  if (!hasData) {
-    return (
-      <div>
-        <p className={styles.hint}>Aún no hay información de tecnología. Usa la entrevista guiada o edita el bloque «Stack» en el resumen.</p>
-        <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={onGotoDashboard}>
-          Ir a Resumen
-        </button>
-      </div>
-    );
-  }
 
   const partner = stack.partner_actual ?? stack.partner;
   const partnerStr = partner == null ? '' : typeof partner === 'object' ? JSON.stringify(partner) : String(partner);
@@ -275,26 +344,34 @@ export function KycStackView({ techStack, onGotoDashboard }: { techStack: object
         ? JSON.stringify(notasVal)
         : String(notasVal);
 
-  const sectionBuckets: Entry[][] = STACK_SECTIONS.map(() => []);
-  const otros: Entry[] = [];
-
-  for (const [rawKey, val] of Object.entries(stack)) {
-    const nk = normKey(rawKey);
-    if (BANNER_KEYS.has(nk) || NOTES_KEYS.has(nk)) continue;
-    const si = KEY_TO_SECTION.get(nk);
-    if (si !== undefined) {
-      sectionBuckets[si].push({ key: rawKey, value: val });
-    } else {
-      otros.push({ key: rawKey, value: val });
+  const knownKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const sec of STACK_SCHEMA) {
+      for (const it of sec.items) {
+        for (const k of it.keys) s.add(k);
+      }
     }
+    for (const k of BANNER_KEYS) s.add(k);
+    for (const k of NOTES_KEYS) s.add(k);
+    return s;
+  }, []);
+
+  const otros: Entry[] = [];
+  for (const [rawKey, value] of Object.entries(stack)) {
+    const nk = normKey(rawKey);
+    if (knownKeys.has(nk)) continue;
+    otros.push({ key: rawKey, value });
   }
+  otros.sort((a, b) => a.key.localeCompare(b.key, 'es'));
 
   return (
     <div className={styles.stackRoot}>
       <div className={styles.stackToolbar}>
         <div>
           <strong className={styles.stackToolbarTitle}>Stack tecnológico</strong>
-          <p className={styles.stackToolbarHint}>Vista por categorías (datos del perfil)</p>
+          <p className={styles.stackToolbarHint}>
+            Vista por categorías (datos del perfil). Las tarjetas vacías indican lo que falta por completar.
+          </p>
         </div>
         <button type="button" className={`${styles.btn} ${styles.btnSm}`} onClick={onGotoDashboard}>
           Editar en Resumen
@@ -317,25 +394,27 @@ export function KycStackView({ techStack, onGotoDashboard }: { techStack: object
       ) : null}
 
       <div className={styles.stackCard}>
-        {STACK_SECTIONS.map((sec, idx) => {
-          const entries = sectionBuckets[idx];
-          if (!entries.length) return null;
-          return (
-            <section key={sec.title} className={styles.stackSection}>
-              <h3 className={styles.stackSectionTitle}>{sec.title}</h3>
-              <div className={styles.stackSectionGrid}>
-                {entries.map(({ key, value }) => (
-                  <article key={key} className={styles.stackItemCard}>
-                    <div className={styles.stackItemLabel}>{prettyKeyLabel(key)}</div>
-                    <div className={styles.stackItemBody}>
-                      <StackStructuredValue value={value} />
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {Object.keys(stack).length === 0 ? (
+          <div className={styles.hint} style={{ marginBottom: '0.75rem' }}>
+            Aún no hay información. Puedes completarla desde «Editar en Resumen» o con la entrevista / chat KYC.
+          </div>
+        ) : null}
+
+        {STACK_SCHEMA.map((sec) => (
+          <section key={sec.title} className={styles.stackSection}>
+            <h3 className={styles.stackSectionTitle}>{sec.title}</h3>
+            <div className={styles.stackSectionGrid}>
+              {sec.items.map((it) => (
+                <article key={it.id} className={styles.stackItemCard}>
+                  <div className={styles.stackItemLabel}>{it.label}</div>
+                  <div className={styles.stackItemBody}>
+                    <StackStructuredValue value={pickFirstValue(stack, it.keys)} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
 
         {otros.length > 0 ? (
           <section className={styles.stackSection}>
