@@ -72,27 +72,23 @@ const TABS = [
   ['stack', 'Tecnología'],
   ['por_resolver', 'Por resolver'],
   ['signals', 'Señales'],
-  ['timeline', 'Actividad'],
 ] as const;
 
-type KycWorkspaceProps = { className?: string };
+type KycWorkspaceProps = { className?: string; initialCompanyId?: number | null; initialCompanySlug?: string | null };
 
 function escapeHtml(s: string) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 }
 
-function timelineKindLabel(kind: string) {
-  const k = (kind || '').toLowerCase();
-  if (k === 'signal') return 'Señal';
-  if (k === 'fact') return 'Hecho';
-  if (k === 'open_question') return 'Pregunta';
-  return kind || 'Evento';
-}
-
-function formatTimelineTs(isoLike: string) {
-  const ms = Date.parse(String(isoLike));
-  if (!Number.isFinite(ms)) return String(isoLike);
-  return new Date(ms).toLocaleString();
+function slugify(s: string): string {
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 64);
 }
 
 function companyListMeta(c: { sector: string | null; city: string | null }) {
@@ -100,7 +96,11 @@ function companyListMeta(c: { sector: string | null; city: string | null }) {
   return parts.length > 0 ? parts.join(' · ') : 'Sin sector ni ciudad';
 }
 
-export default function KycWorkspace({ className }: KycWorkspaceProps) {
+export default function KycWorkspace({
+  className,
+  initialCompanyId = null,
+  initialCompanySlug = null,
+}: KycWorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prevModalRef = useRef<'add' | 'import' | null>(null);
@@ -240,6 +240,9 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
         setMsgs([]);
       }
       setSelId(id);
+      const n = companies.find((c) => c.id === id)?.name || String((detail?.company as { name?: unknown } | null)?.name ?? '');
+      const slug = slugify(String(n));
+      router.replace(`/launcher/kyc/${slug || id}`, { scroll: false });
       try {
         const d = await kycJson<Full>(`/api/kyc/companies/${id}`);
         for (const m of d.org?.members ?? []) {
@@ -247,13 +250,41 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
           m.reports_to_id = m.reports_to_id != null ? Number(m.reports_to_id) : null;
         }
         setDetail(d);
+        // Si llegamos por ID (URL legacy), al cargar ya tenemos nombre: normaliza a slug.
+        const loadedName = String((d.company as { name?: unknown } | null)?.name ?? '');
+        const loadedSlug = slugify(loadedName);
+        if (loadedSlug) {
+          router.replace(`/launcher/kyc/${loadedSlug}`, { scroll: false });
+        }
         if (chatOpen) void loadSessions(id);
       } catch {
         setDetail(null);
       }
     },
-    [chatOpen, loadSessions, msgs.length, selId, sessionId],
+    [chatOpen, loadSessions, msgs.length, selId, sessionId, router],
   );
+
+  useEffect(() => {
+    if (!initialCompanyId) return;
+    if (selId === initialCompanyId) return;
+    void selectCompany(initialCompanyId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCompanyId]);
+
+  useEffect(() => {
+    const slug = String(initialCompanySlug || '').trim();
+    if (!slug) return;
+    if (!companies.length) return;
+    if (selId) return;
+    const target = slugify(slug);
+    const matches = companies.filter((c) => slugify(c.name) === target);
+    if (matches.length === 0) return;
+    if (matches.length > 1) {
+      setBanner(`Hay varias empresas con el mismo nombre (${matches.length}). Se abre la primera. Renombra para evitar ambigüedad.`);
+    }
+    void selectCompany(matches[0]!.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCompanySlug, companies.length]);
 
   const refreshDetailOnly = useCallback(
     async (id: number) => {
@@ -771,7 +802,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                   onBanner={setBanner}
                 />
               )}
-              {tab === 'timeline' && <Timeline id={selId!} />}
             </>
           )}
         </main>
@@ -1016,27 +1046,5 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
         }}
       />
     </div>
-  );
-}
-
-function Timeline({ id }: { id: number }) {
-  const [items, setItems] = useState<{ kind: string; title?: string; ts: string; text?: string }[] | null>(null);
-  useEffect(() => {
-    kycJson<{ kind: string; title?: string; ts: string; text?: string }[]>(`/api/kyc/companies/${id}/timeline`)
-      .then(setItems)
-      .catch(() => setItems([]));
-  }, [id]);
-  if (items == null) return <p className={styles.hint}>Cargando…</p>;
-  return (
-    <ul>
-      {items.map((it, i) => (
-        <li key={i} style={{ marginBottom: '0.5rem' }}>
-          <span className={styles.hint}>
-            {formatTimelineTs(it.ts)} · {timelineKindLabel(it.kind)}
-          </span>
-          <div>{escapeHtml(String(it.title || it.text || ''))}</div>
-        </li>
-      ))}
-    </ul>
   );
 }

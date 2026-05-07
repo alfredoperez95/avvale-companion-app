@@ -16,6 +16,8 @@ export function toApiCompanyListRow(
   },
 ) {
   const p = c.profile;
+  const baseCompleteness = p ? completenessFromProfile(p) : 0;
+  const completeness = c._count.orgMembers < 5 ? Math.min(baseCompleteness, 90) : baseCompleteness;
   return {
     id: Number(c.id),
     name: c.name,
@@ -31,7 +33,7 @@ export function toApiCompanyListRow(
     summary: p?.summary ?? null,
     signal_count: c._count.signals,
     org_count: c._count.orgMembers,
-    completeness: p ? completenessFromProfile(p) : 0,
+    completeness,
   };
 }
 

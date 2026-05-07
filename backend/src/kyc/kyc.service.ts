@@ -324,10 +324,16 @@ export class KycService {
       where: { companyId: co.id, status: 'open' },
       orderBy: [{ priority: 'asc' }, { id: 'asc' }],
     });
+    const baseCompleteness = prof ? completenessFromProfile(prof) : 0;
+    let completeness = baseCompleteness;
+    // Evita optimismo: si hay pendientes relevantes o el organigrama es muy escaso, no puede ser 100%.
+    if (openQs.length > 0) completeness = Math.min(completeness, 95);
+    if (members.length < 5) completeness = Math.min(completeness, 90);
+    if (openQs.length > 0 && members.length < 5) completeness = Math.min(completeness, 85);
     return {
       company: companyToApi(co),
       profile: prof ? profileToApi(prof) : null,
-      completeness: prof ? completenessFromProfile(prof) : 0,
+      completeness,
       org: { members: members.map(orgMemberToApi), relationships: rels.map(orgRelToApi) },
       signals: signals.map(signalToApi),
       open_questions: openQs.map(openQToApi),
