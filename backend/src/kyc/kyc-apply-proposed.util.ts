@@ -20,6 +20,88 @@ const CANONICAL_OPEN_TOPICS = new Set([
 
 const log = new Logger('KycApplyProposed');
 
+function normKey(k: string): string {
+  return String(k || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '');
+}
+
+function normalizeTechStackPathSeg(seg: string): string {
+  const s = normKey(seg);
+  const map: Record<string, string> = {
+    // HCM / People
+    hcm: 'hris',
+    rrhh: 'hris',
+    rr_hh: 'hris',
+    'rr.hh': 'hris',
+    people: 'hris',
+    human_resources: 'hris',
+    hr: 'hris',
+    hris: 'hris',
+
+    // Nóminas
+    nominas: 'payroll',
+    nóminas: 'payroll',
+    payroll: 'payroll',
+
+    // Talento
+    talento: 'talent',
+    talent: 'talent',
+
+    // Compras
+    compras: 'procurement',
+    procurement: 'procurement',
+    sourcing: 'procurement',
+    ariba: 'ariba',
+    sap_ariba: 'ariba',
+
+    // Seguridad / identidad
+    security_notes: 'security',
+    firewall: 'security',
+    identity: 'security',
+    iam: 'security',
+    entra: 'security',
+    azure_ad: 'security',
+    active_directory: 'security',
+
+    // Reporting / front-end analítica
+    powerbi: 'reporting',
+    power_bi: 'reporting',
+    tableau: 'reporting',
+    sac: 'reporting',
+    frontend: 'reporting',
+    front_end: 'reporting',
+    visualization: 'reporting',
+    visualizacion: 'reporting',
+
+    // Middleware / iPaaS / integración
+    middleware: 'middleware',
+    po: 'middleware',
+    sap_po: 'middleware',
+    process_orchestration: 'middleware',
+    sap_process_orchestration: 'middleware',
+    integration_suite: 'middleware',
+    sap_integration_suite: 'middleware',
+    cpi: 'middleware',
+    sap_cpi: 'middleware',
+    mulesoft: 'middleware',
+    boomi: 'middleware',
+    tibco: 'middleware',
+    wso2: 'middleware',
+    apigee: 'middleware',
+    azure_integration_services: 'middleware',
+
+    // Partners/Vendors nunca van en tech_stack.
+    vendor: '__drop__',
+    partner: '__drop__',
+    partners: '__drop__',
+  };
+  return map[s] ?? seg;
+}
+
 export function normalizeOpenQuestionDedupeKey(question: string): string {
   return String(question || '')
     .trim()
@@ -230,13 +312,20 @@ export async function applyProposedItems(
           const before = prev[key] as object;
           const current = { ...(before && typeof before === 'object' && !Array.isArray(before) ? before : {}) } as Record<string, unknown>;
           let node: Record<string, unknown> = current;
-          for (let i = 0; i < rest.length - 1; i++) {
-            const k0 = rest[i]!;
+          const path =
+            block === 'tech_stack'
+              ? rest.map((seg) => normalizeTechStackPathSeg(seg))
+              : rest;
+          if (block === 'tech_stack' && path.some((p) => p === '__drop__')) {
+            continue;
+          }
+          for (let i = 0; i < path.length - 1; i++) {
+            const k0 = path[i]!;
             const n = node[k0];
             if (!n || typeof n !== 'object' || Array.isArray(n)) node[k0] = {};
             node = node[k0] as Record<string, unknown>;
           }
-          node[rest[rest.length - 1]!] = val as unknown;
+          node[path[path.length - 1]!] = val as unknown;
           await prisma.kycProfile.update({
             where: { companyId },
             data: { [key]: current },

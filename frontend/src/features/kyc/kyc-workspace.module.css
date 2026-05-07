@@ -266,10 +266,72 @@
 }
 
 .empty {
+  display: grid;
+  place-items: center;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  min-height: min(34rem, calc(100dvh - 18rem));
   text-align: center;
   color: var(--fiori-text-secondary, #64748b);
   font-size: 0.875rem;
-  padding: 2.5rem;
+}
+
+.emptyCard {
+  width: min(44rem, 100%);
+  background: var(--fiori-surface, #fff);
+  border: 1px solid var(--fiori-border-light, #eaecef);
+  border-radius: 0.9rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 5%),
+    0 18px 44px rgb(15 23 42 / 8%);
+}
+
+.emptyIcon {
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 0 auto 0.75rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--fiori-shell-bg, #0a6ed1) 12%, var(--fiori-surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg, #0a6ed1) 18%, var(--fiori-border-light, #eaecef));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--fiori-shell-bg, #0a6ed1);
+  position: relative;
+}
+
+/* sap-icon pinta el glifo en ::before; hazlo “bloque” para centrarlo bien */
+.emptyIcon::before {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+}
+
+.emptyTitle {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--fiori-text, #0f172a);
+}
+
+.emptyText {
+  margin: 0 auto;
+  max-width: 34rem;
+  line-height: 1.5;
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .banner {
@@ -1632,6 +1694,56 @@
 
 .stackNestedUl li {
   margin-bottom: 0.25rem;
+}
+
+.stackKvList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.stackKvItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 0.35rem;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+}
+
+.stackKvKey {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.stackKvVal {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #0f172a;
+  min-width: 0;
+}
+
+.stackKvListMuted {
+  composes: stackKvList;
+}
+
+.stackKvItemMuted {
+  composes: stackKvItem;
+  background: transparent;
+  border-color: #e2e8f0;
+}
+
+.stackKvListMuted .stackKvKey {
+  color: #64748b;
+}
+
+.stackKvListMuted .stackKvVal {
+  color: #334155;
 }
 
 .stackDl {

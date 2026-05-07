@@ -592,7 +592,33 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
           </div>
         </aside>
         <main className={styles.main}>
-          {!detail && <div className={styles.empty}>Selecciona una empresa en la lista</div>}
+          {!detail && (
+            <div className={styles.empty}>
+              <div className={styles.emptyCard}>
+                <div className={`${styles.emptyIcon} sap-icon sap-icon--launchpad`} aria-hidden />
+                <h2 className={styles.emptyTitle}>Selecciona una empresa</h2>
+                <p className={styles.emptyText}>
+                  Elige una empresa en la lista de la izquierda para ver su perfil KYC, stack tecnológico, señales y pendientes.
+                </p>
+                <div className={styles.emptyActions}>
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                    onClick={() => setModal('add')}
+                  >
+                    + Empresa
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnSecondary}`}
+                    onClick={() => setModal('import')}
+                  >
+                    Importar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {detail && (
             <>
               <div className={styles.card}>
@@ -612,21 +638,24 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                       type="button"
                       className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
                       disabled={refreshIntelBusy}
-                      title="Busca noticias recientes (Google News RSS), deduplica por URL y actualiza la fecha de enriquecimiento del perfil"
+                      title="Revisa el perfil completo: actualiza señales (noticias) y re-genera el resumen ejecutivo con IA (si tienes clave configurada)."
                       onClick={async () => {
                         if (!selId) return;
                         setBanner(null);
                         setRefreshIntelBusy(true);
                         try {
-                          const r = await kycJson<{ created?: number; total?: number }>(
-                            `/api/kyc/companies/${selId}/signals/fetch-news`,
+                          const r = await kycJson<{ ok?: boolean; news?: { created: number; total: number }; summary?: { ok: boolean }; warning?: string }>(
+                            `/api/kyc/companies/${selId}/enrich`,
                             { method: 'POST' },
                           );
-                          const created = Number(r?.created ?? 0);
-                          const total = Number(r?.total ?? 0);
-                          setBanner(
-                            `Noticias actualizadas: ${created} nueva${created === 1 ? '' : 's'} (${total} en el RSS). Datos del cliente recargados.`,
-                          );
+                          const created = Number(r?.news?.created ?? 0);
+                          const total = Number(r?.news?.total ?? 0);
+                          const summaryOk = r?.summary?.ok === true;
+                          const parts = [
+                            `Noticias: ${created} nueva${created === 1 ? '' : 's'} (${total} en el RSS)`,
+                            summaryOk ? 'Resumen ejecutivo: actualizado' : 'Resumen ejecutivo: sin cambios',
+                          ];
+                          setBanner(`${parts.join(' · ')}. Datos del cliente recargados.${r?.warning ? ` ${r.warning}` : ''}`);
                           void selectCompany(selId);
                           void loadCompanies();
                         } catch (er) {
@@ -781,6 +810,10 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                 className={styles.sessBtn}
                 onClick={() => {
                   setChatOpen(false);
+                  if (selId) {
+                    void selectCompany(selId);
+                    void loadCompanies();
+                  }
                 }}
               >
                 Cerrar

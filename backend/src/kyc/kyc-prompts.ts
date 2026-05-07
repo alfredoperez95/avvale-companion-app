@@ -21,7 +21,8 @@ Si no hay nada que persistir, usa KYC_PROPOSED_JSON: [].
 - economics.* — p. ej. economics.revenue_model, economics.scale, economics.margins_notes.
 - business_model.* — p. ej. business_model.value_proposition, business_model.channels.
 - customers.* — p. ej. customers.segments, customers.concentration, customers.icp.
-- tech_stack.* — p. ej. tech_stack.erp, tech_stack.crm, tech_stack.cloud, tech_stack.dev_tools, tech_stack.integrations, tech_stack.security_notes.
+- tech_stack.* — p. ej. tech_stack.erp, tech_stack.crm, tech_stack.cloud, tech_stack.dev_tools, tech_stack.integrations, tech_stack.security_notes,
+  tech_stack.hris (HCM), tech_stack.payroll (nóminas), tech_stack.procurement (compras) y tech_stack.ariba (si aplica).
 - critical_processes.* — p. ej. critical_processes.order_to_cash, critical_processes.procurement.
 - sector_context.* — p. ej. sector_context.regulation, sector_context.competition, sector_context.trends.
 

@@ -40,8 +40,6 @@ const KEY_LABELS: Record<string, string> = {
   deployment: 'Despliegue',
   previous: 'Anterior',
   current: 'Actual',
-  partner_actual: 'Partner',
-  partner: 'Partner',
 };
 
 function prettyKeyLabel(key: string): string {
@@ -49,7 +47,7 @@ function prettyKeyLabel(key: string): string {
   return KEY_LABELS[k] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-const BANNER_KEYS = new Set(['partner_actual', 'partner', 'dolores', 'pain_points']);
+const BANNER_KEYS = new Set(['dolores', 'pain_points']);
 const NOTES_KEYS = new Set(['notes', 'notas']);
 
 type StackSchemaItem = { id: string; label: string; keys: readonly string[] };
@@ -80,8 +78,23 @@ const STACK_SCHEMA: readonly StackSchemaSection[] = [
     title: 'Analítica y datos',
     items: [
       { id: 'bi', label: 'BI / Analytics', keys: ['bi', 'analytics'] },
-      { id: 'reporting', label: 'Reporting', keys: ['bi_reporting', 'reporting'] },
-      { id: 'data_warehouse', label: 'Data warehouse', keys: ['data_warehouse', 'bw', 'bw4', 'bw4hana', 'sac'] },
+      {
+        id: 'reporting',
+        label: 'Reporting',
+        keys: [
+          'bi_reporting',
+          'reporting',
+          'frontend',
+          'front_end',
+          'visualization',
+          'visualizacion',
+          'powerbi',
+          'power_bi',
+          'tableau',
+          'sac',
+        ],
+      },
+      { id: 'data_warehouse', label: 'Data warehouse', keys: ['data_warehouse', 'bw', 'bw4', 'bw4hana'] },
     ],
   },
   {
@@ -89,29 +102,53 @@ const STACK_SCHEMA: readonly StackSchemaSection[] = [
     items: [
       { id: 'cloud', label: 'Cloud / hosting', keys: ['cloud', 'hosting'] },
       { id: 'infra', label: 'Infraestructura / red', keys: ['infra', 'network'] },
-      { id: 'security', label: 'Seguridad', keys: ['security', 'iam', 'identity', 'cyber'] },
+      {
+        id: 'security',
+        label: 'Seguridad',
+        keys: ['security', 'security_notes', 'iam', 'identity', 'cyber', 'firewall', 'entra', 'azure_ad', 'active_directory'],
+      },
     ],
   },
   {
     title: 'Integraciones',
     items: [
-      { id: 'middleware', label: 'Middleware', keys: ['middleware', 'btp'] },
+      {
+        id: 'middleware',
+        label: 'Middleware',
+        keys: [
+          'middleware',
+          'btp',
+          'po',
+          'sap_po',
+          'process_orchestration',
+          'sap_process_orchestration',
+          'integration_suite',
+          'sap_integration_suite',
+          'cpi',
+          'sap_cpi',
+          'mulesoft',
+          'boomi',
+          'tibco',
+          'wso2',
+          'apigee',
+          'azure_integration_services',
+        ],
+      },
       { id: 'integrations', label: 'Integraciones', keys: ['integrations', 'integracion', 'api', 'apis'] },
     ],
   },
   {
-    title: 'Desarrollo y partners tech',
+    title: 'Desarrollo',
     items: [
       { id: 'dev_tools', label: 'Desarrollo y herramientas', keys: ['dev_tools', 'development'] },
-      { id: 'vendor', label: 'Partner / vendor tech', keys: ['vendor'] },
     ],
   },
   {
     title: 'Personas y organización',
     items: [
-      { id: 'hris', label: 'RR.HH. / HRIS', keys: ['hris', 'hr', 'workday'] },
-      { id: 'payroll', label: 'Nóminas', keys: ['payroll'] },
-      { id: 'talent', label: 'Talento', keys: ['talent'] },
+      { id: 'hris', label: 'RR.HH. / HRIS', keys: ['rrhh', 'rr_hh', 'rr.hh', 'hris', 'hr', 'workday', 'people'] },
+      { id: 'payroll', label: 'Nóminas', keys: ['nominas', 'nóminas', 'payroll'] },
+      { id: 'talent', label: 'Talento', keys: ['talento', 'talent'] },
     ],
   },
   {
@@ -125,8 +162,7 @@ const STACK_SCHEMA: readonly StackSchemaSection[] = [
   {
     title: 'Compras',
     items: [
-      { id: 'procurement', label: 'Compras / Procurement', keys: ['procurement', 'sourcing'] },
-      { id: 'ariba', label: 'Ariba', keys: ['ariba'] },
+      { id: 'procurement', label: 'Compras / Procurement', keys: ['procurement', 'ariba', 'sourcing'] },
     ],
   },
   {
@@ -144,7 +180,12 @@ const STACK_SCHEMA: readonly StackSchemaSection[] = [
 ];
 
 function normKey(k: string): string {
-  return k.trim().toLowerCase().replace(/\s+/g, '_');
+  return k
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '');
 }
 
 function isEmptyStackValue(value: unknown): boolean {
@@ -154,12 +195,48 @@ function isEmptyStackValue(value: unknown): boolean {
   return false;
 }
 
-function pickFirstValue(stack: Record<string, unknown>, keys: readonly string[]): unknown {
+function buildNormIndex(stack: Record<string, unknown>): Map<string, unknown> {
+  const m = new Map<string, unknown>();
+  for (const [k, v] of Object.entries(stack)) {
+    m.set(normKey(k), v);
+  }
+  return m;
+}
+
+function findValue(stack: Record<string, unknown>, idx: Map<string, unknown>, key: string): unknown {
+  const nk = normKey(key);
+  const direct = idx.get(nk);
+  if (!isEmptyStackValue(direct)) return direct;
+
+  // Fallback: busca 1 nivel dentro de objetos (p.ej. { people: { payroll: ... } })
+  for (const v of Object.values(stack)) {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+    const inner = v as Record<string, unknown>;
+    for (const [ik, iv] of Object.entries(inner)) {
+      if (normKey(ik) === nk && !isEmptyStackValue(iv)) return iv;
+    }
+  }
+  return null;
+}
+
+function pickFirstValue(stack: Record<string, unknown>, idx: Map<string, unknown>, keys: readonly string[]): unknown {
   for (const k of keys) {
-    const v = stack[k];
+    const v = findValue(stack, idx, k);
     if (!isEmptyStackValue(v)) return v;
   }
   return null;
+}
+
+function pickMergedValue(stack: Record<string, unknown>, idx: Map<string, unknown>, keys: readonly string[]): unknown {
+  const out: Record<string, unknown> = {};
+  for (const k of keys) {
+    const v = findValue(stack, idx, k);
+    if (!isEmptyStackValue(v)) out[prettyKeyLabel(k)] = v;
+  }
+  const entries = Object.entries(out);
+  if (entries.length === 0) return null;
+  if (entries.length === 1) return entries[0]![1];
+  return out;
 }
 
 /** Campos que van en «Aclaraciones» (contexto, histórico, notas). */
@@ -233,18 +310,18 @@ function partitionEntries(entries: [string, unknown][]): { primary: [string, unk
   return { primary, clarify };
 }
 
-function renderDl(rows: [string, unknown][], dlClass: string, rowClass: string) {
+function renderKv(rows: [string, unknown][], listClass: string, itemClass: string) {
   return (
-    <dl className={dlClass}>
+    <div className={listClass}>
       {rows.map(([k, v]) => (
-        <div key={k} className={rowClass}>
-          <dt>{prettyKeyLabel(k)}</dt>
-          <dd>
+        <div key={k} className={itemClass}>
+          <div className={styles.stackKvKey}>{prettyKeyLabel(k)}</div>
+          <div className={styles.stackKvVal}>
             <StackStructuredValue value={v} />
-          </dd>
+          </div>
         </div>
       ))}
-    </dl>
+    </div>
   );
 }
 
@@ -290,24 +367,24 @@ function StackStructuredValue({ value }: { value: unknown }) {
       if (entries.length === 1) {
         const [k, v] = entries[0]!;
         return (
-          <dl className={styles.stackDl}>
-            <div className={styles.stackDlRow}>
-              <dt>{prettyKeyLabel(k)}</dt>
-              <dd>
+          <div className={styles.stackKvList}>
+            <div className={styles.stackKvItem}>
+              <div className={styles.stackKvKey}>{prettyKeyLabel(k)}</div>
+              <div className={styles.stackKvVal}>
                 <StackStructuredValue value={v} />
-              </dd>
+              </div>
             </div>
-          </dl>
+          </div>
         );
       }
-      return renderDl(primary, styles.stackDl, styles.stackDlRow);
+      return renderKv(primary, styles.stackKvList, styles.stackKvItem);
     }
 
     if (primary.length === 0) {
       return (
         <div className={styles.stackClarifyWrap}>
           <span className={styles.stackBlockEyebrow}>Aclaraciones</span>
-          {renderDl(clarify, styles.stackDlMuted, styles.stackDlRowMuted)}
+          {renderKv(clarify, styles.stackKvListMuted, styles.stackKvItemMuted)}
         </div>
       );
     }
@@ -316,11 +393,11 @@ function StackStructuredValue({ value }: { value: unknown }) {
       <div className={styles.stackSplitBody}>
         <div className={styles.stackSolutionWrap}>
           <span className={styles.stackBlockEyebrow}>Solución</span>
-          {renderDl(primary, styles.stackDl, styles.stackDlRowSolution)}
+          {renderKv(primary, styles.stackKvList, styles.stackKvItem)}
         </div>
         <div className={styles.stackClarifyWrap}>
           <span className={styles.stackBlockEyebrow}>Aclaraciones</span>
-          {renderDl(clarify, styles.stackDlMuted, styles.stackDlRowMuted)}
+          {renderKv(clarify, styles.stackKvListMuted, styles.stackKvItemMuted)}
         </div>
       </div>
     );
@@ -332,9 +409,8 @@ type Entry = { key: string; value: unknown };
 
 export function KycStackView({ techStack, onGotoDashboard }: { techStack: object; onGotoDashboard: () => void }) {
   const stack = techStack && typeof techStack === 'object' && !Array.isArray(techStack) ? (techStack as Record<string, unknown>) : {};
+  const stackIndex = useMemo(() => buildNormIndex(stack), [stack]);
 
-  const partner = stack.partner_actual ?? stack.partner;
-  const partnerStr = partner == null ? '' : typeof partner === 'object' ? JSON.stringify(partner) : String(partner);
   const dolores = toArr(stack.dolores ?? stack.pain_points);
   const notasVal = stack.notes ?? stack.notas;
   const notasStr =
@@ -378,13 +454,8 @@ export function KycStackView({ techStack, onGotoDashboard }: { techStack: object
         </button>
       </div>
 
-      {partnerStr || dolores.length > 0 ? (
+      {dolores.length > 0 ? (
         <div className={styles.stackBannerRow}>
-          {partnerStr ? (
-            <span className={styles.stackPartnerPill}>
-              Partner: <strong>{partnerStr}</strong>
-            </span>
-          ) : null}
           {dolores.map((d, i) => (
             <span key={i} className={styles.stackPainChip}>
               ⚠ {d}
@@ -408,7 +479,17 @@ export function KycStackView({ techStack, onGotoDashboard }: { techStack: object
                 <article key={it.id} className={styles.stackItemCard}>
                   <div className={styles.stackItemLabel}>{it.label}</div>
                   <div className={styles.stackItemBody}>
-                    <StackStructuredValue value={pickFirstValue(stack, it.keys)} />
+                    <StackStructuredValue
+                      value={
+                        it.id === 'procurement'
+                          ? pickMergedValue(stack, stackIndex, it.keys)
+                          : it.id === 'reporting'
+                            ? pickMergedValue(stack, stackIndex, it.keys)
+                            : it.id === 'middleware'
+                              ? pickMergedValue(stack, stackIndex, it.keys)
+                          : pickFirstValue(stack, stackIndex, it.keys)
+                      }
+                    />
                   </div>
                 </article>
               ))}

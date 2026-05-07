@@ -90,9 +90,9 @@ export class KycController {
   }
 
   @Post('companies/:id/enrich')
-  @HttpCode(501)
-  enrich() {
-    return this.kyc.enrichNotAvailable();
+  @HttpCode(200)
+  enrich(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.enrichCompany(BigInt(id), user.userId);
   }
 
   @Get('companies/:id/org')

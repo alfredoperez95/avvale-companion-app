@@ -7,6 +7,7 @@ import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthrop
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
 import { getKycChatModel, getKycSummaryModel } from './kyc.config';
 import { normalizeKycCompanyIndustry } from './kyc-industry.util';
+import { normalizeTechStack } from './kyc-tech-stack-normalize.util';
 import { buildIntakePrompt, buildResearchPrompt } from './kyc-prompts';
 import {
   applyProposedItems,
@@ -477,6 +478,53 @@ export class KycService {
 
   enrichNotAvailable() {
     return { error: 'enrich (scraping) not available in this build' };
+  }
+
+  /**
+   * Enriquecimiento "safe": sin scraping propio.
+   * - Actualiza señales (Google News RSS)
+   * - Re-genera resumen ejecutivo vía IA (si el usuario tiene clave configurada)
+   *
+   * No falla toda la operación si el resumen no se puede generar (p. ej. falta API key).
+   */
+  async enrichCompany(companyId: bigint, userId: string) {
+    const out: { ok: boolean; news?: { created: number; total: number }; summary?: { ok: boolean }; warning?: string } = { ok: true };
+    try {
+      const n = await this.fetchNewsSignals(companyId);
+      out.news = { created: Number(n?.created ?? 0), total: Number(n?.total ?? 0) };
+    } catch (e) {
+      out.ok = false;
+      out.warning = `No se pudieron actualizar noticias: ${(e as Error).message}`;
+    }
+
+    // Reorganiza/normaliza el tech_stack existente para que sea homogéneo (HCM, compras, etc.).
+    try {
+      const prev = await this.prisma.kycProfile.findUnique({ where: { companyId } });
+      const before = prev?.techStack;
+      const normalized = normalizeTechStack(before);
+      const beforeStr = JSON.stringify(before ?? {});
+      const afterStr = JSON.stringify(normalized ?? {});
+      if (beforeStr !== afterStr) {
+        await this.prisma.kycProfile.update({
+          where: { companyId },
+          data: { techStack: normalized as unknown as Prisma.InputJsonValue },
+        });
+      }
+    } catch (e) {
+      const msg = `No se pudo reorganizar el stack: ${(e as Error).message}`;
+      out.warning = out.warning ? `${out.warning} ${msg}` : msg;
+    }
+
+    try {
+      await this.synthesizeExecutiveSummary(companyId, userId);
+      out.summary = { ok: true };
+    } catch (e) {
+      out.summary = { ok: false };
+      const msg = (e as Error).message || 'No se pudo regenerar el resumen ejecutivo.';
+      out.warning = out.warning ? `${out.warning} ${msg}` : msg;
+    }
+
+    return out;
   }
 
   async getOrg(companyId: bigint) {
