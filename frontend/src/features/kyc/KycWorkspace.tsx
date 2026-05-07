@@ -74,7 +74,7 @@ const TABS = [
   ['signals', 'Señales'],
 ] as const;
 
-type KycWorkspaceProps = { className?: string; initialCompanyId?: number | null; initialCompanySlug?: string | null };
+type KycWorkspaceProps = { className?: string; initialCompanyId?: number | null };
 
 function escapeHtml(s: string) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -99,7 +99,6 @@ function companyListMeta(c: { sector: string | null; city: string | null }) {
 export default function KycWorkspace({
   className,
   initialCompanyId = null,
-  initialCompanySlug = null,
 }: KycWorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -242,7 +241,7 @@ export default function KycWorkspace({
       setSelId(id);
       const n = companies.find((c) => c.id === id)?.name || String((detail?.company as { name?: unknown } | null)?.name ?? '');
       const slug = slugify(String(n));
-      router.replace(`/launcher/kyc/${slug || id}`, { scroll: false });
+      router.replace(`/launcher/kyc/${id}${slug ? '-' + slug : ''}`, { scroll: false });
       try {
         const d = await kycJson<Full>(`/api/kyc/companies/${id}`);
         for (const m of d.org?.members ?? []) {
@@ -250,12 +249,8 @@ export default function KycWorkspace({
           m.reports_to_id = m.reports_to_id != null ? Number(m.reports_to_id) : null;
         }
         setDetail(d);
-        // Si llegamos por ID (URL legacy), al cargar ya tenemos nombre: normaliza a slug.
         const loadedName = String((d.company as { name?: unknown } | null)?.name ?? '');
         const loadedSlug = slugify(loadedName);
-        if (loadedSlug) {
-          router.replace(`/launcher/kyc/${loadedSlug}`, { scroll: false });
-        }
         if (chatOpen) void loadSessions(id);
       } catch {
         setDetail(null);
@@ -270,21 +265,6 @@ export default function KycWorkspace({
     void selectCompany(initialCompanyId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCompanyId]);
-
-  useEffect(() => {
-    const slug = String(initialCompanySlug || '').trim();
-    if (!slug) return;
-    if (!companies.length) return;
-    if (selId) return;
-    const target = slugify(slug);
-    const matches = companies.filter((c) => slugify(c.name) === target);
-    if (matches.length === 0) return;
-    if (matches.length > 1) {
-      setBanner(`Hay varias empresas con el mismo nombre (${matches.length}). Se abre la primera. Renombra para evitar ambigüedad.`);
-    }
-    void selectCompany(matches[0]!.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCompanySlug, companies.length]);
 
   const refreshDetailOnly = useCallback(
     async (id: number) => {
