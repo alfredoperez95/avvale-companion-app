@@ -308,11 +308,13 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
           <>
             {pathname !== '/launcher' && (
               <>
-                <div className={styles.pageHeader}>
-                  <div className={styles.pageHeaderInner}>
-                    <h1 className={styles.pageHeaderTitle}>{pageHeader.title}</h1>
+                {!pathname?.startsWith('/launcher/kyc') ? (
+                  <div className={styles.pageHeader}>
+                    <div className={styles.pageHeaderInner}>
+                      <h1 className={styles.pageHeaderTitle}>{pageHeader.title}</h1>
+                    </div>
                   </div>
-                </div>
+                ) : null}
                 <div className={styles.tabsNavWrap}>
                   <nav className={styles.tabsNav} aria-label="Navegación principal">
                     <div className={styles.tabsNavInner}>
@@ -354,7 +356,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
               <main className={styles.main} id="main-content">
                 {children}
               </main>
-              <Footer />
+              {!pathname?.startsWith('/launcher/kyc') ? <Footer /> : null}
             </div>
           </>
         ) : (
@@ -391,7 +393,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
               <main className={styles.main} id="main-content">
                 {children}
               </main>
-              <Footer />
+              {!pathname?.startsWith('/launcher/kyc') ? <Footer /> : null}
             </div>
           </>
         )}

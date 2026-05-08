@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import {
   KYC_COMPETENCIA_AMBITO_LABELS,
@@ -11,6 +11,7 @@ import {
   type KycCompetenciaMomentum,
 } from './kycConstants';
 import { KycIconTarget } from './KycInlineIcons';
+import { KycPencilIcon, KycPlusIcon } from './KycMiniIcons';
 import styles from './kyc-workspace.module.css';
 
 export type KycCompetenciaRow = {
@@ -176,15 +177,88 @@ function execPreview(r: KycCompetenciaRow): string {
   return d || a;
 }
 
+function ActionIcon({
+  name,
+  size = 16,
+}: {
+  name: 'chev-down' | 'chev-up' | 'edit' | 'trash';
+  size?: number;
+}) {
+  const common = { width: size, height: size, viewBox: '0 0 20 20', fill: 'none', xmlns: 'http://www.w3.org/2000/svg' as const };
+  if (name === 'chev-down') {
+    return (
+      <svg {...common} aria-hidden focusable="false">
+        <path d="M5.75 7.75 10 12l4.25-4.25" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (name === 'chev-up') {
+    return (
+      <svg {...common} aria-hidden focusable="false">
+        <path d="M14.25 12.25 10 8l-4.25 4.25" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (name === 'edit') {
+    return <KycPencilIcon size={size} />;
+  }
+  return (
+    <svg {...common} aria-hidden focusable="false">
+      {/* X / remove */}
+      <path
+        d="M6.6 6.6 13.4 13.4M13.4 6.6 6.6 13.4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 type Props = {
   rows: KycCompetenciaRow[];
   onChange: (rows: KycCompetenciaRow[]) => void;
+  onEditingChange?: (editing: boolean) => void;
+  resetEditingToken?: number;
 };
 
-export function KycCompetenciaPanel({ rows, onChange }: Props) {
+export function KycCompetenciaPanel({ rows, onChange, onEditingChange, resetEditingToken = 0 }: Props) {
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const menuWrapRef = useRef<HTMLDivElement | null>(null);
+
+  const menuOpen = useMemo(() => menuId != null, [menuId]);
+
+  useEffect(() => {
+    onEditingChange?.(editingId != null);
+  }, [editingId, onEditingChange]);
+
+  useEffect(() => {
+    setEditingId(null);
+    setRemoveId(null);
+    setMenuId(null);
+  }, [resetEditingToken]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuId(null);
+    };
+    const onPointerDown = (e: MouseEvent | PointerEvent) => {
+      const el = menuWrapRef.current;
+      if (!el) return;
+      if (!el.contains(e.target as Node)) setMenuId(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('pointerdown', onPointerDown, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('pointerdown', onPointerDown, { capture: true } as never);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (editingId && !rows.some((r) => r.localId === editingId)) setEditingId(null);
@@ -269,8 +343,14 @@ export function KycCompetenciaPanel({ rows, onChange }: Props) {
               detalle. El mismo nombre no se duplica: se fusiona al salir del campo nombre o al guardar.
             </p>
           </div>
-          <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary}`} onClick={addPartner}>
-            Añadir partner
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary} ${styles.iconOnlyBtn}`}
+            onClick={addPartner}
+            aria-label="Añadir partner"
+            title="Añadir partner"
+          >
+            <KycPlusIcon />
           </button>
         </div>
 
@@ -398,27 +478,52 @@ export function KycCompetenciaPanel({ rows, onChange }: Props) {
                       </div>
                       <p className={styles.competenciaExecPreview}>{execPreview(r)}</p>
                     </div>
-                    <div className={styles.competenciaExecActions}>
-                      {hasDetail ? (
-                        <button
-                          type="button"
-                          className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary}`}
-                          onClick={() => toggleExpand(r.localId)}
-                          aria-expanded={expanded}
-                        >
-                          {expanded ? 'Ocultar detalle' : 'Ampliar'}
-                        </button>
-                      ) : null}
-                      <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary}`} onClick={() => setEditingId(r.localId)}>
-                        Editar
-                      </button>
+                    <div className={styles.competenciaExecActions} ref={menuWrapRef}>
                       <button
                         type="button"
-                        className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary} ${styles.btnDangerOutline}`}
-                        onClick={() => setRemoveId(r.localId)}
+                        className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary} ${styles.competenciaMenuBtn}`}
+                        onClick={() => setMenuId((cur) => (cur === r.localId ? null : r.localId))}
+                        aria-haspopup="menu"
+                        aria-expanded={menuId === r.localId}
+                        aria-label="Acciones"
+                        title="Acciones"
                       >
-                        Quitar
+                        <span className={styles.competenciaDots} aria-hidden>···</span>
                       </button>
+                      {menuId === r.localId ? (
+                        <div className={styles.competenciaInlineActions} aria-label="Acciones de partner">
+                          {hasDetail ? (
+                            <button
+                              type="button"
+                              className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary} ${styles.competenciaIconBtn}`}
+                              onClick={() => toggleExpand(r.localId)}
+                              aria-expanded={expanded}
+                              aria-label={expanded ? 'Ocultar detalle' : 'Ampliar'}
+                              title={expanded ? 'Ocultar detalle' : 'Ampliar'}
+                            >
+                              <ActionIcon name={expanded ? 'chev-up' : 'chev-down'} />
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary} ${styles.competenciaIconBtn}`}
+                            onClick={() => setEditingId(r.localId)}
+                            aria-label="Editar"
+                            title="Editar"
+                          >
+                            <KycPencilIcon />
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary} ${styles.btnDangerOutline} ${styles.competenciaIconBtn}`}
+                            onClick={() => setRemoveId(r.localId)}
+                            aria-label="Quitar"
+                            title="Quitar"
+                          >
+                            <ActionIcon name="trash" />
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   {expanded && hasDetail ? (

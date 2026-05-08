@@ -7,6 +7,7 @@ import { KYC_BLOCK_KEYS, KYC_BLOCK_META, type KycBlockKey } from './kycConstants
 import { KycBlockIcon, KycIconBuilding, KycIconDocument } from './KycInlineIcons';
 import { faviconUrlFromWebsite } from './kycFaviconUrl';
 import { competenciaPayload, KycCompetenciaPanel, rowsFromProfileCompetencia, type KycCompetenciaRow } from './KycCompetenciaPanel';
+import { KycPencilIcon } from './KycMiniIcons';
 import { KycValueView } from './KycValueView';
 import styles from './kyc-workspace.module.css';
 
@@ -85,8 +86,11 @@ export function KycProfileDashboard({
   });
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [fichaMsg, setFichaMsg] = useState<string | null>(null);
+  const [saveBusy, setSaveBusy] = useState(false);
   const [faviconFailed, setFaviconFailed] = useState(false);
   const [competenciaRows, setCompetenciaRows] = useState<KycCompetenciaRow[]>([]);
+  const [competenciaEditing, setCompetenciaEditing] = useState(false);
+  const [competenciaResetToken, setCompetenciaResetToken] = useState(0);
   const [summarySynthesisBusy, setSummarySynthesisBusy] = useState(false);
 
   const faviconSrc = useMemo(() => faviconUrlFromWebsite(String(company.website ?? '')), [company.website]);
@@ -192,9 +196,63 @@ export function KycProfileDashboard({
     }
   }, [companyId, profile, onStrategicChange, onRefetch, onBanner]);
 
+  const dirtyFicha = useMemo(() => {
+    const rawInd = String(company.industry ?? '').trim();
+    const ind: '' | UserIndustryValue =
+      rawInd && (USER_INDUSTRY_OPTIONS as readonly { value: string }[]).some((o) => o.value === rawInd)
+        ? (rawInd as UserIndustryValue)
+        : '';
+    const initial = {
+      name: String(company.name ?? ''),
+      sector: String(company.sector ?? ''),
+      industry: ind,
+      city: String(company.city ?? ''),
+      country: String(company.country ?? ''),
+      website: String(company.website ?? ''),
+      revenue: String(company.revenue ?? ''),
+      employees: String(company.employees ?? ''),
+      tech_stack: String(company.tech_stack ?? ''),
+      source: String(company.source ?? ''),
+      notes: String(company.notes ?? ''),
+    };
+    return JSON.stringify(initial) !== JSON.stringify(coForm);
+  }, [company, coForm]);
+
+  const dirtySummary = useMemo(() => String((profile as Record<string, unknown>)?.summary ?? '') !== summary, [profile, summary]);
+
+  const dirtyBlocks = useMemo(() => {
+    for (const b of KYC_BLOCK_KEYS) {
+      const initial = JSON.stringify((profile as Record<string, unknown>)[b] ?? {}, null, 2);
+      if ((blockText[b] ?? '{}') !== initial) return true;
+    }
+    return false;
+  }, [profile, blockText]);
+
+  const dirtyCompetencia = useMemo(() => {
+    const initial = competenciaPayload(rowsFromProfileCompetencia((profile as Record<string, unknown>).competencia));
+    const current = competenciaPayload(competenciaRows);
+    return JSON.stringify(initial) !== JSON.stringify(current);
+  }, [profile, competenciaRows]);
+
+  const hasPendingChanges = dirtyFicha || dirtySummary || dirtyBlocks || dirtyCompetencia;
+  const hasEditModeOpen = fichaOpen || summaryOpen || editKey != null || competenciaEditing;
+
   const saveProfile = useCallback(async () => {
     onBanner(null);
     setSaveMsg(null);
+    setFichaMsg(null);
+
+    // Si no hay cambios reales, "Guardar" actúa como cerrar edición:
+    // oculta la barra cerrando los modos de edición, sin llamar a la API.
+    if (!hasPendingChanges) {
+      setFichaOpen(false);
+      setSummaryOpen(false);
+      setEditKey(null);
+      setCompetenciaResetToken((x) => x + 1);
+      return;
+    }
+
+    setSaveBusy(true);
     const body: Record<string, unknown> = { summary, competencia: competenciaPayload(competenciaRows) };
     for (const b of KYC_BLOCK_KEYS) {
       const raw = blockText[b] ?? '{}';
@@ -202,21 +260,10 @@ export function KycProfileDashboard({
         body[b] = JSON.parse(raw || '{}');
       } catch {
         setSaveMsg('JSON inválido en ' + b);
+        setSaveBusy(false);
         return;
       }
     }
-    try {
-      await kycJson(`/api/kyc/companies/${companyId}/profile`, { method: 'PATCH', body: JSON.stringify(body) });
-      setSaveMsg('Guardado');
-      onRefetch();
-    } catch (e) {
-      onBanner((e as Error).message);
-    }
-  }, [companyId, summary, blockText, competenciaRows, onRefetch, onBanner]);
-
-  const saveFicha = useCallback(async () => {
-    onBanner(null);
-    setFichaMsg(null);
     try {
       await kycJson(`/api/kyc/companies/${companyId}`, {
         method: 'PATCH',
@@ -234,12 +281,26 @@ export function KycProfileDashboard({
           notes: coForm.notes || null,
         }),
       });
-      setFichaMsg('Ficha actualizada');
+      await kycJson(`/api/kyc/companies/${companyId}/profile`, { method: 'PATCH', body: JSON.stringify(body) });
+      setSaveMsg('Guardado');
+      setFichaOpen(false);
+      setSummaryOpen(false);
+      setEditKey(null);
+      setCompetenciaResetToken((x) => x + 1);
       onRefetch();
     } catch (e) {
       onBanner((e as Error).message);
+    } finally {
+      setSaveBusy(false);
     }
-  }, [companyId, coForm, onRefetch, onBanner]);
+  }, [companyId, summary, blockText, competenciaRows, onRefetch, onBanner, coForm, hasPendingChanges]);
+
+  useEffect(() => {
+    if (!saveMsg) return;
+    if (!saveMsg.toLowerCase().startsWith('guardado')) return;
+    const t = window.setTimeout(() => setSaveMsg(null), 1800);
+    return () => window.clearTimeout(t);
+  }, [saveMsg]);
 
   if (!profile) {
     return <p className={styles.hint}>Activa KYC para el perfil.</p>;
@@ -350,7 +411,7 @@ export function KycProfileDashboard({
         </div>
         <div className={styles.heroActions}>
           <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={toggleStrategic}>
-            {p.strategic ? 'Quitar marca estratégica' : 'Marcar como estratégica'}
+            {p.strategic ? 'Desmarcar como estratégica' : 'Marcar como estratégica'}
           </button>
         </div>
       </header>
@@ -363,8 +424,14 @@ export function KycProfileDashboard({
             </span>
             <h2 className={styles.objectSectionTitle}>Ficha de empresa</h2>
           </div>
-          <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary}`} onClick={() => setFichaOpen((v) => !v)}>
-            {fichaOpen ? 'Ocultar' : 'Editar'}
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary} ${styles.iconOnlyBtn}`}
+            onClick={() => setFichaOpen((v) => !v)}
+            aria-label={fichaOpen ? 'Ocultar' : 'Editar'}
+            title={fichaOpen ? 'Ocultar' : 'Editar'}
+          >
+            {fichaOpen ? 'Ocultar' : <KycPencilIcon />}
           </button>
         </div>
         {fichaOpen ? (
@@ -439,9 +506,9 @@ export function KycProfileDashboard({
                 <span className={styles.hint} style={{ margin: 0 }}>
                   {fichaMsg}
                 </span>
-                <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={saveFicha}>
-                  Guardar ficha
-                </button>
+                <span className={styles.hint} style={{ margin: 0 }}>
+                  {dirtyFicha ? 'Cambios pendientes' : '—'}
+                </span>
               </div>
             </div>
           </div>
@@ -459,15 +526,22 @@ export function KycProfileDashboard({
           <div className={styles.objectSectionActions}>
             <button
               type="button"
-              className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary}`}
+              className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary} ${styles.btnAi}`}
               disabled={summarySynthesisBusy}
               title="Usa la ficha de empresa, los bloques del perfil KYC, organigrama y señales para redactar el resumen (Anthropic)"
               onClick={() => void synthesizeSummaryFromProfile()}
             >
+              <img src="/img/Claude_AI_symbol.svg" alt="" width={16} height={16} className={styles.btnAiIcon} aria-hidden />
               {summarySynthesisBusy ? 'Generando…' : 'Generar con IA'}
             </button>
-            <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary}`} onClick={() => setSummaryOpen((v) => !v)}>
-              {summaryOpen ? 'Ocultar' : 'Editar'}
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary} ${styles.iconOnlyBtn}`}
+              onClick={() => setSummaryOpen((v) => !v)}
+              aria-label={summaryOpen ? 'Ocultar' : 'Editar'}
+              title={summaryOpen ? 'Ocultar' : 'Editar'}
+            >
+              {summaryOpen ? 'Ocultar' : <KycPencilIcon />}
             </button>
           </div>
         </div>
@@ -483,7 +557,12 @@ export function KycProfileDashboard({
         ) : null}
       </section>
 
-      <KycCompetenciaPanel rows={competenciaRows} onChange={setCompetenciaRows} />
+      <KycCompetenciaPanel
+        rows={competenciaRows}
+        onChange={setCompetenciaRows}
+        onEditingChange={setCompetenciaEditing}
+        resetEditingToken={competenciaResetToken}
+      />
 
       <div className={styles.blockGrid}>
         {KYC_BLOCK_KEYS.map((b) => {
@@ -505,8 +584,14 @@ export function KycProfileDashboard({
                     <span className={styles.blockPillOff}>vacío</span>
                   )}
                 </div>
-                <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary}`} onClick={() => setEditKey(editing ? null : b)}>
-                  {editing ? 'Ver' : filled ? 'Editar' : '+ Añadir'}
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary} ${!editing && filled ? styles.iconOnlyBtn : ''}`}
+                  onClick={() => setEditKey(editing ? null : b)}
+                  aria-label={editing ? 'Ver' : filled ? 'Editar' : 'Añadir'}
+                  title={editing ? 'Ver' : filled ? 'Editar' : 'Añadir'}
+                >
+                  {editing ? 'Ver' : filled ? <KycPencilIcon /> : '+ Añadir'}
                 </button>
               </div>
               <div className={styles.blockBody}>
@@ -528,15 +613,22 @@ export function KycProfileDashboard({
         })}
       </div>
 
-      <div className={styles.saveBar}>
-        <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={saveProfile}>
-          Guardar cambios (análisis)
-        </button>
-        <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={onIntake}>
-          Entrevista
-        </button>
-        {saveMsg && <span className={saveMsg.startsWith('JSON') ? styles.saveErr : styles.saveOk}>{saveMsg}</span>}
-      </div>
+      {hasPendingChanges || hasEditModeOpen || saveMsg || fichaMsg ? (
+        <div className={styles.saveBar}>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}
+            onClick={saveProfile}
+            disabled={saveBusy}
+          >
+            {saveBusy ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+          <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={onIntake} disabled={saveBusy}>
+            Entrevista
+          </button>
+          {saveMsg && <span className={saveMsg.startsWith('JSON') ? styles.saveErr : styles.saveOk}>{saveMsg}</span>}
+        </div>
+      ) : null}
     </div>
   );
 }
