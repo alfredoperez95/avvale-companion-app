@@ -692,6 +692,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
           id="kyc-company-list"
           className={`${styles.aside} ${mobileListOpen ? styles.asideMobileOpen : ''}`}
           aria-label="Lista de empresas KYC"
+          aria-modal={mobileListOpen ? true : undefined}
         >
           <div className={styles.asideHeader}>
             <div className={styles.listCount}>
@@ -790,6 +791,14 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                   stack tecnológico, señales y pendientes.
                 </p>
                 <div className={styles.emptyActions}>
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnSecondary} ${styles.kycMobileOpenListBtn}`}
+                    aria-controls="kyc-company-list"
+                    onClick={() => setMobileListOpen(true)}
+                  >
+                    Lista de empresas
+                  </button>
                   <button
                     type="button"
                     className={`${styles.btn} ${styles.btnPrimary}`}
