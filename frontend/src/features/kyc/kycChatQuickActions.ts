@@ -1,7 +1,7 @@
 export type KycChatQuickAction = { label: string; message: string };
 
 const INTAKE_ACTIONS: KycChatQuickAction[] = [
-  { label: 'Economía y márgenes', message: 'Profundicemos en economía: ingresos, márgenes y escala.' },
+  { label: 'Economía', message: 'Profundicemos en economía: ingresos, márgenes y escala.' },
   { label: 'Stack y sistemas', message: 'Detallemos el stack: ERP, CRM, cloud, integraciones y herramientas.' },
   { label: 'Modelo de negocio', message: 'Exploremos el modelo de negocio, propuesta de valor y canales.' },
   { label: 'Clientes', message: 'Hablemos de clientes: segmentos, concentración e ICP.' },
@@ -31,13 +31,21 @@ const AVVALE_ACCOUNT_ACTION: KycChatQuickAction = {
     'Cuando yo aporte datos, en la última línea incluye KYC_PROPOSED_JSON con field_path avvale (objeto parcial con footprint, projects, solution_presence, solution_notes) o rutas avvale.footprint, avvale.projects, avvale.solution_presence, avvale.solution_notes para que queden guardados en el perfil.',
 };
 
+const PROJECTS_QUICK_ACTION: KycChatQuickAction = {
+  label: 'Proyectos',
+  message:
+    'Quiero completar los proyectos en cuenta de esta empresa (pestaña «Proyectos»). ' +
+    'Ayúdame a identificar o afilar cada uno: nombre, si está activo, en negociación, en análisis o pasado, y notas breves (partner, alcance, etc.). ' +
+    'Cuando propongas datos para guardar, en la última línea incluye KYC_PROPOSED_JSON con field_path avvale y un objeto parcial { projects: [...] } o la ruta avvale.projects.',
+};
+
 export function buildKycChatQuickActions(opts: {
   sessionType: string | undefined;
   openQuestionCount: number;
   completeness: number | null;
 }): KycChatQuickAction[] {
   const base = (opts.sessionType || '').toLowerCase() === 'intake' ? [...INTAKE_ACTIONS] : [...RESEARCH_ACTIONS];
-  const extra: KycChatQuickAction[] = [AVVALE_ACCOUNT_ACTION];
+  const extra: KycChatQuickAction[] = [AVVALE_ACCOUNT_ACTION, PROJECTS_QUICK_ACTION];
 
   if (opts.openQuestionCount > 0) {
     extra.push({

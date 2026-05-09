@@ -9,6 +9,7 @@ import {
   normalizeAvvalePayload,
   stableStringify,
   toApiBody,
+  toAvvalePresencePatchBody,
   type KycSolutionSlug,
 } from './kycAvvaleShared';
 import styles from './kyc-workspace.module.css';
@@ -84,7 +85,13 @@ export function KycAvvalePanel({ companyId, profile, onRefetch, onBanner }: Prop
     try {
       await kycJson(`/api/kyc/companies/${companyId}/profile`, {
         method: 'PATCH',
-        body: JSON.stringify({ avvale: currentBody }),
+        body: JSON.stringify({
+          avvale: toAvvalePresencePatchBody({
+            footprint,
+            solution_presence: presence,
+            solution_notes: solutionNotes,
+          }),
+        }),
       });
       setBaseline(stableStringify(currentBody));
       onBanner('Presencia Avvale guardada.');

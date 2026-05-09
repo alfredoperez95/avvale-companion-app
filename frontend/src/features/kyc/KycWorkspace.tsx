@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { kycJson, kycStreamChat } from './kycApi';
 import { buildKycChatQuickActions } from './kycChatQuickActions';
@@ -78,7 +78,26 @@ const TABS = [
   ['signals', 'Señales'],
 ] as const;
 
-type KycWorkspaceProps = { className?: string; initialCompanyId?: number | null };
+type KycTabId = (typeof TABS)[number][0];
+const TAB_ID_SET = new Set<string>(TABS.map(([id]) => id));
+
+function isKycTabId(s: string | null): s is KycTabId {
+  return s != null && TAB_ID_SET.has(s);
+}
+
+/** Fusiona query sobre pathname (preserva otros params salvo los indicados en patch con null para borrar). */
+function buildKycUrl(pathname: string, baseSearch: URLSearchParams, patch: Record<string, string | null | undefined>) {
+  const p = new URLSearchParams(baseSearch.toString());
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) continue;
+    if (v === null || v === '') p.delete(k);
+    else p.set(k, v);
+  }
+  const qs = p.toString();
+  return qs ? `${pathname}?${qs}` : pathname;
+}
+
+type KycWorkspaceProps = { className?: string };
 
 function escapeHtml(s: string) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -100,12 +119,17 @@ function companyListMeta(c: { sector: string | null; city: string | null }) {
   return parts.length > 0 ? parts.join(' · ') : 'Sin sector ni ciudad';
 }
 
-export default function KycWorkspace({
-  className,
-  initialCompanyId = null,
-}: KycWorkspaceProps) {
+export default function KycWorkspace({ className }: KycWorkspaceProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
+
+  const routeCompanyId = useMemo(() => {
+    const raw = params?.id != null ? String(params.id) : '';
+    const id = Number(raw.split('-')[0]);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }, [params?.id]);
   const prevModalRef = useRef<'add' | 'import' | null>(null);
 
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
@@ -115,10 +139,12 @@ export default function KycWorkspace({
   const [loadingList, setLoadingList] = useState(true);
   const [selId, setSelId] = useState<number | null>(null);
   const [detail, setDetail] = useState<Full | null>(null);
-  const [tab, setTab] = useState<(typeof TABS)[number][0]>(() => {
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [mobileListOpen, setMobileListOpen] = useState(false);
+  const [tab, setTab] = useState<KycTabId>(() => {
     if (typeof window === 'undefined') return 'dashboard';
     const saved = window.localStorage.getItem('kyc_tab') || '';
-    return (TABS.some(([id]) => id === saved) ? saved : 'dashboard') as (typeof TABS)[number][0];
+    return isKycTabId(saved) ? saved : 'dashboard';
   });
   const [checked, setChecked] = useState<Set<number>>(() => new Set());
 
@@ -159,6 +185,11 @@ export default function KycWorkspace({
   const [banner, setBanner] = useState<string | null>(null);
   const [refreshIntelBusy, setRefreshIntelBusy] = useState(false);
   const msgAreaRef = useRef<HTMLDivElement | null>(null);
+  const listSearchRef = useRef<HTMLInputElement | null>(null);
+  const detailRef = useRef<Full | null>(null);
+  detailRef.current = detail;
+  const selIdRef = useRef<number | null>(null);
+  selIdRef.current = selId;
 
   const consumeProfileFocus = useCallback(() => setProfileFocus(null), []);
 
@@ -208,12 +239,80 @@ export default function KycWorkspace({
   }, [loadCompanies]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem('kyc_tab', tab);
-    } catch {
-      /* empty */
+    const t = searchParams.get('tab');
+    if (isKycTabId(t)) {
+      setTab(t);
+      try {
+        window.localStorage.setItem('kyc_tab', t);
+      } catch {
+        /* empty */
+      }
     }
-  }, [tab]);
+  }, [searchParams]);
+
+  const commitTab = useCallback(
+    (next: KycTabId) => {
+      setTab(next);
+      try {
+        window.localStorage.setItem('kyc_tab', next);
+      } catch {
+        /* empty */
+      }
+      if (!pathname.startsWith('/launcher/kyc')) return;
+      router.replace(buildKycUrl(pathname, searchParams, { tab: next }), { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const commitChatOpen = useCallback(
+    (open: boolean) => {
+      setChatOpen(open);
+      if (!pathname.startsWith('/launcher/kyc')) return;
+      router.replace(buildKycUrl(pathname, searchParams, { chat: open ? '1' : null }), { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  useEffect(() => {
+    if (searchParams.get('chat') !== '1') return;
+    if (!selId || detailLoading) return;
+    setChatOpen(true);
+    void loadSessions(selId);
+  }, [searchParams, selId, detailLoading, loadSessions]);
+
+  useEffect(() => {
+    if (!mobileListOpen) return;
+    document.body.dataset.kycDrawerOpen = '1';
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => listSearchRef.current?.focus());
+    return () => {
+      delete document.body.dataset.kycDrawerOpen;
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileListOpen]);
+
+  useEffect(() => {
+    const prevTitle = typeof document !== 'undefined' ? document.title : '';
+    if (detail?.company) {
+      const n = String((detail.company as { name?: unknown }).name ?? '').trim();
+      document.title = n ? `${n} · KYC · Companion` : 'KYC · Companion';
+    } else {
+      document.title = 'KYC · Companion';
+    }
+    return () => {
+      document.title = prevTitle;
+    };
+  }, [detail]);
+
+  useEffect(() => {
+    if (!mobileListOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileListOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileListOpen]);
 
   useEffect(() => {
     const el = msgAreaRef.current;
@@ -237,15 +336,26 @@ export default function KycWorkspace({
 
   const selectCompany = useCallback(
     async (id: number) => {
-      // Solo resetea el chat cuando cambiamos de empresa.
-      if (selId !== id) {
-        setSessionId(null);
-        setMsgs([]);
-      }
-      setSelId(id);
-      const n = companies.find((c) => c.id === id)?.name || String((detail?.company as { name?: unknown } | null)?.name ?? '');
+      setMobileListOpen(false);
+      setSelId((prev) => {
+        if (prev !== id) {
+          setSessionId(null);
+          setMsgs([]);
+          setDetail(null);
+        }
+        return id;
+      });
+      setDetailLoading(true);
+      setBanner(null);
+      const n =
+        companies.find((c) => c.id === id)?.name ||
+        String((detailRef.current?.company as { name?: unknown } | null)?.name ?? '');
       const slug = slugify(String(n));
-      router.replace(`/launcher/kyc/${id}${slug ? '-' + slug : ''}`, { scroll: false });
+      const path = `/launcher/kyc/${id}${slug ? '-' + slug : ''}`;
+      router.replace(
+        buildKycUrl(path, searchParams, { nuevaEmpresa: null, tab }),
+        { scroll: false },
+      );
       try {
         const d = await kycJson<Full>(`/api/kyc/companies/${id}`);
         for (const m of d.org?.members ?? []) {
@@ -253,22 +363,55 @@ export default function KycWorkspace({
           m.reports_to_id = m.reports_to_id != null ? Number(m.reports_to_id) : null;
         }
         setDetail(d);
-        const loadedName = String((d.company as { name?: unknown } | null)?.name ?? '');
-        const loadedSlug = slugify(loadedName);
-        if (chatOpen) void loadSessions(id);
+        if (chatOpen || searchParams.get('chat') === '1') void loadSessions(id);
       } catch {
         setDetail(null);
+        setSelId(null);
+        setBanner('No se encontró la empresa o no tienes acceso.');
+        router.replace('/launcher/kyc', { scroll: false });
+      } finally {
+        setDetailLoading(false);
       }
     },
-    [chatOpen, loadSessions, msgs.length, selId, sessionId, router],
+    [chatOpen, companies, loadSessions, router, searchParams, tab],
   );
 
   useEffect(() => {
-    if (!initialCompanyId) return;
-    if (selId === initialCompanyId) return;
-    void selectCompany(initialCompanyId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCompanyId]);
+    if (routeCompanyId != null) {
+      if (selIdRef.current === routeCompanyId) return;
+      void selectCompany(routeCompanyId);
+    }
+  }, [routeCompanyId, pathname, selectCompany]);
+
+  useEffect(() => {
+    if (routeCompanyId != null) return;
+    if (pathname !== '/launcher/kyc') return;
+    const needsClear =
+      selId != null ||
+      detail != null ||
+      chatOpen ||
+      sessionId != null ||
+      msgs.length > 0 ||
+      detailLoading;
+    if (!needsClear) return;
+    commitChatOpen(false);
+    setSelId(null);
+    setDetail(null);
+    setBanner(null);
+    setDetailLoading(false);
+    setSessionId(null);
+    setMsgs([]);
+  }, [
+    routeCompanyId,
+    pathname,
+    selId,
+    detail,
+    chatOpen,
+    sessionId,
+    msgs.length,
+    detailLoading,
+    commitChatOpen,
+  ]);
 
   const refreshDetailOnly = useCallback(
     async (id: number) => {
@@ -283,7 +426,7 @@ export default function KycWorkspace({
         setBanner((e as Error).message);
       }
     },
-    [chatOpen, msgs.length, selId, sessionId],
+    [setBanner],
   );
 
   const refetchNow = useCallback(() => {
@@ -371,7 +514,7 @@ export default function KycWorkspace({
       if (id !== selId) {
         await selectCompany(id);
       }
-      setChatOpen(true);
+      commitChatOpen(true);
       try {
         const s = await kycJson<{ id: number }>(`/api/kyc/companies/${id}/chat/sessions`, {
           method: 'POST',
@@ -383,12 +526,12 @@ export default function KycWorkspace({
         setBanner('No se pudo iniciar la entrevista. ' + (e as Error).message);
       }
     },
-    [selId, selectCompany, loadSessions, runStream],
+    [selId, selectCompany, loadSessions, runStream, commitChatOpen],
   );
 
   const openChat = async () => {
     if (!selId) return;
-    setChatOpen(true);
+    commitChatOpen(true);
     await loadSessions(selId, sessionId);
   };
 
@@ -497,7 +640,17 @@ export default function KycWorkspace({
       <div className={styles.command}>
         <h1>KYC</h1>
         <div className={styles.row}>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm} ${styles.kycMobileOpenListBtn}`}
+            aria-expanded={mobileListOpen}
+            aria-controls="kyc-company-list"
+            onClick={() => setMobileListOpen((o) => !o)}
+          >
+            Empresas
+          </button>
           <input
+            ref={listSearchRef}
             className={styles.search}
             placeholder="Buscar empresa…"
             value={search}
@@ -528,7 +681,18 @@ export default function KycWorkspace({
         </div>
       </div>
       <div className={styles.body}>
-        <aside className={styles.aside} aria-label="Lista de empresas KYC">
+        {mobileListOpen ? (
+          <div
+            className={styles.asideDrawerBackdrop}
+            role="presentation"
+            onClick={() => setMobileListOpen(false)}
+          />
+        ) : null}
+        <aside
+          id="kyc-company-list"
+          className={`${styles.aside} ${mobileListOpen ? styles.asideMobileOpen : ''}`}
+          aria-label="Lista de empresas KYC"
+        >
           <div className={styles.asideHeader}>
             <div className={styles.listCount}>
               {listErr ? (
@@ -570,6 +734,7 @@ export default function KycWorkspace({
                   <button
                     type="button"
                     className={styles.listRowSelect}
+                    aria-current={selId === c.id ? 'page' : undefined}
                     onClick={() => void selectCompany(c.id)}
                   >
                     <div className={styles.itemTitle}>
@@ -607,13 +772,22 @@ export default function KycWorkspace({
           </div>
         </aside>
         <main className={styles.main}>
-          {!detail && (
+          {selId != null && detailLoading ? (
+            <div className={styles.detailSkeleton} aria-busy="true" aria-live="polite">
+              <p className={styles.detailSkeletonTitle}>Cargando ficha…</p>
+              <div className={styles.detailSkeletonBar} />
+              <div className={styles.detailSkeletonBar} />
+              <div className={`${styles.detailSkeletonBar} ${styles.detailSkeletonBarShort}`} />
+            </div>
+          ) : null}
+          {!detail && !detailLoading && selId == null ? (
             <div className={styles.empty}>
               <div className={styles.emptyCard}>
                 <div className={`${styles.emptyIcon} sap-icon sap-icon--launchpad`} aria-hidden />
                 <h2 className={styles.emptyTitle}>Selecciona una empresa</h2>
                 <p className={styles.emptyText}>
-                  Elige una empresa en la lista de la izquierda para ver su perfil KYC, stack tecnológico, señales y pendientes.
+                  Elige una empresa en la lista (en pantallas estrechas usa el botón «Empresas» arriba) para ver su perfil KYC,
+                  stack tecnológico, señales y pendientes.
                 </p>
                 <div className={styles.emptyActions}>
                   <button
@@ -633,8 +807,8 @@ export default function KycWorkspace({
                 </div>
               </div>
             </div>
-          )}
-          {detail && (
+          ) : null}
+          {detail && !detailLoading ? (
             <>
               <div className={styles.card}>
                 <div className={styles.row} style={{ justifyContent: 'space-between' }}>
@@ -644,7 +818,7 @@ export default function KycWorkspace({
                       type="button"
                       className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
                       onClick={() => {
-                        if (selId) window.open(`/kyc/report.html?id=${selId}&print=1`, '_blank');
+                        if (selId) window.open(`/kyc/report.html?id=${selId}`, '_blank');
                       }}
                     >
                       Informe PDF
@@ -685,7 +859,7 @@ export default function KycWorkspace({
                             avvaleLine,
                           ];
                           setBanner(`${parts.join(' · ')}. Datos del cliente recargados.${r?.warning ? ` ${r.warning}` : ''}`);
-                          void selectCompany(selId);
+                          void refreshDetailOnly(selId);
                           void loadCompanies();
                         } catch (er) {
                           setBanner('No se pudieron actualizar las noticias. ' + (er as Error).message);
@@ -722,7 +896,7 @@ export default function KycWorkspace({
                       onClick={async () => {
                         if (!selId) return;
                         await kycJson(`/api/kyc/companies/${selId}/activate`, { method: 'POST' });
-                        void selectCompany(selId);
+                        void refreshDetailOnly(selId);
                       }}
                     >
                       Activar KYC
@@ -730,19 +904,24 @@ export default function KycWorkspace({
                   </p>
                 )}
               </div>
-              <div className={styles.tabs}>
+              <div className={styles.tabs} role="tablist" aria-label="Secciones del perfil KYC">
                 {TABS.map(([id, label]) => (
                   <button
                     key={id}
+                    id={`kyc-tab-${id}`}
                     type="button"
+                    role="tab"
+                    aria-selected={tab === id}
+                    aria-controls="kyc-tab-panel"
                     className={`${styles.tab} ${tab === id ? styles.tabActive : ''}`}
-                    onClick={() => setTab(id)}
+                    onClick={() => commitTab(id)}
                   >
                     {label}
                     {id === 'por_resolver' && openQCount > 0 ? ` (${openQCount})` : ''}
                   </button>
                 ))}
               </div>
+              <div id="kyc-tab-panel" role="tabpanel" aria-labelledby={`kyc-tab-${tab}`}>
               {tab === 'dashboard' && (
                 <KycProfileDashboard
                   companyId={selId!}
@@ -790,7 +969,7 @@ export default function KycWorkspace({
               {tab === 'stack' && (
                 <KycStackView
                   techStack={(((detail.profile as Record<string, unknown> | null) || {})?.tech_stack as object) ?? {}}
-                  onGotoDashboard={() => setTab('dashboard')}
+                  onGotoDashboard={() => commitTab('dashboard')}
                 />
               )}
               {tab === 'por_resolver' && selId && (
@@ -802,10 +981,10 @@ export default function KycWorkspace({
                   onRefetch={refetchNow}
                   onBanner={setBanner}
                   onGoProfile={(f) => {
-                    setTab('dashboard');
+                    commitTab('dashboard');
                     setProfileFocus(f);
                   }}
-                  onGoOrganigrama={() => setTab('organigrama')}
+                  onGoOrganigrama={() => commitTab('organigrama')}
                 />
               )}
               {tab === 'signals' && selId && (
@@ -817,8 +996,9 @@ export default function KycWorkspace({
                   onBanner={setBanner}
                 />
               )}
+              </div>
             </>
-          )}
+          ) : null}
         </main>
         {chatOpen && (
           <aside className={`${styles.chat} ${styles.chatOpen}`} aria-label="Chat KYC">
@@ -854,9 +1034,9 @@ export default function KycWorkspace({
                 type="button"
                 className={styles.sessBtn}
                 onClick={() => {
-                  setChatOpen(false);
+                  commitChatOpen(false);
                   if (selId) {
-                    void selectCompany(selId);
+                    void refreshDetailOnly(selId);
                     void loadCompanies();
                   }
                 }}

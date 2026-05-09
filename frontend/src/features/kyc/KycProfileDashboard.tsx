@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { USER_INDUSTRY_OPTIONS, industryLabel, type UserIndustryValue } from '@/lib/user-industry';
 import { kycJson } from './kycApi';
 import { KYC_BLOCK_KEYS, KYC_BLOCK_META, type KycBlockKey } from './kycConstants';
@@ -96,6 +96,60 @@ export function KycProfileDashboard({
   const faviconSrc = useMemo(() => faviconUrlFromWebsite(String(company.website ?? '')), [company.website]);
   const heroGradUid = useId().replace(/:/g, '');
   const heroGradId = `kyc-hero-grad-${heroGradUid}`;
+  const [heroRingPct, setHeroRingPct] = useState(0);
+  const displayedPctRef = useRef(0);
+  const prevCompanyIdRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    setHeroRingPct(0);
+    displayedPctRef.current = 0;
+  }, [companyId]);
+
+  useEffect(() => {
+    const target = Math.min(100, Math.max(0, Number(completeness) || 0));
+    const prevId = prevCompanyIdRef.current;
+    const switchedCompany = prevId === null || prevId !== companyId;
+    prevCompanyIdRef.current = companyId;
+
+    const startVal = switchedCompany ? 0 : displayedPctRef.current;
+    if (!switchedCompany && Math.abs(target - startVal) < 0.5) {
+      setHeroRingPct(target);
+      displayedPctRef.current = target;
+      return;
+    }
+
+    let cancelled = false;
+    let raf = 0;
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setHeroRingPct(target);
+      displayedPctRef.current = target;
+      return;
+    }
+
+    const durationMs = switchedCompany ? 900 : 420;
+    const t0 = performance.now();
+    const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
+
+    const tick = (now: number) => {
+      if (cancelled) return;
+      const u = Math.min(1, (now - t0) / durationMs);
+      const eased = easeOutCubic(u);
+      const v = startVal + (target - startVal) * eased;
+      setHeroRingPct(v);
+      displayedPctRef.current = v;
+      if (u < 1) raf = requestAnimationFrame(tick);
+      else {
+        setHeroRingPct(target);
+        displayedPctRef.current = target;
+      }
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [companyId, completeness]);
 
   const companyMetaParts = useMemo(() => {
     const parts: string[] = [];
@@ -362,7 +416,7 @@ export function KycProfileDashboard({
               )}
             </p>
           </div>
-          <div className={styles.heroRing} aria-label={`Completado ${completeness}%`}>
+          <div className={styles.heroRing} aria-label={`Completado ${Math.round(heroRingPct)}%`}>
             <svg width="72" height="72" viewBox="0 0 80 80" className={styles.heroRingSvg} aria-hidden>
               <circle className={styles.heroRingTrack} cx="40" cy="40" r="34" fill="none" strokeWidth="7" />
               <circle
@@ -375,7 +429,7 @@ export function KycProfileDashboard({
                 strokeWidth="7"
                 strokeLinecap="round"
                 strokeDasharray={2 * Math.PI * 34}
-                strokeDashoffset={ringOff(completeness)}
+                strokeDashoffset={ringOff(heroRingPct)}
                 transform="rotate(-90 40 40)"
               />
               <defs>
@@ -385,7 +439,7 @@ export function KycProfileDashboard({
                 </linearGradient>
               </defs>
               <text x="40" y="45" textAnchor="middle" fontSize="15" fontWeight="700" className={styles.heroRingPct}>
-                {completeness}%
+                {Math.round(heroRingPct)}%
               </text>
             </svg>
             <div className={styles.heroRingLabel}>Completado</div>

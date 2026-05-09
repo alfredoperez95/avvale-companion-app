@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -74,8 +87,14 @@ export class KycController {
   }
 
   @Patch('companies/:id/profile')
-  async patchProfile(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.kyc.patchProfile(BigInt(id), body);
+  async patchProfile(
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+    @Headers('x-kyc-avvale-projects-explicit') projectsExplicit?: string,
+  ) {
+    const pe = (projectsExplicit ?? '').trim().toLowerCase();
+    const explicit = pe === '1' || pe === 'true' || pe === 'yes';
+    return this.kyc.patchProfile(BigInt(id), body, { avvaleProjectsExplicit: explicit });
   }
 
   @Post('companies/:id/profile/synthesize-summary')

@@ -1,6 +1,7 @@
 import { KycOrgRelationType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Logger } from '@nestjs/common';
+import { mergeAvvaleProjectsLeafValue, mergeAvvaleRootPatch } from './kyc-avvale-merge.util';
 
 const PROFILE_BLOCKS = new Set(['economics', 'business_model', 'customers', 'tech_stack', 'critical_processes', 'sector_context']);
 
@@ -275,7 +276,8 @@ export async function applyProposedItems(
             typeof val === 'object' && val && !Array.isArray(val)
               ? (val as Record<string, unknown>)
               : { value: val as unknown };
-          const mergedAv = JSON.parse(JSON.stringify({ ...base, ...patch })) as Prisma.InputJsonValue;
+          const mergedRecord = mergeAvvaleRootPatch(base, patch);
+          const mergedAv = JSON.parse(JSON.stringify(mergedRecord)) as Prisma.InputJsonValue;
           await prisma.kycProfile.update({
             where: { companyId },
             data: { avvale: mergedAv },
@@ -288,7 +290,14 @@ export async function applyProposedItems(
             if (!n || typeof n !== 'object' || Array.isArray(n)) node[k0] = {};
             node = node[k0] as Record<string, unknown>;
           }
-          node[rest[rest.length - 1]!] = val as unknown;
+          const leaf = rest[rest.length - 1]!;
+          if ((leaf === 'projects' || leaf === 'proyectos') && Array.isArray(val)) {
+            const next = mergeAvvaleProjectsLeafValue(base, val as unknown[]);
+            node.projects = next;
+            delete node.proyectos;
+          } else {
+            node[leaf] = val as unknown;
+          }
           const nextAv = JSON.parse(JSON.stringify(base)) as Prisma.InputJsonValue;
           await prisma.kycProfile.update({
             where: { companyId },

@@ -18,6 +18,7 @@ import {
   normalizeOpenQuestionDedupeKey,
 } from './kyc-apply-proposed.util';
 import { proposedOpenQuestionsFromPendienteSection } from './kyc-pendiente-section.util';
+import { mergeAvvaleRootPatch } from './kyc-avvale-merge.util';
 import {
   companyToApi,
   chatMessageToApi,
@@ -104,12 +105,29 @@ function extractAvvaleProjectsFromProfile(
   for (const it of projectsUnknown) {
     if (!it || typeof it !== 'object' || Array.isArray(it)) continue;
     const p = it as Record<string, unknown>;
-    const idRaw = typeof p.id === 'string' ? p.id.trim() : '';
-    if (!AVVALE_PROJECT_ID_RE.test(idRaw)) continue;
-    const name = typeof p.name === 'string' ? strip(p.name).slice(0, 500) : '';
+    let idRaw =
+      typeof p.id === 'string'
+        ? p.id.trim()
+        : typeof p.id === 'number' && Number.isFinite(p.id)
+          ? String(p.id)
+          : '';
+    const name =
+      typeof p.name === 'string'
+        ? strip(p.name).slice(0, 500)
+        : typeof p.nombre === 'string'
+          ? strip(p.nombre).slice(0, 500)
+          : p.title != null
+            ? strip(String(p.title)).slice(0, 500)
+            : '';
     if (opts.requireNonEmptyName && !name) continue;
-    const status = normAvvaleProjectStatus(p.status);
-    const notes = p.notes != null ? String(p.notes).trim().slice(0, 2000) : '';
+    if (!idRaw) {
+      if (!name) continue;
+      idRaw = randomUUID();
+    }
+    const status = normAvvaleProjectStatus(p.status ?? p.estado);
+    const notes = (p.notes != null ? String(p.notes) : p.notas != null ? String(p.notas) : '')
+      .trim()
+      .slice(0, 2000);
     out.push({ id: idRaw, name, status, ...(notes ? { notes } : {}) });
   }
   return out;
@@ -136,6 +154,47 @@ function extractAvvaleSolutionNotes(obj: unknown): Record<string, string> {
   return notesOut;
 }
 
+/** Filas de proyectos en cuenta desde el JSON `avvale` (projects / proyectos, `value`/`data`, mapa id→fila, JSON en string). */
+function extractProjectsArrayFromAvvaleRoot(existingRoot: unknown): unknown[] {
+  if (!existingRoot || typeof existingRoot !== 'object' || Array.isArray(existingRoot)) return [];
+  const o = existingRoot as Record<string, unknown>;
+  const roots: Record<string, unknown>[] = [];
+  const seen = new Set<Record<string, unknown>>();
+  for (const r of [o, o.value, o.data]) {
+    if (!r || typeof r !== 'object' || Array.isArray(r)) continue;
+    const rec = r as Record<string, unknown>;
+    if (seen.has(rec)) continue;
+    seen.add(rec);
+    roots.push(rec);
+  }
+  const keys = ['projects', 'proyectos', 'project_list', 'Projects'] as const;
+  for (const rec of roots) {
+    for (const k of keys) {
+      if (!(k in rec)) continue;
+      const v = rec[k];
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') {
+        try {
+          const p = JSON.parse(v) as unknown;
+          if (Array.isArray(p)) return p;
+        } catch {
+          /* empty */
+        }
+      }
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        const vals = Object.values(v as Record<string, unknown>);
+        if (
+          vals.length > 0 &&
+          vals.every((x) => x != null && typeof x === 'object' && !Array.isArray(x))
+        ) {
+          return vals;
+        }
+      }
+    }
+  }
+  return [];
+}
+
 /**
  * Combina la síntesis IA con el `avvale` ya guardado: la lista **projects** del perfil **no** se amplía
  * con filas inferidas por IA (p. ej. desde noticias RSS). Solo se conservan los proyectos ya guardados.
@@ -155,7 +214,10 @@ function mergeAvvaleSynthesisWithExisting(
 
   const strip = (s: string) => s.trim();
 
-  const storedProjects = extractAvvaleProjectsFromProfile(existing.projects, { requireNonEmptyName: false });
+  const rawProjectsArr = extractProjectsArrayFromAvvaleRoot(existing);
+  const storedProjects = extractAvvaleProjectsFromProfile(rawProjectsArr, {
+    requireNonEmptyName: false,
+  });
   const mergedProjects: AvvaleSynthProject[] = [...storedProjects];
 
   const hasPresenceKey = Object.prototype.hasOwnProperty.call(existing, 'solution_presence');
@@ -249,16 +311,28 @@ function parseAvvaleFullSynthesisResponse(raw: string): Prisma.InputJsonValue | 
     const r = o as Record<string, unknown>;
     const footprint = typeof r.footprint === 'string' ? strip(r.footprint).slice(0, 8000) : '';
     const projOut: Array<{ id: string; name: string; status: 'active' | 'past' | 'negotiating' | 'analyzing'; notes?: string }> = [];
-    if (Array.isArray(r.projects)) {
-      for (const it of r.projects) {
+    const projSource = Array.isArray(r.projects)
+      ? r.projects
+      : Array.isArray(r.proyectos)
+        ? r.proyectos
+        : [];
+    if (projSource.length) {
+      for (const it of projSource) {
         if (!it || typeof it !== 'object' || Array.isArray(it)) continue;
         const p = it as Record<string, unknown>;
-        const name = typeof p.name === 'string' ? strip(p.name).slice(0, 500) : '';
+        const name =
+          typeof p.name === 'string'
+            ? strip(p.name).slice(0, 500)
+            : typeof p.nombre === 'string'
+              ? strip(p.nombre).slice(0, 500)
+              : '';
         if (!name) continue;
         const idRaw = typeof p.id === 'string' ? p.id.trim() : '';
         const id = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idRaw) ? idRaw : randomUUID();
-        const status = normAvvaleProjectStatus(p.status);
-        const notes = p.notes != null ? String(p.notes).trim().slice(0, 2000) : '';
+        const status = normAvvaleProjectStatus(p.status ?? p.estado);
+        const notes = (p.notes != null ? String(p.notes) : p.notas != null ? String(p.notas) : '')
+          .trim()
+          .slice(0, 2000);
         projOut.push({ id, name, status, ...(notes ? { notes } : {}) });
       }
     }
@@ -662,7 +736,11 @@ export class KycService {
     return { ok: true, company_id: Number(companyId) };
   }
 
-  async patchProfile(companyId: bigint, body: Record<string, unknown>) {
+  async patchProfile(
+    companyId: bigint,
+    body: Record<string, unknown>,
+    opts?: { avvaleProjectsExplicit?: boolean },
+  ) {
     const exists = await this.prisma.kycCompany.findUnique({ where: { id: companyId } });
     if (!exists) throw new NotFoundException('Company not found');
     await this.prisma.kycProfile.upsert({
@@ -701,7 +779,20 @@ export class KycService {
     if (body.avvale !== undefined) {
       const a = body.avvale;
       if (a === null || typeof a !== 'object' || Array.isArray(a)) throw new BadRequestException('avvale inválido');
-      data.avvale = a as object;
+      const incomingRec = a as Record<string, unknown>;
+      const prevRow = await this.prisma.kycProfile.findUnique({
+        where: { companyId },
+        select: { avvale: true },
+      });
+      const prevAv =
+        prevRow?.avvale && typeof prevRow.avvale === 'object' && !Array.isArray(prevRow.avvale)
+          ? ({ ...(prevRow.avvale as Record<string, unknown>) } as Record<string, unknown>)
+          : {};
+      const allowEmptyWipe = opts?.avvaleProjectsExplicit === true;
+      const mergedAv = mergeAvvaleRootPatch(prevAv, incomingRec, {
+        allowEmptyProjectsWipe: allowEmptyWipe,
+      });
+      data.avvale = mergedAv as object;
     }
     if (body.signal_intel !== undefined) {
       const s = body.signal_intel;

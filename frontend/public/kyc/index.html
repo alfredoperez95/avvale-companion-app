@@ -516,7 +516,7 @@ async function loadTimeline() {
 async function activateKyc(id) { await api('/api/kyc/companies/' + id + '/activate', { method: 'POST' }); selectCompany(id); }
 
 function openReport(id) {
-  window.open('/kyc/report.html?id=' + id + '&print=1', '_blank');
+  window.open('/kyc/report.html?id=' + id, '_blank');
 }
 
 async function enrichCompany(id) {

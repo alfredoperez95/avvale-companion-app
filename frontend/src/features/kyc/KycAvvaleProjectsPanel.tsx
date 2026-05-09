@@ -83,6 +83,7 @@ export function KycAvvaleProjectsPanel({ companyId, profile, onRefetch, onBanner
     try {
       await kycJson(`/api/kyc/companies/${companyId}/profile`, {
         method: 'PATCH',
+        headers: { 'X-Kyc-Avvale-Projects-Explicit': '1' },
         body: JSON.stringify({ avvale: currentBody }),
       });
       setBaseline(stableStringify(currentBody));

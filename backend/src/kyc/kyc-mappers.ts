@@ -98,6 +98,18 @@ function completenessScoreObject(row: Record<string, unknown>) {
   return Math.round((filled / denom) * 100);
 }
 
+/** Si el JSON de Prisma llegara serializado como string (migraciones / copias), exponer objeto al cliente. */
+function avvaleJsonForApi(v: Prisma.JsonValue): Prisma.JsonValue {
+  if (typeof v !== 'string') return v;
+  try {
+    const o = JSON.parse(v) as unknown;
+    if (o && typeof o === 'object' && !Array.isArray(o)) return o as Prisma.JsonValue;
+  } catch {
+    /* mantener string */
+  }
+  return v;
+}
+
 export function profileToApi(p: {
   companyId: bigint;
   economics: Prisma.JsonValue;
@@ -123,7 +135,7 @@ export function profileToApi(p: {
     critical_processes: p.criticalProcesses,
     sector_context: p.sectorContext,
     competencia: p.competencia,
-    avvale: p.avvale,
+    avvale: avvaleJsonForApi(p.avvale),
     signal_intel: p.signalIntel,
     summary: p.summary,
     confidence_score: p.confidenceScore,
