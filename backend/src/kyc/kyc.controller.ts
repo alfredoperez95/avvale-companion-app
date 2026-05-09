@@ -146,6 +146,12 @@ export class KycController {
     return this.kyc.fetchNewsSignals(BigInt(id));
   }
 
+  @Post('companies/:id/signals/infer-hypotheses')
+  @HttpCode(200)
+  inferSignalHypotheses(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.inferSignalHypotheses(BigInt(id), user.userId);
+  }
+
   @Get('companies/:id/open-questions')
   openList(@Param('id') id: string, @Query('status') status?: string) {
     return this.kyc.getOpenQuestions(BigInt(id), status ?? 'open');

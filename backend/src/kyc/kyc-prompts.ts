@@ -10,14 +10,14 @@ Si no hay nada que persistir, usa KYC_PROPOSED_JSON: [].
 1. Si el usuario (o tú) aporta un **hecho** concreto, usa **field_path** hacia el perfil JSON (objeto o valor escalar), no abras una open_question por eso.
 1b. Si en este turno queda más claro el panorama (ficha + bloques JSON del perfil + señales) y el **resumen ejecutivo** del contexto **no** los sintetiza bien, incluye **field_path: "summary"** con un texto breve actualizado en español (sin contradecir los datos). Prioriza hechos sobre conjeturas.
 2. Usa **open_question** solo para lagunas que sigan sin datos tras el mensaje. Antes mira la sección «Preguntas abiertas» del contexto: **no** repitas la misma intención (mismo ámbito y misma laguna). Si ya existe una pregunta similar, no añadas otra.
-3. **Cobertura:** alterna ámbitos entre turnos: economics, business_model, customers, tech_stack, critical_processes, sector_context, competencia/partners (**competencia_partner**), organigrama (org_member), y datos de cabecera (empresa: web, empleados, etc.) sin concentrar todo en un solo bloque.
+3. **Cobertura:** alterna ámbitos entre turnos: economics, business_model, customers, tech_stack, critical_processes, sector_context, competencia/partners (**competencia_partner**), **avvale** (footprint, proyectos en cuenta Avvale u otros partners, presencia por línea), organigrama (org_member), y datos de cabecera (empresa: web, empleados, etc.) sin concentrar todo en un solo bloque.
 4. Si escribes un apartado **«Pendiente(s) para próxima sesión»** con preguntas numeradas o en lista, incluye **cada** pregunta también como **open_question** en KYC_PROPOSED_JSON (topic adecuado o general). Así quedan en el tablero «Por resolver»; el backend también puede extraerlas del texto, pero el JSON evita olvidos.
 
 **field_path admitidos (ejemplos)**
 - summary — texto del resumen ejecutivo.
 - org_member — value: { "name", "role?", "area?", "linkedin?", "notes?" }.
 - competencia_partner — value: { "partner_name", "ambitos?" (array: tecnico | funcional | estrategia), "detalle?", "analisis?", "momentum?" (bien | neutro | debil | riesgo: posicionamiento frente al cliente, es decir, cómo va frente a Avvale). Añade una fila en la vista «Competencia / partners» del resumen. Importante: hablamos de competidores/partners de Avvale en la cuenta (no “competencia del cliente”).
-- open_question — value: { "topic", "question", "priority?" }. topic debe ser uno de: economics | business_model | customers | tech_stack | critical_processes | sector_context | competencia | org | signals | general.
+- open_question — value: { "topic", "question", "priority?" }. topic debe ser uno de: economics | business_model | customers | tech_stack | critical_processes | sector_context | competencia | avvale | org | signals | general.
 - economics.* — p. ej. economics.revenue_model, economics.scale, economics.margins_notes.
 - business_model.* — p. ej. business_model.value_proposition, business_model.channels.
 - customers.* — p. ej. customers.segments, customers.concentration, customers.icp.
@@ -25,6 +25,7 @@ Si no hay nada que persistir, usa KYC_PROPOSED_JSON: [].
   tech_stack.hris (HCM), tech_stack.payroll (nóminas), tech_stack.procurement (compras) y tech_stack.ariba (si aplica).
 - critical_processes.* — p. ej. critical_processes.order_to_cash, critical_processes.procurement.
 - sector_context.* — p. ej. sector_context.regulation, sector_context.competition, sector_context.trends.
+- **avvale** — objeto JSON del bloque «Avvale en cuenta» (footprint, **proyectos en cuenta** contrastados, presencia por línea). Puedes usar **field_path: "avvale"** con **value** objeto parcial, p. ej. { "footprint": "…", "solution_presence": ["grow","axazure"], "solution_notes": { "axazure": "D365 F&O" }, "projects": [ … ] }. **No** rellenes **projects** solo con titulares de noticias, RSS o señales no contrastadas: los proyectos «en cuenta» deben basarse en lo que el usuario o la entrevista/chat hayan aportado como hechos de cuenta (Avvale u otro partner). Para intuiciones desde noticias, el producto usa la pestaña Señales / hipótesis, no esta lista. negotiating = en negociación; analyzing = en análisis. Slugs de presencia: grow | run | wise | yubiq | saiborg | axazure (AXAZURE = Dynamics 365 / Microsoft). También **avvale.footprint**, **avvale.solution_presence**, etc. para un solo campo (merge con lo existente).
 
 Valores: objetos JSON planos cuando puedas; strings si solo hay texto.`;
 
@@ -60,7 +61,7 @@ Reglas:
 - **org_member** solo para personas **internas** (dirección, áreas, staff). Partners, consultoras y competidores relevantes en la cuenta (respecto a Avvale) van con **competencia_partner** (no como org_member). Stack y herramientas en **tech_stack**; huecos sin dato como **open_question** (topic competencia si aplica).
 - Cuando el usuario responda con hechos, en la última línea incluye **KYC_PROPOSED_JSON** con **field_path** hacia el perfil (especialmente tech_stack y el resto de bloques) antes que nuevas open_question.
 - Si cierras con **Pendiente(s) para próxima sesión** y una lista de preguntas, duplica cada ítem en KYC_PROPOSED_JSON como **open_question** para que aparezcan en «Por resolver».
-- open_question: topic ∈ economics | business_model | customers | tech_stack | critical_processes | sector_context | competencia | org | signals | general.`;
+- open_question: topic ∈ economics | business_model | customers | tech_stack | critical_processes | sector_context | competencia | avvale | org | signals | general.`;
 
   const user = `## Contexto
 ${contextMd}

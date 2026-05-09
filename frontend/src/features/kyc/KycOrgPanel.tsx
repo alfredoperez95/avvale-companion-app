@@ -152,30 +152,6 @@ export function KycOrgPanel({
     return b;
   }, [visibleMembers]);
 
-  const addDummyProfiles = async () => {
-    onBanner(null);
-    const dummies: Array<Record<string, unknown>> = [
-      { name: 'María López', role: 'CEO', area: 'Dirección', level: 1, notes: 'Ejemplo: decisora final', source: 'example' },
-      { name: 'Javier Martín', role: 'CFO', area: 'Finanzas', level: 1, notes: 'Ejemplo: controla presupuesto', source: 'example' },
-      { name: 'Lucía García', role: 'CTO', area: 'IT', level: 1, notes: 'Ejemplo: sponsor tecnológico', source: 'example' },
-      { name: 'Álvaro Ruiz', role: 'Director de Compras', area: 'Compras', level: 2, notes: 'Ejemplo: gatekeeper', source: 'example' },
-      { name: 'Sofía Pérez', role: 'Head of Operations', area: 'Operaciones', level: 3, notes: 'Ejemplo: dueña de proceso', source: 'example' },
-      { name: 'Carlos Sánchez', role: 'Analista BI', area: 'Datos/BI', level: 5, notes: 'Ejemplo: usuario avanzado', source: 'example' },
-    ];
-    try {
-      for (const d of dummies) {
-        await kycJson(`/api/kyc/companies/${companyId}/org/members`, {
-          method: 'POST',
-          body: JSON.stringify({ ...d, reports_to_id: null, linkedin: null }),
-        });
-      }
-      onRefetch();
-      onBanner('Perfiles de ejemplo añadidos al organigrama.');
-    } catch (e) {
-      onBanner(String(e instanceof Error ? e.message : e));
-    }
-  };
-
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (!relMenu) return;
@@ -374,9 +350,6 @@ export function KycOrgPanel({
           </div>
         </div>
         <div className={styles.row}>
-          <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={() => void addDummyProfiles()}>
-            + Ejemplos
-          </button>
           <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={() => setAddRelOpen(true)}>
             + Relación
           </button>

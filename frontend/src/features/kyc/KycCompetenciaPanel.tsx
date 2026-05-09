@@ -488,7 +488,11 @@ export function KycCompetenciaPanel({ rows, onChange, onEditingChange, resetEdit
                         aria-label="Acciones"
                         title="Acciones"
                       >
-                        <span className={styles.competenciaDots} aria-hidden>···</span>
+                        <span className={styles.competenciaDots} aria-hidden>
+                          <span className={styles.competenciaDot} />
+                          <span className={styles.competenciaDot} />
+                          <span className={styles.competenciaDot} />
+                        </span>
                       </button>
                       {menuId === r.localId ? (
                         <div className={styles.competenciaInlineActions} aria-label="Acciones de partner">

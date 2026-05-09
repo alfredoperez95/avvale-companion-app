@@ -13,6 +13,7 @@ const CANONICAL_OPEN_TOPICS = new Set([
   'critical_processes',
   'sector_context',
   'competencia',
+  'avvale',
   'org',
   'signals',
   'general',
@@ -133,6 +134,8 @@ export function canonicalOpenQuestionTopic(raw: string): string {
     competencia: 'competencia',
     partners: 'competencia',
     competidores: 'competencia',
+    avvale: 'avvale',
+    footprint_avvale: 'avvale',
     organigrama: 'org',
     organizacion: 'org',
     organización: 'org',
@@ -145,6 +148,7 @@ export function canonicalOpenQuestionTopic(raw: string): string {
 /** Soporta `field_path` tipo `tech_stack.erp` sin partir `tech_stack` en un solo `split`. */
 function blockAndRestFromPath(fp: string): { block: string; rest: string[] } {
   const ordered = [
+    'avvale',
     'critical_processes',
     'business_model',
     'sector_context',
@@ -256,6 +260,42 @@ export async function applyProposedItems(
           data: { summary: String(val ?? '') },
         });
         await recordFact(prisma, companyId, 'summary', val, null, up.source ?? 'intake', userId, chatMessageId);
+        applied += 1;
+        continue;
+      }
+      if (fp === 'avvale' || fp.startsWith('avvale.')) {
+        const { block, rest } = blockAndRestFromPath(fp);
+        if (block !== 'avvale') continue;
+        const prevProf = await prisma.kycProfile.findUniqueOrThrow({ where: { companyId } });
+        const rawAv = prevProf.avvale;
+        const base: Record<string, unknown> =
+          rawAv && typeof rawAv === 'object' && !Array.isArray(rawAv) ? { ...(rawAv as object) } : {};
+        if (rest.length === 0) {
+          const patch =
+            typeof val === 'object' && val && !Array.isArray(val)
+              ? (val as Record<string, unknown>)
+              : { value: val as unknown };
+          const mergedAv = JSON.parse(JSON.stringify({ ...base, ...patch })) as Prisma.InputJsonValue;
+          await prisma.kycProfile.update({
+            where: { companyId },
+            data: { avvale: mergedAv },
+          });
+        } else {
+          let node: Record<string, unknown> = base;
+          for (let i = 0; i < rest.length - 1; i++) {
+            const k0 = rest[i]!;
+            const n = node[k0];
+            if (!n || typeof n !== 'object' || Array.isArray(n)) node[k0] = {};
+            node = node[k0] as Record<string, unknown>;
+          }
+          node[rest[rest.length - 1]!] = val as unknown;
+          const nextAv = JSON.parse(JSON.stringify(base)) as Prisma.InputJsonValue;
+          await prisma.kycProfile.update({
+            where: { companyId },
+            data: { avvale: nextAv },
+          });
+        }
+        await recordFact(prisma, companyId, fp, val, null, up.source ?? 'intake', userId, chatMessageId);
         applied += 1;
         continue;
       }
@@ -371,6 +411,8 @@ async function ensureProfile(prisma: PrismaService, companyId: bigint) {
       criticalProcesses: {},
       sectorContext: {},
       competencia: {},
+      avvale: {},
+      signalIntel: {},
     },
     update: {},
   });

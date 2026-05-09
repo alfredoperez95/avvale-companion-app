@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
 import { KycOpenQuestionStatus, Prisma } from '@prisma/client';
 import { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
@@ -66,6 +67,240 @@ function parseExecutiveSynthesisResponse(raw: string): {
     }
   }
   return { summary: strip(t), revenue: null, employees: null };
+}
+
+const AVVALE_SYNTH_SLUGS = new Set(['grow', 'run', 'wise', 'yubiq', 'saiborg', 'axazure']);
+
+function normAvvaleProjectStatus(raw: unknown): 'active' | 'past' | 'negotiating' | 'analyzing' {
+  const s = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '');
+  if (s === 'past') return 'past';
+  if (s === 'negotiating' || s === 'negotiation' || s === 'negociacion' || s === 'en_negociacion') return 'negotiating';
+  if (s === 'analyzing' || s === 'en_analisis' || s === 'in_analysis' || s === 'under_analysis') {
+    return 'analyzing';
+  }
+  return 'active';
+}
+
+type AvvaleSynthProject = {
+  id: string;
+  name: string;
+  status: ReturnType<typeof normAvvaleProjectStatus>;
+  notes?: string;
+};
+
+const AVVALE_PROJECT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function extractAvvaleProjectsFromProfile(
+  projectsUnknown: unknown,
+  opts: { requireNonEmptyName: boolean },
+): AvvaleSynthProject[] {
+  const strip = (s: string) => s.trim();
+  if (!Array.isArray(projectsUnknown)) return [];
+  const out: AvvaleSynthProject[] = [];
+  for (const it of projectsUnknown) {
+    if (!it || typeof it !== 'object' || Array.isArray(it)) continue;
+    const p = it as Record<string, unknown>;
+    const idRaw = typeof p.id === 'string' ? p.id.trim() : '';
+    if (!AVVALE_PROJECT_ID_RE.test(idRaw)) continue;
+    const name = typeof p.name === 'string' ? strip(p.name).slice(0, 500) : '';
+    if (opts.requireNonEmptyName && !name) continue;
+    const status = normAvvaleProjectStatus(p.status);
+    const notes = p.notes != null ? String(p.notes).trim().slice(0, 2000) : '';
+    out.push({ id: idRaw, name, status, ...(notes ? { notes } : {}) });
+  }
+  return out;
+}
+
+function normalizeSolutionPresenceKnown(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const pres: string[] = [];
+  for (const x of raw) {
+    const s = String(x).trim().toLowerCase();
+    if (AVVALE_SYNTH_SLUGS.has(s) && !pres.includes(s)) pres.push(s);
+  }
+  return pres;
+}
+
+function extractAvvaleSolutionNotes(obj: unknown): Record<string, string> {
+  const notesOut: Record<string, string> = {};
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return notesOut;
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    const slug = k.trim().toLowerCase();
+    if (!AVVALE_SYNTH_SLUGS.has(slug)) continue;
+    if (typeof v === 'string' && v.trim()) notesOut[slug] = v.trim().slice(0, 2000);
+  }
+  return notesOut;
+}
+
+/**
+ * Combina la síntesis IA con el `avvale` ya guardado: la lista **projects** del perfil **no** se amplía
+ * con filas inferidas por IA (p. ej. desde noticias RSS). Solo se conservan los proyectos ya guardados.
+ * Presencia/notas: misma regla que antes. `footprint`: texto de la IA si no va vacío; si la IA devuelve
+ * cadena vacía, se conserva el footprint anterior.
+ */
+function mergeAvvaleSynthesisWithExisting(
+  existingRoot: unknown,
+  synthesized: Prisma.InputJsonValue | null,
+): Prisma.InputJsonValue | null {
+  if (!synthesized || typeof synthesized !== 'object' || Array.isArray(synthesized)) return synthesized;
+  const syn = synthesized as Record<string, unknown>;
+  const existing =
+    existingRoot && typeof existingRoot === 'object' && !Array.isArray(existingRoot)
+      ? (existingRoot as Record<string, unknown>)
+      : {};
+
+  const strip = (s: string) => s.trim();
+
+  const storedProjects = extractAvvaleProjectsFromProfile(existing.projects, { requireNonEmptyName: false });
+  const mergedProjects: AvvaleSynthProject[] = [...storedProjects];
+
+  const hasPresenceKey = Object.prototype.hasOwnProperty.call(existing, 'solution_presence');
+  const mergedPresence = hasPresenceKey
+    ? normalizeSolutionPresenceKnown(existing.solution_presence)
+    : normalizeSolutionPresenceKnown(syn.solution_presence);
+
+  const exNotes = extractAvvaleSolutionNotes(existing.solution_notes);
+  const aiNotes = extractAvvaleSolutionNotes(syn.solution_notes);
+  const mergedNotes: Record<string, string> = {};
+  for (const slug of AVVALE_SYNTH_SLUGS) {
+    const ex = exNotes[slug];
+    const ai = aiNotes[slug];
+    if (ex && ex.trim()) mergedNotes[slug] = ex.trim().slice(0, 2000);
+    else if (ai && ai.trim()) mergedNotes[slug] = ai.trim().slice(0, 2000);
+  }
+
+  const aiFp = typeof syn.footprint === 'string' ? strip(String(syn.footprint)).slice(0, 8000) : '';
+  const exFp = typeof existing.footprint === 'string' ? strip(String(existing.footprint)).slice(0, 8000) : '';
+  const footprint = aiFp.length > 0 ? aiFp : exFp;
+
+  const payload: Record<string, unknown> = {
+    footprint,
+    projects: mergedProjects,
+    solution_presence: mergedPresence,
+  };
+  if (Object.keys(mergedNotes).length > 0) payload.solution_notes = mergedNotes;
+  return JSON.parse(JSON.stringify(payload)) as Prisma.InputJsonValue;
+}
+
+const HYPOTHESIS_CONFIDENCE = new Set(['low', 'medium', 'high']);
+
+type SignalIntelHypothesisRow = {
+  id: string;
+  title: string;
+  rationale: string;
+  confidence: string;
+};
+
+/** Parsea JSON del modelo para `signal_intel` (hipótesis desde señales; no son proyectos en cuenta). */
+function parseSignalIntelHypothesesResponse(raw: string): { hypotheses: SignalIntelHypothesisRow[]; updated_at: string } | null {
+  const strip = (s: string) => s.trim();
+  const build = (o: unknown): { hypotheses: SignalIntelHypothesisRow[]; updated_at: string } | null => {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+    const r = o as Record<string, unknown>;
+    const arr = r.hypotheses;
+    if (!Array.isArray(arr)) return null;
+    const hypotheses: SignalIntelHypothesisRow[] = [];
+    for (const it of arr.slice(0, 10)) {
+      if (!it || typeof it !== 'object' || Array.isArray(it)) continue;
+      const row = it as Record<string, unknown>;
+      const title = typeof row.title === 'string' ? strip(row.title).slice(0, 300) : '';
+      if (!title) continue;
+      const rationale =
+        typeof row.rationale === 'string' && strip(row.rationale)
+          ? strip(row.rationale).slice(0, 2000)
+          : title;
+      const cRaw = String(row.confidence ?? 'low').toLowerCase();
+      const confidence = HYPOTHESIS_CONFIDENCE.has(cRaw) ? cRaw : 'low';
+      const idRaw = typeof row.id === 'string' ? row.id.trim() : '';
+      const id = AVVALE_PROJECT_ID_RE.test(idRaw) ? idRaw : randomUUID();
+      hypotheses.push({ id, title, rationale, confidence });
+    }
+    if (!hypotheses.length) return null;
+    return { hypotheses, updated_at: new Date().toISOString() };
+  };
+  const t = raw.trim();
+  try {
+    const out = build(JSON.parse(t));
+    if (out) return out;
+  } catch {
+    /* fallthrough */
+  }
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence?.[1]) {
+    try {
+      const out = build(JSON.parse(fence[1].trim()));
+      if (out) return out;
+    } catch {
+      /* empty */
+    }
+  }
+  return null;
+}
+
+/** Respuesta del modelo al reprocesar «Actualizar» (se fusiona con el perfil en `mergeAvvaleSynthesisWithExisting`). */
+function parseAvvaleFullSynthesisResponse(raw: string): Prisma.InputJsonValue | null {
+  const strip = (s: string) => s.trim();
+  const build = (o: unknown): Prisma.InputJsonValue | null => {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+    const r = o as Record<string, unknown>;
+    const footprint = typeof r.footprint === 'string' ? strip(r.footprint).slice(0, 8000) : '';
+    const projOut: Array<{ id: string; name: string; status: 'active' | 'past' | 'negotiating' | 'analyzing'; notes?: string }> = [];
+    if (Array.isArray(r.projects)) {
+      for (const it of r.projects) {
+        if (!it || typeof it !== 'object' || Array.isArray(it)) continue;
+        const p = it as Record<string, unknown>;
+        const name = typeof p.name === 'string' ? strip(p.name).slice(0, 500) : '';
+        if (!name) continue;
+        const idRaw = typeof p.id === 'string' ? p.id.trim() : '';
+        const id = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idRaw) ? idRaw : randomUUID();
+        const status = normAvvaleProjectStatus(p.status);
+        const notes = p.notes != null ? String(p.notes).trim().slice(0, 2000) : '';
+        projOut.push({ id, name, status, ...(notes ? { notes } : {}) });
+      }
+    }
+    const pres: string[] = [];
+    if (Array.isArray(r.solution_presence)) {
+      for (const x of r.solution_presence) {
+        const s = String(x).trim().toLowerCase();
+        if (AVVALE_SYNTH_SLUGS.has(s) && !pres.includes(s)) pres.push(s);
+      }
+    }
+    const notesOut: Record<string, string> = {};
+    if (r.solution_notes && typeof r.solution_notes === 'object' && !Array.isArray(r.solution_notes)) {
+      for (const [k, v] of Object.entries(r.solution_notes as Record<string, unknown>)) {
+        const slug = k.trim().toLowerCase();
+        if (!AVVALE_SYNTH_SLUGS.has(slug)) continue;
+        if (typeof v === 'string' && v.trim()) notesOut[slug] = v.trim().slice(0, 2000);
+      }
+    }
+    const payload: Record<string, unknown> = {
+      footprint,
+      projects: projOut,
+      solution_presence: pres,
+    };
+    if (Object.keys(notesOut).length > 0) payload.solution_notes = notesOut;
+    return JSON.parse(JSON.stringify(payload)) as Prisma.InputJsonValue;
+  };
+
+  const t = raw.trim();
+  try {
+    return build(JSON.parse(t));
+  } catch {
+    /* fallthrough */
+  }
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence?.[1]) {
+    try {
+      return build(JSON.parse(fence[1].trim()));
+    } catch {
+      /* empty */
+    }
+  }
+  return null;
 }
 
 @Injectable()
@@ -143,6 +378,8 @@ export class KycService {
           criticalProcesses: {},
           sectorContext: {},
           competencia: {},
+          avvale: {},
+          signalIntel: {},
         },
         update: { strategic: body.strategic ?? undefined },
       });
@@ -209,6 +446,8 @@ export class KycService {
         criticalProcesses: {},
         sectorContext: {},
         competencia: {},
+        avvale: {},
+        signalIntel: {},
       },
       update: { strategic: body.strategic ?? undefined },
     });
@@ -293,6 +532,8 @@ export class KycService {
               criticalProcesses: {},
               sectorContext: {},
               competencia: {},
+              avvale: {},
+              signalIntel: {},
             },
           });
           result.activated += 1;
@@ -413,6 +654,8 @@ export class KycService {
         criticalProcesses: {},
         sectorContext: {},
         competencia: {},
+        avvale: {},
+        signalIntel: {},
       },
       update: {},
     });
@@ -433,6 +676,8 @@ export class KycService {
         criticalProcesses: {},
         sectorContext: {},
         competencia: {},
+        avvale: {},
+        signalIntel: {},
       },
       update: {},
     });
@@ -452,6 +697,16 @@ export class KycService {
       const c = body.competencia;
       if (c === null || typeof c !== 'object' || Array.isArray(c)) throw new BadRequestException('competencia inválida');
       data.competencia = c as object;
+    }
+    if (body.avvale !== undefined) {
+      const a = body.avvale;
+      if (a === null || typeof a !== 'object' || Array.isArray(a)) throw new BadRequestException('avvale inválido');
+      data.avvale = a as object;
+    }
+    if (body.signal_intel !== undefined) {
+      const s = body.signal_intel;
+      if (s === null || typeof s !== 'object' || Array.isArray(s)) throw new BadRequestException('signal_intel inválido');
+      data.signalIntel = s as object;
     }
     if (body.summary !== undefined) data.summary = String(body.summary);
     if (body.strategic !== undefined) data.strategic = Boolean(body.strategic);
@@ -490,11 +745,18 @@ export class KycService {
    * Enriquecimiento "safe": sin scraping propio.
    * - Actualiza señales (Google News RSS)
    * - Re-genera resumen ejecutivo vía IA (si el usuario tiene clave configurada)
+   * - Reprocesa con IA el bloque JSON `avvale` (footprint; sin RSS en contexto) y lo **fusiona** con el perfil (lista `projects` solo desde ficha; presencia/notas manuales prevalecen)
    *
    * No falla toda la operación si el resumen no se puede generar (p. ej. falta API key).
    */
   async enrichCompany(companyId: bigint, userId: string) {
-    const out: { ok: boolean; news?: { created: number; total: number }; summary?: { ok: boolean }; warning?: string } = { ok: true };
+    const out: {
+      ok: boolean;
+      news?: { created: number; total: number };
+      summary?: { ok: boolean };
+      avvale?: { ok: boolean; updated: boolean };
+      warning?: string;
+    } = { ok: true };
     try {
       const n = await this.fetchNewsSignals(companyId);
       out.news = { created: Number(n?.created ?? 0), total: Number(n?.total ?? 0) };
@@ -527,6 +789,15 @@ export class KycService {
     } catch (e) {
       out.summary = { ok: false };
       const msg = (e as Error).message || 'No se pudo regenerar el resumen ejecutivo.';
+      out.warning = out.warning ? `${out.warning} ${msg}` : msg;
+    }
+
+    try {
+      const av = await this.synthesizeAvvaleFromContext(companyId, userId);
+      out.avvale = { ok: av.ok, updated: av.updated };
+    } catch (e) {
+      out.avvale = { ok: false, updated: false };
+      const msg = `Presencia Avvale (IA): ${(e as Error).message}`;
       out.warning = out.warning ? `${out.warning} ${msg}` : msg;
     }
 
@@ -850,6 +1121,7 @@ export class KycService {
         critical_processes: prof.critical_processes,
         sector_context: prof.sector_context,
         competencia: prof.competencia,
+        avvale: prof.avvale,
       };
       try {
         let json = JSON.stringify(payload);
@@ -889,7 +1161,11 @@ export class KycService {
     return lines.join('\n');
   }
 
-  private buildExecutiveSummarySourceMarkdown(d: NonNullable<Awaited<ReturnType<KycService['getFullProfile']>>>): string {
+  private buildExecutiveSummarySourceMarkdown(
+    d: NonNullable<Awaited<ReturnType<KycService['getFullProfile']>>>,
+    opts?: { includeSignals?: boolean },
+  ): string {
+    const includeSignals = opts?.includeSignals !== false;
     const lines: string[] = [];
     const { company, profile, org, signals, open_questions } = d;
     const co = company as Record<string, unknown>;
@@ -925,6 +1201,7 @@ export class KycService {
       critical_processes: 'Procesos críticos',
       sector_context: 'Contexto sector',
       competencia: 'Competencia / partners',
+      avvale: 'Presencia de Avvale en la cuenta (footprint, proyectos en cuenta, líneas)',
     };
 
     lines.push('## Perfil KYC (conocimiento de entrevista, chat y edición)');
@@ -954,7 +1231,7 @@ export class KycService {
       lines.push('');
     }
 
-    if (signals?.length) {
+    if (includeSignals && signals?.length) {
       lines.push('## Señales recientes (extracto)');
       for (const s of signals.slice(0, 12)) {
         const sig = s as { source?: string; title?: string; text?: string };
@@ -1047,6 +1324,192 @@ Reglas:
       revenue_filled: Boolean(companyPatch.revenue),
       employees_filled: Boolean(companyPatch.employees),
     };
+  }
+
+  /**
+   * Reprocesa con IA el bloque `avvale` (footprint principalmente; sin listado RSS en el contexto).
+   * El resultado se **fusiona** con el JSON ya guardado: la lista `projects` **solo** conserva lo ya
+   * guardado en ficha; presencia y notas manuales prevalecen según la fusión.
+   */
+  async synthesizeAvvaleFromContext(companyId: bigint, userId: string): Promise<{ ok: boolean; updated: boolean }> {
+    const d = await this.getFullProfile(companyId);
+    if (!d?.profile) return { ok: false, updated: false };
+
+    let apiKey: string;
+    try {
+      apiKey = await this.creds.getApiKeyPlainOrThrow(userId);
+    } catch {
+      return { ok: false, updated: false };
+    }
+
+    const prof = d.profile as Record<string, unknown>;
+    const existingAv = prof.avvale;
+    const ctx = this.buildExecutiveSummarySourceMarkdown(d, { includeSignals: false });
+    let currentJson: string;
+    try {
+      currentJson = JSON.stringify(existingAv ?? {}, null, 2);
+    } catch {
+      currentJson = '{}';
+    }
+    if (currentJson.length > 12000) currentJson = `${currentJson.slice(0, 12000)}\n…(truncado)`;
+
+    const userContent = `## JSON actual del bloque "avvale" (solo referencia; vas a devolver una versión nueva completa)
+${currentJson}
+
+## Contexto (ficha, perfil KYC, resumen, organigrama; **sin** extracto de noticias/RSS)
+${ctx}
+
+Instrucciones: **reprocesa** el bloque \`avvale\` desde este contexto. Los **projects** oficiales «en cuenta» **no** deben inferirse solo desde noticias (no están en este contexto). Devuelve \`projects\` como \`[]\` o repetición coherente de los ids del JSON de referencia; el servidor **conserva** la lista de proyectos ya guardada en ficha. **footprint** y presencia/notas siguen las reglas del sistema. **axazure** = Microsoft / Dynamics 365 solo si el contexto lo respalda.`;
+
+    const system = `Eres un analista KYC. Devuelve **solo un objeto JSON válido** (sin markdown, sin texto extra, sin bloques de código).
+
+Debe incluir **siempre estas cuatro claves** (sin null en la raíz):
+- "footprint": string (puede ser cadena vacía si no hay información fiable).
+- "projects": array (puede ser \`[]\`). **No** inventes proyectos «en cuenta» aquí; el servidor mantiene la lista guardada en ficha. negotiating = en negociación; analyzing = en análisis.
+- "solution_presence": array de strings en minúsculas: grow, run, wise, yubiq, saiborg, axazure (puede ser []).
+- "solution_notes": objeto con claves entre esos slugs y valores string (puede ser {} si no hay notas).
+
+Reglas:
+- El sistema **fusionará** tu JSON con el perfil: **projects** = solo lo ya guardado en ficha (no se añaden filas desde esta vía). Presencia/notas guardadas prevalecen donde aplique. Prioriza hechos explícitos del contexto; arrays u objetos vacíos si no hay base.
+- Las **hipótesis** a partir de noticias no van en \`projects\`; existen otros flujos en la app para señales.`;
+
+    const model = getKycSummaryModel(this.config);
+    let raw: string;
+    try {
+      const r = await this.anthropic.completeMessages({
+        apiKey,
+        model,
+        system,
+        messages: [{ role: 'user', content: userContent }],
+        maxTokens: 2400,
+      });
+      raw = r.text.trim();
+    } catch (e) {
+      this.log.warn('synthesizeAvvaleFromContext', (e as Error).message);
+      throw e;
+    }
+
+    const parsedAv = parseAvvaleFullSynthesisResponse(raw);
+    const prevRow = await this.prisma.kycProfile.findUnique({ where: { companyId } });
+    if (!prevRow) return { ok: false, updated: false };
+    if (!parsedAv) return { ok: true, updated: false };
+
+    const nextAv = mergeAvvaleSynthesisWithExisting(prevRow.avvale, parsedAv);
+    if (!nextAv) return { ok: true, updated: false };
+
+    let beforeStr = '';
+    try {
+      beforeStr = JSON.stringify(prevRow.avvale ?? {});
+    } catch {
+      beforeStr = '';
+    }
+    let afterStr = '';
+    try {
+      afterStr = JSON.stringify(nextAv);
+    } catch {
+      afterStr = '';
+    }
+    const updated = beforeStr !== afterStr;
+    if (!updated) return { ok: true, updated: false };
+
+    await this.prisma.kycProfile.update({
+      where: { companyId },
+      data: { avvale: nextAv, lastEnrichedAt: new Date() },
+    });
+    return { ok: true, updated: true };
+  }
+
+  /**
+   * Genera hipótesis comerciales (no contrastadas) a partir de señales/noticias y las guarda en `signal_intel`.
+   * No modifica `avvale.projects`.
+   */
+  async inferSignalHypotheses(
+    companyId: bigint,
+    userId: string,
+  ): Promise<{ ok: boolean; updated: boolean; count: number; message?: string }> {
+    const profRow = await this.prisma.kycProfile.findUnique({ where: { companyId } });
+    if (!profRow) return { ok: false, updated: false, count: 0, message: 'KYC no activo' };
+
+    let apiKey: string;
+    try {
+      apiKey = await this.creds.getApiKeyPlainOrThrow(userId);
+    } catch {
+      return { ok: false, updated: false, count: 0, message: 'Falta clave de API de Anthropic' };
+    }
+
+    const signals = await this.prisma.kycSignal.findMany({
+      where: { companyId },
+      orderBy: { capturedAt: 'desc' },
+      take: 24,
+    });
+    if (!signals.length) {
+      return { ok: true, updated: false, count: 0, message: 'No hay señales: añade manual o busca noticias primero.' };
+    }
+
+    const lines: string[] = [];
+    for (const s of signals) {
+      const title = (s.title || s.text || '').replace(/\s+/g, ' ').trim().slice(0, 220);
+      const body = (s.text || '').replace(/\s+/g, ' ').trim().slice(0, 400);
+      lines.push(`- [${s.source}] ${title || '—'}${body && body !== title ? ` — ${body}` : ''}`);
+    }
+
+    const userContent = `## Señales en cuenta (orden reciente; pueden ser RSS, no contrastadas)
+
+${lines.join('\n')}
+
+Instrucciones: propón **hipótesis** de posibles iniciativas o proyectos que un comercial podría investigar. No afirmes hechos: son conjeturas. Español.`;
+
+    const system = `Eres analista comercial KYC. Devuelve **solo un objeto JSON válido** (sin markdown, sin texto extra).
+
+Formato exacto:
+{ "hypotheses": [ { "title": string breve obligatorio, "rationale": string (por qué las señales lo sugieren), "confidence": "low" | "medium" | "high" (usa casi siempre "low"), "id"?: string UUID opcional } ] }
+
+Entre 1 y 8 elementos en "hypotheses". No dupliques títulos casi idénticos.`;
+
+    const model = getKycSummaryModel(this.config);
+    let raw: string;
+    try {
+      const r = await this.anthropic.completeMessages({
+        apiKey,
+        model,
+        system,
+        messages: [{ role: 'user', content: userContent }],
+        maxTokens: 1800,
+      });
+      raw = r.text.trim();
+    } catch (e) {
+      this.log.warn('inferSignalHypotheses', (e as Error).message);
+      throw e;
+    }
+
+    const parsed = parseSignalIntelHypothesesResponse(raw);
+    if (!parsed) {
+      return { ok: true, updated: false, count: 0, message: 'La IA no devolvió hipótesis válidas.' };
+    }
+
+    const nextIntel = JSON.parse(JSON.stringify(parsed)) as Prisma.InputJsonValue;
+    let beforeStr = '';
+    try {
+      beforeStr = JSON.stringify(profRow.signalIntel ?? {});
+    } catch {
+      beforeStr = '';
+    }
+    let afterStr = '';
+    try {
+      afterStr = JSON.stringify(nextIntel);
+    } catch {
+      afterStr = '';
+    }
+    const updated = beforeStr !== afterStr;
+    if (!updated) {
+      return { ok: true, updated: false, count: parsed.hypotheses.length, message: 'Sin cambios respecto a lo guardado.' };
+    }
+
+    await this.prisma.kycProfile.update({
+      where: { companyId },
+      data: { signalIntel: nextIntel, lastEnrichedAt: new Date() },
+    });
+    return { ok: true, updated: true, count: parsed.hypotheses.length };
   }
 
   async streamChat(sessionId: bigint, userId: string, res: Response, userMessage: string) {

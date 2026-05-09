@@ -9,6 +9,8 @@ import { formatKycAssistantMessageHtml, stripKycProposedJsonFromChatText } from 
 import { filterKycOrgChartMembers } from './kycOrgChartFilter';
 import { KycOrgPanel } from './KycOrgPanel';
 import { KycPorResolverPanel } from './KycPorResolverPanel';
+import { KycAvvalePanel } from './KycAvvalePanel';
+import { KycAvvaleProjectsPanel } from './KycAvvaleProjectsPanel';
 import { KycProfileDashboard, type KycProfileFocus } from './KycProfileDashboard';
 import { KycSignalsPanel } from './KycSignalsPanel';
 import { KycStackView } from './KycStackView';
@@ -68,6 +70,8 @@ type SessionRow = { id: number; title: string | null; session_type?: string };
 
 const TABS = [
   ['dashboard', 'Resumen'],
+  ['avvale_projects', 'Proyectos'],
+  ['avvale', 'Avvale'],
   ['organigrama', 'Organigrama'],
   ['stack', 'Tecnología'],
   ['por_resolver', 'Por resolver'],
@@ -647,24 +651,38 @@ export default function KycWorkspace({
                     </button>
                     <button
                       type="button"
-                      className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
+                      className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}${refreshIntelBusy ? ` ${styles.btnIntelRefreshBusy}` : ''}`}
                       disabled={refreshIntelBusy}
-                      title="Revisa el perfil completo: actualiza señales (noticias) y re-genera el resumen ejecutivo con IA (si tienes clave configurada)."
+                      aria-busy={refreshIntelBusy}
+                      title="Actualiza noticias, re-genera el resumen ejecutivo con IA y reprocesa el bloque «Presencia de Avvale en la cuenta»: el footprint y proyectos nuevos detectados por IA se fusionan con la ficha; proyectos, presencia y notas ya guardados manualmente no se sobrescriben (requiere clave de API)."
                       onClick={async () => {
                         if (!selId) return;
                         setBanner(null);
                         setRefreshIntelBusy(true);
                         try {
-                          const r = await kycJson<{ ok?: boolean; news?: { created: number; total: number }; summary?: { ok: boolean }; warning?: string }>(
-                            `/api/kyc/companies/${selId}/enrich`,
-                            { method: 'POST' },
-                          );
+                          const r = await kycJson<{
+                            ok?: boolean;
+                            news?: { created: number; total: number };
+                            summary?: { ok: boolean };
+                            avvale?: { ok: boolean; updated: boolean };
+                            warning?: string;
+                          }>(`/api/kyc/companies/${selId}/enrich`, { method: 'POST' });
                           const created = Number(r?.news?.created ?? 0);
                           const total = Number(r?.news?.total ?? 0);
                           const summaryOk = r?.summary?.ok === true;
+                          const av = r?.avvale;
+                          let avvaleLine = 'Presencia Avvale: sin cambios';
+                          if (av?.updated)
+                            avvaleLine =
+                              'Presencia Avvale: fusionado y guardado (footprint / novedades IA; proyectos y presencia manuales conservados)';
+                          else if (av?.ok === true)
+                            avvaleLine = 'Presencia Avvale: reprocesado; sin cambios respecto a la ficha guardada';
+                          else if (av != null && av.ok === false)
+                            avvaleLine = 'Presencia Avvale: sin actualización automática (KYC activo y clave de API)';
                           const parts = [
                             `Noticias: ${created} nueva${created === 1 ? '' : 's'} (${total} en el RSS)`,
                             summaryOk ? 'Resumen ejecutivo: actualizado' : 'Resumen ejecutivo: sin cambios',
+                            avvaleLine,
                           ];
                           setBanner(`${parts.join(' · ')}. Datos del cliente recargados.${r?.warning ? ` ${r.warning}` : ''}`);
                           void selectCompany(selId);
@@ -744,6 +762,22 @@ export default function KycWorkspace({
                   onFocusConsumed={consumeProfileFocus}
                 />
               )}
+              {tab === 'avvale_projects' && selId && (
+                <KycAvvaleProjectsPanel
+                  companyId={selId}
+                  profile={(detail.profile as Record<string, unknown> | null) ?? null}
+                  onRefetch={refetchNow}
+                  onBanner={setBanner}
+                />
+              )}
+              {tab === 'avvale' && selId && (
+                <KycAvvalePanel
+                  companyId={selId}
+                  profile={(detail.profile as Record<string, unknown> | null) ?? null}
+                  onRefetch={refetchNow}
+                  onBanner={setBanner}
+                />
+              )}
               {tab === 'organigrama' && selId && (
                 <KycOrgPanel
                   companyId={selId}
@@ -778,6 +812,7 @@ export default function KycWorkspace({
                 <KycSignalsPanel
                   companyId={selId}
                   signals={detail.signals as { id: number; source: string; source_url: string | null; title: string | null; text: string | null; sentiment: string | null; published_at: string | null }[]}
+                  signalIntel={(detail.profile as Record<string, unknown> | null)?.signal_intel ?? null}
                   onRefetch={refetchNow}
                   onBanner={setBanner}
                 />
@@ -908,6 +943,37 @@ export default function KycWorkspace({
               </button>
             </form>
           </aside>
+        )}
+        {refreshIntelBusy && (
+          <div className={styles.intelRefreshOverlay} role="status" aria-live="polite" aria-busy="true">
+            <div className={styles.intelRefreshCard}>
+              <h3 className={styles.intelRefreshTitle}>Reprocesando inteligencia del cliente</h3>
+              <p className={styles.intelRefreshDesc}>
+                Actualización en curso: noticias, resumen ejecutivo con IA y bloque Presencia / Avvale en la cuenta
+                (fusionado con lo que ya tenías en ficha). Puedes esperar en esta pantalla.
+              </p>
+              <div className={styles.intelRefreshBar} aria-hidden />
+              <ul className={styles.intelRefreshSteps}>
+                <li className={styles.intelRefreshStep}>
+                  <span className={styles.intelRefreshDot} aria-hidden />
+                  Señales y noticias
+                </li>
+                <li className={styles.intelRefreshStep}>
+                  <span className={styles.intelRefreshDot} aria-hidden />
+                  Normalización del stack tecnológico
+                </li>
+                <li className={styles.intelRefreshStep}>
+                  <span className={styles.intelRefreshDot} aria-hidden />
+                  Resumen ejecutivo (IA)
+                </li>
+                <li className={styles.intelRefreshStep}>
+                  <span className={styles.intelRefreshDot} aria-hidden />
+                  Presencia Avvale / footprint (IA, sin noticias RSS en contexto)
+                </li>
+              </ul>
+              <span className={styles.srOnly}>Reprocesamiento en curso; espere a que finalice la petición.</span>
+            </div>
+          </div>
         )}
       </div>
       {modal === 'add' && (

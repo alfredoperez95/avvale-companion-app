@@ -591,6 +591,8 @@ model KycProfile {
   criticalProcesses Json      @default("{}") @map("critical_processes")
   sectorContext     Json      @default("{}") @map("sector_context")
   competencia       Json      @default("{}")
+  avvale            Json      @default("{}")
+  signalIntel       Json      @default("{}") @map("signal_intel")
   summary           String?   @db.Text
   confidenceScore   Int?      @default(0) @map("confidence_score")
   strategic         Boolean   @default(false)

@@ -21,13 +21,23 @@ const RESEARCH_ACTIONS: KycChatQuickAction[] = [
   { label: 'Próximos pasos', message: 'Propón pendientes concretos para la próxima sesión (lista numerada).' },
 ];
 
+const AVVALE_ACCOUNT_ACTION: KycChatQuickAction = {
+  label: 'Avvale',
+  message:
+    'Quiero completar la ficha «Avvale» de esta cuenta desde el chat. ' +
+    'Guíame con preguntas concretas y por orden sobre: (1) footprint de Avvale en el cliente (texto libre), ' +
+    '(2) proyectos en la cuenta (pestaña «Proyectos»): pueden ser de Avvale o de otro partner; nombre, estado activo / en negociación / pasado y notas (p. ej. quién lidera), recogidos manualmente o vía chat, ' +
+    '(3) presencia por líneas de solución: GROW, RUN, WISE, YUBIQ, SAIBORG y AXAZURE (Dynamics 365 / Microsoft: ERP, CRM, marketing, etc.), con nota corta por línea donde aplique. ' +
+    'Cuando yo aporte datos, en la última línea incluye KYC_PROPOSED_JSON con field_path avvale (objeto parcial con footprint, projects, solution_presence, solution_notes) o rutas avvale.footprint, avvale.projects, avvale.solution_presence, avvale.solution_notes para que queden guardados en el perfil.',
+};
+
 export function buildKycChatQuickActions(opts: {
   sessionType: string | undefined;
   openQuestionCount: number;
   completeness: number | null;
 }): KycChatQuickAction[] {
   const base = (opts.sessionType || '').toLowerCase() === 'intake' ? [...INTAKE_ACTIONS] : [...RESEARCH_ACTIONS];
-  const extra: KycChatQuickAction[] = [];
+  const extra: KycChatQuickAction[] = [AVVALE_ACCOUNT_ACTION];
 
   if (opts.openQuestionCount > 0) {
     extra.push({
@@ -51,7 +61,7 @@ export function buildKycChatQuickActions(opts: {
     if (seen.has(k)) continue;
     seen.add(k);
     out.push(a);
-    if (out.length >= 8) break;
+    if (out.length >= 9) break;
   }
   return out;
 }

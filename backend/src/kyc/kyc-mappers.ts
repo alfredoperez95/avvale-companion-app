@@ -107,6 +107,8 @@ export function profileToApi(p: {
   criticalProcesses: Prisma.JsonValue;
   sectorContext: Prisma.JsonValue;
   competencia: Prisma.JsonValue;
+  avvale: Prisma.JsonValue;
+  signalIntel: Prisma.JsonValue;
   summary: string | null;
   confidenceScore: number | null;
   strategic: boolean;
@@ -121,6 +123,8 @@ export function profileToApi(p: {
     critical_processes: p.criticalProcesses,
     sector_context: p.sectorContext,
     competencia: p.competencia,
+    avvale: p.avvale,
+    signal_intel: p.signalIntel,
     summary: p.summary,
     confidence_score: p.confidenceScore,
     strategic: p.strategic,
