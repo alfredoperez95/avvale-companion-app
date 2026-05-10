@@ -562,6 +562,13 @@
   border-radius: 999px;
 }
 
+@media (max-width: 900px) {
+  /** Al cambiar de pestaña, scrollIntoView(block: start) deja aire bajo cabecera fija + barra KYC. */
+  #kyc-tab-panel {
+    scroll-margin-top: calc(env(safe-area-inset-top, 0px) + var(--fiori-shell-height, 3rem) * 1.2 + 5.5rem);
+  }
+}
+
 .tab {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;

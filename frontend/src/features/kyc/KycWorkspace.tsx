@@ -114,6 +114,26 @@ function slugify(s: string): string {
     .slice(0, 64);
 }
 
+/** El layout `kyc/layout.tsx` no recibe siempre `params.id` del segmento `[id]`; la URL sí. */
+function parseKycCompanyIdFromPathname(pathname: string | null): number | null {
+  if (!pathname) return null;
+  const m = pathname.match(/^\/launcher\/kyc\/(\d+)(?:-[^/]*)?(?:\/|$)/);
+  if (!m?.[1]) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Misma anchura máxima que el drawer de empresas: pestañas con scroll horizontal en móvil. */
+function scrollKycTabIntoViewMobile(tabId: KycTabId) {
+  if (typeof window === 'undefined') return;
+  if (!window.matchMedia('(max-width: 900px)').matches) return;
+  requestAnimationFrame(() => {
+    const tabEl = document.getElementById(`kyc-tab-${tabId}`);
+    tabEl?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    document.getElementById('kyc-tab-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
 function companyListMeta(c: { sector: string | null; city: string | null }) {
   const parts = [String(c.sector ?? '').trim(), String(c.city ?? '').trim()].filter((s) => s.length > 0);
   return parts.length > 0 ? parts.join(' · ') : 'Sin sector ni ciudad';
@@ -126,11 +146,13 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   const searchParams = useSearchParams();
 
   const routeCompanyId = useMemo(() => {
+    const fromPath = parseKycCompanyIdFromPathname(pathname);
+    if (fromPath != null) return fromPath;
     const raw = params?.id != null ? String(params.id) : '';
     const id = Number(raw.split('-')[0]);
     return Number.isFinite(id) && id > 0 ? id : null;
-  }, [params?.id]);
-  const prevModalRef = useRef<'add' | 'import' | null>(null);
+  }, [pathname, params?.id]);
+  const prevModalRef = useRef<'add' | null>(null);
 
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [search, setSearch] = useState('');
@@ -148,7 +170,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   });
   const [checked, setChecked] = useState<Set<number>>(() => new Set());
 
-  const [modal, setModal] = useState<'add' | 'import' | null>(null);
+  const [modal, setModal] = useState<'add' | null>(null);
   const [confirm, setConfirm] = useState<'delOne' | 'delBulk' | null>(null);
 
   useEffect(() => {
@@ -164,7 +186,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     }
     prevModalRef.current = modal;
   }, [modal, searchParams, router]);
-  const [importText, setImportText] = useState('');
   const [addName, setAddName] = useState('');
   const [addSector, setAddSector] = useState('');
   const [addIndustry, setAddIndustry] = useState<'' | UserIndustryValue>('');
@@ -249,6 +270,11 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
       }
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (detail == null || detailLoading) return;
+    scrollKycTabIntoViewMobile(tab);
+  }, [tab, detail, detailLoading]);
 
   const commitTab = useCallback(
     (next: KycTabId) => {
@@ -377,22 +403,33 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   );
 
   useEffect(() => {
-    if (routeCompanyId != null) {
-      if (selIdRef.current === routeCompanyId) return;
-      void selectCompany(routeCompanyId);
-    }
+    const idLive =
+      typeof window !== 'undefined'
+        ? parseKycCompanyIdFromPathname(window.location.pathname)
+        : null;
+    const resolved = idLive ?? routeCompanyId;
+    if (resolved == null) return;
+    if (selIdRef.current === resolved) return;
+    void selectCompany(resolved);
   }, [routeCompanyId, pathname, selectCompany]);
 
   useEffect(() => {
+    const idLive =
+      typeof window !== 'undefined'
+        ? parseKycCompanyIdFromPathname(window.location.pathname)
+        : null;
+    /** Barra de direcciones puede ir un tick por delante de `usePathname` / `useParams` en el layout. */
+    if (idLive != null) return;
     if (routeCompanyId != null) return;
     if (pathname !== '/launcher/kyc') return;
+    /**
+     * Tras elegir empresa, `router.replace` puede aplicarse un tick después de `setSelId` /
+     * `setDetailLoading(true)`. En ese fotograma `routeCompanyId` sigue null y este efecto
+     * no debe vaciar la selección (evidencia: clear con selId y detailLoading true).
+     */
+    if (detailLoading) return;
     const needsClear =
-      selId != null ||
-      detail != null ||
-      chatOpen ||
-      sessionId != null ||
-      msgs.length > 0 ||
-      detailLoading;
+      selId != null || detail != null || chatOpen || sessionId != null || msgs.length > 0;
     if (!needsClear) return;
     commitChatOpen(false);
     setSelId(null);
@@ -583,31 +620,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     void selectCompany(r.id);
   };
 
-  const submitImport = async () => {
-    const lines = importText.split(/\r?\n/).filter((l) => l.trim());
-    if (lines.length < 2) return;
-    const first = lines[0]!;
-    const sep = first.includes('\t') ? '\t' : first.includes(';') ? ';' : ',';
-    const headers = first.split(sep).map((h) => h.trim().toLowerCase());
-    const rows: Record<string, string>[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const parts = lines[i]!.split(sep);
-      const row: Record<string, string> = {};
-      headers.forEach((h, j) => {
-        row[h] = (parts[j] || '').trim();
-      });
-      const n = row.name || row.empresa || row.nombre;
-      if (n) {
-        row.name = n;
-        rows.push(row);
-      }
-    }
-    await kycJson('/api/kyc/companies/import', { method: 'POST', body: JSON.stringify({ companies: rows }) });
-    setModal(null);
-    setImportText('');
-    void loadCompanies();
-  };
-
   const onBulkDelete = () => {
     if (!checked.size) return;
     setConfirm('delBulk');
@@ -666,9 +678,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
           </button>
           <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={() => setModal('add')}>
             + Empresa
-          </button>
-          <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={() => setModal('import')}>
-            Importar
           </button>
           {checked.size > 0 && (
             <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.danger}`} onClick={onBulkDelete}>
@@ -767,7 +776,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                 </div>
               ))}
               {!companies.length && !loadingList && (
-                <div className={styles.listEmpty}>No hay empresas. Usa «+ Empresa» o «Importar» arriba.</div>
+                <div className={styles.listEmpty}>No hay empresas. Usa «+ Empresa» arriba.</div>
               )}
             </div>
           </div>
@@ -805,13 +814,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                     onClick={() => setModal('add')}
                   >
                     + Empresa
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.btnSecondary}`}
-                    onClick={() => setModal('import')}
-                  >
-                    Importar
                   </button>
                 </div>
               </div>
@@ -1229,28 +1231,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
               </button>
               <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={submitAdd}>
                 Añadir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {modal === 'import' && (
-        <div className={styles.modalOverlay} onClick={() => setModal(null)} role="presentation">
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2>Importar</h2>
-            <p className={styles.hint}>TSV/CSV con cabecera. Columna name obligatoria.</p>
-            <textarea
-              className={styles.textareaLg}
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              style={{ minHeight: '8rem' }}
-            />
-            <div className={styles.modalActions}>
-              <button type="button" className={styles.btn} onClick={() => setModal(null)}>
-                Cancelar
-              </button>
-              <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={submitImport}>
-                Importar
               </button>
             </div>
           </div>
