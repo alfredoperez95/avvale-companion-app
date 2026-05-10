@@ -239,6 +239,13 @@ function pickMergedValue(stack: Record<string, unknown>, idx: Map<string, unknow
   return out;
 }
 
+function pickCellValue(stack: Record<string, unknown>, idx: Map<string, unknown>, it: StackSchemaItem): unknown {
+  if (it.id === 'procurement' || it.id === 'reporting' || it.id === 'middleware') {
+    return pickMergedValue(stack, idx, it.keys);
+  }
+  return pickFirstValue(stack, idx, it.keys);
+}
+
 /** Campos que van en «Aclaraciones» (contexto, histórico, notas). */
 const CLARIFICATION_KEYS = new Set([
   'notes',
@@ -440,19 +447,44 @@ export function KycStackView({ techStack, onGotoDashboard }: { techStack: object
   }
   otros.sort((a, b) => a.key.localeCompare(b.key, 'es'));
 
+  let schemaFilled = 0;
+  const schemaTotal = STACK_SCHEMA.reduce((acc, sec) => acc + sec.items.length, 0);
+  for (const sec of STACK_SCHEMA) {
+    for (const it of sec.items) {
+      if (!isEmptyStackValue(pickCellValue(stack, stackIndex, it))) schemaFilled++;
+    }
+  }
+  const otrosFilled = otros.filter(({ value }) => !isEmptyStackValue(value)).length;
+  const coverageFilled = schemaFilled + otrosFilled;
+  const coverageTotal = schemaTotal + otros.length;
+  const coverageGaps = coverageTotal - coverageFilled;
+
   return (
     <div className={styles.stackRoot}>
-      <div className={styles.stackToolbar}>
-        <div>
-          <strong className={styles.stackToolbarTitle}>Stack tecnológico</strong>
+      <header className={styles.stackToolbar}>
+        <div className={styles.stackToolbarText}>
+          <div className={styles.stackToolbarTitleRow}>
+            <h2 className={styles.stackToolbarTitle}>Stack tecnológico</h2>
+            {coverageTotal > 0 ? (
+              <span className={styles.stackCoveragePill} title="Campos del esquema con al menos un dato informado">
+                {coverageFilled}/{coverageTotal} informados
+              </span>
+            ) : null}
+          </div>
           <p className={styles.stackToolbarHint}>
-            Vista por categorías (datos del perfil). Las tarjetas vacías indican lo que falta por completar.
+            Vista por categorías (datos del perfil). Las tarjetas vacías destacan lo que falta por completar.
+            {coverageGaps > 0 ? (
+              <>
+                {' '}
+                <span className={styles.stackToolbarGaps}>{coverageGaps} pendiente{coverageGaps === 1 ? '' : 's'}.</span>
+              </>
+            ) : null}
           </p>
         </div>
-        <button type="button" className={`${styles.btn} ${styles.btnSm}`} onClick={onGotoDashboard}>
+        <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={onGotoDashboard}>
           Editar en Resumen
         </button>
-      </div>
+      </header>
 
       {dolores.length > 0 ? (
         <div className={styles.stackBannerRow}>
@@ -466,49 +498,52 @@ export function KycStackView({ techStack, onGotoDashboard }: { techStack: object
 
       <div className={styles.stackCard}>
         {Object.keys(stack).length === 0 ? (
-          <div className={styles.hint} style={{ marginBottom: '0.75rem' }}>
+          <p className={styles.stackEmptyBanner}>
             Aún no hay información. Puedes completarla desde «Editar en Resumen» o con la entrevista / chat KYC.
-          </div>
+          </p>
         ) : null}
 
         {STACK_SCHEMA.map((sec) => (
-          <section key={sec.title} className={styles.stackSection}>
+          <section key={sec.title} className={styles.stackSection} aria-label={sec.title}>
             <h3 className={styles.stackSectionTitle}>{sec.title}</h3>
             <div className={styles.stackSectionGrid}>
-              {sec.items.map((it) => (
-                <article key={it.id} className={styles.stackItemCard}>
-                  <div className={styles.stackItemLabel}>{it.label}</div>
-                  <div className={styles.stackItemBody}>
-                    <StackStructuredValue
-                      value={
-                        it.id === 'procurement'
-                          ? pickMergedValue(stack, stackIndex, it.keys)
-                          : it.id === 'reporting'
-                            ? pickMergedValue(stack, stackIndex, it.keys)
-                            : it.id === 'middleware'
-                              ? pickMergedValue(stack, stackIndex, it.keys)
-                          : pickFirstValue(stack, stackIndex, it.keys)
-                      }
-                    />
-                  </div>
-                </article>
-              ))}
+              {sec.items.map((it) => {
+                const cellValue = pickCellValue(stack, stackIndex, it);
+                const cellEmpty = isEmptyStackValue(cellValue);
+                return (
+                  <article
+                    key={it.id}
+                    className={`${styles.stackItemCard} ${cellEmpty ? styles.stackItemCardEmpty : styles.stackItemCardFilled}`}
+                  >
+                    <div className={styles.stackItemLabel}>{it.label}</div>
+                    <div className={styles.stackItemBody}>
+                      <StackStructuredValue value={cellValue} />
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
         ))}
 
         {otros.length > 0 ? (
-          <section className={styles.stackSection}>
+          <section className={styles.stackSection} aria-label="Otros sistemas y campos">
             <h3 className={styles.stackSectionTitle}>Otros sistemas y campos</h3>
             <div className={styles.stackSectionGrid}>
-              {otros.map(({ key, value }) => (
-                <article key={key} className={styles.stackItemCard}>
-                  <div className={styles.stackItemLabel}>{prettyKeyLabel(key)}</div>
-                  <div className={styles.stackItemBody}>
-                    <StackStructuredValue value={value} />
-                  </div>
-                </article>
-              ))}
+              {otros.map(({ key, value }) => {
+                const cellEmpty = isEmptyStackValue(value);
+                return (
+                  <article
+                    key={key}
+                    className={`${styles.stackItemCard} ${cellEmpty ? styles.stackItemCardEmpty : styles.stackItemCardFilled}`}
+                  >
+                    <div className={styles.stackItemLabel}>{prettyKeyLabel(key)}</div>
+                    <div className={styles.stackItemBody}>
+                      <StackStructuredValue value={value} />
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
         ) : null}
