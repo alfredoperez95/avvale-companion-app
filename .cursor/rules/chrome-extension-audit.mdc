@@ -1,0 +1,48 @@
+---
+description: Auditar extensión Chrome antes de decidir cambios — inventario de manifest, permisos, auth y llamadas API.
+alwaysApply: false
+---
+
+# Auditoría extensión Chrome (Companion / LinkedIn)
+
+Úsala cuando el usuario no sepa qué está implementado en la extensión o pida “qué hay disponible” antes de decidir el siguiente paso.
+
+## Antes de proponer código
+
+1. **Localizar el proyecto**: buscar `manifest.json` (MV2/MV3), carpetas `src/`, `dist/`, `extension/`, etc.
+2. **Manifest**: `manifest_version`, `permissions`, `host_permissions`, `optional_permissions`, `content_scripts` (`matches`, `js`, `run_at`), `background` / `service_worker`, `action`/`browser_action`, `commands`, `externally_connectable`, `web_accessible_resources`.
+3. **Entrypoints**: listar archivos del service worker / background y qué hacen (listeners `runtime.onMessage`, `tabs`, `storage`, `alarms`).
+4. **Content scripts**: en qué URLs corren (Companion vs LinkedIn vs otras) y si leen DOM o envían mensajes al background.
+5. **Mensajes**: tipos de mensajes (`chrome.runtime.sendMessage`) documentados o inferidos; contrato request/response.
+6. **Almacenamiento**: `chrome.storage.local` / `session` / `sync`; qué claves y datos sensibles.
+7. **Auth / API**: cómo se obtiene credencial (JWT, cookie, API key, ninguna); variables de entorno o build (`vite`, `webpack`, `.env`); URLs base; rutas llamadas (`/kyc/...`, etc.).
+8. **UI**: popup, options, side panel, devtools; frameworks si hay (React/Vanilla).
+9. **Build**: `package.json` scripts, cómo se empaqueta para Chrome Web Store / desarrollo.
+
+## Salida obligatoria para el usuario
+
+Responder en **español** con secciones claras:
+
+- **Resumen en una frase** (qué hace hoy la extensión).
+- **Tabla o lista**: Permisos + hosts permitidos.
+- **Flujo de datos**: de dónde sale el token/credencial → quién llama al backend.
+- **Lo que falta o está stub**: TODOs, mocks, rutas no cableadas.
+- **Riesgos rápidos**: secretos en repo, permisos demasiado amplios.
+
+No inventar archivos: si algo no está en el repo, indicar **“no encontrado en este workspace”** y pedir ruta o repo si hace falta.
+
+---
+
+## Prompt corto (copiar y pegar en el chat del agente de la extensión)
+
+```
+Actúa como auditor del código de esta extensión Chrome. No propongas cambios todavía.
+
+1) Localiza manifest.json y resume MV2/MV3, permissions y host_permissions.
+2) Lista background/service worker y content scripts con sus matches.
+3) Describe cómo se autentica contra el backend (si existe) y qué URLs usa.
+4) Enumera mensajes entre scripts y qué guardáis en chrome.storage.
+5) Indica qué está completo vs TODO/mock.
+
+Devuelve el inventario en secciones en español.
+```
