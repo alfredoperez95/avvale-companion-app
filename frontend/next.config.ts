@@ -64,6 +64,16 @@ const nextConfig: NextConfig = {
         source: '/api/:path*',
         destination: `${apiRewriteTarget}/:path*`,
       },
+      /**
+       * Extensión Chrome (avvale-companion-extension): usa `AVVALE_KYC_HTTP_ROOT` =
+       * origen sin `/api` + rutas `/kyc/clients` y `/kyc/linkedin-profile`.
+       * Sin este rewrite, esas URLs pegan al frontend Next y devuelven 404.
+       * La web puede seguir usando `/api/kyc/...` (primer rewrite).
+       */
+      {
+        source: '/kyc/:path*',
+        destination: `${apiRewriteTarget}/kyc/:path*`,
+      },
     ];
   },
 };

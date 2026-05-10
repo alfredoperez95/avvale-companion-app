@@ -50,16 +50,16 @@ export const KYC_SOLUTION_LINES: KycSolutionLineMeta[] = [
   {
     slug: 'grow',
     label: 'GROW',
-    description: 'Cambio funcional / implantación (ERP, CRM, blueprint, rollout).',
+    description: 'Implantación / cambio funcional; soporte funcional SAP T&M.',
     guidance:
-      'GROW: proyectos de cambio funcional o de implantación: roll-out / greenfield / brownfield de módulos o soluciones (ERP, CRM, sectorial), rediseño de procesos, blueprint, fit-gap, localización legal, gestión del cambio y formación funcional, assessments de madurez de negocio, T&M o fixed price orientados a resultado funcional, desarrollo ABAP / extensions clásicas ligadas a requisitos de negocio, preparación de cutover funcional, migración maestros/transaccionales desde perspectiva funcional. Si el núcleo es «transformar o desplegar cómo trabaja el negocio», suele ser GROW.',
+      'GROW: proyectos de cambio funcional o de implantación; soporte funcional SAP en modalidad T&M; roll-out / greenfield / brownfield de módulos o soluciones (ERP, CRM, sectorial), rediseño de procesos, blueprint, fit-gap, localización legal, gestión del cambio y formación funcional, assessments de madurez de negocio, T&M o fixed price orientados a resultado funcional, desarrollo ABAP / extensions clásicas ligadas a requisitos de negocio, preparación de cutover funcional, migración maestros/transaccionales desde perspectiva funcional. Si el núcleo es «transformar o desplegar cómo trabaja el negocio», suele ser GROW.',
   },
   {
     slug: 'run',
     label: 'RUN',
-    description: 'Operación recurrente del landscape; AMS, Basis, DR, monitorización.',
+    description: 'Infra, hyperscalers (GCP/AWS/Azure), Avvale Cloud Platform, OaaS/IaaS/PaaS, ops SAP y no SAP.',
     guidance:
-      'RUN: operación recurrente del landscape (on-prem, cloud privado, hyperscaler o híbrido): Basis / administración técnica SAP y no SAP, instalación y parcheo, upgrades técnicos (EHP, stacks), migraciones de sistema «lift» o rehosting sin rediseño funcional mayor, alta disponibilidad, backup y recuperación, DR, monitorización APM y observabilidad, gestión de incidentes y capacidad, redes y conectividad corporativa, ciberoperación de infra (firewalls, WAF operados), AMS técnico o AMS funcional centrado en estabilidad y evolutivos acotados, soporte 24x7, finops operativo ligado a explotación. Si el núcleo es «mantener en marcha y optimizar coste/riesgo», suele ser RUN.',
+      'RUN: infraestructura; hyperscalers (Google Cloud, AWS, Azure); Avvale Cloud Platform; administración y operación de sistemas SAP y no SAP; modelos OaaS, IaaS y PaaS; operación recurrente del landscape (on-prem, cloud privado, hyperscaler o híbrido): Basis / administración técnica SAP y no SAP, instalación y parcheo, upgrades técnicos (EHP, stacks), migraciones de sistema «lift» o rehosting sin rediseño funcional mayor, alta disponibilidad, backup y recuperación, DR, monitorización APM y observabilidad, gestión de incidentes y capacidad, redes y conectividad corporativa, ciberoperación de infra (firewalls, WAF operados), AMS técnico o AMS funcional centrado en estabilidad y evolutivos acotados, soporte 24x7, finops operativo ligado a explotación. Si el núcleo es «mantener en marcha y optimizar coste/riesgo», suele ser RUN.',
   },
   {
     slug: 'wise',
@@ -71,23 +71,23 @@ export const KYC_SOLUTION_LINES: KycSolutionLineMeta[] = [
   {
     slug: 'yubiq',
     label: 'YUBIQ',
-    description: 'Identidad, pagos, canales digitales regulados, compliance O2C/P2P.',
+    description: 'Compliance, factura electrónica, B+, producto; identidad y pagos.',
     guidance:
-      'YUBIQ: identidad digital, acceso y privilegios (CIAM, IAM, SSO), experiencia de cliente o ciudadano (portales, onboarding digital), medios de pago, pasarelas y orquestación de pagos, factura electrónica y compliance normativo del ciclo order-to-cash / procure-to-pay digital, antifraude y confianza, productos y propuestas explícitas de la línea YUBIQ o B+ y compliance digital asociado. Si el núcleo es «confianza, identidad, pago o canal digital regulado», suele ser YUBIQ.',
+      'YUBIQ: soluciones de compliance; factura electrónica; producto y línea B+; identidad digital, acceso y privilegios (CIAM, IAM, SSO), experiencia de cliente o ciudadano (portales, onboarding digital), medios de pago, pasarelas y orquestación de pagos, compliance normativo del ciclo order-to-cash / procure-to-pay digital, antifraude y confianza, propuestas explícitas de la línea YUBIQ y compliance digital asociado. Si el núcleo es «confianza, identidad, pago o canal digital regulado», suele ser YUBIQ.',
   },
   {
     slug: 'saiborg',
     label: 'SAIBORG',
-    description: 'Integración, datos como producto, BTP, automatización e IA aplicada.',
+    description: 'MuleSoft, Boomi, IA, Datasphere, BDC, BTP; dev apps SAP/no SAP; RPA (UiPath).',
     guidance:
-      'SAIBORG: plataformas de integración e interoperabilidad (SAP Integration Suite / CPI / API Management, MuleSoft, Boomi, Kafka, event mesh, EDI/B2B), API-first, federación y gobierno del dato, data products, lakehouse / ingesta / calidad cuando van ligados a integración o productización de datos, analytics operativas (Power BI, Tableau, Datasphere) como capa de producto o self-service corporativo, SAC analítico no dominado por CFO group close, BTP (Extension Suite, CAP, side-by-side), Fiori / UX enterprise, automatización e hiperautomatización (RPA, orchestration), IA aplicada (copilots, asistentes, ML en procesos), OpenPlatform u ofertas de producto software propias en ese espectro. Si el núcleo es «conectar, exponer datos/servicios o automatizar con plataforma», suele ser SAIBORG.',
+      'SAIBORG: MuleSoft, Boomi, SAP Integration Suite / CPI / API Management, Kafka, event mesh, EDI/B2B; IA aplicada (copilots, asistentes, ML en procesos); SAP Datasphere; BDC (Business Data Cloud) cuando encaje en integración/datos de plataforma; BTP (Extension Suite, CAP, side-by-side); desarrollo de aplicaciones SAP y no SAP; RPA e hiperautomatización (incl. UiPath, orchestration); API-first, federación y gobierno del dato, data products, lakehouse / ingesta / calidad ligados a integración o productización de datos, analytics operativas (Power BI, Tableau) como capa de producto o self-service corporativo, SAC analítico no dominado por CFO group close, Fiori / UX enterprise, OpenPlatform u ofertas de producto software propias en ese espectro. Si el núcleo es «conectar, exponer datos/servicios o automatizar con plataforma», suele ser SAIBORG.',
   },
   {
     slug: 'axazure',
     label: 'AXAZURE',
     description: 'Dynamics 365, BC/F&O, Power Platform cuando son el stack protagonista.',
     guidance:
-      'AXAZURE: línea Microsoft / Dynamics y ecosistema Azure orientado a aplicaciones de negocio: Dynamics 365 (Sales, Customer Service, Field Service, Marketing, Customer Insights), ERP Microsoft (Finance & Operations / F&O, Supply Chain Management, Business Central), Power Platform (Power Apps, Power Automate, Power Pages, Dataverse, Copilot Studio cuando va ligado a apps D365), integraciones habituales del stack Microsoft (Dataverse, Dual-write, Azure Logic Apps en contexto D365), implementación, roll-out, upgrade funcional-técnico, AMS o migración en la que D365 / BC / F&O sea el sistema protagonista. No uses AXAZURE solo por citarse Microsoft 365 genérico (correo, Teams sin proyecto D365/Power Platform) ni por BI aislado si el RFQ no ancla claramente el stack Dynamics / Power Platform. Si el núcleo es «Microsoft Business Applications o Dynamics como plataforma protagonista», suele ser AXAZURE.',
+      'AXAZURE: línea Microsoft / Dynamics y ecosistema Azure orientado a aplicaciones de negocio: Dynamics 365 (Sales, Customer Service, Field Service, Marketing, Customer Insights), ERP Microsoft (Finance & Operations / F&O, Supply Chain Management, Business Central), Power Platform (Power Apps, Power Automate, Power Pages, Dataverse, Copilot Studio cuando va ligado a apps D365), integraciones habituales del stack Microsoft (Dataverse, Dual-write, Azure Logic Apps en contexto D365), implementación, roll-out, upgrade funcional-técnico, AMS o migración en la que D365 / BC / F&O sea el sistema protagonista. No uses AXAZURE solo por citarse Microsoft 365 genérico (correo, Teams sin proyecto D365/Power Platform) ni por BI aislado si el contexto no ancla claramente el stack Dynamics / Power Platform. Si el núcleo es «Microsoft Business Applications o Dynamics como plataforma protagonista», suele ser AXAZURE.',
   },
 ];
 

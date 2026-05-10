@@ -17,11 +17,29 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
 import { KycService } from './kyc.service';
+import { KycLinkedInProfileDto } from './dto/kyc-linkedin-profile.dto';
 
+/**
+ * Extensión LinkedIn → organigrama (JWT Bearer):
+ * - GET /kyc/clients?q= — { clients: [{ id, name }] }
+ * - POST /kyc/linkedin-profile — 201 { orgMemberId, contactId }; 400/404/409 según validación.
+ * CORS no aplica al SW de la extensión si el token va en Authorization.
+ */
 @Controller('kyc')
 @UseGuards(JwtAuthGuard)
 export class KycController {
   constructor(private readonly kyc: KycService) {}
+
+  @Get('clients')
+  listClientsForExtension(@Query('q') q?: string) {
+    return this.kyc.listClientsForExtension(q);
+  }
+
+  @Post('linkedin-profile')
+  @HttpCode(201)
+  ingestLinkedInProfile(@Body() body: KycLinkedInProfileDto) {
+    return this.kyc.ingestLinkedInOrgProfile(body);
+  }
 
   @Get('companies')
   listCompanies(

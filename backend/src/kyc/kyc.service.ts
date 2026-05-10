@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { KycOpenQuestionStatus, Prisma } from '@prisma/client';
@@ -17,6 +23,14 @@ import {
   isValidRelType,
   normalizeOpenQuestionDedupeKey,
 } from './kyc-apply-proposed.util';
+import { isExcludedFromInternalOrgChart } from './kyc-org-chart-eligibility.util';
+import {
+  buildLinkedInCaptureNotes,
+  mapExtensionLevelLabel,
+  normalizeLinkedInProfileUrl,
+  splitDisplayNameForContact,
+} from './kyc-linkedin-extension.util';
+import type { KycLinkedInProfileDto } from './dto/kyc-linkedin-profile.dto';
 import { proposedOpenQuestionsFromPendienteSection } from './kyc-pendiente-section.util';
 import { mergeAvvaleRootPatch } from './kyc-avvale-merge.util';
 import {
@@ -429,6 +443,104 @@ export class KycService {
       return a.name.localeCompare(b.name);
     });
     return sorted.map((c) => toApiCompanyListRow(c as Parameters<typeof toApiCompanyListRow>[0]));
+  }
+
+  /** Lista empresas KYC con perfil activo (mismo criterio que GET /kyc/companies) para la extensión LinkedIn. */
+  async listClientsForExtension(q?: string): Promise<{ clients: { id: number; name: string }[] }> {
+    const rows = await this.listCompanies({ q, strategic: undefined, all: undefined });
+    return { clients: rows.map((r) => ({ id: r.id, name: r.name })) };
+  }
+
+  /**
+   * Alta de miembro de organigrama desde perfil LinkedIn (extensión).
+   * URLs finales: POST /kyc/linkedin-profile (JWT). Códigos: 401/403 auth, 404 empresa, 400 perfil KYC inactivo / exclusión / nivel, 409 dedupe URL.
+   */
+  async ingestLinkedInOrgProfile(
+    dto: KycLinkedInProfileDto,
+  ): Promise<{ orgMemberId: number; contactId: number | null }> {
+    const companyId = BigInt(dto.clientId);
+    const company = await this.prisma.kycCompany.findUnique({
+      where: { id: companyId },
+      include: { profile: true },
+    });
+    if (!company) {
+      throw new NotFoundException('Empresa KYC no encontrada');
+    }
+    if (!company.profile) {
+      throw new BadRequestException(
+        'Activa el KYC para esta empresa antes de añadir miembros desde la extensión.',
+      );
+    }
+
+    const rawUrl = (dto.linkedInUrl ?? dto.profileUrl ?? '').trim();
+    const linkedNormalized = normalizeLinkedInProfileUrl(rawUrl);
+    if (!linkedNormalized) {
+      throw new BadRequestException('Se requiere profileUrl o linkedInUrl de LinkedIn.');
+    }
+
+    const existingMembers = await this.prisma.kycOrgMember.findMany({
+      where: { companyId },
+      select: { linkedin: true },
+    });
+    for (const m of existingMembers) {
+      const prev = m.linkedin ? normalizeLinkedInProfileUrl(m.linkedin) : '';
+      if (prev && prev === linkedNormalized) {
+        throw new ConflictException(
+          'Ya existe un miembro del organigrama con esta URL de LinkedIn para esta empresa.',
+        );
+      }
+    }
+
+    const areaEligibility = dto.company?.trim() || dto.headline?.trim() || null;
+    if (
+      isExcludedFromInternalOrgChart({
+        name: dto.name.trim(),
+        role: dto.role,
+        area: areaEligibility,
+        notes: dto.rawText?.trim() || null,
+      })
+    ) {
+      throw new BadRequestException(
+        'Perfil coherente con partner/competencia; no se registra en organigrama interno.',
+      );
+    }
+
+    const notesBlob = buildLinkedInCaptureNotes({
+      headline: dto.headline,
+      location: dto.location,
+      rawText: dto.rawText,
+      capturedAt: dto.capturedAt,
+      profileUrl: rawUrl || dto.profileUrl || dto.linkedInUrl,
+    });
+
+    const levelNum = mapExtensionLevelLabel(dto.level);
+    if (levelNum === undefined) {
+      throw new BadRequestException(`Nivel no reconocido: ${dto.level}`);
+    }
+
+    const { firstName, lastName } = splitDisplayNameForContact(dto.name.trim());
+    const contact = await this.prisma.kycContact.create({
+      data: {
+        companyId,
+        firstName,
+        lastName,
+        jobTitle: dto.role.trim() || null,
+        linkedin: linkedNormalized,
+      },
+    });
+
+    const member = await this.addOrgMember(companyId, {
+      name: dto.name.trim(),
+      role: dto.role.trim() || null,
+      area: dto.company?.trim() || null,
+      level: levelNum,
+      linkedin: linkedNormalized,
+      notes: notesBlob,
+      contact_id: Number(contact.id),
+      source: 'linkedin',
+    });
+
+    return { orgMemberId: member.id, contactId: Number(contact.id) };
   }
 
   async createCompany(

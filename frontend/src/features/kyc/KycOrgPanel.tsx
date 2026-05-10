@@ -38,6 +38,39 @@ const ORG_LEVELS: { level: number; label: string; hint: string; color: string }[
   { level: 0, label: 'Sin asignar', hint: 'Arrástralos a un nivel', color: '#cbd5e1' },
 ];
 
+/** Orden visual del tablero (arriba → abajo). VP / Dirección va primero; los `level` guardados en API no cambian. */
+const ORG_BOARD_LEVEL_ORDER = [2, 1, 3, 4, 5, 0] as const;
+
+const ORG_LEVEL_BY_NUM = new Map(ORG_LEVELS.map((L) => [L.level, L]));
+
+function orderedOrgLevelsForBoard(): typeof ORG_LEVELS {
+  return ORG_BOARD_LEVEL_ORDER.map((n) => ORG_LEVEL_BY_NUM.get(n)).filter(Boolean) as typeof ORG_LEVELS;
+}
+
+/** Nivel normalizado igual que en `buckets` (1–5 o 0 sin asignar). */
+function orgLevelCanonical(level: number | null | undefined): number {
+  if (level == null || !Number.isFinite(Number(level))) return 0;
+  const n = Number(level);
+  if (n >= 1 && n <= 5) return n;
+  return 0;
+}
+
+/** Color del carril / tarjeta según nivel (alineado con `ORG_LEVELS`, no con el área funcional). */
+function orgLevelColor(level: number | null | undefined): string {
+  return ORG_LEVEL_BY_NUM.get(orgLevelCanonical(level))?.color ?? '#cbd5e1';
+}
+
+/** Color de iniciales en el avatar según luminancia del fondo. */
+function contrastInkForBg(hex: string): '#fff' | '#0f172a' {
+  const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex.trim());
+  if (!m) return '#fff';
+  const r = parseInt(m[1], 16) / 255;
+  const g = parseInt(m[2], 16) / 255;
+  const b = parseInt(m[3], 16) / 255;
+  const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return L > 0.62 ? '#0f172a' : '#fff';
+}
+
 function OrgLevelSelect({
   className,
   value,
@@ -49,11 +82,15 @@ function OrgLevelSelect({
 }) {
   return (
     <select className={className} value={value === '' ? '0' : value} onChange={(e) => onChange(e.target.value)}>
-      {ORG_LEVELS.filter((L) => L.level >= 1).map((L) => (
-        <option key={L.level} value={String(L.level)}>
-          {L.label}
-        </option>
-      ))}
+      {ORG_BOARD_LEVEL_ORDER.filter((lvl) => lvl >= 1).map((lvl) => {
+        const L = ORG_LEVEL_BY_NUM.get(lvl);
+        if (!L) return null;
+        return (
+          <option key={L.level} value={String(L.level)}>
+            {L.label}
+          </option>
+        );
+      })}
       <option value="0">{ORG_LEVELS.find((L) => L.level === 0)?.label ?? 'Sin asignar'}</option>
     </select>
   );
@@ -118,35 +155,6 @@ const REL_COLORS: Record<string, string> = {
   rival: '#8b5cf6',
   otro: '#94a3b8',
 };
-
-function areaColor(area: string | null) {
-  const a = (area || '').toLowerCase();
-  const AREA_COLORS: Record<string, string> = {
-    ceo: '#6366f1',
-    dirección: '#6366f1',
-    general: '#6366f1',
-    it: '#0ea5e9',
-    sistemas: '#0ea5e9',
-    tecnología: '#0ea5e9',
-    tech: '#0ea5e9',
-    finanzas: '#10b981',
-    financiero: '#10b981',
-    cfo: '#10b981',
-    operaciones: '#f59e0b',
-    coo: '#f59e0b',
-    comercial: '#ec4899',
-    ventas: '#ec4899',
-    marketing: '#ec4899',
-    rrhh: '#8b5cf6',
-    personas: '#8b5cf6',
-    hr: '#8b5cf6',
-    compras: '#14b8a6',
-    procurement: '#14b8a6',
-    legal: '#64748b',
-  };
-  for (const k of Object.keys(AREA_COLORS)) if (a.includes(k)) return AREA_COLORS[k]!;
-  return '#64748b';
-}
 
 function initials(name: string) {
   return (name || '?')
@@ -459,7 +467,7 @@ export function KycOrgPanel({
       </div>
 
       <div className={styles.orgBoard}>
-        {ORG_LEVELS.map((L) => {
+        {orderedOrgLevelsForBoard().map((L) => {
           const laneMembers = buckets[L.level] || [];
           return (
             <div
@@ -498,13 +506,13 @@ export function KycOrgPanel({
                   <div className={styles.orgLaneEmpty}>Arrastra aquí para asignar {L.label}</div>
                 ) : (
                   laneMembers.map((m) => {
-                    const col = areaColor(m.area);
+                    const laneCol = orgLevelColor(m.level);
                     const parent = m.reports_to_id ? byId[Number(m.reports_to_id)] : null;
                     return (
                       <div
                         key={m.id}
                         className={`${styles.orgCard} ${dropTargetId === m.id ? styles.orgCardDropTarget : ''}`}
-                        style={{ borderTopColor: col }}
+                        style={{ borderTopColor: laneCol }}
                         draggable
                         onDragStart={(e) => {
                           setOrgCardMenuId(null);
@@ -537,17 +545,16 @@ export function KycOrgPanel({
                           openRelMenu(srcId, m.id, e.clientX, e.clientY);
                         }}
                       >
-                        <div className={styles.orgAvatar} style={{ background: col }}>
+                        <div
+                          className={styles.orgAvatar}
+                          style={{ background: laneCol, color: contrastInkForBg(laneCol) }}
+                        >
                           {initials(m.name)}
                         </div>
                         <div className={styles.orgCardText}>
                           <div className={styles.orgCardName}>{esc(m.name)}</div>
                           <div className={styles.orgCardRole}>{esc(m.role || '—')}</div>
-                          {m.area ? (
-                            <div className={styles.orgCardArea} style={{ color: col }}>
-                              {esc(m.area)}
-                            </div>
-                          ) : null}
+                          {m.area ? <div className={styles.orgCardArea}>{esc(m.area)}</div> : null}
                           {parent ? <div className={styles.orgCardParent}>⬆ {esc(parent.name)}</div> : null}
                         </div>
                         <div className={styles.orgCardMenuWrap} data-org-card-menu={m.id}>

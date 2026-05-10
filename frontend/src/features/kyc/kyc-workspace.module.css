@@ -3280,7 +3280,6 @@
   justify-content: center;
   font-size: 0.7rem;
   font-weight: 800;
-  color: #fff;
   flex-shrink: 0;
 }
 .orgCardText {
@@ -3308,6 +3307,7 @@
   letter-spacing: 0.04em;
   font-weight: 700;
   margin-top: 0.1rem;
+  color: #64748b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
