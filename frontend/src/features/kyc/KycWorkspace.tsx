@@ -15,6 +15,7 @@ import { KycProfileDashboard, type KycProfileFocus } from './KycProfileDashboard
 import { KycSignalsPanel } from './KycSignalsPanel';
 import { KycStackView } from './KycStackView';
 import { USER_INDUSTRY_OPTIONS, industryLabel, type UserIndustryValue } from '@/lib/user-industry';
+import { faviconUrlFromWebsite } from './kycFaviconUrl';
 import styles from './kyc-workspace.module.css';
 
 type CompanyRow = {
@@ -137,6 +138,46 @@ function scrollKycTabIntoViewMobile(tabId: KycTabId) {
 function companyListMeta(c: { sector: string | null; city: string | null }) {
   const parts = [String(c.sector ?? '').trim(), String(c.city ?? '').trim()].filter((s) => s.length > 0);
   return parts.length > 0 ? parts.join(' · ') : 'Sin sector ni ciudad';
+}
+
+function companyInitialsForList(name: string) {
+  return (name || '?')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}
+
+/** Favicon de la web de la cuenta (misma fuente que el hero), con iniciales si falla. */
+function KycCompanyListAvatar({ website, name }: { website: string | null; name: string }) {
+  const [faviconFailed, setFaviconFailed] = useState(false);
+  const faviconSrc = useMemo(() => faviconUrlFromWebsite(website), [website]);
+  useEffect(() => {
+    setFaviconFailed(false);
+  }, [faviconSrc]);
+  const showImg = Boolean(faviconSrc && !faviconFailed);
+  return (
+    <div
+      className={`${styles.listRowAvatar} ${showImg ? styles.listRowAvatarWithIcon : ''}`}
+      title={website?.trim() ? website : undefined}
+      aria-hidden
+    >
+      {showImg ? (
+        <img
+          src={faviconSrc!}
+          alt=""
+          className={styles.listRowAvatarImg}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setFaviconFailed(true)}
+        />
+      ) : (
+        companyInitialsForList(name)
+      )}
+    </div>
+  );
 }
 
 export default function KycWorkspace({ className }: KycWorkspaceProps) {
@@ -747,19 +788,22 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                     aria-current={selId === c.id ? 'page' : undefined}
                     onClick={() => void selectCompany(c.id)}
                   >
-                    <div className={styles.itemTitle}>
-                      <span className={styles.itemTitleText}>{c.name}</span>
-                      {c.strategic ? (
-                        <span className={styles.chipStrategicList} title="Estratégica">
-                          ★
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className={styles.itemMeta}>
-                      {[c.industry ? industryLabel(c.industry) : null, companyListMeta(c)]
-                        .filter((x) => x != null && String(x).trim() !== '')
-                        .join(' · ') || '—'}
-                    </div>
+                    <KycCompanyListAvatar website={c.website} name={c.name} />
+                    <span className={styles.listRowSelectBody}>
+                      <div className={styles.itemTitle}>
+                        <span className={styles.itemTitleText}>{c.name}</span>
+                        {c.strategic ? (
+                          <span className={styles.chipStrategicList} title="Estratégica">
+                            ★
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className={styles.itemMeta}>
+                        {[c.industry ? industryLabel(c.industry) : null, companyListMeta(c)]
+                          .filter((x) => x != null && String(x).trim() !== '')
+                          .join(' · ') || '—'}
+                      </div>
+                    </span>
                   </button>
                   <button
                     type="button"

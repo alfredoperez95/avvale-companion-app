@@ -38,6 +38,78 @@ const ORG_LEVELS: { level: number; label: string; hint: string; color: string }[
   { level: 0, label: 'Sin asignar', hint: 'Arrástralos a un nivel', color: '#cbd5e1' },
 ];
 
+function OrgLevelSelect({
+  className,
+  value,
+  onChange,
+}: {
+  className: string;
+  value: string;
+  onChange: (level: string) => void;
+}) {
+  return (
+    <select className={className} value={value === '' ? '0' : value} onChange={(e) => onChange(e.target.value)}>
+      {ORG_LEVELS.filter((L) => L.level >= 1).map((L) => (
+        <option key={L.level} value={String(L.level)}>
+          {L.label}
+        </option>
+      ))}
+      <option value="0">{ORG_LEVELS.find((L) => L.level === 0)?.label ?? 'Sin asignar'}</option>
+    </select>
+  );
+}
+
+function OrgReportsToSelect({
+  className,
+  members,
+  value,
+  onChange,
+  excludeMemberId,
+}: {
+  className: string;
+  members: M[];
+  value: string;
+  onChange: (reportsToId: string) => void;
+  excludeMemberId?: number | null;
+}) {
+  const candidates = useMemo(
+    () =>
+      [...members]
+        .filter((m) => excludeMemberId == null || m.id !== excludeMemberId)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })),
+    [members, excludeMemberId],
+  );
+
+  const selectedNum = value.trim() === '' ? null : parseInt(value, 10);
+  const showStaleOption =
+    selectedNum != null &&
+    Number.isFinite(selectedNum) &&
+    !candidates.some((m) => m.id === selectedNum);
+  const staleLabel =
+    selectedNum != null && Number.isFinite(selectedNum)
+      ? (() => {
+          const ref = members.find((m) => m.id === selectedNum);
+          if (ref) return `${ref.name}${ref.role ? ` · ${ref.role}` : ''}`;
+          return `#${selectedNum}`;
+        })()
+      : '';
+
+  return (
+    <select className={className} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">Sin jefe directo</option>
+      {showStaleOption && (
+        <option value={String(selectedNum)}>{`${staleLabel} (referencia actual)`}</option>
+      )}
+      {candidates.map((m) => (
+        <option key={m.id} value={String(m.id)}>
+          {m.name}
+          {m.role ? ` · ${m.role}` : ''}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 const REL_COLORS: Record<string, string> = {
   aliado: '#22c55e',
   bloqueador: '#ef4444',
@@ -117,6 +189,8 @@ export function KycOrgPanel({
   const [dropTargetId, setDropTargetId] = useState<number | null>(null);
   const [addRelOpen, setAddRelOpen] = useState(false);
   const [relForm, setRelForm] = useState<{ fromId: string; toId: string; kind: string }>({ fromId: '', toId: '', kind: 'aliado' });
+  /** Menú ⋯ en tarjeta de miembro (editar / eliminar). */
+  const [orgCardMenuId, setOrgCardMenuId] = useState<number | null>(null);
 
   /** Solo estructura interna; partners tecnológicos y competencia quedan fuera del tablero. */
   const visibleMembers = useMemo(() => filterKycOrgChartMembers(members), [members]);
@@ -164,10 +238,22 @@ export function KycOrgPanel({
   }, [relMenu]);
 
   useEffect(() => {
+    if (orgCardMenuId == null) return;
+    const onDoc = (e: MouseEvent) => {
+      const root = document.querySelector(`[data-org-card-menu="${orgCardMenuId}"]`);
+      if (root && e.target instanceof Node && root.contains(e.target)) return;
+      setOrgCardMenuId(null);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [orgCardMenuId]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setRelMenu(null);
         setAddRelOpen(false);
+        setOrgCardMenuId(null);
       }
     };
     document.addEventListener('keydown', onKey);
@@ -175,15 +261,19 @@ export function KycOrgPanel({
   }, []);
 
   const openAdd = () => {
-    setForm({ name: '', role: '', area: '', level: '', reports_to_id: '', linkedin: '', notes: '' });
+    setForm({ name: '', role: '', area: '', level: '0', reports_to_id: '', linkedin: '', notes: '' });
     setAddOpen(true);
   };
   const openEdit = (m: M) => {
+    const lvl =
+      m.level != null && Number.isInteger(m.level) && (m.level as number) >= 1 && (m.level as number) <= 5
+        ? String(m.level)
+        : '0';
     setForm({
       name: m.name,
       role: m.role ?? '',
       area: m.area ?? '',
-      level: m.level != null ? String(m.level) : '',
+      level: lvl,
       reports_to_id: m.reports_to_id != null ? String(m.reports_to_id) : '',
       linkedin: m.linkedin ?? '',
       notes: m.notes ?? '',
@@ -200,11 +290,8 @@ export function KycOrgPanel({
       linkedin: form.linkedin || null,
       notes: form.notes || null,
     };
-    if (form.level.trim() !== '') {
-      const n = parseInt(form.level, 10);
-      if (n >= 1 && n <= 5) body.level = n;
-      else if (n === 0) body.level = null;
-    }
+    const n = parseInt(form.level || '0', 10);
+    body.level = Number.isFinite(n) && n >= 1 && n <= 5 ? n : null;
     if (form.reports_to_id.trim() !== '') {
       const rid = parseInt(form.reports_to_id, 10);
       if (members.some((m) => m.id === rid)) body.reports_to_id = rid;
@@ -223,12 +310,8 @@ export function KycOrgPanel({
       linkedin: form.linkedin || null,
       notes: form.notes || null,
     };
-    if (form.level.trim() === '') body.level = null;
-    else {
-      const n = parseInt(form.level, 10);
-      if (n >= 1 && n <= 5) body.level = n;
-      else body.level = null;
-    }
+    const n = parseInt(form.level || '0', 10);
+    body.level = Number.isFinite(n) && n >= 1 && n <= 5 ? n : null;
     if (form.reports_to_id.trim() === '') body.reports_to_id = null;
     else {
       const rid = parseInt(form.reports_to_id, 10);
@@ -277,6 +360,7 @@ export function KycOrgPanel({
 
   const openRelMenu = (srcId: number, targetId: number, x: number, y: number) => {
     if (srcId === targetId) return;
+    setOrgCardMenuId(null);
     setRelMenu({
       srcId,
       targetId,
@@ -423,6 +507,7 @@ export function KycOrgPanel({
                         style={{ borderTopColor: col }}
                         draggable
                         onDragStart={(e) => {
+                          setOrgCardMenuId(null);
                           setDragSrcId(m.id);
                           setDropTargetId(null);
                           try {
@@ -465,9 +550,56 @@ export function KycOrgPanel({
                           ) : null}
                           {parent ? <div className={styles.orgCardParent}>⬆ {esc(parent.name)}</div> : null}
                         </div>
-                        <button type="button" className={styles.orgCardDel} onClick={() => setDelMemId(m.id)}>
-                          ×
-                        </button>
+                        <div className={styles.orgCardMenuWrap} data-org-card-menu={m.id}>
+                          <button
+                            type="button"
+                            className={styles.orgCardMenuTrigger}
+                            aria-label="Más acciones"
+                            aria-expanded={orgCardMenuId === m.id}
+                            aria-haspopup="menu"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOrgCardMenuId((id) => (id === m.id ? null : m.id));
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                              <circle cx="5" cy="12" r="2" fill="currentColor" />
+                              <circle cx="12" cy="12" r="2" fill="currentColor" />
+                              <circle cx="19" cy="12" r="2" fill="currentColor" />
+                            </svg>
+                          </button>
+                          {orgCardMenuId === m.id ? (
+                            <div className={styles.orgCardMenu} role="menu" aria-label="Acciones del miembro">
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className={styles.orgCardMenuItem}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOrgCardMenuId(null);
+                                  openEdit(m);
+                                }}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className={`${styles.orgCardMenuItem} ${styles.orgCardMenuItemDanger}`}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOrgCardMenuId(null);
+                                  setDelMemId(m.id);
+                                }}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     );
                   })
@@ -606,12 +738,17 @@ export function KycOrgPanel({
               <textarea className={styles.textareaLg} value={form.notes} onChange={(e) => setForm((x) => ({ ...x, notes: e.target.value }))} style={{ minHeight: '2.5rem' }} />
             </div>
             <div className={styles.formRow}>
-              <span className={styles.label}>Nivel 1-5 (vacío = —)</span>
-              <input className={styles.input} value={form.level} onChange={(e) => setForm((x) => ({ ...x, level: e.target.value }))} inputMode="numeric" />
+              <span className={styles.label}>Nivel</span>
+              <OrgLevelSelect className={styles.input} value={form.level} onChange={(level) => setForm((x) => ({ ...x, level }))} />
             </div>
             <div className={styles.formRow}>
-              <span className={styles.label}>Reporta a (ID de miembro)</span>
-              <input className={styles.input} value={form.reports_to_id} onChange={(e) => setForm((x) => ({ ...x, reports_to_id: e.target.value }))} />
+              <span className={styles.label}>Reporta a</span>
+              <OrgReportsToSelect
+                className={styles.input}
+                members={members}
+                value={form.reports_to_id}
+                onChange={(reports_to_id) => setForm((x) => ({ ...x, reports_to_id }))}
+              />
             </div>
             <div className={styles.modalActions}>
               <button type="button" className={styles.btn} onClick={() => setAddOpen(false)}>
@@ -654,12 +791,18 @@ export function KycOrgPanel({
               />
             </div>
             <div className={styles.formRow}>
-              <span className={styles.label}>Nivel 1-5 (vacío = null)</span>
-              <input className={styles.input} value={form.level} onChange={(e) => setForm((x) => ({ ...x, level: e.target.value }))} inputMode="numeric" />
+              <span className={styles.label}>Nivel</span>
+              <OrgLevelSelect className={styles.input} value={form.level} onChange={(level) => setForm((x) => ({ ...x, level }))} />
             </div>
             <div className={styles.formRow}>
-              <span className={styles.label}>Reporta a (ID, vacío = null)</span>
-              <input className={styles.input} value={form.reports_to_id} onChange={(e) => setForm((x) => ({ ...x, reports_to_id: e.target.value }))} />
+              <span className={styles.label}>Reporta a</span>
+              <OrgReportsToSelect
+                className={styles.input}
+                members={members}
+                value={form.reports_to_id}
+                excludeMemberId={edit.id}
+                onChange={(reports_to_id) => setForm((x) => ({ ...x, reports_to_id }))}
+              />
             </div>
             <div className={styles.modalActions}>
               <button type="button" className={styles.btn} onClick={() => setEdit(null)}>

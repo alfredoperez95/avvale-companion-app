@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { kycJson } from './kycApi';
 import styles from './kyc-workspace.module.css';
 
@@ -18,12 +18,46 @@ type Sig = {
 
 function sentimentLabel(s: string | null) {
   const v = (s || '').toLowerCase();
-  if (!v) return '—';
+  if (!v) return 'Sin clasificar';
   if (v === 'positive') return 'Positivo';
   if (v === 'neutral') return 'Neutral';
   if (v === 'negative') return 'Negativo';
   if (v === 'mixed') return 'Mixto';
-  return s || '—';
+  return s || 'Sin clasificar';
+}
+
+/** Etiqueta legible para chips (p. ej. google_news → Google News). */
+function formatSignalSource(raw: string) {
+  const k = (raw || '').trim().toLowerCase().replace(/\s+/g, '_');
+  const map: Record<string, string> = {
+    google_news: 'Google News',
+    rss: 'RSS',
+    manual: 'Manual',
+    news: 'Noticias',
+  };
+  if (map[k]) return map[k];
+  if (!raw.trim()) return 'Fuente';
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function normalizedSignalBodyEqualsTitle(title: string, body: string) {
+  const a = normalizeText(title);
+  const b = normalizeText(body);
+  if (!a || !b) return false;
+  return a === b;
+}
+
+function sentimentChipClass(stylesMod: typeof styles, s: string | null): string {
+  const v = (s || '').toLowerCase();
+  if (v === 'positive') return stylesMod.sigChipPositive;
+  if (v === 'negative') return stylesMod.sigChipNegative;
+  if (v === 'mixed') return stylesMod.sigChipMixed;
+  if (v === 'neutral') return stylesMod.sigChipNeutral;
+  return stylesMod.sigChipSentimentUnknown;
 }
 
 function normalizeText(s: string) {
@@ -86,6 +120,15 @@ function confidenceLabel(c: string) {
   return 'Baja';
 }
 
+function hypothesisConfidenceChipClass(stylesMod: typeof styles, c: string): string {
+  const v = (c || '').toLowerCase();
+  if (v === 'high') return stylesMod.hypChipHigh;
+  if (v === 'medium') return stylesMod.hypChipMedium;
+  return stylesMod.hypChipLow;
+}
+
+type SignalsSubTab = 'news' | 'hypotheses';
+
 export function KycSignalsPanel({
   companyId,
   signals,
@@ -103,8 +146,17 @@ export function KycSignalsPanel({
   const [f, setF] = useState({ source: 'manual', source_url: '', title: '', text: '', sentiment: '' });
   const [loadingNews, setLoadingNews] = useState(false);
   const [inferBusy, setInferBusy] = useState(false);
+  const [signalsSubTab, setSignalsSubTab] = useState<SignalsSubTab>('news');
 
   const { hypotheses, updated_at } = parseHypothesesFromProfile(signalIntel);
+
+  const hypothesesUpdatedLabel = useMemo(
+    () =>
+      updated_at
+        ? new Date(updated_at).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })
+        : null,
+    [updated_at],
+  );
 
   const sortedSignals = [...signals].sort((a, b) => {
     const da = Date.parse(String(a.published_at || a.captured_at || '')) || 0;
@@ -174,83 +226,216 @@ export function KycSignalsPanel({
   };
 
   return (
-    <div>
-      <p className={styles.hint} style={{ marginBottom: '0.75rem', maxWidth: '44rem' }}>
-        Las noticias y RSS son señales, no pruebas: no alimentan por sí solas el listado de proyectos en cuenta. La
-        sección inferior recoge hipótesis generadas por IA a partir de estas señales; valídalas antes de pasarlas a
-        Proyectos o al chat KYC.
-      </p>
-      <div className={styles.row} style={{ marginBottom: '0.75rem' }}>
-        <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={() => setOpen(true)}>
-          + Añadir señal
+    <div className={styles.signalsTabRoot}>
+      <aside className={styles.signalsIntro} aria-label="Acerca del apartado Señales">
+        <div className={styles.signalsIntroBadge} aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        </div>
+        <div className={styles.signalsIntroBody}>
+          <p className={styles.signalsIntroKicker}>Inteligencia externa</p>
+          <p className={styles.signalsIntroText}>
+            Capturas automáticas y notas manuales frente a lecturas que genera la IA. Nada sustituye revisión humana antes
+            de mover alcance a Proyectos o al chat KYC.
+          </p>
+        </div>
+      </aside>
+
+      <div className={styles.signalsSegmented} role="tablist" aria-label="Vistas de señales">
+        <button
+          id="kyc-signals-subtab-news"
+          type="button"
+          role="tab"
+          aria-selected={signalsSubTab === 'news'}
+          aria-controls="kyc-signals-subpanel-news"
+          className={`${styles.signalsSegBtn} ${signalsSubTab === 'news' ? styles.signalsSegBtnActive : ''}`}
+          onClick={() => setSignalsSubTab('news')}
+        >
+          <span className={styles.signalsSegLabel}>Noticias y señales</span>
+          {signals.length > 0 ? <span className={styles.signalsSegBadge}>{signals.length}</span> : null}
         </button>
         <button
+          id="kyc-signals-subtab-hypotheses"
           type="button"
-          className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-          onClick={fetchNews}
-          disabled={loadingNews}
+          role="tab"
+          aria-selected={signalsSubTab === 'hypotheses'}
+          aria-controls="kyc-signals-subpanel-hypotheses"
+          className={`${styles.signalsSegBtn} ${signalsSubTab === 'hypotheses' ? styles.signalsSegBtnActive : ''}`}
+          onClick={() => setSignalsSubTab('hypotheses')}
         >
-          {loadingNews ? 'Buscando…' : 'Buscar noticias'}
-        </button>
-        <button
-          type="button"
-          className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-          onClick={() => void inferHypotheses()}
-          disabled={inferBusy || !signals.length}
-          title="IA a partir de las señales listadas (no contrastado)"
-        >
-          {inferBusy ? 'Generando…' : 'Regenerar hipótesis desde señales'}
+          <span className={styles.signalsSegLabel}>Hipótesis IA</span>
+          {hypotheses.length > 0 ? <span className={styles.signalsSegBadge}>{hypotheses.length}</span> : null}
         </button>
       </div>
-      <ul className={styles.sigList}>
-        {sortedSignals.map((s) => (
-          <li key={s.id} className={styles.sigItem}>
-            <div className={styles.hint} style={{ margin: 0, fontSize: '0.65rem' }}>
-              {s.source} · {sentimentLabel(s.sentiment)}
-              {(s.published_at || s.captured_at) ? ` · ${new Date(String(s.published_at || s.captured_at)).toLocaleDateString()}` : ''}
-            </div>
-            <div className={styles.sigTitle}>
-              <DashBold text={String(s.title || s.text?.slice(0, 200) || '—')} />
-            </div>
-            {s.text && s.title && (
-              <div className={styles.hint} style={{ margin: '0.2rem 0 0' }}>
-                <DashBold text={String(s.text)} />
-              </div>
-            )}
-            {s.source_url ? (
-              <a className={styles.linkUrl} href={s.source_url} target="_blank" rel="noreferrer">
-                Enlace
-              </a>
-            ) : null}
-          </li>
-        ))}
-        {!signals.length && <p className={styles.hint}>Aún no hay señales.</p>}
-      </ul>
 
-      <div className={styles.sigHypothesisBlock}>
-        <h3 className={styles.sigHypothesisTitle}>Posibles iniciativas (hipótesis)</h3>
-        <p className={styles.hint} style={{ margin: '0.25rem 0 0.65rem' }}>
-          Conjeturas a partir de noticias y señales; no son proyectos en cuenta hasta que los registres en la pestaña
-          Proyectos o los confirmes en el KYC.
-          {updated_at ? ` Última generación: ${new Date(updated_at).toLocaleString()}.` : ''}
-        </p>
-        {hypotheses.length === 0 ? (
-          <p className={styles.hint}>Pulsa «Regenerar hipótesis desde señales» cuando tengas noticias o señales cargadas.</p>
-        ) : (
-          <ul className={styles.sigHypothesisList}>
-            {hypotheses.map((h) => (
-              <li key={h.id} className={styles.sigHypothesisItem}>
-                <div className={styles.sigHypothesisMeta}>
-                  Confianza (especulación): {confidenceLabel(h.confidence)}
-                </div>
-                <div className={styles.sigTitle}>{h.title}</div>
-                {h.rationale ? (
-                  <p className={styles.sigHypothesisRationale}>{h.rationale}</p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className={styles.signalsPanelSurface}>
+        <div
+          id="kyc-signals-subpanel-news"
+          role="tabpanel"
+          aria-labelledby="kyc-signals-subtab-news"
+          hidden={signalsSubTab !== 'news'}
+          className={`${styles.signalsPanelInner} ${signalsSubTab !== 'news' ? styles.signalsPanelInnerIsHidden : ''}`}
+        >
+          <header className={styles.signalsToolbar}>
+            <div className={styles.signalsToolbarActions}>
+              <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={() => setOpen(true)}>
+                + Añadir señal
+              </button>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
+                onClick={fetchNews}
+                disabled={loadingNews}
+              >
+                {loadingNews ? 'Buscando…' : 'Buscar noticias'}
+              </button>
+            </div>
+            <p className={styles.signalsToolbarMeta}>
+              {signals.length === 0 ? 'Sin entradas' : `${signals.length} ${signals.length === 1 ? 'señal' : 'señales'} · ordenadas por fecha`}
+            </p>
+          </header>
+          <p className={styles.signalsPanelHint}>
+            Son contexto de mercado y prensa, no evidencia contractual; no alimentan por sí solas la lista de proyectos en
+            cuenta.
+          </p>
+          <div className={styles.signalsFeedWrap}>
+            {!signals.length ? (
+              <p className={styles.signalsEmpty}>Aún no hay señales. Usa «Buscar noticias» o añade una manualmente.</p>
+            ) : (
+              <ul className={styles.sigList}>
+                {sortedSignals.map((s) => {
+                  const titleStr = String(s.title ?? '').trim();
+                  const textStr = String(s.text ?? '').trim();
+                  const headline = titleStr || textStr.slice(0, 280) || '—';
+                  const showExpandedText =
+                    Boolean(textStr && titleStr && !normalizedSignalBodyEqualsTitle(titleStr, textStr));
+                  const when = s.published_at || s.captured_at;
+                  const dateLabel = when
+                    ? new Date(String(when)).toLocaleDateString('es', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                    : null;
+
+                  return (
+                    <li key={s.id} className={styles.sigItem}>
+                      <div className={styles.sigItemMeta}>
+                        <span className={styles.sigChipSource}>{formatSignalSource(s.source)}</span>
+                        <span className={`${styles.sigChip} ${sentimentChipClass(styles, s.sentiment)}`}>{sentimentLabel(s.sentiment)}</span>
+                        {dateLabel ? <span className={styles.sigChipDate}>{dateLabel}</span> : null}
+                      </div>
+                      <div className={styles.sigItemTitle}>
+                        <DashBold text={headline} />
+                      </div>
+                      {showExpandedText ? (
+                        <div className={styles.sigItemBody}>
+                          <DashBold text={textStr} />
+                        </div>
+                      ) : null}
+                      {s.source_url ? (
+                        <div className={styles.sigItemFooter}>
+                          <a className={styles.sigItemLink} href={s.source_url} target="_blank" rel="noreferrer">
+                            <span>Abrir fuente original</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M15 3h6v6" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M10 14 21 3" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </a>
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        <div
+          id="kyc-signals-subpanel-hypotheses"
+          role="tabpanel"
+          aria-labelledby="kyc-signals-subtab-hypotheses"
+          hidden={signalsSubTab !== 'hypotheses'}
+          className={`${styles.signalsPanelInner} ${signalsSubTab !== 'hypotheses' ? styles.signalsPanelInnerIsHidden : ''}`}
+        >
+          <header className={styles.signalsToolbar}>
+            <div className={styles.signalsToolbarActions}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
+                onClick={() => void inferHypotheses()}
+                disabled={inferBusy || !signals.length}
+                title="IA a partir de las señales listadas en «Noticias y señales» (no contrastado)"
+              >
+                {inferBusy ? 'Generando…' : 'Regenerar hipótesis'}
+              </button>
+            </div>
+            <p className={styles.signalsToolbarMeta}>
+              {hypothesesUpdatedLabel && updated_at ? (
+                <>
+                  Última generación IA:{' '}
+                  <time dateTime={updated_at}>{hypothesesUpdatedLabel}</time>
+                </>
+              ) : (
+                'Aún sin ejecución de IA en esta cuenta'
+              )}
+            </p>
+          </header>
+          <p className={styles.signalsPanelHint}>
+            Conjeturas a partir del corpus de noticias y señales; no son proyectos en cuenta hasta registrarlos o
+            confirmarlos en el KYC.
+          </p>
+          <div className={`${styles.sigHypothesisBlock} ${styles.sigHypothesisBlockEmbedded}`}>
+          <div className={styles.sigHypothesisBlockHead}>
+            <div>
+              <h3 className={styles.sigHypothesisTitle}>Posibles iniciativas</h3>
+              <p className={styles.sigHypothesisLead}>
+                Lecturas posibles sobre lo que podría estar pasando en la cuenta; conviene contrastarlas en negocio.
+              </p>
+            </div>
+            {hypotheses.length > 0 ? (
+              <span className={styles.sigHypothesisCountBadge}>{hypotheses.length} hipótesis</span>
+            ) : null}
+          </div>
+          {hypotheses.length === 0 ? (
+            <p className={styles.signalsEmptySoft}>
+              Cuando tengas noticias en el otro apartado, pulsa «Regenerar hipótesis».
+            </p>
+          ) : (
+            <ul className={styles.sigHypothesisList} aria-label="Lista de hipótesis">
+              {hypotheses.map((h, idx) => (
+                <li
+                  key={h.id}
+                  className={styles.sigHypothesisItem}
+                  data-confidence={h.confidence || 'low'}
+                >
+                  <div className={styles.sigHypothesisItemTop}>
+                    <span className={styles.sigHypothesisIndex} aria-hidden="true">
+                      {idx + 1}
+                    </span>
+                    <span
+                      className={`${styles.hypChip} ${hypothesisConfidenceChipClass(styles, h.confidence)}`}
+                      title="Nivel de confianza atribuido por el modelo (especulación)"
+                    >
+                      Confianza: {confidenceLabel(h.confidence)}
+                    </span>
+                  </div>
+                  <h4 className={styles.sigHypothesisItemTitle}>{h.title}</h4>
+                  {h.rationale ? (
+                    <div className={styles.sigHypothesisRationaleWrap}>
+                      <span className={styles.sigHypothesisRationaleLabel}>Por qué lo sugiere</span>
+                      <p className={styles.sigHypothesisRationale}>{h.rationale}</p>
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          </div>
+        </div>
       </div>
 
       {open && (

@@ -171,14 +171,21 @@ export function KycPorResolverPanel({
   };
 
   return (
-    <div>
+    <div className={styles.porResolverRoot}>
       <header className={styles.porResolverHead}>
-        <div>
-          <h2 className={styles.porResolverTitle}>Preguntas por resolver</h2>
+        <div className={styles.porResolverHeadText}>
+          <div className={styles.porResolverTitleRow}>
+            <h2 className={styles.porResolverTitle}>Preguntas por resolver</h2>
+            {questions.length > 0 ? (
+              <span className={styles.porResolverCountPill}>
+                {questions.length} abierta{questions.length === 1 ? '' : 's'}
+              </span>
+            ) : null}
+          </div>
           <p className={styles.porResolverSub}>
             {questions.length === 0
               ? 'Nada pendiente en esta lista. Puedes completar huecos del perfil o usar la entrevista en el chat.'
-              : `${questions.length} pendiente${questions.length === 1 ? '' : 's'}. Responde aquí o en la entrevista guiada; el perfil JSON se puede actualizar al marcar resuelta.`}
+              : 'Responde aquí o en la entrevista guiada. Al marcar «Resuelta» puedes volcar la respuesta al perfil JSON según el ámbito.'}
           </p>
         </div>
         <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={() => setAdd(true)}>
@@ -221,43 +228,57 @@ export function KycPorResolverPanel({
       )}
 
       {Object.keys(byTopic).length === 0 ? (
-        <p className={styles.hint}>Sin preguntas pendientes en el tablero.</p>
+        <p className={styles.porResolverEmpty}>Sin preguntas pendientes en el tablero.</p>
       ) : (
         Object.entries(byTopic).map(([topic, qs]) => (
-          <div key={topic} className={styles.oqGroup}>
-            <p className={styles.porResolverTopic}>{esc(topicLabel(topic))}</p>
-            {qs.map((q) => (
-              <div key={q.id} className={styles.oqItem}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className={styles.oqQ}>{esc(q.question)}</div>
-                  <div className={styles.hint} style={{ margin: 0 }}>
-                    P{q.priority} · {q.source || 'entrevista'}
-                    {q.created_at ? ` · ${new Date(q.created_at).toLocaleDateString()}` : ''}
-                  </div>
-                </div>
-                <div className={styles.row} style={{ flexShrink: 0 }}>
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.btnSm}`}
-                    style={{ color: '#047857', borderColor: '#6ee7b7' }}
-                    onClick={() => openResolve(q)}
-                  >
-                    Resuelta
-                  </button>
-                  <button type="button" className={`${styles.btn} ${styles.btnSm}`} onClick={() => skipQ(q)}>
-                    Omitir
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.btnSm} ${styles.danger}`}
-                    onClick={() => setDelId(q.id)}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <section key={topic} className={styles.oqGroup} aria-label={esc(topicLabel(topic))}>
+            <h3 className={styles.porResolverTopic}>{esc(topicLabel(topic))}</h3>
+            <ul className={styles.oqList}>
+              {qs.map((q) => {
+                const pr = Math.min(3, Math.max(1, Number(q.priority) || 2));
+                const dateStr = q.created_at
+                  ? new Date(q.created_at).toLocaleDateString('es', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : null;
+                const prioChipClass =
+                  pr === 1 ? styles.oqPrio1 : pr === 2 ? styles.oqPrio2 : styles.oqPrio3;
+                return (
+                  <li key={q.id} className={styles.oqItem} data-priority={String(pr)}>
+                    <div className={styles.oqItemMain}>
+                      <p className={styles.oqQ}>{esc(q.question)}</p>
+                      <div className={styles.oqMeta}>
+                        <span className={`${styles.oqMetaChip} ${prioChipClass}`}>P{pr}</span>
+                        <span className={styles.oqMetaChip}>{esc(q.source || 'entrevista')}</span>
+                        {dateStr ? (
+                          <span className={`${styles.oqMetaChip} ${styles.oqMetaChipMuted}`}>{dateStr}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className={styles.oqActions}>
+                      <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.oqBtnResolve}`} onClick={() => openResolve(q)}>
+                        Resuelta
+                      </button>
+                      <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.oqBtnSkip}`} onClick={() => skipQ(q)}>
+                        Omitir
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnSm} ${styles.oqBtnRemove}`}
+                        aria-label="Eliminar pregunta"
+                        title="Eliminar"
+                        onClick={() => setDelId(q.id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         ))
       )}
 
