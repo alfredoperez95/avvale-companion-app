@@ -20,6 +20,10 @@ import {
 import { proposedOpenQuestionsFromPendienteSection } from './kyc-pendiente-section.util';
 import { mergeAvvaleRootPatch } from './kyc-avvale-merge.util';
 import {
+  AVVALE_PRESENCE_SLUGS_ORDER,
+  AVVALE_SOLUTION_LINE_CLASSIFICATION_BULLETS,
+} from './kyc-avvale-synthesis-guidance';
+import {
   companyToApi,
   chatMessageToApi,
   chatSessionToApi,
@@ -70,7 +74,7 @@ function parseExecutiveSynthesisResponse(raw: string): {
   return { summary: strip(t), revenue: null, employees: null };
 }
 
-const AVVALE_SYNTH_SLUGS = new Set(['grow', 'run', 'wise', 'yubiq', 'saiborg', 'axazure']);
+const AVVALE_SYNTH_SLUGS = new Set<string>([...AVVALE_PRESENCE_SLUGS_ORDER]);
 
 function normAvvaleProjectStatus(raw: unknown): 'active' | 'past' | 'negotiating' | 'analyzing' {
   const s = String(raw ?? '')
@@ -135,12 +139,18 @@ function extractAvvaleProjectsFromProfile(
 
 function normalizeSolutionPresenceKnown(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
-  const pres: string[] = [];
+  const seen = new Set<string>();
   for (const x of raw) {
     const s = String(x).trim().toLowerCase();
-    if (AVVALE_SYNTH_SLUGS.has(s) && !pres.includes(s)) pres.push(s);
+    if (AVVALE_SYNTH_SLUGS.has(s)) seen.add(s);
   }
-  return pres;
+  return AVVALE_PRESENCE_SLUGS_ORDER.filter((s) => seen.has(s));
+}
+
+/** Unión ordenada: conserva líneas ya marcadas en ficha y añade las inferidas por IA en «Actualizar». */
+function mergeSolutionPresenceUnion(existingList: string[], aiList: string[]): string[] {
+  const seen = new Set([...existingList, ...aiList]);
+  return AVVALE_PRESENCE_SLUGS_ORDER.filter((s) => seen.has(s));
 }
 
 function extractAvvaleSolutionNotes(obj: unknown): Record<string, string> {
@@ -198,8 +208,10 @@ function extractProjectsArrayFromAvvaleRoot(existingRoot: unknown): unknown[] {
 /**
  * Combina la síntesis IA con el `avvale` ya guardado: la lista **projects** del perfil **no** se amplía
  * con filas inferidas por IA (p. ej. desde noticias RSS). Solo se conservan los proyectos ya guardados.
- * Presencia/notas: misma regla que antes. `footprint`: texto de la IA si no va vacío; si la IA devuelve
- * cadena vacía, se conserva el footprint anterior.
+ * Presencia: **unión** de la lista ya guardada y la inferida por IA (orden canónico grow, run, wise, yubiq,
+ * saiborg, axazure), para que «Actualizar» pueda **añadir** líneas detectadas sin borrar las marcadas a mano.
+ * Notas por línea: si ya había texto guardado para un slug, se conserva; si no, se usa el de la IA.
+ * `footprint`: texto de la IA si no va vacío; si la IA devuelve cadena vacía, se conserva el footprint anterior.
  */
 function mergeAvvaleSynthesisWithExisting(
   existingRoot: unknown,
@@ -220,15 +232,14 @@ function mergeAvvaleSynthesisWithExisting(
   });
   const mergedProjects: AvvaleSynthProject[] = [...storedProjects];
 
-  const hasPresenceKey = Object.prototype.hasOwnProperty.call(existing, 'solution_presence');
-  const mergedPresence = hasPresenceKey
-    ? normalizeSolutionPresenceKnown(existing.solution_presence)
-    : normalizeSolutionPresenceKnown(syn.solution_presence);
+  const existingPresence = normalizeSolutionPresenceKnown(existing.solution_presence);
+  const aiPresence = normalizeSolutionPresenceKnown(syn.solution_presence);
+  const mergedPresence = mergeSolutionPresenceUnion(existingPresence, aiPresence);
 
   const exNotes = extractAvvaleSolutionNotes(existing.solution_notes);
   const aiNotes = extractAvvaleSolutionNotes(syn.solution_notes);
   const mergedNotes: Record<string, string> = {};
-  for (const slug of AVVALE_SYNTH_SLUGS) {
+  for (const slug of AVVALE_PRESENCE_SLUGS_ORDER) {
     const ex = exNotes[slug];
     const ai = aiNotes[slug];
     if (ex && ex.trim()) mergedNotes[slug] = ex.trim().slice(0, 2000);
@@ -336,13 +347,14 @@ function parseAvvaleFullSynthesisResponse(raw: string): Prisma.InputJsonValue | 
         projOut.push({ id, name, status, ...(notes ? { notes } : {}) });
       }
     }
-    const pres: string[] = [];
+    const presSeen = new Set<string>();
     if (Array.isArray(r.solution_presence)) {
       for (const x of r.solution_presence) {
         const s = String(x).trim().toLowerCase();
-        if (AVVALE_SYNTH_SLUGS.has(s) && !pres.includes(s)) pres.push(s);
+        if (AVVALE_SYNTH_SLUGS.has(s)) presSeen.add(s);
       }
     }
+    const pres = AVVALE_PRESENCE_SLUGS_ORDER.filter((s) => presSeen.has(s));
     const notesOut: Record<string, string> = {};
     if (r.solution_notes && typeof r.solution_notes === 'object' && !Array.isArray(r.solution_notes)) {
       for (const [k, v] of Object.entries(r.solution_notes as Record<string, unknown>)) {
@@ -836,7 +848,7 @@ export class KycService {
    * Enriquecimiento "safe": sin scraping propio.
    * - Actualiza señales (Google News RSS)
    * - Re-genera resumen ejecutivo vía IA (si el usuario tiene clave configurada)
-   * - Reprocesa con IA el bloque JSON `avvale` (footprint; sin RSS en contexto) y lo **fusiona** con el perfil (lista `projects` solo desde ficha; presencia/notas manuales prevalecen)
+   * - Reprocesa con IA el bloque JSON `avvale` (footprint, **solution_presence** con criterios Avvale/RFQ; sin RSS en contexto) y lo **fusiona** con el perfil (lista `projects` solo desde ficha; **presencia** = unión guardada ∪ inferida; **notas** por slug: texto guardado prevalece)
    *
    * No falla toda la operación si el resumen no se puede generar (p. ej. falta API key).
    */
@@ -1418,9 +1430,10 @@ Reglas:
   }
 
   /**
-   * Reprocesa con IA el bloque `avvale` (footprint principalmente; sin listado RSS en el contexto).
+   * Reprocesa con IA el bloque `avvale` (footprint, presencia por línea y notas; sin listado RSS en el contexto).
    * El resultado se **fusiona** con el JSON ya guardado: la lista `projects` **solo** conserva lo ya
-   * guardado en ficha; presencia y notas manuales prevalecen según la fusión.
+   * guardado en ficha; **solution_presence** = unión ordenada de la presencia guardada y la inferida por IA
+   * (criterios compartidos con `avvaleAreas` en RFQ); **solution_notes**: conserva texto ya guardado por slug.
    */
   async synthesizeAvvaleFromContext(companyId: bigint, userId: string): Promise<{ ok: boolean; updated: boolean }> {
     const d = await this.getFullProfile(companyId);
@@ -1450,7 +1463,11 @@ ${currentJson}
 ## Contexto (ficha, perfil KYC, resumen, organigrama; **sin** extracto de noticias/RSS)
 ${ctx}
 
-Instrucciones: **reprocesa** el bloque \`avvale\` desde este contexto. Los **projects** oficiales «en cuenta» **no** deben inferirse solo desde noticias (no están en este contexto). Devuelve \`projects\` como \`[]\` o repetición coherente de los ids del JSON de referencia; el servidor **conserva** la lista de proyectos ya guardada en ficha. **footprint** y presencia/notas siguen las reglas del sistema. **axazure** = Microsoft / Dynamics 365 solo si el contexto lo respalda.`;
+Instrucciones: **reprocesa** el bloque \`avvale\` desde este contexto. Los **projects** oficiales «en cuenta» **no** deben inferirse solo desde noticias (no están en este contexto). Devuelve \`projects\` como \`[]\` o repetición coherente de los ids del JSON de referencia; el servidor **conserva** la lista de proyectos ya guardada en ficha.
+
+Para **solution_presence** y **solution_notes**, aplica la **guía de clasificación por línea** del mensaje del sistema (mismos criterios que \`avvaleAreas\` en análisis RFQ). Incluye en \`solution_presence\` solo slugs con evidencia razonable en este contexto (tech stack, resumen, footprint, organigrama, nombres/notas de proyectos en cuenta, etc.). \`solution_notes\`: solo notas breves donde aportes matiz útil; el servidor conservará notas ya guardadas si existen.
+
+**footprint**: reescribe si el contexto lo mejora; si no tienes base, cadena vacía (el servidor puede conservar el anterior).`;
 
     const system = `Eres un analista KYC. Devuelve **solo un objeto JSON válido** (sin markdown, sin texto extra, sin bloques de código).
 
@@ -1460,9 +1477,15 @@ Debe incluir **siempre estas cuatro claves** (sin null en la raíz):
 - "solution_presence": array de strings en minúsculas: grow, run, wise, yubiq, saiborg, axazure (puede ser []).
 - "solution_notes": objeto con claves entre esos slugs y valores string (puede ser {} si no hay notas).
 
-Reglas:
-- El sistema **fusionará** tu JSON con el perfil: **projects** = solo lo ya guardado en ficha (no se añaden filas desde esta vía). Presencia/notas guardadas prevalecen donde aplique. Prioriza hechos explícitos del contexto; arrays u objetos vacíos si no hay base.
-- Las **hipótesis** a partir de noticias no van en \`projects\`; existen otros flujos en la app para señales.`;
+Guía de clasificación para **solution_presence** (elige según el tema dominante; solo líneas con evidencia en el contexto del usuario):
+${AVVALE_SOLUTION_LINE_CLASSIFICATION_BULLETS}
+
+Reglas de fusión con el perfil guardado:
+- **projects**: solo filas ya en ficha; tu array no añade proyectos nuevos.
+- **solution_presence**: el servidor hará la **unión** de lo ya guardado y lo que infieras tú (orden canónico). Puedes proponer líneas nuevas que el contexto respalde aunque antes no estuvieran marcadas.
+- **solution_notes**: si en ficha ya hay texto para un slug, el servidor lo conserva; rellena solo huecos o slugs nuevos donde aportes valor.
+- Las **hipótesis** desde noticias RSS no forman parte de este contexto: no las uses para inventar \`projects\`.
+- Prioriza hechos explícitos del contexto; arrays u objetos vacíos si no hay base.`;
 
     const model = getKycSummaryModel(this.config);
     let raw: string;

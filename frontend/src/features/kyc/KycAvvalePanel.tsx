@@ -14,7 +14,7 @@ import {
 } from './kycAvvaleShared';
 import styles from './kyc-workspace.module.css';
 
-export type { KycAvvaleProject, KycAvvaleProjectStatus, KycSolutionSlug } from './kycAvvaleShared';
+export type { KycAvvaleProject, KycAvvaleProjectStatus, KycSolutionLineMeta, KycSolutionSlug } from './kycAvvaleShared';
 export { KYC_SOLUTION_LINES, KYC_SOLUTION_SLUGS } from './kycAvvaleShared';
 
 type Props = {
@@ -177,20 +177,23 @@ export function KycAvvalePanel({ companyId, profile, onRefetch, onBanner }: Prop
             <div className={styles.objectSectionTitleGroup}>
               <h3 className={styles.objectSectionTitle}>Presencia por línea</h3>
               <p className={styles.objectSectionSubtitle}>
-                Activa las líneas con presencia y añade una nota corta si lo necesitas.
+                Misma taxonomía que en la síntesis RFQ (<code className={styles.inlineCode}>avvaleAreas</code>
+                : RUN, GROW, WISE, YUBIQ, SAIBORG, AXAZURE). Los criterios de cada línea coinciden con el prompt de
+                síntesis; aquí solo indicas si hay presencia en cuenta (sin clasificación automática). Pasa el ratón
+                sobre un chip para ver el criterio completo. Activa líneas y añade nota corta si aplica.
               </p>
             </div>
           </div>
           <div className={styles.objectSectionBody}>
             <div className={styles.avvaleSolutionChips} role="list" aria-label="Líneas de solución">
-              {KYC_SOLUTION_LINES.map(({ slug, label, description }) => {
+              {KYC_SOLUTION_LINES.map(({ slug, label, description, guidance }) => {
                 const on = presence.includes(slug);
                 if (editing) {
                   return (
                     <button
                       key={slug}
                       type="button"
-                      title={description}
+                      title={guidance}
                       className={`${styles.avvaleSolutionChip} ${on ? styles.avvaleSolutionChipOn : ''}`}
                       onClick={() => togglePresence(slug)}
                       aria-pressed={on}
@@ -203,7 +206,7 @@ export function KycAvvalePanel({ companyId, profile, onRefetch, onBanner }: Prop
                   <span
                     key={slug}
                     role="listitem"
-                    title={description}
+                    title={guidance}
                     className={`${styles.avvaleSolutionChipReadonly} ${on ? styles.avvaleSolutionChipReadonlyOn : ''}`}
                   >
                     {label}

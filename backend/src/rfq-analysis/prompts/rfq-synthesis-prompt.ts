@@ -1,3 +1,4 @@
+import { AVVALE_SOLUTION_LINE_CLASSIFICATION_BULLETS } from '../../kyc/kyc-avvale-synthesis-guidance';
 import { RFQ_SAP_ARCHITECT_CONTEXT } from './rfq-sap-architect-context';
 
 /**
@@ -38,7 +39,7 @@ Esquema JSON obligatorio (todas las claves en camelCase):
   "opportunityType": string (clasificación corta, p.ej. "RFP SAP S/4", "Consultoría integración", "Assessment cloud"),
   "detectedTechnologies": array de objetos { "name": string, "confidence": "alta"|"media"|"baja", "notes": string opcional },
   "avvaleAreas": array de objetos {
-    "unit": "RUN" | "GROW" | "WISE" | "YUBIQ" | "SAIBORG",
+    "unit": "RUN" | "GROW" | "WISE" | "YUBIQ" | "SAIBORG" | "AXAZURE",
     "rationale": string (1-4 frases: por qué esta unidad de negocio Avvale encaja con la oportunidad),
     "confidence": "alta"|"media"|"baja"
   },
@@ -51,14 +52,11 @@ Esquema JSON obligatorio (todas las claves en camelCase):
 
 Sobre "avvaleAreas" (obligatorio seguir la estructura de objetos):
 - Incluye solo las unidades que sean razonablemente relevantes según el RFQ (pueden ser varias o ninguna; si ninguna encaja, usa array vacío []).
-- Cada "unit" debe ser exactamente uno de: RUN, GROW, WISE, YUBIQ, SAIBORG (mayúsculas).
+- Cada "unit" debe ser exactamente uno de: RUN, GROW, WISE, YUBIQ, SAIBORG, AXAZURE (mayúsculas).
 - Guía de clasificación (elige según el tema dominante de la oportunidad; puedes repetir criterios en rationale):
-  · RUN: infraestructura, comunicaciones, operación, monitorización, upgrades, instalaciones, Basis, administración cloud/on-prem, soporte técnico, AMS funcional, operación SAP o no SAP.
-  · GROW: implementación funcional, procesos, consultoría funcional, T&M funcional, desarrollo ABAP, assessments funcionales.
-  · SAIBORG: integración (Mulesoft, SAP Integration Suite, Boomi), middleware, datos (Power BI, Tableau, Datasphere, SAC), federación del dato, IA, Fiori, BTP, CAP, OpenPlatform.
-  · WISE: EPM, ESG, presupuestación, consolidación financiera, CFO, planning.
-  · YUBIQ: productos Avvale, B+, compliance, menciones explícitas a YUBIQ o propuesta alineada con ese segmento.
-- "rationale" debe nombrar explícitamente la unidad (p. ej. "YUBIQ:") y conectar la oportunidad con su alcance típico.
+${AVVALE_SOLUTION_LINE_CLASSIFICATION_BULLETS}
+
+- "rationale" debe nombrar explícitamente la unidad (p. ej. "YUBIQ:" o "AXAZURE:") y conectar la oportunidad con su alcance típico.
 
 Si falta información, dilo en confidenceNotes y risksAndUnknowns sin inventar datos concretos de cliente.`;
 }

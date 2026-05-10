@@ -1392,6 +1392,15 @@
   max-width: 42rem;
 }
 
+.inlineCode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125em;
+  padding: 0.08em 0.35em;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--fiori-text, #32363a) 6%, transparent);
+  color: var(--fiori-text, #32363a);
+}
+
 .objectSectionActions {
   display: flex;
   flex-wrap: wrap;

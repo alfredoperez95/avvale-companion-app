@@ -883,7 +883,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                       className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}${refreshIntelBusy ? ` ${styles.btnIntelRefreshBusy}` : ''}`}
                       disabled={refreshIntelBusy}
                       aria-busy={refreshIntelBusy}
-                      title="Actualiza noticias, re-genera el resumen ejecutivo con IA y reprocesa el bloque «Presencia de Avvale en la cuenta»: el footprint y proyectos nuevos detectados por IA se fusionan con la ficha; proyectos, presencia y notas ya guardados manualmente no se sobrescriben (requiere clave de API)."
+                      title="Actualiza noticias, re-genera el resumen ejecutivo con IA y reprocesa «Presencia de Avvale en la cuenta»: footprint con IA; presencia por línea se amplía con la inferencia IA (mismos criterios que avvaleAreas en RFQ) unida a lo ya guardado; notas por línea ya escritas no se sustituyen. Proyectos en cuenta solo desde ficha. Requiere clave de API."
                       onClick={async () => {
                         if (!selId) return;
                         setBanner(null);
@@ -903,7 +903,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                           let avvaleLine = 'Presencia Avvale: sin cambios';
                           if (av?.updated)
                             avvaleLine =
-                              'Presencia Avvale: fusionado y guardado (footprint / novedades IA; proyectos y presencia manuales conservados)';
+                              'Presencia Avvale: fusionado y guardado (footprint IA; presencia por línea = unión de lo guardado + inferencia IA con criterios Avvale; notas manuales por línea conservadas; proyectos solo desde ficha)';
                           else if (av?.ok === true)
                             avvaleLine = 'Presencia Avvale: reprocesado; sin cambios respecto a la ficha guardada';
                           else if (av != null && av.ok === false)
