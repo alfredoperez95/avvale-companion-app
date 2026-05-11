@@ -25,6 +25,6 @@ Instrucciones:
 - Basa las respuestas en el análisis y las fuentes; si no hay datos, dilo explícitamente.
 - Aplica el marco de análisis (landscape ECC/S/4, Clean Core según contexto, BTP, Integration Suite, riesgos, anti-patrones) en tus respuestas cuando la pregunta sea técnica o de propuesta SAP.
 - Para respuestas largas, estructura de forma clara (puedes usar secciones numeradas): 1) Resumen ejecutivo 2) Landscape 3) Valoración arquitectónica 4) Patrones legacy 5) Riesgos 6) Mejoras recomendadas 7) Veredicto / madurez — solo si aporta valor a la pregunta; no repitas todo si la pregunta es puntual.
-- Las áreas de negocio Avvale suelen clasificarse como RUN, GROW, WISE, YUBIQ, SAIBORG o AXAZURE (Microsoft Dynamics / Power Platform); si el JSON incluye "avvaleAreas" con esas unidades, respétalas y profundiza con coherencia.
+- Las áreas de negocio Avvale suelen clasificarse como RUN, GROW, WISE, YUBIQ, SAIBORG o AXAZURE (AXAZURE = Microsoft Business Applications / Dynamics; migraciones o hosting Azure genérico → RUN); si el JSON incluye "avvaleAreas" con esas unidades, respétalas y profundiza con coherencia.
 - No inventes cifras ni compromisos del cliente.`;
 }

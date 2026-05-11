@@ -15,7 +15,19 @@ import { KycProfileDashboard, type KycProfileFocus } from './KycProfileDashboard
 import { KycSignalsPanel } from './KycSignalsPanel';
 import { KycStackView } from './KycStackView';
 import { USER_INDUSTRY_OPTIONS, industryLabel, type UserIndustryValue } from '@/lib/user-industry';
-import { faviconUrlFromWebsite } from './kycFaviconUrl';
+import { faviconApexFallbackFromWebsite, faviconUrlFromWebsite } from './kycFaviconUrl';
+import {
+  KycIconChatSm,
+  KycIconListSm,
+  KycIconSearchSm,
+  KycPlusIcon,
+  KycStrategicStarIcon,
+  KycToolbarInterviewIcon,
+  KycToolbarMoreIcon,
+  KycToolbarPdfIcon,
+  KycToolbarRefreshIcon,
+  KycToolbarTrashIcon,
+} from './KycMiniIcons';
 import styles from './kyc-workspace.module.css';
 
 type CompanyRow = {
@@ -124,14 +136,28 @@ function parseKycCompanyIdFromPathname(pathname: string | null): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Misma anchura máxima que el drawer de empresas: pestañas con scroll horizontal en móvil. */
-function scrollKycTabIntoViewMobile(tabId: KycTabId) {
-  if (typeof window === 'undefined') return;
+/**
+ * En móvil, desplaza solo la franja horizontal de pestañas para ver la activa.
+ * No usa `scrollIntoView` sobre el panel (evita saltos de viewport tipo ancla).
+ */
+function scrollKycTabButtonIntoTabsStripMobile(strip: HTMLDivElement | null, tabId: KycTabId) {
+  if (typeof window === 'undefined' || !strip) return;
   if (!window.matchMedia('(max-width: 900px)').matches) return;
   requestAnimationFrame(() => {
-    const tabEl = document.getElementById(`kyc-tab-${tabId}`);
-    tabEl?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    document.getElementById('kyc-tab-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const btn = document.getElementById(`kyc-tab-${tabId}`);
+    if (!btn) return;
+    const stripRect = strip.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    const pad = 8;
+    let delta = 0;
+    if (btnRect.left < stripRect.left + pad) {
+      delta = btnRect.left - stripRect.left - pad;
+    } else if (btnRect.right > stripRect.right - pad) {
+      delta = btnRect.right - stripRect.right + pad;
+    } else {
+      return;
+    }
+    strip.scrollTo({ left: strip.scrollLeft + delta, behavior: 'smooth' });
   });
 }
 
@@ -152,11 +178,15 @@ function companyInitialsForList(name: string) {
 /** Favicon de la web de la cuenta (misma fuente que el hero), con iniciales si falla. */
 function KycCompanyListAvatar({ website, name }: { website: string | null; name: string }) {
   const [faviconFailed, setFaviconFailed] = useState(false);
+  const [faviconUseApex, setFaviconUseApex] = useState(false);
   const faviconSrc = useMemo(() => faviconUrlFromWebsite(website), [website]);
+  const faviconApexSrc = useMemo(() => faviconApexFallbackFromWebsite(website), [website]);
   useEffect(() => {
     setFaviconFailed(false);
-  }, [faviconSrc]);
-  const showImg = Boolean(faviconSrc && !faviconFailed);
+    setFaviconUseApex(false);
+  }, [faviconSrc, faviconApexSrc]);
+  const imgSrc = faviconUseApex && faviconApexSrc ? faviconApexSrc : faviconSrc;
+  const showImg = Boolean(imgSrc && !faviconFailed);
   return (
     <div
       className={`${styles.listRowAvatar} ${showImg ? styles.listRowAvatarWithIcon : ''}`}
@@ -165,13 +195,19 @@ function KycCompanyListAvatar({ website, name }: { website: string | null; name:
     >
       {showImg ? (
         <img
-          src={faviconSrc!}
+          src={imgSrc!}
           alt=""
           className={styles.listRowAvatarImg}
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
-          onError={() => setFaviconFailed(true)}
+          onError={() => {
+            setFaviconUseApex((prev) => {
+              if (!prev && faviconApexSrc) return true;
+              setFaviconFailed(true);
+              return prev;
+            });
+          }}
         />
       ) : (
         companyInitialsForList(name)
@@ -213,6 +249,8 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
 
   const [modal, setModal] = useState<'add' | null>(null);
   const [confirm, setConfirm] = useState<'delOne' | 'delBulk' | null>(null);
+  const [detailDangerMenuOpen, setDetailDangerMenuOpen] = useState(false);
+  const detailDangerWrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (searchParams.get('nuevaEmpresa') === '1') {
@@ -248,10 +286,15 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   const [refreshIntelBusy, setRefreshIntelBusy] = useState(false);
   const msgAreaRef = useRef<HTMLDivElement | null>(null);
   const listSearchRef = useRef<HTMLInputElement | null>(null);
+  const kycTabsStripRef = useRef<HTMLDivElement | null>(null);
   const detailRef = useRef<Full | null>(null);
   detailRef.current = detail;
   const selIdRef = useRef<number | null>(null);
   selIdRef.current = selId;
+  /** Evita aplicar `detail` o `detailLoading` de una petición anterior si el usuario cambia de empresa rápido. */
+  const kycSelectGenerationRef = useRef(0);
+  /** Mientras la URL aún no refleja la empresa elegida, el efecto URL→select no debe llamar `selectCompany(idViejo)`. */
+  const kycPendingCompanyFromListRef = useRef<number | null>(null);
 
   const consumeProfileFocus = useCallback(() => setProfileFocus(null), []);
 
@@ -301,6 +344,8 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   }, [loadCompanies]);
 
   useEffect(() => {
+    /** Mientras carga la ficha, `searchParams` puede seguir siendo el de la URL anterior y pisaría `tab` puesto por `selectCompany(..., { resetTab: true })`. */
+    if (detailLoading) return;
     const t = searchParams.get('tab');
     if (isKycTabId(t)) {
       setTab(t);
@@ -310,11 +355,11 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
         /* empty */
       }
     }
-  }, [searchParams]);
+  }, [searchParams, detailLoading]);
 
   useEffect(() => {
     if (detail == null || detailLoading) return;
-    scrollKycTabIntoViewMobile(tab);
+    scrollKycTabButtonIntoTabsStripMobile(kycTabsStripRef.current, tab);
   }, [tab, detail, detailLoading]);
 
   const commitTab = useCallback(
@@ -325,6 +370,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
       } catch {
         /* empty */
       }
+      scrollKycTabButtonIntoTabsStripMobile(kycTabsStripRef.current, next);
       if (!pathname.startsWith('/launcher/kyc')) return;
       router.replace(buildKycUrl(pathname, searchParams, { tab: next }), { scroll: false });
     },
@@ -382,6 +428,27 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   }, [mobileListOpen]);
 
   useEffect(() => {
+    setDetailDangerMenuOpen(false);
+  }, [selId]);
+
+  useEffect(() => {
+    if (!detailDangerMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      const el = detailDangerWrapRef.current;
+      if (el && !el.contains(e.target as Node)) setDetailDangerMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDetailDangerMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [detailDangerMenuOpen]);
+
+  useEffect(() => {
     const el = msgAreaRef.current;
     if (!el) return;
     requestAnimationFrame(() => {
@@ -402,8 +469,26 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   );
 
   const selectCompany = useCallback(
-    async (id: number) => {
+    async (id: number, opts?: { resetTab?: boolean }) => {
+      const generation = ++kycSelectGenerationRef.current;
+      if (opts?.resetTab) {
+        kycPendingCompanyFromListRef.current = id;
+      }
       setMobileListOpen(false);
+      const tabFromQuery = searchParams.get('tab');
+      const tabForUrl: KycTabId = opts?.resetTab
+        ? 'dashboard'
+        : isKycTabId(tabFromQuery)
+          ? tabFromQuery
+          : tab;
+      if (opts?.resetTab) {
+        setTab('dashboard');
+        try {
+          window.localStorage.setItem('kyc_tab', 'dashboard');
+        } catch {
+          /* empty */
+        }
+      }
       setSelId((prev) => {
         if (prev !== id) {
           setSessionId(null);
@@ -420,11 +505,12 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
       const slug = slugify(String(n));
       const path = `/launcher/kyc/${id}${slug ? '-' + slug : ''}`;
       router.replace(
-        buildKycUrl(path, searchParams, { nuevaEmpresa: null, tab }),
+        buildKycUrl(path, searchParams, { nuevaEmpresa: null, tab: tabForUrl }),
         { scroll: false },
       );
       try {
         const d = await kycJson<Full>(`/api/kyc/companies/${id}`);
+        if (generation !== kycSelectGenerationRef.current) return;
         for (const m of d.org?.members ?? []) {
           m.id = m.id != null ? Number(m.id) : m.id;
           m.reports_to_id = m.reports_to_id != null ? Number(m.reports_to_id) : null;
@@ -432,12 +518,15 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
         setDetail(d);
         if (chatOpen || searchParams.get('chat') === '1') void loadSessions(id);
       } catch {
+        if (generation !== kycSelectGenerationRef.current) return;
         setDetail(null);
         setSelId(null);
         setBanner('No se encontró la empresa o no tienes acceso.');
         router.replace('/launcher/kyc', { scroll: false });
       } finally {
-        setDetailLoading(false);
+        if (generation === kycSelectGenerationRef.current) {
+          setDetailLoading(false);
+        }
       }
     },
     [chatOpen, companies, loadSessions, router, searchParams, tab],
@@ -449,10 +538,22 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
         ? parseKycCompanyIdFromPathname(window.location.pathname)
         : null;
     const resolved = idLive ?? routeCompanyId;
+    const pending = kycPendingCompanyFromListRef.current;
+    const sel = selIdRef.current;
+    const skipStaleUrl =
+      pending != null && sel === pending && resolved != null && resolved !== pending;
     if (resolved == null) return;
-    if (selIdRef.current === resolved) return;
+    if (sel === resolved) return;
+    if (skipStaleUrl) return;
     void selectCompany(resolved);
   }, [routeCompanyId, pathname, selectCompany]);
+
+  useEffect(() => {
+    const rid = parseKycCompanyIdFromPathname(pathname);
+    if (rid != null && kycPendingCompanyFromListRef.current === rid) {
+      kycPendingCompanyFromListRef.current = null;
+    }
+  }, [pathname]);
 
   useEffect(() => {
     const idLive =
@@ -658,7 +759,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     setAddStrategic(false);
     await loadCompanies();
     setSelId(r.id);
-    void selectCompany(r.id);
+    void selectCompany(r.id, { resetTab: true });
   };
 
   const onBulkDelete = () => {
@@ -691,43 +792,84 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     <div className={className ? `${styles.root} ${className}` : styles.root}>
       {banner && <div className={styles.banner}>{banner}</div>}
       <div className={styles.command}>
-        <h1>KYC</h1>
-        <div className={styles.row}>
+        <div className={styles.commandHead}>
+          <div className={styles.commandBrand}>
+            <h1 className={styles.commandTitle}>KYC</h1>
+          </div>
           <button
             type="button"
-            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm} ${styles.kycMobileOpenListBtn}`}
+            className={`${styles.commandDrawerBtn} ${styles.kycMobileOpenListBtn}`}
             aria-expanded={mobileListOpen}
             aria-controls="kyc-company-list"
+            title="Lista de empresas"
+            aria-label="Abrir o cerrar la lista de empresas"
             onClick={() => setMobileListOpen((o) => !o)}
           >
-            Empresas
+            <KycIconListSm size={16} />
           </button>
-          <input
-            ref={listSearchRef}
-            className={styles.search}
-            placeholder="Buscar empresa…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Buscar"
-          />
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-            onClick={() => setStrategicOnly((s) => !s)}
-          >
-            {strategicOnly ? 'Solo ★ estratégicas' : 'Todas'}
-          </button>
-          <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={() => setModal('add')}>
-            + Empresa
-          </button>
-          {checked.size > 0 && (
-            <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.danger}`} onClick={onBulkDelete}>
-              Eliminar ({checked.size})
+        </div>
+        <div className={styles.commandBody}>
+          <label className={styles.commandSearchWrap} htmlFor="kyc-command-search">
+            <span className={styles.commandSearchIcon} aria-hidden>
+              <KycIconSearchSm />
+            </span>
+            <input
+              id="kyc-command-search"
+              ref={listSearchRef}
+              className={styles.search}
+              placeholder="Buscar empresa por nombre…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Buscar empresa por nombre"
+              autoComplete="off"
+            />
+          </label>
+          <div className={styles.commandRail} role="toolbar" aria-label="Acciones del listado KYC">
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm} ${styles.commandBarBtn} ${styles.commandRailBtn}${strategicOnly ? ` ${styles.commandBarBtnPressed}` : ''}`}
+              aria-pressed={strategicOnly}
+              aria-label={
+                strategicOnly ? 'Mostrar todas las empresas (quitar filtro estratégicas)' : 'Filtrar solo cuentas estratégicas'
+              }
+              title={strategicOnly ? 'Mostrar todas' : 'Solo cuentas marcadas como estratégicas'}
+              onClick={() => setStrategicOnly((s) => !s)}
+            >
+              <span className={styles.commandBarBtnIcon} aria-hidden>
+                <KycStrategicStarIcon filled={strategicOnly} size={14} />
+              </span>
+              {strategicOnly ? 'Estratégicas' : 'Todas'}
             </button>
-          )}
-          <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={openChat}>
-            Chat KYC
-          </button>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm} ${styles.commandBarBtn} ${styles.commandRailBtn}`}
+              onClick={() => setModal('add')}
+            >
+              <span className={styles.commandBarBtnIcon} aria-hidden>
+                <KycPlusIcon size={14} />
+              </span>
+              Nueva
+            </button>
+            {checked.size > 0 && (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSm} ${styles.danger} ${styles.commandRailBtn}`}
+                onClick={onBulkDelete}
+              >
+                Eliminar ({checked.size})
+              </button>
+            )}
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm} ${styles.commandBarBtn} ${styles.commandRailBtn}`}
+              onClick={openChat}
+            >
+              <span className={styles.commandBarBtnIcon} aria-hidden>
+                <KycIconChatSm />
+              </span>
+              Chat
+            </button>
+          </div>
         </div>
       </div>
       <div className={styles.body}>
@@ -786,7 +928,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                     type="button"
                     className={styles.listRowSelect}
                     aria-current={selId === c.id ? 'page' : undefined}
-                    onClick={() => void selectCompany(c.id)}
+                    onClick={() => void selectCompany(c.id, { resetTab: true })}
                   >
                     <KycCompanyListAvatar website={c.website} name={c.name} />
                     <span className={styles.listRowSelectBody}>
@@ -807,15 +949,17 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                   </button>
                   <button
                     type="button"
-                    className={styles.listRowIntake}
-                    title="Iniciar entrevista guiada"
+                    className={styles.listRowIntakeBtn}
+                    title="Entrevista guiada"
                     aria-label={`Iniciar entrevista guiada con ${c.name}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       void startIntake(c.id);
                     }}
                   >
-                    Entrevista
+                    <span className={styles.listRowIntakeBtnIcon} aria-hidden>
+                      <KycToolbarInterviewIcon size={15} />
+                    </span>
                   </button>
                 </div>
               ))}
@@ -865,86 +1009,163 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
           ) : null}
           {detail && !detailLoading ? (
             <>
-              <div className={styles.card}>
-                <div className={styles.row} style={{ justifyContent: 'space-between' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{escapeHtml(companyName)}</h2>
-                  <div className={styles.row}>
+              <div className={styles.detailHeaderCard}>
+                <div className={styles.detailToolbar}>
+                  <h2 className={styles.detailToolbarTitle}>{escapeHtml(companyName)}</h2>
+                  <div ref={detailDangerWrapRef} className={styles.detailToolbarActionsDanger}>
                     <button
                       type="button"
-                      className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                      onClick={() => {
-                        if (selId) window.open(`/kyc/report.html?id=${selId}`, '_blank');
-                      }}
-                    >
-                      Informe PDF
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}${refreshIntelBusy ? ` ${styles.btnIntelRefreshBusy}` : ''}`}
-                      disabled={refreshIntelBusy}
-                      aria-busy={refreshIntelBusy}
-                      title="Actualiza noticias, re-genera el resumen ejecutivo con IA y reprocesa «Presencia de Avvale en la cuenta»: footprint con IA; presencia por línea se amplía con la inferencia IA (mismos criterios que avvaleAreas en RFQ) unida a lo ya guardado; notas por línea ya escritas no se sustituyen. Proyectos en cuenta solo desde ficha. Requiere clave de API."
-                      onClick={async () => {
-                        if (!selId) return;
-                        setBanner(null);
-                        setRefreshIntelBusy(true);
-                        try {
-                          const r = await kycJson<{
-                            ok?: boolean;
-                            news?: { created: number; total: number };
-                            summary?: { ok: boolean };
-                            avvale?: { ok: boolean; updated: boolean };
-                            warning?: string;
-                          }>(`/api/kyc/companies/${selId}/enrich`, { method: 'POST' });
-                          const created = Number(r?.news?.created ?? 0);
-                          const total = Number(r?.news?.total ?? 0);
-                          const summaryOk = r?.summary?.ok === true;
-                          const av = r?.avvale;
-                          let avvaleLine = 'Presencia Avvale: sin cambios';
-                          if (av?.updated)
-                            avvaleLine =
-                              'Presencia Avvale: fusionado y guardado (footprint IA; presencia por línea = unión de lo guardado + inferencia IA con criterios Avvale; notas manuales por línea conservadas; proyectos solo desde ficha)';
-                          else if (av?.ok === true)
-                            avvaleLine = 'Presencia Avvale: reprocesado; sin cambios respecto a la ficha guardada';
-                          else if (av != null && av.ok === false)
-                            avvaleLine = 'Presencia Avvale: sin actualización automática (KYC activo y clave de API)';
-                          const parts = [
-                            `Noticias: ${created} nueva${created === 1 ? '' : 's'} (${total} en el RSS)`,
-                            summaryOk ? 'Resumen ejecutivo: actualizado' : 'Resumen ejecutivo: sin cambios',
-                            avvaleLine,
-                          ];
-                          setBanner(`${parts.join(' · ')}. Datos del cliente recargados.${r?.warning ? ` ${r.warning}` : ''}`);
-                          void refreshDetailOnly(selId);
-                          void loadCompanies();
-                        } catch (er) {
-                          setBanner('No se pudieron actualizar las noticias. ' + (er as Error).message);
-                        } finally {
-                          setRefreshIntelBusy(false);
-                        }
-                      }}
-                    >
-                      {refreshIntelBusy ? 'Actualizando…' : 'Actualizar'}
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                      onClick={() => {
-                        if (selId) void startIntake(selId);
-                      }}
-                    >
-                      Entrevista guiada
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.btn} ${styles.btnSm} ${styles.danger}`}
+                      className={`${styles.btn} ${styles.btnSm} ${styles.danger} ${styles.detailToolbarBtn} ${styles.detailToolbarDeleteDesktop}`}
                       onClick={() => setConfirm('delOne')}
                     >
-                      Eliminar KYC
+                      <span className={styles.detailToolbarBtnIcon} aria-hidden>
+                        <KycToolbarTrashIcon />
+                      </span>
+                      <span className={styles.detailToolbarDeleteLabel}>Eliminar KYC</span>
                     </button>
+                    <div className={styles.detailToolbarDangerOverflow}>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary} ${styles.detailToolbarOverflowTrigger}`}
+                        aria-expanded={detailDangerMenuOpen}
+                        aria-haspopup="true"
+                        aria-controls="kyc-detail-danger-menu"
+                        aria-label="Más acciones de la cuenta"
+                        onClick={() => setDetailDangerMenuOpen((o) => !o)}
+                      >
+                        <span className={styles.detailToolbarBtnIcon} aria-hidden>
+                          <KycToolbarMoreIcon size={16} />
+                        </span>
+                      </button>
+                      {detailDangerMenuOpen ? (
+                        <div
+                          id="kyc-detail-danger-menu"
+                          role="menu"
+                          className={styles.detailToolbarDangerMenu}
+                          aria-label="Acciones adicionales"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={styles.detailToolbarDangerMenuItem}
+                            onClick={() => {
+                              setDetailDangerMenuOpen(false);
+                              setConfirm('delOne');
+                            }}
+                          >
+                            <span className={styles.detailToolbarBtnIcon} aria-hidden>
+                              <KycToolbarTrashIcon />
+                            </span>
+                            Eliminar KYC
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className={styles.detailToolbarActions} role="toolbar" aria-label="Acciones de la cuenta KYC">
+                    <div className={styles.detailToolbarActionsMain}>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm} ${styles.detailToolbarBtn}`}
+                        aria-label="Informe PDF"
+                        onClick={() => {
+                          if (selId) window.open(`/kyc/report.html?id=${selId}`, '_blank');
+                        }}
+                      >
+                        <span className={styles.detailToolbarBtnIcon} aria-hidden>
+                          <KycToolbarPdfIcon />
+                        </span>
+                        <span className={styles.detailToolbarPdfLabel}>Informe</span>
+                        <span className={styles.detailToolbarPdfLabelSuffix}> PDF</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm} ${styles.detailToolbarBtn}`}
+                        title="Entrevista guiada"
+                        onClick={() => {
+                          if (selId) void startIntake(selId);
+                        }}
+                      >
+                        <span className={styles.detailToolbarBtnIcon} aria-hidden>
+                          <KycToolbarInterviewIcon />
+                        </span>
+                        Entrevista
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm} ${styles.detailToolbarBtn}`}
+                        disabled={refreshIntelBusy}
+                        aria-busy={refreshIntelBusy}
+                        title="Actualiza noticias, re-genera el resumen ejecutivo con IA, reprocesa «Presencia de Avvale en la cuenta» y regenera las hipótesis IA en Señales (si hay señales y clave Anthropic). Requiere clave de API."
+                        onClick={async () => {
+                          if (!selId) return;
+                          setBanner(null);
+                          setRefreshIntelBusy(true);
+                          try {
+                            const r = await kycJson<{
+                              ok?: boolean;
+                              news?: { created: number; total: number };
+                              summary?: { ok: boolean };
+                              avvale?: { ok: boolean; updated: boolean };
+                              warning?: string;
+                            }>(`/api/kyc/companies/${selId}/enrich`, { method: 'POST' });
+                            const created = Number(r?.news?.created ?? 0);
+                            const total = Number(r?.news?.total ?? 0);
+                            const summaryOk = r?.summary?.ok === true;
+                            const av = r?.avvale;
+                            let avvaleLine = 'Presencia Avvale: sin cambios';
+                            if (av?.updated)
+                              avvaleLine =
+                                'Presencia Avvale: fusionado y guardado (footprint IA; presencia por línea = unión de lo guardado + inferencia IA con criterios Avvale; notas manuales por línea conservadas; proyectos solo desde ficha)';
+                            else if (av?.ok === true)
+                              avvaleLine = 'Presencia Avvale: reprocesado; sin cambios respecto a la ficha guardada';
+                            else if (av != null && av.ok === false)
+                              avvaleLine = 'Presencia Avvale: sin actualización automática (KYC activo y clave de API)';
+                            const parts = [
+                              `Noticias: ${created} nueva${created === 1 ? '' : 's'} (${total} en el RSS)`,
+                              summaryOk ? 'Resumen ejecutivo: actualizado' : 'Resumen ejecutivo: sin cambios',
+                              avvaleLine,
+                            ];
+                            let hypLine: string;
+                            try {
+                              const h = await kycJson<{
+                                ok?: boolean;
+                                updated?: boolean;
+                                count?: number;
+                                message?: string;
+                              }>(`/api/kyc/companies/${selId}/signals/infer-hypotheses`, { method: 'POST' });
+                              const n = Number(h?.count ?? 0);
+                              if (h?.updated) hypLine = `Hipótesis IA: ${n} guardada${n === 1 ? '' : 's'}`;
+                              else if (h?.message) hypLine = `Hipótesis IA: ${h.message}`;
+                              else hypLine = 'Hipótesis IA: sin cambios';
+                            } catch (he) {
+                              hypLine = `Hipótesis IA: error — ${(he as Error).message}`;
+                            }
+                            parts.push(hypLine);
+                            setBanner(`${parts.join(' · ')}. Datos del cliente recargados.${r?.warning ? ` ${r.warning}` : ''}`);
+                            void refreshDetailOnly(selId);
+                            void loadCompanies();
+                          } catch (er) {
+                            setBanner('No se pudieron actualizar las noticias. ' + (er as Error).message);
+                          } finally {
+                            setRefreshIntelBusy(false);
+                          }
+                        }}
+                      >
+                        <span className={styles.detailToolbarBtnIcon} aria-hidden>
+                          {refreshIntelBusy ? (
+                            <span className={styles.detailToolbarSpinner} />
+                          ) : (
+                            <KycToolbarRefreshIcon />
+                          )}
+                        </span>
+                        {refreshIntelBusy ? 'Actualizando…' : 'Actualizar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 {detail.profile == null && selId && (
-                  <p>
+                  <p className={styles.detailHeaderCardActivate}>
                     <button
                       type="button"
                       className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}
@@ -959,7 +1180,12 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                   </p>
                 )}
               </div>
-              <div className={styles.tabs} role="tablist" aria-label="Secciones del perfil KYC">
+              <div
+                ref={kycTabsStripRef}
+                className={styles.tabs}
+                role="tablist"
+                aria-label="Secciones del perfil KYC"
+              >
                 {TABS.map(([id, label]) => (
                   <button
                     key={id}

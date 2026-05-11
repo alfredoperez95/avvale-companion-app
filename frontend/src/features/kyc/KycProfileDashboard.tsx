@@ -5,9 +5,9 @@ import { USER_INDUSTRY_OPTIONS, industryLabel, type UserIndustryValue } from '@/
 import { kycJson } from './kycApi';
 import { KYC_BLOCK_KEYS, KYC_BLOCK_META, type KycBlockKey } from './kycConstants';
 import { KycBlockIcon, KycIconBuilding, KycIconDocument } from './KycInlineIcons';
-import { faviconUrlFromWebsite } from './kycFaviconUrl';
+import { faviconApexFallbackFromWebsite, faviconUrlFromWebsite } from './kycFaviconUrl';
 import { competenciaPayload, KycCompetenciaPanel, rowsFromProfileCompetencia, type KycCompetenciaRow } from './KycCompetenciaPanel';
-import { KycPencilIcon } from './KycMiniIcons';
+import { KycPencilIcon, KycStrategicStarIcon } from './KycMiniIcons';
 import { KycValueView } from './KycValueView';
 import styles from './kyc-workspace.module.css';
 
@@ -88,14 +88,18 @@ export function KycProfileDashboard({
   const [fichaMsg, setFichaMsg] = useState<string | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
   const [faviconFailed, setFaviconFailed] = useState(false);
+  const [faviconUseApex, setFaviconUseApex] = useState(false);
   const [competenciaRows, setCompetenciaRows] = useState<KycCompetenciaRow[]>([]);
   const [competenciaEditing, setCompetenciaEditing] = useState(false);
   const [competenciaResetToken, setCompetenciaResetToken] = useState(0);
   const [summarySynthesisBusy, setSummarySynthesisBusy] = useState(false);
 
   const faviconSrc = useMemo(() => faviconUrlFromWebsite(String(company.website ?? '')), [company.website]);
+  const faviconApexSrc = useMemo(() => faviconApexFallbackFromWebsite(String(company.website ?? '')), [company.website]);
+  const faviconImgSrc = faviconUseApex && faviconApexSrc ? faviconApexSrc : faviconSrc;
   const heroGradUid = useId().replace(/:/g, '');
   const heroGradId = `kyc-hero-grad-${heroGradUid}`;
+  const heroSummaryHeadingId = `kyc-hero-summary-${heroGradUid}`;
   const [heroRingPct, setHeroRingPct] = useState(0);
   const displayedPctRef = useRef(0);
   const prevCompanyIdRef = useRef<number | null>(null);
@@ -165,7 +169,8 @@ export function KycProfileDashboard({
 
   useEffect(() => {
     setFaviconFailed(false);
-  }, [faviconSrc]);
+    setFaviconUseApex(false);
+  }, [faviconSrc, faviconApexSrc]);
 
   useEffect(() => {
     if (!profile) return;
@@ -361,7 +366,12 @@ export function KycProfileDashboard({
   }
 
   const p = profile as Record<string, unknown>;
-  const lastEnriched = p.last_enriched_at ? new Date(String(p.last_enriched_at)).toLocaleDateString() : '—';
+  const lastEnrichedAt = p.last_enriched_at ? new Date(String(p.last_enriched_at)) : null;
+  const lastEnrichedValid = lastEnrichedAt != null && !Number.isNaN(lastEnrichedAt.getTime());
+  const lastEnriched = lastEnrichedValid
+    ? lastEnrichedAt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '—';
+  const lastEnrichedTitle = lastEnrichedValid ? lastEnrichedAt.toLocaleString('es-ES') : undefined;
   const cname = String(company.name ?? '—');
 
   return (
@@ -369,18 +379,24 @@ export function KycProfileDashboard({
       <header className={styles.hero}>
         <div className={styles.heroMain}>
           <div
-            className={`${styles.heroAvatar} ${faviconSrc && !faviconFailed ? styles.heroAvatarWithIcon : ''}`}
+            className={`${styles.heroAvatar} ${faviconImgSrc && !faviconFailed ? styles.heroAvatarWithIcon : ''}`}
             title={faviconSrc ? String(company.website ?? '') : undefined}
           >
-            {faviconSrc && !faviconFailed ? (
+            {faviconImgSrc && !faviconFailed ? (
               <img
-                src={faviconSrc}
+                src={faviconImgSrc}
                 alt=""
                 className={styles.heroAvatarImg}
                 loading="lazy"
                 decoding="async"
                 referrerPolicy="no-referrer"
-                onError={() => setFaviconFailed(true)}
+                onError={() => {
+                  setFaviconUseApex((prev) => {
+                    if (!prev && faviconApexSrc) return true;
+                    setFaviconFailed(true);
+                    return prev;
+                  });
+                }}
               />
             ) : (
               initials(cname)
@@ -391,7 +407,10 @@ export function KycProfileDashboard({
               <h1 className={styles.heroTitle}>{cname}</h1>
               {p.strategic ? (
                 <span className={styles.chipStrategic} title="Cuenta marcada como estratégica">
-                  <span aria-hidden>★</span> Estratégica
+                  <span className={styles.chipStrategicStar} aria-hidden>
+                    ★
+                  </span>
+                  <span>Estratégica</span>
                 </span>
               ) : null}
             </div>
@@ -409,7 +428,10 @@ export function KycProfileDashboard({
                 <span className={styles.heroMetaMuted}>Completa sector, industria, ubicación o web en la ficha</span>
               ) : null}
             </div>
-            <p className={styles.heroSummaryLine}>
+            <p id={heroSummaryHeadingId} className={styles.heroSummaryLabel}>
+              Resumen ejecutivo
+            </p>
+            <p className={styles.heroSummaryLine} aria-labelledby={heroSummaryHeadingId}>
               {String(
                 p.summary ||
                   'Sin resumen todavía. Genera uno desde la ficha y el perfil con IA (Resumen ejecutivo) o usa Entrevista / chat.',
@@ -445,28 +467,49 @@ export function KycProfileDashboard({
             <div className={styles.heroRingLabel}>Completado</div>
           </div>
         </div>
-        <div className={styles.heroStats}>
-          <div className={styles.heroStat}>
-            <div className={styles.heroStatN}>{memberCount}</div>
-            <div className={styles.heroStatL}>Personas</div>
+        <div className={styles.heroFooter}>
+          <div className={styles.heroStats} role="list" aria-label="Indicadores de la cuenta">
+            <div className={styles.heroStat} role="listitem">
+              <div className={styles.heroStatN}>{memberCount}</div>
+              <div className={styles.heroStatL}>Personas</div>
+            </div>
+            <div className={styles.heroStat} role="listitem">
+              <div className={styles.heroStatN}>{signalCount}</div>
+              <div className={styles.heroStatL}>Señales</div>
+            </div>
+            <div
+              className={`${styles.heroStat} ${openQCount > 0 ? styles.heroStatAttention : ''}`}
+              role="listitem"
+            >
+              <div className={openQCount > 0 ? styles.heroStatNWarn : styles.heroStatN}>{openQCount}</div>
+              <div className={styles.heroStatL}>Por resolver</div>
+            </div>
+            <div className={styles.heroStat} role="listitem" title={lastEnrichedTitle}>
+              <div
+                className={
+                  lastEnriched === '—'
+                    ? styles.heroStatNMuted
+                    : `${styles.heroStatN} ${styles.heroStatNDate}`
+                }
+              >
+                {lastEnriched}
+              </div>
+              <div className={styles.heroStatL}>Actualizado</div>
+            </div>
           </div>
-          <div className={styles.heroStat}>
-            <div className={styles.heroStatN}>{signalCount}</div>
-            <div className={styles.heroStatL}>Señales</div>
+          <div className={styles.heroActions}>
+            <button
+              type="button"
+              className={`${styles.heroStrategicBtn} ${p.strategic ? styles.heroStrategicBtnOn : ''}`}
+              onClick={toggleStrategic}
+              aria-label={p.strategic ? 'Quitar cuenta estratégica' : 'Marcar cuenta como estratégica'}
+              title={p.strategic ? 'Quitar estratégica' : 'Marcar como estratégica'}
+            >
+              <span className={styles.heroStrategicBtnIcon} aria-hidden>
+                <KycStrategicStarIcon filled={Boolean(p.strategic)} size={18} />
+              </span>
+            </button>
           </div>
-          <div className={styles.heroStat}>
-            <div className={openQCount > 0 ? styles.heroStatNWarn : styles.heroStatN}>{openQCount}</div>
-            <div className={styles.heroStatL}>Por resolver</div>
-          </div>
-          <div className={styles.heroStat}>
-            <div className={lastEnriched === '—' ? styles.heroStatNMuted : styles.heroStatN}>{lastEnriched}</div>
-            <div className={styles.heroStatL}>Última actualización</div>
-          </div>
-        </div>
-        <div className={styles.heroActions}>
-          <button type="button" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={toggleStrategic}>
-            {p.strategic ? 'Desmarcar como estratégica' : 'Marcar como estratégica'}
-          </button>
         </div>
       </header>
 
@@ -550,19 +593,14 @@ export function KycProfileDashboard({
               <div className={styles.formRow}>
                 <span className={styles.label}>Notas</span>
                 <textarea
-                  className={styles.textareaLg}
+                  className={`${styles.textareaLg} ${styles.textareaNotesMin}`}
                   value={coForm.notes}
                   onChange={(e) => setCoForm((c) => ({ ...c, notes: e.target.value }))}
-                  style={{ minHeight: '3rem' }}
                 />
               </div>
-              <div className={styles.row} style={{ justifyContent: 'space-between' }}>
-                <span className={styles.hint} style={{ margin: 0 }}>
-                  {fichaMsg}
-                </span>
-                <span className={styles.hint} style={{ margin: 0 }}>
-                  {dirtyFicha ? 'Cambios pendientes' : '—'}
-                </span>
+              <div className={styles.rowBetween}>
+                <span className={`${styles.hint} ${styles.hintFlush}`}>{fichaMsg}</span>
+                <span className={`${styles.hint} ${styles.hintFlush}`}>{dirtyFicha ? 'Cambios pendientes' : '—'}</span>
               </div>
             </div>
           </div>
@@ -651,13 +689,12 @@ export function KycProfileDashboard({
               <div className={styles.blockBody}>
                 {editing ? (
                   <textarea
-                    className={styles.textareaLg}
+                    className={`${styles.textareaLg} ${styles.blockBodyJson}`}
                     value={blockText[b] ?? '{}'}
                     onChange={(e) => setBlockText((m) => ({ ...m, [b]: e.target.value }))}
-                    style={{ minHeight: '10rem', fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem' }}
                   />
                 ) : (
-                  <div style={{ minHeight: '4rem' }}>
+                  <div className={styles.blockJsonPreview}>
                     <KycValueView v={data} />
                   </div>
                 )}

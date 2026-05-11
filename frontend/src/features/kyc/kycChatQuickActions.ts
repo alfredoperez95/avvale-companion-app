@@ -27,7 +27,7 @@ const AVVALE_ACCOUNT_ACTION: KycChatQuickAction = {
     'Quiero completar la ficha «Avvale» de esta cuenta desde el chat. ' +
     'Guíame con preguntas concretas y por orden sobre: (1) footprint de Avvale en el cliente (texto libre), ' +
     '(2) proyectos en la cuenta (pestaña «Proyectos»): pueden ser de Avvale o de otro partner; nombre, estado activo / en negociación / pasado y notas (p. ej. quién lidera), recogidos manualmente o vía chat, ' +
-    '(3) presencia por líneas de solución: GROW, RUN, WISE, YUBIQ, SAIBORG y AXAZURE (Dynamics 365 / Microsoft: ERP, CRM, marketing, etc.), con nota corta por línea donde aplique. ' +
+    '(3) presencia por líneas de solución: GROW, RUN, WISE, YUBIQ, SAIBORG y AXAZURE (AXAZURE solo si el foco es Dynamics 365 / BC / F&O / Power Platform de negocio; migraciones o hosting en Azure sin ese foco → RUN), con nota corta por línea donde aplique. ' +
     'Cuando yo aporte datos, en la última línea incluye KYC_PROPOSED_JSON con field_path avvale (objeto parcial con footprint, projects, solution_presence, solution_notes) o rutas avvale.footprint, avvale.projects, avvale.solution_presence, avvale.solution_notes para que queden guardados en el perfil.',
 };
 

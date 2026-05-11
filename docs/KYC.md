@@ -40,3 +40,26 @@ En el panel **Organigrama**, existe el botón **“+ Dummies”** para crear per
 - Controlador y servicio: [backend/src/kyc/README.md](../backend/src/kyc/README.md)
 - Esquema: [backend/prisma/schema.prisma](../backend/prisma/schema.prisma) (modelos `Kyc*`)
 
+## 4. Extensión ↔ KYC
+
+La **extensión Chrome** (proyecto aparte, p. ej. `avvale-companion-extension`) envía perfiles LinkedIn al organigrama KYC usando el **mismo JWT** que la app (login Companion → token; en la extensión suele guardarse en `chrome.storage.local` y enviarse como `Authorization: Bearer …` desde el service worker).
+
+### Rutas y proxy
+
+- **Nest** expone KYC en **`/kyc/*`** (sin prefijo `api`).
+- La **web** llama **`/api/kyc/*`**; Next reescribe a Nest (`frontend/next.config.ts`).
+- La extensión suele usar una base tipo **`https://<host>/api`** para auth (`/api/auth/login`, …) y derivar la raíz HTTP para KYC **quitando el sufijo `/api`**, p. ej. `GET https://<host>/kyc/clients`. En el front desplegado existe también rewrite **`/kyc/:path*`** → backend, para que esas URLs en el **mismo origen** que la app lleguen a Nest (no devuelvan 404 de Next).
+
+### Endpoints dedicados extensión
+
+| Método | Ruta (Nest / mismo host) | Uso |
+|--------|--------------------------|-----|
+| `GET` | `/kyc/clients?q=` opcional | Lista `{ clients: [{ id, name }] }` (empresas con perfil KYC activo). |
+| `POST` | `/kyc/linkedin-profile` | Alta miembro + contacto; cuerpo validado (`source`, `clientId`, `name`, `role`, `level`, URLs LinkedIn, opcionales de captura). **201** `{ orgMemberId, contactId }`. Errores típicos: **400** (perfil inactivo, exclusión partner/competencia, nivel desconocido), **404**, **409** (dedupe por URL LinkedIn normalizada). |
+
+Implementación: [`backend/src/kyc/kyc.controller.ts`](../backend/src/kyc/kyc.controller.ts), [`kyc.service.ts`](../backend/src/kyc/kyc.service.ts), DTO [`dto/kyc-linkedin-profile.dto.ts`](../backend/src/kyc/dto/kyc-linkedin-profile.dto.ts). Normalización / niveles / filtro organigrama: utilidades en `backend/src/kyc/kyc-linkedin-extension.util.ts` y `kyc-org-chart-eligibility.util.ts` (paridad con el filtro del front).
+
+### Otros enlaces extensión ↔ web
+
+- Descargas y sesión en pestaña Companion: [BROWSER_EXTENSION_BRIDGE.md](./BROWSER_EXTENSION_BRIDGE.md) (distinto contrato; no sustituye a los endpoints KYC anteriores).
+

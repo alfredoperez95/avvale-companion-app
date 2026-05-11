@@ -1592,6 +1592,8 @@ Debe incluir **siempre estas cuatro claves** (sin null en la raíz):
 Guía de clasificación para **solution_presence** (elige según el tema dominante; solo líneas con evidencia en el contexto del usuario):
 ${AVVALE_SOLUTION_LINE_CLASSIFICATION_BULLETS}
 
+Regla explícita: **no** incluyas el slug \`axazure\` solo por mencionar Azure, migración a la nube, hosting, landing zone o infra sin que el contexto cite **Dynamics 365, Business Central o F&O** como **aplicación de negocio protagonista**; en esos casos usa \`run\` (o ninguna línea extra si no aplica).
+
 Reglas de fusión con el perfil guardado:
 - **projects**: solo filas ya en ficha; tu array no añade proyectos nuevos.
 - **solution_presence**: el servidor hará la **unión** de lo ya guardado y lo que infieras tú (orden canónico). Puedes proponer líneas nuevas que el contexto respalde aunque antes no estuvieran marcadas.

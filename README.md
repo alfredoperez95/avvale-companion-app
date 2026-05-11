@@ -318,6 +318,7 @@ Tabla completa de estados y transiciones: **[docs/ACTIVATION_STATE_MACHINE.md](d
 | [docs/ACTIVATION_STATE_MACHINE.md](docs/ACTIVATION_STATE_MACHINE.md) | Estados, BullMQ, orquestador, watchdog |
 | [docs/VERIFICACION.md](docs/VERIFICACION.md) | Health, auth, comprobaciones locales y checklist producción (dominio HTTPS) |
 | [docs/PRISMA_P3009_COOLIFY.md](docs/PRISMA_P3009_COOLIFY.md) | Error Prisma P3009 / migración fallida en producción (Coolify) |
+| [docs/KYC.md](docs/KYC.md) | Módulo KYC (API, launcher, **extensión Chrome ↔ KYC** en §4) |
 
 ---
 
