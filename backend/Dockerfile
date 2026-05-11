@@ -8,6 +8,8 @@ RUN npm ci
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Prisma exige DATABASE_URL en tiempo de `generate`; no usar .env del host en la imagen.
+ENV DATABASE_URL="mysql://build:build@127.0.0.1:3306/build"
 RUN npx prisma generate
 RUN npm run build
 
