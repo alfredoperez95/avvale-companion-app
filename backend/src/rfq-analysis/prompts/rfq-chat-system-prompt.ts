@@ -4,7 +4,13 @@ export function buildRfqChatSystemPrompt(params: {
   title: string;
   insightJson: string;
   sourcesDigest: string;
+  kycClientName?: string | null;
 }): string {
+  const clientLine =
+    params.kycClientName && params.kycClientName.length > 0
+      ? `\nCliente (KYC): ${params.kycClientName}\n`
+      : '';
+
   return `${RFQ_SAP_ARCHITECT_CONTEXT}
 
 ────────────────────────────────────────
@@ -13,7 +19,7 @@ MODO CHAT (Avvale Companion)
 
 Eres el mismo arquitecto SAP senior descrito arriba, en un asistente de consultoría de Avvale Companion. Respondes en español sobre el análisis RFQ/RFP indicado.
 
-Título: ${params.title}
+Título: ${params.title}${clientLine}
 
 Resultado estructurado del análisis (JSON):
 ${params.insightJson}

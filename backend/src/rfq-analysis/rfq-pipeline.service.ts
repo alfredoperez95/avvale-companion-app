@@ -97,12 +97,16 @@ export class RfqPipelineService {
 
     const fresh = await this.prisma.rfqAnalysis.findUnique({
       where: { id: analysisId },
-      include: { sources: { orderBy: { sortOrder: 'asc' } } },
+      include: {
+        sources: { orderBy: { sortOrder: 'asc' } },
+        kycCompany: { select: { name: true } },
+      },
     });
     if (!fresh) throw new Error('Análisis no encontrado tras extracción');
 
     await this.appendEvent(analysisId, RfqJobPhase.NORMALIZE, 'started', {});
-    const bundle = this.buildNormalizedBundle(fresh.title, fresh.manualContext, fresh.sources);
+    const kycClientName = fresh.kycCompany?.name?.trim() || null;
+    const bundle = this.buildNormalizedBundle(fresh.title, fresh.manualContext, fresh.sources, kycClientName);
     const normalized = truncateForContext(bundle, maxChars);
     await this.appendEvent(analysisId, RfqJobPhase.NORMALIZE, 'completed', {
       approxChars: normalized.length,
@@ -257,9 +261,14 @@ export class RfqPipelineService {
     title: string,
     manualContext: string | null,
     sources: { id: string; kind: RfqSourceKind; fileName: string | null; extractedText: string | null }[],
+    kycClientName: string | null,
   ): string {
     const parts: string[] = [];
-    parts.push(`## Metadatos\nTítulo: ${title}\n`);
+    const metaLines = [`Título: ${title}`];
+    if (kycClientName) {
+      metaLines.push(`Cliente (KYC): ${kycClientName}`);
+    }
+    parts.push(`## Metadatos\n${metaLines.join('\n')}\n`);
     if (manualContext?.trim()) {
       parts.push(`## Contexto manual\n${manualContext.trim()}\n`);
     }

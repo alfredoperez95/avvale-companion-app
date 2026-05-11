@@ -81,12 +81,6 @@ export class RfqAnalysisController {
     return this.rfq.requestProcess(user.userId, id);
   }
 
-  /** Reenvía el correo de análisis completado (pruebas de plantilla/SMTP). Solo si el análisis está COMPLETED. */
-  @Post(':id/resend-completion-email')
-  async resendCompletionEmail(@CurrentUser() user: UserPayload, @Param('id') id: string) {
-    return this.rfq.resendCompletionEmail(user.userId, id);
-  }
-
   @Patch(':id/recommended-questions')
   async patchRecommendedQuestions(
     @CurrentUser() user: UserPayload,

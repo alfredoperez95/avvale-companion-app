@@ -19,6 +19,8 @@ type Item = {
   createdAt: string;
   originSubject: string | null;
   originEmail: string | null;
+  kycCompanyId: number | null;
+  kycCompany: { id: number; name: string } | null;
 };
 
 type SourceFilter = 'all' | 'MANUAL' | 'EMAIL';
@@ -72,7 +74,8 @@ export default function RfqAnalysisListPage() {
         (x) =>
           x.title.toLowerCase().includes(q) ||
           (x.originSubject?.toLowerCase().includes(q) ?? false) ||
-          (x.originEmail?.toLowerCase().includes(q) ?? false),
+          (x.originEmail?.toLowerCase().includes(q) ?? false) ||
+          (x.kycCompany?.name.toLowerCase().includes(q) ?? false),
       );
     }
     return data;
@@ -288,11 +291,15 @@ export default function RfqAnalysisListPage() {
                   <Link
                     className={styles.listCardMainHit}
                     href={`/launcher/rfq-analysis/${a.id}`}
-                    aria-label={`Abrir workspace: ${a.title}`}
+                    aria-label={
+                      a.kycCompany?.name
+                        ? `Abrir workspace: ${a.title}. Cliente KYC: ${a.kycCompany.name}.`
+                        : `Abrir workspace: ${a.title}`
+                    }
                   >
                     <div className={styles.listRowMain}>
                       <h2 className={styles.listTitle}>{a.title}</h2>
-                      <div className={styles.listMetaRow}>
+                      <div className={styles.listMetaChips} aria-label="Origen y cliente">
                         <span
                           className={
                             a.sourceType === 'EMAIL' ? styles.listSourcePillEmail : styles.listSourcePillManual
@@ -300,31 +307,49 @@ export default function RfqAnalysisListPage() {
                         >
                           {a.sourceType === 'EMAIL' ? 'Email' : 'Manual'}
                         </span>
-                        {a.originSubject ? (
-                          <span className={styles.listSubjectHint} title={a.originSubject}>
-                            {a.originSubject}
-                          </span>
-                        ) : null}
-                        {a.originEmail ? (
-                          <span className={styles.listEmailHint} title={a.originEmail ?? undefined}>
-                            {a.originEmail}
+                        {a.kycCompany?.name ? (
+                          <span className={styles.listClientChip} title={`Cliente KYC: ${a.kycCompany.name}`}>
+                            <span className={styles.listClientChipLabel}>Cliente</span>
+                            <span className={styles.listClientChipName}>{a.kycCompany.name}</span>
                           </span>
                         ) : null}
                       </div>
+                      {a.originSubject || a.originEmail ? (
+                        <div className={styles.listMetaExtras}>
+                          {a.originSubject ? (
+                            <span className={styles.listSubjectHint} title={a.originSubject}>
+                              {a.originSubject}
+                            </span>
+                          ) : null}
+                          {a.originEmail ? (
+                            <span className={styles.listEmailHint} title={a.originEmail ?? undefined}>
+                              {a.originEmail}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <p className={styles.listMetaDate}>
                         <span className={styles.listMetaDateLabel}>Creado</span>{' '}
                         <time dateTime={a.createdAt}>{formatCreatedAt(a.createdAt)}</time>
                       </p>
                     </div>
-                    <span className={styles.listCardChevron} aria-hidden>
-                      ›
-                    </span>
                   </Link>
-                  <div className={styles.listCardToolbar} role="group" aria-label="Estado y acciones">
+                  <div className={styles.listCardTrail} role="group" aria-label="Estado y acciones">
+                    <Link
+                      href={`/launcher/rfq-analysis/${a.id}`}
+                      className={styles.listCardChevronHit}
+                      tabIndex={-1}
+                      title="Abrir detalle"
+                    >
+                      <span className={styles.listCardChevron} aria-hidden>
+                        ›
+                      </span>
+                    </Link>
                     <RfqStatusTag status={a.status} />
+                    <span className={styles.listCardTrailDivider} aria-hidden />
                     <button
                       type="button"
-                      className={styles.listDeleteBtn}
+                      className={styles.listDeleteText}
                       disabled={deleteBusy}
                       onClick={() => setToDelete(a)}
                       aria-label={`Eliminar análisis «${a.title}»`}
@@ -343,7 +368,7 @@ export default function RfqAnalysisListPage() {
                   <div className={styles.listCardMainHit} role="presentation">
                     <div className={styles.listRowMain}>
                       <h2 className={styles.listTitle}>{peekItem.title}</h2>
-                      <div className={styles.listMetaRow}>
+                      <div className={styles.listMetaChips} aria-hidden>
                         <span
                           className={
                             peekItem.sourceType === 'EMAIL' ? styles.listSourcePillEmail : styles.listSourcePillManual
@@ -351,27 +376,37 @@ export default function RfqAnalysisListPage() {
                         >
                           {peekItem.sourceType === 'EMAIL' ? 'Email' : 'Manual'}
                         </span>
-                        {peekItem.originSubject ? (
-                          <span className={styles.listSubjectHint} title={peekItem.originSubject}>
-                            {peekItem.originSubject}
-                          </span>
-                        ) : null}
-                        {peekItem.originEmail ? (
-                          <span className={styles.listEmailHint} title={peekItem.originEmail ?? undefined}>
-                            {peekItem.originEmail}
+                        {peekItem.kycCompany?.name ? (
+                          <span className={styles.listClientChip} title={`Cliente KYC: ${peekItem.kycCompany.name}`}>
+                            <span className={styles.listClientChipLabel}>Cliente</span>
+                            <span className={styles.listClientChipName}>{peekItem.kycCompany.name}</span>
                           </span>
                         ) : null}
                       </div>
+                      {peekItem.originSubject || peekItem.originEmail ? (
+                        <div className={styles.listMetaExtras}>
+                          {peekItem.originSubject ? (
+                            <span className={styles.listSubjectHint} title={peekItem.originSubject}>
+                              {peekItem.originSubject}
+                            </span>
+                          ) : null}
+                          {peekItem.originEmail ? (
+                            <span className={styles.listEmailHint} title={peekItem.originEmail ?? undefined}>
+                              {peekItem.originEmail}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <p className={styles.listMetaDate}>
                         <span className={styles.listMetaDateLabel}>Creado</span>{' '}
                         <time dateTime={peekItem.createdAt}>{formatCreatedAt(peekItem.createdAt)}</time>
                       </p>
                     </div>
+                  </div>
+                  <div className={styles.listCardTrail} role="presentation">
                     <span className={styles.listCardChevron} aria-hidden>
                       ›
                     </span>
-                  </div>
-                  <div className={styles.listCardToolbar} role="presentation">
                     <RfqStatusTag status={peekItem.status} />
                   </div>
                 </div>

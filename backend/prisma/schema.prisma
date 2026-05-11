@@ -151,17 +151,20 @@ model RfqAnalysis {
   lastProcessedAt     DateTime?           @map("last_processed_at")
   failureReason       String?             @map("failure_reason") @db.Text
   bullJobId           String?             @map("bull_job_id") @db.VarChar(128)
+  kycCompanyId        BigInt?             @map("kyc_company_id")
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
 
-  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sources  RfqAnalysisSource[]
-  insights RfqAnalysisInsight[]
-  messages RfqAnalysisMessage[]
-  jobEvents RfqAnalysisJobEvent[]
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kycCompany  KycCompany? @relation(fields: [kycCompanyId], references: [id], onDelete: SetNull)
+  sources     RfqAnalysisSource[]
+  insights    RfqAnalysisInsight[]
+  messages    RfqAnalysisMessage[]
+  jobEvents   RfqAnalysisJobEvent[]
 
   @@index([userId])
   @@index([status])
+  @@index([kycCompanyId])
   @@map("rfq_analyses")
 }
 
@@ -556,6 +559,7 @@ model KycCompany {
   facts             KycFact[]
   chatSessions      KycChatSession[]
   openQuestions     KycOpenQuestion[]
+  rfqAnalyses       RfqAnalysis[]
 
   @@index([name])
   @@index([sector])

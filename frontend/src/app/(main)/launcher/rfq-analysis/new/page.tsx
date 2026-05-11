@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch, apiUpload } from '@/lib/api';
@@ -9,20 +9,65 @@ import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/compo
 import styles from '../rfq-analysis.module.css';
 import layout from './page.module.css';
 
+type KycCompanyOption = {
+  id: number;
+  name: string;
+  sector: string | null;
+  city: string | null;
+};
+
 export default function RfqAnalysisNewPage() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [manualContext, setManualContext] = useState('');
+  const [kycCompanyId, setKycCompanyId] = useState('');
+  const [kycCompanies, setKycCompanies] = useState<KycCompanyOption[]>([]);
+  const [kycCompaniesLoading, setKycCompaniesLoading] = useState(true);
+  const [kycCompaniesError, setKycCompaniesError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setKycCompaniesLoading(true);
+      setKycCompaniesError(null);
+      try {
+        const res = await apiFetch('/api/kyc/companies');
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(t || 'No se pudo cargar el listado de clientes KYC');
+        }
+        const data = (await res.json()) as KycCompanyOption[];
+        if (!cancelled) {
+          setKycCompanies(Array.isArray(data) ? data : []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setKycCompanies([]);
+          setKycCompaniesError(e instanceof Error ? e.message : 'Error al cargar clientes KYC');
+        }
+      } finally {
+        if (!cancelled) setKycCompaniesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!title.trim()) {
       setError('Indica un título');
+      return;
+    }
+    const kycIdNum = Number.parseInt(kycCompanyId, 10);
+    if (!kycCompanyId || !Number.isFinite(kycIdNum) || kycIdNum < 1) {
+      setError('Selecciona un cliente con perfil KYC');
       return;
     }
     if (files.length === 0) {
@@ -38,6 +83,7 @@ export default function RfqAnalysisNewPage() {
         body: JSON.stringify({
           title: title.trim(),
           manualContext: manualContext.trim() || undefined,
+          kycCompanyId: kycIdNum,
         }),
       });
       if (!createRes.ok) {
@@ -94,7 +140,8 @@ export default function RfqAnalysisNewPage() {
       />
 
       <p className={layout.lead}>
-        <strong className={styles.formIntroStrong}>Título</strong> y{' '}
+        <strong className={styles.formIntroStrong}>Título</strong>,{' '}
+        <strong className={styles.formIntroStrong}>cliente (KYC)</strong> y{' '}
         <strong className={styles.formIntroStrong}>al menos un adjunto</strong> son obligatorios. El{' '}
         <strong className={styles.formIntroStrong}>contexto manual</strong> es opcional. Tras crear, irás al detalle del
         análisis; el procesamiento se ejecuta en segundo plano.
@@ -132,12 +179,71 @@ export default function RfqAnalysisNewPage() {
               <div>
                 <h2 className={layout.sectionTitle}>Datos del workspace</h2>
                 <p className={layout.sectionDesc}>
-                  Nombra la oportunidad y, si quieres, añade notas que no figuren en los adjuntos.
+                  Elige el cliente en KYC, nombra la oportunidad y, si quieres, añade notas que no figuren en los
+                  adjuntos.
                 </p>
               </div>
             </div>
 
             <form className={layout.formStack} onSubmit={(e) => void handleSubmit(e)} noValidate>
+              <div className={layout.kycFieldGroup}>
+                <label className={`${styles.label} ${layout.kycLabel}`} htmlFor="rfq-new-kyc-client">
+                  <span className={styles.labelTitleRow}>
+                    Cliente (KYC)
+                    <span className={styles.requiredMark}>Obligatorio</span>
+                  </span>
+                  <select
+                    id="rfq-new-kyc-client"
+                    className={`${styles.input} ${layout.kycSelect}`}
+                    value={kycCompanyId}
+                    onChange={(e) => setKycCompanyId(e.target.value)}
+                    disabled={busy || kycCompaniesLoading || !!kycCompaniesError}
+                    aria-required="true"
+                    aria-busy={kycCompaniesLoading}
+                    aria-invalid={kycCompaniesError ? true : undefined}
+                  >
+                    <option value="" disabled>
+                      {kycCompaniesLoading
+                        ? 'Cargando empresas…'
+                        : kycCompaniesError
+                          ? 'Error al cargar'
+                          : 'Selecciona un cliente…'}
+                    </option>
+                    {kycCompanies.map((c) => {
+                      const bits = [c.sector, c.city].filter(Boolean).join(' · ');
+                      const label = bits ? `${c.name} (${bits})` : c.name;
+                      return (
+                        <option key={c.id} value={String(c.id)}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <div className={layout.kycBelowSelect}>
+                    {kycCompaniesError ? (
+                      <p className={layout.kycAlert} role="alert">
+                        {kycCompaniesError}
+                      </p>
+                    ) : null}
+                    {!kycCompaniesLoading && !kycCompaniesError && kycCompanies.length === 0 ? (
+                      <p className={layout.kycNotice} role="status">
+                        No hay empresas con perfil KYC. Crea o activa una empresa en KYC para continuar.
+                      </p>
+                    ) : null}
+                    <div className={layout.kycFieldHint}>
+                      <p className={layout.kycFieldHintLine}>
+                        Solo aparecen empresas con perfil activo en KYC.
+                      </p>
+                      <p className={layout.kycFieldHintLine}>
+                        <Link href="/launcher/kyc" className={layout.kycFieldHintLink}>
+                          ¿No aparece la empresa? Crea o activa su perfil en KYC
+                        </Link>
+                      </p>
+                    </div>
+                  </div>
+                </label>
+              </div>
+
               <label className={styles.label} htmlFor="rfq-new-title">
                 <span className={styles.labelTitleRow}>
                   Título de la oportunidad
@@ -176,7 +282,12 @@ export default function RfqAnalysisNewPage() {
                 <button
                   type="submit"
                   className={`${styles.primaryBtn} ${styles.primaryBtnWithSpinner}`}
-                  disabled={busy}
+                  disabled={
+                    busy ||
+                    kycCompaniesLoading ||
+                    !!kycCompaniesError ||
+                    kycCompanies.length === 0
+                  }
                   aria-busy={busy}
                 >
                   {busy ? (

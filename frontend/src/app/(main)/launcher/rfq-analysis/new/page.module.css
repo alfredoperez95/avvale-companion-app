@@ -102,7 +102,7 @@
 .formStack {
   display: flex;
   flex-direction: column;
-  gap: var(--fiori-space-4);
+  gap: var(--fiori-space-5);
   width: 100%;
   flex: 1;
   min-height: 0;
@@ -112,4 +112,89 @@
 .formFooter {
   margin-top: auto;
   padding-top: var(--fiori-space-2);
+}
+
+/* Bloque cliente KYC: jerarquía visual y separación clara del título */
+.kycFieldGroup {
+  margin: 0 0 var(--fiori-space-1);
+  padding: var(--fiori-space-4) var(--fiori-space-4) var(--fiori-space-5);
+  border-radius: 0.625rem;
+  border: 1px solid color-mix(in srgb, var(--fiori-border-light) 90%, var(--fiori-shell-bg) 10%);
+  background: color-mix(in srgb, var(--fiori-surface) 92%, var(--fiori-shell-bg) 8%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.kycLabel {
+  gap: var(--fiori-space-2);
+}
+
+.kycSelect {
+  min-height: 2.5rem;
+  width: 100%;
+  cursor: pointer;
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
+  line-height: 1.35;
+}
+
+.kycSelect:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.kycBelowSelect {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fiori-space-2);
+  margin-top: var(--fiori-space-2);
+}
+
+.kycAlert {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-error);
+  font-weight: 500;
+}
+
+.kycNotice {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary);
+  font-weight: 500;
+}
+
+.kycFieldHint {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+}
+
+/* Línea sutil solo si hay aviso de error/lista vacía encima del texto de ayuda */
+.kycBelowSelect > :not(.kycFieldHint) + .kycFieldHint {
+  margin-top: var(--fiori-space-1);
+  padding-top: var(--fiori-space-3);
+  border-top: 1px solid color-mix(in srgb, var(--fiori-border-light) 65%, transparent);
+}
+
+.kycFieldHintLine {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--fiori-text-secondary);
+}
+
+.kycFieldHintLink {
+  font-weight: 600;
+  color: var(--fiori-shell-bg);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+.kycFieldHintLink:hover {
+  opacity: 0.9;
 }

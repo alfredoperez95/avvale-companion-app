@@ -28,17 +28,13 @@ import { RfqAnalysisProducer } from '../queue/producers/rfq-analysis-producer.se
 import { CreateRfqAnalysisDto } from './dto/create-rfq-analysis.dto';
 import { PostRfqMessageDto } from './dto/post-rfq-message.dto';
 import type { RfqEmailInboundDto } from './dto/rfq-email-inbound.dto';
-import { MailService } from '../mail/mail.service';
-import { avvaleUnitNamesFromInsightJson } from '../mail/templates/rfq-analysis-completed.email';
 import {
-  getAppPublicUrl,
   getRfqChatModel,
   getRfqContextMaxChars,
   getRfqMaxAttachments,
   getRfqMaxFileBytes,
   getRfqMaxTotalBytes,
 } from './rfq-analysis.config';
-import { buildRfqEmailSourceRows } from './rfq-completion-email.helpers';
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { buildRfqChatSystemPrompt } from './prompts/rfq-chat-system-prompt';
@@ -59,7 +55,6 @@ export class RfqAnalysisService {
     private readonly producer: RfqAnalysisProducer,
     private readonly anthropic: AnthropicClientService,
     private readonly creds: AnthropicCredentialsService,
-    private readonly mail: MailService,
   ) {}
 
   async remove(userId: string, analysisId: string): Promise<{ ok: true }> {
@@ -80,15 +75,28 @@ export class RfqAnalysisService {
   }
 
   async create(userId: string, dto: CreateRfqAnalysisDto) {
-    return this.prisma.rfqAnalysis.create({
+    const kycCompanyId = BigInt(dto.kycCompanyId);
+    const kycOk = await this.prisma.kycCompany.findFirst({
+      where: { id: kycCompanyId, profile: { isNot: null } },
+      select: { id: true },
+    });
+    if (!kycOk) {
+      throw new BadRequestException(
+        'Empresa no encontrada o sin perfil KYC activo. Crea o activa el perfil en KYC y vuelve a intentarlo.',
+      );
+    }
+    const created = await this.prisma.rfqAnalysis.create({
       data: {
         userId,
         sourceType: RfqWorkspaceSource.MANUAL,
         status: RfqAnalysisStatus.DRAFT,
         title: dto.title.trim(),
         manualContext: dto.manualContext?.trim() || null,
+        kycCompanyId,
       },
+      select: { id: true },
     });
+    return created;
   }
 
   async list(userId: string, query: { page?: string; pageSize?: string }) {
@@ -114,12 +122,20 @@ export class RfqAnalysisService {
           updatedAt: true,
           originSubject: true,
           originEmail: true,
+          kycCompanyId: true,
+          kycCompany: { select: { id: true, name: true } },
         },
       }),
       this.prisma.rfqAnalysis.count({ where: { userId } }),
     ]);
 
-    return { items, total, page, pageSize };
+    const mappedItems = items.map(({ kycCompanyId, kycCompany, ...rest }) => ({
+      ...rest,
+      kycCompanyId: kycCompanyId != null ? Number(kycCompanyId) : null,
+      kycCompany: kycCompany ? { id: Number(kycCompany.id), name: kycCompany.name } : null,
+    }));
+
+    return { items: mappedItems, total, page, pageSize };
   }
 
   /**
@@ -144,47 +160,6 @@ export class RfqAnalysisService {
     return { ok: true };
   }
 
-  /**
-   * Reenvía el correo de análisis completado (misma plantilla que al terminar el pipeline). Para pruebas de SMTP/plantilla.
-   */
-  async resendCompletionEmail(userId: string, analysisId: string): Promise<{ ok: true }> {
-    const analysis = await this.prisma.rfqAnalysis.findFirst({
-      where: { id: analysisId, userId },
-      include: {
-        sources: { orderBy: { sortOrder: 'asc' } },
-        insights: { orderBy: { version: 'desc' }, take: 1 },
-      },
-    });
-    if (!analysis) throw new NotFoundException('Análisis no encontrado');
-    if (analysis.status !== RfqAnalysisStatus.COMPLETED) {
-      throw new BadRequestException('Solo se puede reenviar el correo cuando el análisis está completado');
-    }
-    const insight = analysis.insights[0];
-    if (!insight) {
-      throw new BadRequestException('No hay resultado estructurado; no se puede generar el correo');
-    }
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, enabled: true },
-    });
-    if (!user?.email?.trim()) {
-      throw new BadRequestException('Tu cuenta no tiene email para enviar el aviso');
-    }
-    if (user.enabled === false) {
-      throw new BadRequestException('Cuenta deshabilitada');
-    }
-    const baseUrl = getAppPublicUrl(this.config);
-    const viewUrl = `${baseUrl}/launcher/rfq-analysis/${analysisId}`;
-    await this.mail.sendRfqAnalysisCompletedEmail(user.email.trim(), {
-      analysisTitle: analysis.title,
-      viewUrl,
-      sourceRows: buildRfqEmailSourceRows(analysis.sources),
-      avvaleUnitNames: avvaleUnitNamesFromInsightJson(insight.avvaleAreas),
-    });
-    this.logger.log(`Correo RFQ completado reenviado manualmente analysis=${analysisId}`);
-    return { ok: true };
-  }
-
   async findOne(userId: string, id: string) {
     const row = await this.prisma.rfqAnalysis.findFirst({
       where: { id, userId },
@@ -193,10 +168,16 @@ export class RfqAnalysisService {
         insights: { orderBy: { version: 'desc' }, take: 1 },
         messages: { orderBy: { createdAt: 'asc' }, take: 200 },
         jobEvents: { orderBy: { createdAt: 'desc' }, take: 30 },
+        kycCompany: { select: { id: true, name: true } },
       },
     });
     if (!row) throw new NotFoundException('Análisis no encontrado');
-    return row;
+    const { kycCompanyId, kycCompany, ...rest } = row;
+    return {
+      ...rest,
+      kycCompanyId: kycCompanyId != null ? Number(kycCompanyId) : null,
+      kycCompany: kycCompany ? { id: Number(kycCompany.id), name: kycCompany.name } : null,
+    };
   }
 
   async uploadSources(
@@ -348,10 +329,20 @@ export class RfqAnalysisService {
       confidenceNotes: insight.confidenceNotes,
     });
 
+    const kycClientName = analysis.kycCompanyId
+      ? (
+          await this.prisma.kycCompany.findUnique({
+            where: { id: analysis.kycCompanyId },
+            select: { name: true },
+          })
+        )?.name?.trim() || null
+      : null;
+
     const system = buildRfqChatSystemPrompt({
       title: analysis.title,
       insightJson,
       sourcesDigest,
+      kycClientName,
     });
 
     const history = await this.prisma.rfqAnalysisMessage.findMany({
