@@ -177,12 +177,9 @@ export function KycAvvalePanel({ companyId, profile, onRefetch, onBanner }: Prop
             <div className={styles.objectSectionTitleGroup}>
               <h3 className={styles.objectSectionTitle}>Presencia por línea</h3>
               <p className={styles.objectSectionSubtitle}>
-                Misma taxonomía que en la síntesis RFQ (<code className={styles.inlineCode}>avvaleAreas</code>
-                : RUN, GROW, WISE, YUBIQ, SAIBORG, AXAZURE). AXAZURE solo aplica a Dynamics / BC / F&O / Power Platform
-                de negocio; migraciones o hosting Azure genérico corresponde a RUN. Los criterios de cada línea
-                coinciden con el prompt de síntesis; aquí solo indicas si hay presencia en cuenta (sin clasificación
-                automática). Pasa el ratón
-                sobre un chip para ver el criterio completo. Activa líneas y añade nota corta si aplica.
+                Indica en qué áreas de negocio de Avvale tiene presencia esta cuenta (RUN, GROW, WISE, YUBIQ,
+                SAIBORG, AXAZURE). Es una marca manual: activa las que correspondan y, si quieres, añade una nota
+                breve. Pasa el ratón sobre cada etiqueta para ver una guía más detallada.
               </p>
             </div>
           </div>
