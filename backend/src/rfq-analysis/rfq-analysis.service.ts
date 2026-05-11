@@ -99,7 +99,7 @@ export class RfqAnalysisService {
     return created;
   }
 
-  async list(userId: string, query: { page?: string; pageSize?: string }) {
+  async list(userId: string, query: { page?: string; pageSize?: string; kycCompanyId?: string }) {
     const page = Math.max(1, parseInt(query.page ?? '1', 10) || 1);
     const pageSize = Math.min(
       MAX_PAGE_SIZE,
@@ -107,9 +107,21 @@ export class RfqAnalysisService {
     );
     const skip = (page - 1) * pageSize;
 
+    const kycRaw = query.kycCompanyId?.trim();
+    let kycCompanyFilter: bigint | undefined;
+    if (kycRaw) {
+      const n = Number.parseInt(kycRaw, 10);
+      if (Number.isFinite(n) && n > 0) kycCompanyFilter = BigInt(n);
+    }
+
+    const where: Prisma.RfqAnalysisWhereInput = {
+      userId,
+      ...(kycCompanyFilter !== undefined ? { kycCompanyId: kycCompanyFilter } : {}),
+    };
+
     const [items, total] = await Promise.all([
       this.prisma.rfqAnalysis.findMany({
-        where: { userId },
+        where,
         orderBy: { updatedAt: 'desc' },
         skip,
         take: pageSize,
@@ -126,7 +138,7 @@ export class RfqAnalysisService {
           kycCompany: { select: { id: true, name: true } },
         },
       }),
-      this.prisma.rfqAnalysis.count({ where: { userId } }),
+      this.prisma.rfqAnalysis.count({ where }),
     ]);
 
     const mappedItems = items.map(({ kycCompanyId, kycCompany, ...rest }) => ({

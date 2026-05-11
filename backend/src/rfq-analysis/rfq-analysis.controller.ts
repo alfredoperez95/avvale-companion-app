@@ -38,8 +38,9 @@ export class RfqAnalysisController {
     @CurrentUser() user: UserPayload,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('kycCompanyId') kycCompanyId?: string,
   ) {
-    return this.rfq.list(user.userId, { page, pageSize });
+    return this.rfq.list(user.userId, { page, pageSize, kycCompanyId });
   }
 
   @Post()

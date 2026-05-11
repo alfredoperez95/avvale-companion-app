@@ -12,6 +12,7 @@ import { KycPorResolverPanel } from './KycPorResolverPanel';
 import { KycAvvalePanel } from './KycAvvalePanel';
 import { KycAvvaleProjectsPanel } from './KycAvvaleProjectsPanel';
 import { KycProfileDashboard, type KycProfileFocus } from './KycProfileDashboard';
+import { KycRfqsPanel } from './KycRfqsPanel';
 import { KycSignalsPanel } from './KycSignalsPanel';
 import { KycStackView } from './KycStackView';
 import { USER_INDUSTRY_OPTIONS, industryLabel, type UserIndustryValue } from '@/lib/user-industry';
@@ -88,6 +89,7 @@ const TABS = [
   ['organigrama', 'Organigrama'],
   ['stack', 'Tecnología'],
   ['por_resolver', 'Por resolver'],
+  ['rfqs', 'RFQs'],
   ['signals', 'Señales'],
 ] as const;
 
@@ -903,70 +905,77 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
             </div>
           </div>
           <div className={styles.asideListWrap}>
-            <div className={styles.list}>
-              {companies.map((c) => (
-                <div
-                  key={c.id}
-                  className={`${styles.listItemRow} ${selId === c.id ? styles.listItemRowActive : ''}`}
-                >
-                  <input
-                    type="checkbox"
-                    className={styles.listRowCbx}
-                    checked={checked.has(c.id)}
-                    aria-label={`Seleccionar ${c.name} para eliminar en bloque`}
-                    onChange={() => {
-                      setChecked((prev) => {
-                        const n = new Set(prev);
-                        if (n.has(c.id)) n.delete(c.id);
-                        else n.add(c.id);
-                        return n;
-                      });
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <button
-                    type="button"
-                    className={styles.listRowSelect}
-                    aria-current={selId === c.id ? 'page' : undefined}
-                    onClick={() => void selectCompany(c.id, { resetTab: true })}
+            {loadingList ? (
+              <div className={styles.asideListLoader} aria-busy="true" aria-live="polite">
+                <div className={styles.asideListLoaderSpinner} aria-hidden />
+                <p className={styles.asideListLoaderText}>Cargando empresas…</p>
+              </div>
+            ) : (
+              <div className={styles.list}>
+                {companies.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`${styles.listItemRow} ${selId === c.id ? styles.listItemRowActive : ''}`}
                   >
-                    <KycCompanyListAvatar website={c.website} name={c.name} />
-                    <span className={styles.listRowSelectBody}>
-                      <div className={styles.itemTitle}>
-                        <span className={styles.itemTitleText}>{c.name}</span>
-                        {c.strategic ? (
-                          <span className={styles.chipStrategicList} title="Estratégica">
-                            ★
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className={styles.itemMeta}>
-                        {[c.industry ? industryLabel(c.industry) : null, companyListMeta(c)]
-                          .filter((x) => x != null && String(x).trim() !== '')
-                          .join(' · ') || '—'}
-                      </div>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.listRowIntakeBtn}
-                    title="Entrevista guiada"
-                    aria-label={`Iniciar entrevista guiada con ${c.name}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void startIntake(c.id);
-                    }}
-                  >
-                    <span className={styles.listRowIntakeBtnIcon} aria-hidden>
-                      <KycToolbarInterviewIcon size={15} />
-                    </span>
-                  </button>
-                </div>
-              ))}
-              {!companies.length && !loadingList && (
-                <div className={styles.listEmpty}>No hay empresas. Usa «+ Empresa» arriba.</div>
-              )}
-            </div>
+                    <input
+                      type="checkbox"
+                      className={styles.listRowCbx}
+                      checked={checked.has(c.id)}
+                      aria-label={`Seleccionar ${c.name} para eliminar en bloque`}
+                      onChange={() => {
+                        setChecked((prev) => {
+                          const n = new Set(prev);
+                          if (n.has(c.id)) n.delete(c.id);
+                          else n.add(c.id);
+                          return n;
+                        });
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <button
+                      type="button"
+                      className={styles.listRowSelect}
+                      aria-current={selId === c.id ? 'page' : undefined}
+                      onClick={() => void selectCompany(c.id, { resetTab: true })}
+                    >
+                      <KycCompanyListAvatar website={c.website} name={c.name} />
+                      <span className={styles.listRowSelectBody}>
+                        <div className={styles.itemTitle}>
+                          <span className={styles.itemTitleText}>{c.name}</span>
+                          {c.strategic ? (
+                            <span className={styles.chipStrategicList} title="Estratégica">
+                              ★
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className={styles.itemMeta}>
+                          {[c.industry ? industryLabel(c.industry) : null, companyListMeta(c)]
+                            .filter((x) => x != null && String(x).trim() !== '')
+                            .join(' · ') || '—'}
+                        </div>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.listRowIntakeBtn}
+                      title="Entrevista guiada"
+                      aria-label={`Iniciar entrevista guiada con ${c.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void startIntake(c.id);
+                      }}
+                    >
+                      <span className={styles.listRowIntakeBtnIcon} aria-hidden>
+                        <KycToolbarInterviewIcon size={15} />
+                      </span>
+                    </button>
+                  </div>
+                ))}
+                {!companies.length ? (
+                  <div className={styles.listEmpty}>No hay empresas. Usa «+ Empresa» arriba.</div>
+                ) : null}
+              </div>
+            )}
           </div>
         </aside>
         <main className={styles.main}>
@@ -1266,6 +1275,13 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                     setProfileFocus(f);
                   }}
                   onGoOrganigrama={() => commitTab('organigrama')}
+                />
+              )}
+              {tab === 'rfqs' && selId && (
+                <KycRfqsPanel
+                  companyId={selId}
+                  companyName={String((detail.company as Record<string, unknown>).name ?? 'Empresa')}
+                  onBanner={setBanner}
                 />
               )}
               {tab === 'signals' && selId && (

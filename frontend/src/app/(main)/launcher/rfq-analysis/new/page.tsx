@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch, apiUpload } from '@/lib/api';
 import { MultiDropzoneUploader } from '@/components/rfq/MultiDropzoneUploader/MultiDropzoneUploader';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
@@ -18,6 +18,7 @@ type KycCompanyOption = {
 
 export default function RfqAnalysisNewPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [title, setTitle] = useState('');
   const [manualContext, setManualContext] = useState('');
   const [kycCompanyId, setKycCompanyId] = useState('');
@@ -57,6 +58,17 @@ export default function RfqAnalysisNewPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const q = searchParams.get('kycCompanyId');
+    if (!q) return;
+    const n = Number.parseInt(q, 10);
+    if (!Number.isFinite(n) || n < 1) return;
+    const idStr = String(n);
+    if (kycCompaniesLoading || kycCompaniesError) return;
+    if (!kycCompanies.some((c) => String(c.id) === idStr)) return;
+    setKycCompanyId((prev) => (prev === idStr ? prev : idStr));
+  }, [searchParams, kycCompaniesLoading, kycCompaniesError, kycCompanies]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

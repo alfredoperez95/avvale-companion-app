@@ -493,6 +493,133 @@
   overflow: hidden;
 }
 
+.asideListLoader {
+  flex: 1;
+  min-height: 6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fiori-space-3, 0.75rem);
+  padding: var(--fiori-space-5, 1.25rem) var(--fiori-space-3, 0.75rem);
+  color: var(--fiori-text-secondary, #6a6d70);
+}
+
+.asideListLoaderSpinner {
+  width: 1.75rem;
+  height: 1.75rem;
+  box-sizing: border-box;
+  border: 2px solid var(--fiori-border-light, #eaecef);
+  border-top-color: var(--fiori-shell-bg, #0a6ed1);
+  border-radius: 50%;
+  animation: kycAsideListLoaderSpin 0.72s linear infinite;
+}
+
+.asideListLoaderText {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+@keyframes kycAsideListLoaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .asideListLoaderSpinner {
+    animation: none;
+    border-top-color: var(--fiori-border-light, #eaecef);
+    opacity: 0.85;
+  }
+}
+
+/* Pestaña RFQs (listado vinculado al cliente KYC) */
+.kycRfqPanelLoading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fiori-space-3, 0.75rem);
+  padding: var(--fiori-space-6, 1.5rem) var(--fiori-space-3, 0.75rem);
+  color: var(--fiori-text-secondary, #6a6d70);
+}
+
+.kycRfqPanelLoadingText {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.kycRfqEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--fiori-space-2, 0.5rem);
+}
+
+.kycRfqList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--fiori-border-light, #eaecef);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--fiori-surface, #fff);
+}
+
+.kycRfqRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--fiori-space-2, 0.5rem) var(--fiori-space-3, 0.75rem);
+  padding: var(--fiori-space-3, 0.75rem) var(--fiori-space-4, 1rem);
+  border-bottom: 1px solid var(--fiori-border-light, #eaecef);
+}
+
+.kycRfqRow:last-child {
+  border-bottom: none;
+}
+
+.kycRfqRowMain {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.kycRfqRowTitle {
+  margin: 0 0 0.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.kycRfqRowTitle a {
+  color: var(--fiori-shell-bg, #0a6ed1);
+  text-decoration: none;
+}
+
+.kycRfqRowTitle a:hover {
+  text-decoration: underline;
+}
+
+.kycRfqRowMeta {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary, #6a6d70);
+}
+
+.kycRfqRowRight {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
 .list {
   flex: 1;
   min-height: 0;
@@ -4382,6 +4509,18 @@
   gap: var(--fiori-space-3, 0.75rem);
 }
 
+/** Contenedor del listado en modo edición (contraste suave con las tarjetas). */
+.avvaleProjectListEditShell {
+  padding: var(--fiori-space-4, 1rem);
+  border-radius: 0.75rem;
+  border: 1px solid var(--fiori-border-light, #eaecef);
+  background: color-mix(in srgb, var(--fiori-nav-bg, #354a5f) 6%, var(--fiori-surface, #fff));
+}
+
+.avvaleProjectListDense {
+  gap: var(--fiori-space-4, 1rem);
+}
+
 .avvaleProjectCard {
   border: 1px solid var(--fiori-border-light, #eaecef);
   border-radius: 0.5rem;
@@ -4389,38 +4528,173 @@
   background: color-mix(in srgb, var(--fiori-nav-bg, #354a5f) 3%, var(--fiori-surface, #fff));
 }
 
-.avvaleProjectTop {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
+.avvaleProjectCardEdit {
+  padding: var(--fiori-space-4, 1rem);
+  background: var(--fiori-surface, #fff);
+  border-radius: 0.625rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.avvaleProjectEditHeader {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
   gap: var(--fiori-space-2, 0.5rem);
-  margin-bottom: var(--fiori-space-2, 0.5rem);
+  margin-bottom: var(--fiori-space-3, 0.75rem);
+  padding-bottom: var(--fiori-space-2, 0.5rem);
+  border-bottom: 1px solid var(--fiori-border-light, #eaecef);
 }
 
-/** Misma caja vertical que `.btn.btnSm` (p. ej. «Editar listado», «Quitar»). */
-.avvaleProjectTop .input,
-.avvaleProjectTop select.input {
-  font-size: 0.75rem;
-  line-height: 1.2;
-  padding: 0.25rem 0.5rem;
-  min-height: calc(0.9rem + 0.5rem + 2px);
-  box-sizing: border-box;
+.avvaleProjectEditIndex {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fiori-text-secondary, #6a6d70);
 }
 
-.avvaleProjectTop .input {
-  flex: 1 1 10rem;
+.avvaleProjectRemoveBtn {
+  justify-self: end;
+}
+
+.avvaleProjectEditGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(9.5rem, 12rem);
+  gap: var(--fiori-space-3, 0.75rem);
+  align-items: start;
+}
+
+@media (max-width: 36rem) {
+  .avvaleProjectEditGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.avvaleProjectEditField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fiori-space-1, 0.25rem);
   min-width: 0;
 }
 
-.avvaleProjectTop select.input {
-  flex: 0 1 7rem;
+.avvaleProjectEditFieldStatus {
+  max-width: 100%;
 }
 
-.avvaleProjectTop .btn.btnSm {
-  display: inline-flex;
+.avvaleProjectEditLabelRow {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  align-self: stretch;
+  justify-content: space-between;
+  gap: var(--fiori-space-2, 0.5rem);
+}
+
+.avvaleProjectEditLabel {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fiori-text, #32363a);
+}
+
+.avvaleProjectEditBadgeRequired,
+.avvaleProjectEditBadgeOptional {
+  flex-shrink: 0;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border-radius: 0.25rem;
+  border: 1px solid transparent;
+}
+
+.avvaleProjectEditBadgeRequired {
+  color: var(--fiori-shell-bg, #0a6ed1);
+  background: color-mix(in srgb, var(--fiori-shell-bg, #0a6ed1) 10%, var(--fiori-surface, #fff));
+  border-color: color-mix(in srgb, var(--fiori-shell-bg, #0a6ed1) 28%, var(--fiori-border-light, #eaecef));
+}
+
+.avvaleProjectEditBadgeOptional {
+  color: var(--fiori-text-secondary, #6a6d70);
+  background: color-mix(in srgb, var(--fiori-nav-bg, #354a5f) 40%, var(--fiori-surface, #fff));
+  border-color: var(--fiori-border-light, #eaecef);
+}
+
+.avvaleProjectEditInput {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  min-height: 2.375rem;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--fiori-text, #32363a);
+  border: 1px solid var(--fiori-border-light, #eaecef);
+  border-radius: 0.375rem;
+  background: var(--fiori-surface, #fff);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.avvaleProjectEditInput:hover {
+  border-color: color-mix(in srgb, var(--fiori-shell-bg, #0a6ed1) 35%, var(--fiori-border-light, #eaecef));
+}
+
+.avvaleProjectEditInput:focus-visible {
+  outline: none;
+  border-color: var(--fiori-shell-bg, #0a6ed1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fiori-shell-bg, #0a6ed1) 22%, transparent);
+}
+
+.avvaleProjectEditNotesBlock {
+  margin-top: var(--fiori-space-3, 0.75rem);
+  padding-top: var(--fiori-space-3, 0.75rem);
+  border-top: 1px solid var(--fiori-border-light, #eaecef);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fiori-space-2, 0.5rem);
+}
+
+.avvaleProjectEditNotesHint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--fiori-text-secondary, #6a6d70);
+}
+
+.avvaleProjectEditTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  min-height: 5rem;
+  padding: 0.5rem 0.625rem;
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--fiori-text, #32363a);
+  border: 1px solid var(--fiori-border-light, #eaecef);
+  border-radius: 0.375rem;
+  background: var(--fiori-surface, #fff);
+  resize: vertical;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.avvaleProjectEditTextarea::placeholder {
+  color: var(--fiori-text-secondary, #6a6d70);
+}
+
+.avvaleProjectEditTextarea:hover {
+  border-color: color-mix(in srgb, var(--fiori-shell-bg, #0a6ed1) 35%, var(--fiori-border-light, #eaecef));
+}
+
+.avvaleProjectEditTextarea:focus-visible {
+  outline: none;
+  border-color: var(--fiori-shell-bg, #0a6ed1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fiori-shell-bg, #0a6ed1) 22%, transparent);
 }
 
 .avvaleSolutionChips {

@@ -170,57 +170,101 @@ export function KycAvvaleProjectsPanel({ companyId, profile, onRefetch, onBanner
                 Aún no hay filas. Usa «Añadir a proyectos en cuenta» para añadir la primera.
               </p>
             ) : editing ? (
-              <ul className={styles.avvaleProjectList}>
-                {projects.map((p) => (
-                  <li key={p.id} className={styles.avvaleProjectCard}>
-                    <div className={styles.avvaleProjectTop}>
-                      <input
-                        className={styles.input}
-                        value={p.name}
-                        onChange={(e) =>
-                          setProjects((prev) => prev.map((x) => (x.id === p.id ? { ...x, name: e.target.value } : x)))
-                        }
-                        placeholder="Nombre del proyecto en cuenta (Avvale u otro partner)"
-                        aria-label={`Nombre del proyecto en cuenta ${p.id}`}
-                      />
-                      <select
-                        className={styles.input}
-                        value={p.status}
-                        onChange={(e) =>
-                          setProjects((prev) =>
-                            prev.map((x) =>
-                              x.id === p.id ? { ...x, status: normProjectStatus(e.target.value) } : x,
-                            ),
-                          )
-                        }
-                        aria-label={`Estado del proyecto en cuenta ${p.name || p.id}`}
-                      >
-                        <option value="active">Activo</option>
-                        <option value="analyzing">En análisis</option>
-                        <option value="negotiating">En negociación</option>
-                        <option value="past">Pasado</option>
-                      </select>
-                      <button
-                        type="button"
-                        className={`${styles.btn} ${styles.btnSm} ${styles.btnDangerOutline}`}
-                        onClick={() => removeProject(p.id)}
-                      >
-                        Quitar
-                      </button>
-                    </div>
-                    <textarea
-                      className={styles.textareaLg}
-                      rows={2}
-                      value={p.notes ?? ''}
-                      onChange={(e) =>
-                        setProjects((prev) => prev.map((x) => (x.id === p.id ? { ...x, notes: e.target.value } : x)))
-                      }
-                      placeholder="Notas (opcional)"
-                      aria-label={`Notas del proyecto en cuenta ${p.name || p.id}`}
-                    />
-                  </li>
-                ))}
-              </ul>
+              <div className={styles.avvaleProjectListEditShell}>
+                <ul className={`${styles.avvaleProjectList} ${styles.avvaleProjectListDense}`}>
+                  {projects.map((p, idx) => {
+                    const nameId = `kyc-avvale-proj-name-${p.id}`;
+                    const statusId = `kyc-avvale-proj-status-${p.id}`;
+                    const notesId = `kyc-avvale-proj-notes-${p.id}`;
+                    return (
+                      <li key={p.id} className={`${styles.avvaleProjectCard} ${styles.avvaleProjectCardEdit}`}>
+                        <div className={styles.avvaleProjectEditHeader}>
+                          <span className={styles.avvaleProjectEditIndex}>
+                            Proyecto {idx + 1} de {projects.length}
+                          </span>
+                          <button
+                            type="button"
+                            className={`${styles.btn} ${styles.btnSm} ${styles.btnDangerOutline} ${styles.avvaleProjectRemoveBtn}`}
+                            onClick={() => removeProject(p.id)}
+                          >
+                            Quitar de la lista
+                          </button>
+                        </div>
+                        <div className={styles.avvaleProjectEditGrid}>
+                          <div className={styles.avvaleProjectEditField}>
+                            <div className={styles.avvaleProjectEditLabelRow}>
+                              <label className={styles.avvaleProjectEditLabel} htmlFor={nameId}>
+                                Nombre en cuenta
+                              </label>
+                              <span className={styles.avvaleProjectEditBadgeRequired}>Obligatorio</span>
+                            </div>
+                            <input
+                              id={nameId}
+                              className={styles.avvaleProjectEditInput}
+                              value={p.name}
+                              onChange={(e) =>
+                                setProjects((prev) =>
+                                  prev.map((x) => (x.id === p.id ? { ...x, name: e.target.value } : x)),
+                                )
+                              }
+                              placeholder="p. ej. soporte SAP, infra AWS, partner líder…"
+                              autoComplete="off"
+                            />
+                          </div>
+                          <div className={`${styles.avvaleProjectEditField} ${styles.avvaleProjectEditFieldStatus}`}>
+                            <div className={styles.avvaleProjectEditLabelRow}>
+                              <label className={styles.avvaleProjectEditLabel} htmlFor={statusId}>
+                                Estado
+                              </label>
+                            </div>
+                            <select
+                              id={statusId}
+                              className={styles.avvaleProjectEditInput}
+                              value={p.status}
+                              onChange={(e) =>
+                                setProjects((prev) =>
+                                  prev.map((x) =>
+                                    x.id === p.id ? { ...x, status: normProjectStatus(e.target.value) } : x,
+                                  ),
+                                )
+                              }
+                            >
+                              <option value="active">Activo</option>
+                              <option value="analyzing">En análisis</option>
+                              <option value="negotiating">En negociación</option>
+                              <option value="past">Pasado</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className={styles.avvaleProjectEditNotesBlock}>
+                          <div className={styles.avvaleProjectEditLabelRow}>
+                            <label className={styles.avvaleProjectEditLabel} htmlFor={notesId}>
+                              Notas
+                            </label>
+                            <span className={styles.avvaleProjectEditBadgeOptional}>Opcional</span>
+                          </div>
+                          <p className={styles.avvaleProjectEditNotesHint}>
+                            Partner, alcance o responsable. Si las dejas vacías, «Actualizar» en la ficha puede
+                            sugerir notas a partir del contexto del perfil.
+                          </p>
+                          <textarea
+                            id={notesId}
+                            className={styles.avvaleProjectEditTextarea}
+                            rows={3}
+                            value={p.notes ?? ''}
+                            onChange={(e) =>
+                              setProjects((prev) =>
+                                prev.map((x) => (x.id === p.id ? { ...x, notes: e.target.value } : x)),
+                              )
+                            }
+                            placeholder="Quién lidera, fase, riesgos…"
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             ) : (
               <ul className={styles.avvaleProjectList}>
                 {projects.map((p) => (

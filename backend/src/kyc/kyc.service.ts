@@ -219,9 +219,50 @@ function extractProjectsArrayFromAvvaleRoot(existingRoot: unknown): unknown[] {
   return [];
 }
 
+function normalizeAvvaleProjectNameKey(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/** Parsea la respuesta de la micro-síntesis `notes_by_id` (ids UUID en minúsculas). */
+function parseAvvaleNotesByIdResponse(raw: string): Record<string, string> | null {
+  const strip = (s: string) => s.trim();
+  const build = (o: unknown): Record<string, string> | null => {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+    const r = o as Record<string, unknown>;
+    const m = (r.notes_by_id ?? r.notesById) as unknown;
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return null;
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(m as Record<string, unknown>)) {
+      const id = strip(k).toLowerCase();
+      if (!AVVALE_PROJECT_ID_RE.test(id)) continue;
+      if (typeof v !== 'string' || !strip(v)) continue;
+      out[id] = strip(v).slice(0, 2000);
+    }
+    return Object.keys(out).length ? out : null;
+  };
+  const t = raw.trim();
+  try {
+    return build(JSON.parse(t));
+  } catch {
+    /* fallthrough */
+  }
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence?.[1]) {
+    try {
+      return build(JSON.parse(fence[1].trim()));
+    } catch {
+      /* empty */
+    }
+  }
+  return null;
+}
+
 /**
  * Combina la síntesis IA con el `avvale` ya guardado: la lista **projects** del perfil **no** se amplía
  * con filas inferidas por IA (p. ej. desde noticias RSS). Solo se conservan los proyectos ya guardados.
+ * **Notas de proyecto** (`projects[].notes`): si una fila guardada no tiene notas (o solo espacios), se rellenan
+ * con las notas de la síntesis cuando coinciden por **id** (UUID) o por **nombre** normalizado (trim + minúsculas);
+ * si la ficha ya tenía notas, no se sobrescriben.
  * Presencia: **unión** de la lista ya guardada y la inferida por IA (orden canónico grow, run, wise, yubiq,
  * saiborg, axazure), para que «Actualizar» pueda **añadir** líneas detectadas sin borrar las marcadas a mano.
  * Notas por línea: si ya había texto guardado para un slug, se conserva; si no, se usa el de la IA.
@@ -244,7 +285,32 @@ function mergeAvvaleSynthesisWithExisting(
   const storedProjects = extractAvvaleProjectsFromProfile(rawProjectsArr, {
     requireNonEmptyName: false,
   });
-  const mergedProjects: AvvaleSynthProject[] = [...storedProjects];
+  const aiProjSource = Array.isArray(syn.projects)
+    ? syn.projects
+    : Array.isArray(syn.proyectos)
+      ? syn.proyectos
+      : [];
+  const aiProjects = extractAvvaleProjectsFromProfile(aiProjSource, { requireNonEmptyName: false });
+
+  const mergedProjects: AvvaleSynthProject[] = storedProjects.map((p) => {
+    const existingNotes = (p.notes ?? '').trim();
+    if (existingNotes) return p;
+    const idLc = p.id.trim().toLowerCase();
+    let fromAi = '';
+    if (AVVALE_PROJECT_ID_RE.test(p.id)) {
+      const byId = aiProjects.find((x) => x.id.trim().toLowerCase() === idLc);
+      if (byId?.notes?.trim()) fromAi = byId.notes.trim();
+    }
+    if (!fromAi && p.name.trim()) {
+      const nk = normalizeAvvaleProjectNameKey(p.name);
+      const byName = aiProjects.find(
+        (x) => normalizeAvvaleProjectNameKey(x.name) === nk && x.notes != null && String(x.notes).trim(),
+      );
+      if (byName?.notes?.trim()) fromAi = byName.notes.trim();
+    }
+    if (!fromAi) return p;
+    return { ...p, notes: fromAi.slice(0, 2000) };
+  });
 
   const existingPresence = normalizeSolutionPresenceKnown(existing.solution_presence);
   const aiPresence = normalizeSolutionPresenceKnown(syn.solution_presence);
@@ -960,7 +1026,7 @@ export class KycService {
    * Enriquecimiento "safe": sin scraping propio.
    * - Actualiza señales (Google News RSS)
    * - Re-genera resumen ejecutivo vía IA (si el usuario tiene clave configurada)
-   * - Reprocesa con IA el bloque JSON `avvale` (footprint, **solution_presence** con criterios Avvale/RFQ; sin RSS en contexto) y lo **fusiona** con el perfil (lista `projects` solo desde ficha; **presencia** = unión guardada ∪ inferida; **notas** por slug: texto guardado prevalece)
+   * - Reprocesa con IA el bloque JSON `avvale` (footprint, **solution_presence** con criterios Avvale/RFQ; sin RSS en contexto) y lo **fusiona** con el perfil (lista `projects` solo desde ficha; **notas de proyecto** vacías se rellenan desde la IA si coincide id/nombre; **presencia** = unión guardada ∪ inferida; **notas** por slug: texto guardado prevalece)
    *
    * No falla toda la operación si el resumen no se puede generar (p. ej. falta API key).
    */
@@ -1542,9 +1608,96 @@ Reglas:
   }
 
   /**
+   * Cuando la síntesis `avvale` principal devuelve `projects` sin `notes` pero en ficha hay filas sin notas,
+   * una segunda llamada pide solo `notes_by_id` para que «Actualizar» pueda persistir cambios reales.
+   */
+  private async augmentParsedAvvaleWithProjectNotesIfNeeded(
+    parsedAv: Prisma.InputJsonValue,
+    existingRoot: unknown,
+    apiKey: string,
+    ctx: string,
+  ): Promise<Prisma.InputJsonValue> {
+    const rawExistingArr = extractProjectsArrayFromAvvaleRoot(existingRoot);
+    const stored = extractAvvaleProjectsFromProfile(rawExistingArr, { requireNonEmptyName: false });
+    const needNotes = stored.filter((p) => !(p.notes ?? '').trim());
+    if (!needNotes.length) return parsedAv;
+
+    if (!parsedAv || typeof parsedAv !== 'object' || Array.isArray(parsedAv)) return parsedAv;
+    const po = JSON.parse(JSON.stringify(parsedAv)) as Record<string, unknown>;
+    const projKey = Array.isArray(po.projects)
+      ? ('projects' as const)
+      : Array.isArray(po.proyectos)
+        ? ('proyectos' as const)
+        : null;
+    if (!projKey) return parsedAv;
+
+    const aiArr = po[projKey] as unknown[];
+    if (!Array.isArray(aiArr) || !aiArr.length) return parsedAv;
+    const aiParsed = extractAvvaleProjectsFromProfile(aiArr, { requireNonEmptyName: false });
+    if (aiParsed.some((x) => (x.notes ?? '').trim())) return parsedAv as Prisma.InputJsonValue;
+
+    const list = needNotes
+      .filter((p) => AVVALE_PROJECT_ID_RE.test(p.id))
+      .map((p) => ({ id: p.id, nombre: p.name.trim() || 'Proyecto en cuenta' }));
+    if (!list.length) return parsedAv as Prisma.InputJsonValue;
+
+    const model = getKycSummaryModel(this.config);
+    const userContent = `Tarea: rellenar una nota breve (1–3 frases, máximo 450 caracteres, español) por cada proyecto «en cuenta» listado. Usa únicamente el contexto KYC (ficha, resumen, stack, organigrama, etc.); no afirmes partners ni resultados no mencionados.
+
+Proyectos (ids oficiales):
+${JSON.stringify(list, null, 2)}
+
+## Contexto
+${ctx.slice(0, 16000)}
+
+Responde **solo** JSON con esta forma exacta:
+{"notes_by_id":{"<uuid>":"<texto>", ...}}
+
+Usa como claves los mismos ids en **minúsculas**. Incluye **todas** las entradas de la lista. Si para un id no hay evidencia en el contexto, el valor debe ser exactamente:
+Sin detalle en contexto; completar manualmente.
+`;
+
+    const system =
+      'Devuelve únicamente un objeto JSON. Clave raíz notes_by_id (objeto id string -> nota string). Sin markdown ni texto extra.';
+
+    let raw2 = '';
+    try {
+      const r = await this.anthropic.completeMessages({
+        apiKey,
+        model,
+        system,
+        messages: [{ role: 'user', content: userContent }],
+        maxTokens: 2200,
+      });
+      raw2 = r.text.trim();
+    } catch (e) {
+      this.log.warn('augmentParsedAvvaleWithProjectNotesIfNeeded', (e as Error).message);
+      return parsedAv as Prisma.InputJsonValue;
+    }
+
+    const map = parseAvvaleNotesByIdResponse(raw2);
+    if (!map) return parsedAv as Prisma.InputJsonValue;
+
+    for (const row of aiArr) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+      const rw = row as Record<string, unknown>;
+      const idRaw = typeof rw.id === 'string' ? rw.id.trim() : '';
+      if (!AVVALE_PROJECT_ID_RE.test(idRaw)) continue;
+      const note = map[idRaw.toLowerCase()];
+      if (!note) continue;
+      const prevN = String(rw.notes ?? rw.notas ?? '').trim();
+      if (prevN) continue;
+      rw.notes = note;
+    }
+    po[projKey] = aiArr;
+    return JSON.parse(JSON.stringify(po)) as Prisma.InputJsonValue;
+  }
+
+  /**
    * Reprocesa con IA el bloque `avvale` (footprint, presencia por línea y notas; sin listado RSS en el contexto).
    * El resultado se **fusiona** con el JSON ya guardado: la lista `projects` **solo** conserva lo ya
-   * guardado en ficha; **solution_presence** = unión ordenada de la presencia guardada y la inferida por IA
+   * guardado en ficha; las **notas** de cada proyecto sin texto se pueden completar desde la IA (mismo id o nombre).
+   * **solution_presence** = unión ordenada de la presencia guardada y la inferida por IA
    * (criterios compartidos con `avvaleAreas` en RFQ); **solution_notes**: conserva texto ya guardado por slug.
    */
   async synthesizeAvvaleFromContext(companyId: bigint, userId: string): Promise<{ ok: boolean; updated: boolean }> {
@@ -1575,7 +1728,7 @@ ${currentJson}
 ## Contexto (ficha, perfil KYC, resumen, organigrama; **sin** extracto de noticias/RSS)
 ${ctx}
 
-Instrucciones: **reprocesa** el bloque \`avvale\` desde este contexto. Los **projects** oficiales «en cuenta» **no** deben inferirse solo desde noticias (no están en este contexto). Devuelve \`projects\` como \`[]\` o repetición coherente de los ids del JSON de referencia; el servidor **conserva** la lista de proyectos ya guardada en ficha.
+Instrucciones: **reprocesa** el bloque \`avvale\` desde este contexto. Los **projects** oficiales «en cuenta» **no** deben inferirse solo desde noticias (no están en este contexto). Devuelve \`projects\` como \`[]\` o **las mismas filas** que en el JSON de referencia (mismos \`id\` y \`name\` donde aplique); el servidor **conserva** la lista guardada en ficha. Para **cada** fila cuya \`notes\` esté vacía o ausente en referencia, incluye en tu JSON un campo \`notes\` no vacío (1–2 frases) inferido del contexto; si no hay base, escribe exactamente: «Sin detalle en contexto; completar manualmente.» Si la referencia ya trae notas en una fila, el servidor **no** las sustituye.
 
 Para **solution_presence** y **solution_notes**, aplica la **guía de clasificación por línea** del mensaje del sistema (mismos criterios que \`avvaleAreas\` en análisis RFQ). Incluye en \`solution_presence\` solo slugs con evidencia razonable en este contexto (tech stack, resumen, footprint, organigrama, nombres/notas de proyectos en cuenta, etc.). \`solution_notes\`: solo notas breves donde aportes matiz útil; el servidor conservará notas ya guardadas si existen.
 
@@ -1595,7 +1748,7 @@ ${AVVALE_SOLUTION_LINE_CLASSIFICATION_BULLETS}
 Regla explícita: **no** incluyas el slug \`axazure\` solo por mencionar Azure, migración a la nube, hosting, landing zone o infra sin que el contexto cite **Dynamics 365, Business Central o F&O** como **aplicación de negocio protagonista**; en esos casos usa \`run\` (o ninguna línea extra si no aplica).
 
 Reglas de fusión con el perfil guardado:
-- **projects**: solo filas ya en ficha; tu array no añade proyectos nuevos.
+- **projects**: solo filas ya en ficha; tu array no añade proyectos nuevos. Repite los \`id\` de referencia cuando devuelvas filas. **notes** por proyecto: si en ficha una fila no tiene notas, el servidor puede aplicar las tuyas al fusionar (mismo \`id\` o mismo nombre); si ya hay notas en ficha, no se sobrescriben.
 - **solution_presence**: el servidor hará la **unión** de lo ya guardado y lo que infieras tú (orden canónico). Puedes proponer líneas nuevas que el contexto respalde aunque antes no estuvieran marcadas.
 - **solution_notes**: si en ficha ya hay texto para un slug, el servidor lo conserva; rellena solo huecos o slugs nuevos donde aportes valor.
 - Las **hipótesis** desde noticias RSS no forman parte de este contexto: no las uses para inventar \`projects\`.
@@ -1622,7 +1775,13 @@ Reglas de fusión con el perfil guardado:
     if (!prevRow) return { ok: false, updated: false };
     if (!parsedAv) return { ok: true, updated: false };
 
-    const nextAv = mergeAvvaleSynthesisWithExisting(prevRow.avvale, parsedAv);
+    const mergedParsed = await this.augmentParsedAvvaleWithProjectNotesIfNeeded(
+      parsedAv,
+      prevRow.avvale,
+      apiKey,
+      ctx,
+    );
+    const nextAv = mergeAvvaleSynthesisWithExisting(prevRow.avvale, mergedParsed);
     if (!nextAv) return { ok: true, updated: false };
 
     let beforeStr = '';
