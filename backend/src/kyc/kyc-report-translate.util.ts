@@ -12,8 +12,18 @@ export type KycFullCompanyApi = {
   open_questions: Record<string, unknown>[];
 };
 
+function stripOptionalMarkdownFence(raw: string): string {
+  let s = String(raw ?? '').trim();
+  if (!s.startsWith('```')) return s;
+  const firstNl = s.indexOf('\n');
+  if (firstNl === -1) return s;
+  s = s.slice(firstNl + 1).trim();
+  if (s.endsWith('```')) s = s.slice(0, -3).trim();
+  return s;
+}
+
 function recoverJsonObjectString(raw: string): string {
-  const s = String(raw ?? '').trim();
+  let s = stripOptionalMarkdownFence(String(raw ?? '')).trim();
   if (!s) return '';
   try {
     JSON.parse(s);
@@ -31,11 +41,69 @@ export function safeParseTranslatedJson(raw: string): Record<string, unknown> | 
   const fenced = recoverJsonObjectString(raw);
   try {
     const v = JSON.parse(fenced) as unknown;
-    if (v && typeof v === 'object' && !Array.isArray(v)) return v as Record<string, unknown>;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      return normalizeClaudeTranslationKeys(v as Record<string, unknown>);
+    }
   } catch {
     return null;
   }
   return null;
+}
+
+/** El modelo a veces devuelve camelCase; el informe espera snake_case como el sobre de entrada. */
+export function normalizeClaudeTranslationKeys(raw: Record<string, unknown>): Record<string, unknown> {
+  const n = { ...raw };
+  const alias = (camel: string, snake: string) => {
+    if (n[snake] === undefined && n[camel] !== undefined) n[snake] = n[camel];
+  };
+  alias('profileSummary', 'profile_summary');
+  alias('profileBlocks', 'profile_blocks');
+  alias('techStack', 'tech_stack');
+  alias('signalIntel', 'signal_intel');
+  alias('openQuestions', 'open_questions');
+  alias('orgMembers', 'org_members');
+  alias('orgRelationships', 'org_relationships');
+
+  const pb = n.profile_blocks;
+  if (pb && typeof pb === 'object' && !Array.isArray(pb)) {
+    const pbo = pb as Record<string, unknown>;
+    const pba = (camel: string, snake: string) => {
+      if (pbo[snake] === undefined && pbo[camel] !== undefined) pbo[snake] = pbo[camel];
+    };
+    pba('businessModel', 'business_model');
+    pba('criticalProcesses', 'critical_processes');
+    pba('sectorContext', 'sector_context');
+  }
+  return n;
+}
+
+/** Parte 1: ficha + bloques + stack + avvale + hipótesis (suele ser la más grande). */
+export function reportTranslationEnvelopePartA(envelope: Record<string, unknown>): Record<string, unknown> {
+  return {
+    company: envelope.company,
+    profile_summary: envelope.profile_summary,
+    profile_blocks: envelope.profile_blocks,
+    tech_stack: envelope.tech_stack,
+    avvale: envelope.avvale,
+    signal_intel: envelope.signal_intel,
+  };
+}
+
+/** Parte 2: listas y organigrama (respuesta más corta → menos riesgo de truncado). */
+export function reportTranslationEnvelopePartB(envelope: Record<string, unknown>): Record<string, unknown> {
+  return {
+    signals: envelope.signals,
+    open_questions: envelope.open_questions,
+    org_members: envelope.org_members,
+    org_relationships: envelope.org_relationships,
+  };
+}
+
+export function mergeTranslationEnvelopeParts(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+): Record<string, unknown> {
+  return { ...a, ...b };
 }
 
 /** Payload compacto enviado a Claude (misma forma que esperamos de vuelta). */
@@ -118,8 +186,11 @@ export function applyReportEnglishTranslation(
   }
 
   if (out.profile) {
-    if (translated.profile_summary !== undefined && translated.profile_summary !== null) {
-      out.profile.summary = String(translated.profile_summary);
+    if (translated.profile_summary !== undefined) {
+      out.profile.summary =
+        translated.profile_summary === null || translated.profile_summary === ''
+          ? translated.profile_summary
+          : String(translated.profile_summary);
     }
     const pb = translated.profile_blocks as Record<string, unknown> | undefined;
     if (pb && typeof pb === 'object') {

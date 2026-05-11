@@ -176,6 +176,63 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
     }
 
+    /* Overlay bloqueante: carga / traducción del informe */
+    .report-busy-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+    .report-busy-overlay--hidden {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .report-busy-panel {
+      max-width: 420px;
+      width: 100%;
+      padding: 28px 32px;
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+      text-align: center;
+    }
+    .report-busy-spinner {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 18px;
+      border-radius: 50%;
+      border: 4px solid var(--line);
+      border-top-color: var(--shell-accent);
+      animation: report-busy-spin 0.85s linear infinite;
+    }
+    @keyframes report-busy-spin {
+      to { transform: rotate(360deg); }
+    }
+    .report-busy-title {
+      font-family: "72", sans-serif;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--shell-header);
+      letter-spacing: -0.02em;
+      line-height: 1.35;
+      margin: 0 0 10px;
+    }
+    .report-busy-sub {
+      font-size: 10.5pt;
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0;
+    }
+
     /* ─── COVER (section.sheet.cover: una cara A4, cuerpo flexible) ─── */
     .sheet.cover {
       display: flex;
@@ -973,6 +1030,7 @@
         print-color-adjust: exact !important;
       }
       .toolbar { display: none !important; }
+      .report-busy-overlay { display: none !important; }
       .sheet {
         margin: 0 !important;
         box-shadow: none !important;
@@ -1085,6 +1143,13 @@
     <button type="button" id="btn-close" class="btn" onclick="window.close()">Cerrar</button>
     <span id="status" class="toolbar-status"></span>
   </div>
+  <div id="report-busy-overlay" class="report-busy-overlay report-busy-overlay--hidden" aria-hidden="true" role="alertdialog" aria-modal="true" aria-labelledby="report-busy-title" aria-describedby="report-busy-sub">
+    <div class="report-busy-panel">
+      <div class="report-busy-spinner" aria-hidden="true"></div>
+      <p id="report-busy-title" class="report-busy-title"></p>
+      <p id="report-busy-sub" class="report-busy-sub"></p>
+    </div>
+  </div>
   <div id="root"></div>
 
 <script>
@@ -1110,6 +1175,10 @@ const REPORT_I18N = {
     statusLoading: 'Cargando...',
     statusReady: 'Listo',
     translateLoading: 'Traduciendo contenido con IA…',
+    overlayFetchTitle: 'Cargando informe…',
+    overlayFetchSub: 'Obteniendo datos de la empresa desde el servidor. Espera un momento.',
+    overlayTranslateTitle: 'Actualizando informe…',
+    overlayTranslateSub: 'Traduciendo el contenido con IA (Anthropic). Suele tardar entre uno y tres minutos; no cierres esta pestaña.',
     translateError: 'No se pudo traducir el contenido',
     errorMissingId: 'Falta parámetro ?id=',
     docTitleSuffix: 'Informe KYC · ',
@@ -1215,6 +1284,10 @@ const REPORT_I18N = {
     statusLoading: 'Loading...',
     statusReady: 'Ready',
     translateLoading: 'Translating content with AI…',
+    overlayFetchTitle: 'Loading report…',
+    overlayFetchSub: 'Fetching company data from the server. Please wait.',
+    overlayTranslateTitle: 'Updating report…',
+    overlayTranslateSub: 'Translating content with AI (Anthropic). This often takes one to three minutes; do not close this tab.',
     translateError: 'Could not translate content',
     errorMissingId: 'Missing ?id= parameter',
     docTitleSuffix: 'KYC Report · ',
@@ -1319,6 +1392,24 @@ function tr(key) {
   return REPORT_I18N.es[key] ?? key;
 }
 
+function setReportBusyOverlay(visible, titleText, subText) {
+  const el = document.getElementById('report-busy-overlay');
+  const titleEl = document.getElementById('report-busy-title');
+  const subEl = document.getElementById('report-busy-sub');
+  if (!el || !titleEl || !subEl) return;
+  if (visible) {
+    titleEl.textContent = titleText || '';
+    subEl.textContent = subText || '';
+    el.classList.remove('report-busy-overlay--hidden');
+    el.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  } else {
+    el.classList.add('report-busy-overlay--hidden');
+    el.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+}
+
 function updateToolbarChrome() {
   const tp = document.getElementById('toolbar-product');
   const tt = document.getElementById('toolbar-tag');
@@ -1335,9 +1426,13 @@ function updateToolbarChrome() {
 async function fetchTranslatedReportEn() {
   if (window.__kycReportEnPayload) return window.__kycReportEnPayload;
   const token = localStorage.getItem('token');
-  const r = await fetch('/api/kyc/companies/' + companyId + '/report-translate-en', {
+  const r = await fetch('/kyc/companies/' + companyId + '/report-translate-en', {
     method: 'POST',
-    headers: { Authorization: 'Bearer ' + token },
+    headers: {
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
   });
   if (r.status === 401) {
     localStorage.removeItem('token');
@@ -1369,6 +1464,10 @@ async function toggleReportLang() {
   if (next === 'en') {
     if (st) st.textContent = tr('translateLoading');
     if (bl) bl.disabled = true;
+    const needsTranslateFetch = !window.__kycReportEnPayload;
+    if (needsTranslateFetch) {
+      setReportBusyOverlay(true, tr('overlayTranslateTitle'), tr('overlayTranslateSub'));
+    }
     try {
       const data = await fetchTranslatedReportEn();
       render(data, window.__kycReportLast.openQs);
@@ -1380,6 +1479,7 @@ async function toggleReportLang() {
       if (st) st.textContent = tr('translateError') + ': ' + errMsg;
       render(window.__kycReportLast.data, window.__kycReportLast.openQs);
     } finally {
+      if (needsTranslateFetch) setReportBusyOverlay(false);
       if (bl) bl.disabled = false;
     }
   } else {
@@ -1681,20 +1781,25 @@ async function load() {
   if (!token) { window.location.href = '/login'; return; }
   const authH = { 'Authorization': 'Bearer ' + token };
   document.getElementById('status').textContent = tr('statusLoading');
-  const [full, openQs] = await Promise.all([
-    fetch('/api/kyc/companies/' + companyId, { headers: authH }).then((r) => {
-      if (r.status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; throw new Error('unauth'); }
-      return r.json();
-    }),
-    fetch('/api/kyc/companies/' + companyId + '/open-questions', { headers: authH }).then((r) => r.ok ? r.json() : []),
-  ]);
-  window.__kycReportLast = { data: full, openQs };
-  window.__kycReportEnPayload = null;
-  setReportOrgLevels();
-  render(full, openQs);
-  document.getElementById('status').textContent = tr('statusReady');
-  document.title = tr('docTitleSuffix') + (full.company?.name || companyId);
-  updateToolbarChrome();
+  setReportBusyOverlay(true, tr('overlayFetchTitle'), tr('overlayFetchSub'));
+  try {
+    const [full, openQs] = await Promise.all([
+      fetch('/api/kyc/companies/' + companyId, { headers: authH }).then((r) => {
+        if (r.status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; throw new Error('unauth'); }
+        return r.json();
+      }),
+      fetch('/api/kyc/companies/' + companyId + '/open-questions', { headers: authH }).then((r) => r.ok ? r.json() : []),
+    ]);
+    window.__kycReportLast = { data: full, openQs };
+    window.__kycReportEnPayload = null;
+    setReportOrgLevels();
+    render(full, openQs);
+    document.getElementById('status').textContent = tr('statusReady');
+    document.title = tr('docTitleSuffix') + (full.company?.name || companyId);
+    updateToolbarChrome();
+  } finally {
+    setReportBusyOverlay(false);
+  }
 }
 
 function render(data, openQs) {
@@ -1703,7 +1808,7 @@ function render(data, openQs) {
   const { company, profile, completeness, org, signals } = data;
   const p = profile || {};
   const stack = p.tech_stack || {};
-  const openQuestions = Array.isArray(data.open_questions) && data.open_questions.length
+  const openQuestions = Array.isArray(data.open_questions)
     ? data.open_questions
     : (Array.isArray(openQs) ? openQs : []);
   const avvaleN = normalizeAvvaleRep(p.avvale);
@@ -2109,7 +2214,8 @@ function render(data, openQs) {
 }
 
 load().catch((e) => {
-  document.getElementById('root').innerHTML = '<div style="padding:40px;color:#e11d48">Error: ' + e.message + '</div>';
+  setReportBusyOverlay(false);
+  document.getElementById('root').innerHTML = '<div style="padding:40px;color:#e11d48">Error: ' + escapeHtml(e.message) + '</div>';
 });
 </script>
 </body>

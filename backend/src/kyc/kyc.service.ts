@@ -12,7 +12,7 @@ import { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
-import { getKycChatModel, getKycSummaryModel } from './kyc.config';
+import { getKycChatModel, getKycReportTranslateModel, getKycSummaryModel } from './kyc.config';
 import { normalizeKycCompanyIndustry } from './kyc-industry.util';
 import { normalizeTechStack } from './kyc-tech-stack-normalize.util';
 import { buildIntakePrompt, buildResearchPrompt } from './kyc-prompts';
@@ -53,6 +53,9 @@ import {
   REPORT_TRANSLATE_SYSTEM,
   applyReportEnglishTranslation,
   buildReportTranslationEnvelope,
+  mergeTranslationEnvelopeParts,
+  reportTranslationEnvelopePartA,
+  reportTranslationEnvelopePartB,
   safeParseTranslatedJson,
   truncateEnvelopeIfNeeded,
   type KycFullCompanyApi,
@@ -1636,30 +1639,42 @@ Reglas:
     let envelope = buildReportTranslationEnvelope(base);
     envelope = truncateEnvelopeIfNeeded(envelope);
 
-    const userPrompt = `Translate the following JSON from Spanish (or mixed Spanish/English) into English for a printed KYC report. Keep structure identical.\n\n${JSON.stringify(envelope)}`;
+    const partA = reportTranslationEnvelopePartA(envelope);
+    const partB = reportTranslationEnvelopePartB(envelope);
+    const model = getKycReportTranslateModel(this.config);
 
-    const model = getKycSummaryModel(this.config);
-    let raw: string;
-    try {
+    const runPart = async (
+      fragment: Record<string, unknown>,
+      label: string,
+      maxTokens: number,
+    ): Promise<Record<string, unknown>> => {
+      const userPrompt = `Translate every Spanish (or mixed) human-readable string value to natural English (US). Reply with ONE JSON object only: same keys, nesting, array lengths and order as the input. Fragment: ${label}\n\n${JSON.stringify(fragment)}`;
       const r = await this.anthropic.completeMessages({
         apiKey,
         model,
         system: REPORT_TRANSLATE_SYSTEM,
         messages: [{ role: 'user', content: userPrompt }],
-        maxTokens: 16384,
+        maxTokens,
       });
-      raw = r.text.trim();
+      const parsed = safeParseTranslatedJson(r.text.trim());
+      if (!parsed) {
+        throw new BadRequestException(`Traducción (${label}): el modelo no devolvió JSON válido.`);
+      }
+      return parsed;
+    };
+
+    try {
+      const [ta, tb] = await Promise.all([
+        runPart(partA, 'company-profile-stack', 16384),
+        runPart(partB, 'signals-openq-org', 8192),
+      ]);
+      const merged = mergeTranslationEnvelopeParts(ta, tb);
+      return applyReportEnglishTranslation(base, merged);
     } catch (e) {
       this.log.warn('translateReportToEnglish', (e as Error).message);
+      if (e instanceof BadRequestException) throw e;
       throw new BadRequestException(`No se pudo traducir el informe: ${(e as Error).message}`);
     }
-
-    const parsed = safeParseTranslatedJson(raw);
-    if (!parsed) {
-      throw new BadRequestException('El modelo no devolvió un JSON válido para la traducción.');
-    }
-
-    return applyReportEnglishTranslation(base, parsed);
   }
 
   /**

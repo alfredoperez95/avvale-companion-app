@@ -14,3 +14,10 @@ export function getKycSummaryModel(config: ConfigService): AnthropicModelChoice 
   if (raw === 'sonnet' || raw === 'opus' || raw === 'haiku') return raw;
   return 'haiku';
 }
+
+/** Traducción informe KYC → EN (JSON grande). Por defecto Sonnet para menos truncado y mejor adherencia al esquema. */
+export function getKycReportTranslateModel(config: ConfigService): AnthropicModelChoice {
+  const raw = config.get<string>('KYC_REPORT_TRANSLATE_MODEL')?.trim().toLowerCase();
+  if (raw === 'sonnet' || raw === 'opus' || raw === 'haiku') return raw;
+  return 'sonnet';
+}
