@@ -94,6 +94,7 @@ const TABS = [
 ] as const;
 
 type KycTabId = (typeof TABS)[number][0];
+const TAB_IDS_ORDER = TABS.map(([id]) => id) as KycTabId[];
 const TAB_ID_SET = new Set<string>(TABS.map(([id]) => id));
 
 function isKycTabId(s: string | null): s is KycTabId {
@@ -387,6 +388,52 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     },
     [pathname, router, searchParams],
   );
+
+  /** Flechas ←/→ cambian pestaña sin necesitar foco en el tablist (salvo inputs, chat, modales). Home/End solo con foco en una pestaña (tabIndex 0). */
+  useEffect(() => {
+    const isTypingTarget = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      if (!el) return false;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'OPTION') return true;
+      if (el.isContentEditable) return true;
+      return false;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!pathname.startsWith('/launcher/kyc')) return;
+      if (!selId || !detail || detailLoading) return;
+      if (modal != null || confirm != null) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
+
+      const tgt = e.target as Element | null;
+      if (tgt?.closest?.('[role="alertdialog"]')) return;
+      if (chatOpen && tgt?.closest?.('[aria-label="Chat KYC"]')) return;
+
+      const ids = TAB_IDS_ORDER;
+      const idx = ids.indexOf(tab);
+      if (idx < 0) return;
+
+      let nextIdx: number | null = null;
+      if (e.key === 'ArrowRight') nextIdx = (idx + 1) % ids.length;
+      else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + ids.length) % ids.length;
+      else if (e.key === 'Home' && tgt?.getAttribute?.('role') === 'tab') nextIdx = 0;
+      else if (e.key === 'End' && tgt?.getAttribute?.('role') === 'tab') nextIdx = ids.length - 1;
+      else return;
+
+      if (nextIdx === null || nextIdx === idx) return;
+      e.preventDefault();
+      const nextId = ids[nextIdx];
+      commitTab(nextId);
+      window.setTimeout(() => {
+        document.getElementById(`kyc-tab-${nextId}`)?.focus();
+      }, 0);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [pathname, selId, detail, detailLoading, modal, confirm, chatOpen, tab, commitTab]);
 
   useEffect(() => {
     if (searchParams.get('chat') !== '1') return;
@@ -1194,6 +1241,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                 className={styles.tabs}
                 role="tablist"
                 aria-label="Secciones del perfil KYC"
+                aria-orientation="horizontal"
               >
                 {TABS.map(([id, label]) => (
                   <button
@@ -1201,6 +1249,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                     id={`kyc-tab-${id}`}
                     type="button"
                     role="tab"
+                    tabIndex={tab === id ? 0 : -1}
                     aria-selected={tab === id}
                     aria-controls="kyc-tab-panel"
                     className={`${styles.tab} ${tab === id ? styles.tabActive : ''}`}

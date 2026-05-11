@@ -49,6 +49,14 @@ import {
   signalToApi,
   toApiCompanyListRow,
 } from './kyc-mappers';
+import {
+  REPORT_TRANSLATE_SYSTEM,
+  applyReportEnglishTranslation,
+  buildReportTranslationEnvelope,
+  safeParseTranslatedJson,
+  truncateEnvelopeIfNeeded,
+  type KycFullCompanyApi,
+} from './kyc-report-translate.util';
 
 /** JSON del modelo o texto plano (compatibilidad con respuestas antiguas). */
 function parseExecutiveSynthesisResponse(raw: string): {
@@ -1605,6 +1613,53 @@ Reglas:
       revenue_filled: Boolean(companyPatch.revenue),
       employees_filled: Boolean(companyPatch.employees),
     };
+  }
+
+  /**
+   * Traduce al inglés los textos del informe imprimible (`public/kyc/report.html`) vía Anthropic.
+   * Usa la misma API key del usuario que el chat KYC; no persiste cambios en BD.
+   */
+  async translateReportToEnglish(companyId: bigint, userId: string) {
+    const d = await this.getFullProfile(companyId);
+    if (!d) throw new NotFoundException('Company not found');
+
+    let apiKey: string;
+    try {
+      apiKey = await this.creds.getApiKeyPlainOrThrow(userId);
+    } catch {
+      throw new BadRequestException(
+        'Configura tu clave de API de Anthropic en el perfil para traducir el informe con IA.',
+      );
+    }
+
+    const base = d as unknown as KycFullCompanyApi;
+    let envelope = buildReportTranslationEnvelope(base);
+    envelope = truncateEnvelopeIfNeeded(envelope);
+
+    const userPrompt = `Translate the following JSON from Spanish (or mixed Spanish/English) into English for a printed KYC report. Keep structure identical.\n\n${JSON.stringify(envelope)}`;
+
+    const model = getKycSummaryModel(this.config);
+    let raw: string;
+    try {
+      const r = await this.anthropic.completeMessages({
+        apiKey,
+        model,
+        system: REPORT_TRANSLATE_SYSTEM,
+        messages: [{ role: 'user', content: userPrompt }],
+        maxTokens: 16384,
+      });
+      raw = r.text.trim();
+    } catch (e) {
+      this.log.warn('translateReportToEnglish', (e as Error).message);
+      throw new BadRequestException(`No se pudo traducir el informe: ${(e as Error).message}`);
+    }
+
+    const parsed = safeParseTranslatedJson(raw);
+    if (!parsed) {
+      throw new BadRequestException('El modelo no devolvió un JSON válido para la traducción.');
+    }
+
+    return applyReportEnglishTranslation(base, parsed);
   }
 
   /**

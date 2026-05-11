@@ -121,6 +121,13 @@ export class KycController {
     return this.kyc.synthesizeExecutiveSummary(BigInt(id), user.userId);
   }
 
+  /** Traducción EN del contenido del informe estático (Anthropic; misma clave que chat KYC). */
+  @Post('companies/:id/report-translate-en')
+  @HttpCode(200)
+  translateReportEn(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.translateReportToEnglish(BigInt(id), user.userId);
+  }
+
   @Get('companies/:id/timeline')
   timeline(@Param('id') id: string) {
     return this.kyc.getTimeline(BigInt(id));

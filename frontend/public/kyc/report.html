@@ -25,7 +25,8 @@
       --shell-header-2: #3e566b;
       --shell-accent: #0a6ed1;
       --shell-accent-hover: #0854a0;
-      --shell-accent-soft: color-mix(in srgb, var(--shell-accent) 12%, transparent);
+      /* rgba evita color-mix en motores antiguos / algunos PDF */
+      --shell-accent-soft: rgba(10, 110, 209, 0.14);
       --ink: #32363a;
       --muted: #6a6d70;
       --muted-2: #94a3b8;
@@ -64,19 +65,26 @@
     /* Page as A4 sheet — on screen fit content; print still breaks by sheet */
     .sheet {
       width: 210mm;
+      max-width: 100%;
       margin: 16px auto;
       background: var(--surface);
       box-shadow: var(--shadow-float);
       position: relative;
       overflow: hidden;
       border-radius: var(--radius-lg);
-      border: 1px solid color-mix(in srgb, var(--shell-header) 8%, var(--line));
+      border: 1px solid #dce1e6;
+      box-sizing: border-box;
     }
     .sheet:not(.cover) {
       border-top: 3px solid var(--shell-accent);
     }
     .sheet + .sheet { margin-top: 16px; }
+    .sheet:not(.cover) {
+      display: flex;
+      flex-direction: column;
+    }
     .sheet-inner {
+      flex: 1 1 auto;
       padding: 15mm 17mm 5mm;
       background:
         linear-gradient(180deg, var(--surface-muted) 0%, var(--surface) 14mm);
@@ -168,16 +176,21 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
     }
 
-    /* ─── COVER ─── */
-    .cover {
+    /* ─── COVER (section.sheet.cover: una cara A4, cuerpo flexible) ─── */
+    .sheet.cover {
+      display: flex;
+      flex-direction: column;
+      min-height: 297mm;
+      box-sizing: border-box;
       background: var(--surface);
       color: var(--ink);
       position: relative;
       overflow: hidden;
-      border: 1px solid color-mix(in srgb, var(--shell-header) 12%, var(--line));
+      border: 1px solid #cfd6dc;
       box-shadow: var(--shadow-float);
     }
     .cover-top {
+      flex-shrink: 0;
       background: linear-gradient(180deg, var(--shell-header) 0%, #2f4356 100%);
       border-bottom: 1px solid rgba(255, 255, 255, 0.12);
       padding: 10mm 18mm 8mm;
@@ -211,6 +224,10 @@
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
     .cover-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
       background: linear-gradient(165deg, var(--shell-header) 0%, #2a3d52 48%, var(--shell-header-2) 100%);
       color: #fff;
       position: relative;
@@ -239,9 +256,15 @@
         radial-gradient(ellipse 55% 45% at -5% 105%, rgba(255, 255, 255, 0.07) 0%, transparent 50%);
     }
     .cover-inner {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 100%;
       padding: 14mm 18mm 14mm;
       position: relative;
       z-index: 2;
+      box-sizing: border-box;
     }
     .cover-brand {
       display: flex;
@@ -302,7 +325,8 @@
     .cover-meta-item .k { font-size: 8px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
     .cover-meta-item .v { font-size: 11.5pt; font-weight: 600; color: #fff; margin-top: 3px; }
     .cover-footer {
-      margin-top: 14px;
+      margin-top: auto;
+      flex-shrink: 0;
       padding-top: 10px;
       border-top: 1px solid rgba(255,255,255,0.12);
       display: flex;
@@ -326,8 +350,11 @@
       pointer-events: none;
     }
 
-    /* ─── SECTIONS ─── */
-    .section { page-break-inside: avoid; margin-bottom: 18px; }
+    /* ─── SECTIONS ─── (en pantalla evitamos cortes feos; en impresión se permite partir bloques largos) */
+    .section { margin-bottom: 18px; }
+    @media screen {
+      .section { page-break-inside: avoid; }
+    }
     .section-head {
       display: flex;
       align-items: center;
@@ -407,7 +434,7 @@
 
     /* ─── SUMMARY CALLOUT ─── */
     .callout {
-      background: linear-gradient(135deg, color-mix(in srgb, var(--shell-accent) 7%, var(--surface)) 0%, var(--surface) 55%);
+      background: linear-gradient(135deg, #f5f9fc 0%, var(--surface) 55%);
       border-left: 4px solid var(--shell-accent);
       padding: 14px 18px;
       border-radius: var(--radius-md);
@@ -416,7 +443,7 @@
       line-height: 1.55;
       color: var(--ink);
       position: relative;
-      border: 1px solid color-mix(in srgb, var(--shell-accent) 14%, var(--line));
+      border: 1px solid #cfe4f7;
       border-left-width: 4px;
       box-shadow: 0 1px 3px rgba(53, 74, 95, 0.05);
     }
@@ -480,7 +507,7 @@
       grid-template-columns: 104px 1fr;
       gap: 12px;
       padding: 8px 0;
-      border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+      border-bottom: 1px solid #ebecef;
       font-size: 9.5pt;
     }
     .kv-row:last-child { border-bottom: none; }
@@ -655,7 +682,23 @@
     /* ─── ORG ─── */
     .org-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 10px; }
     .area-group { margin-bottom: 10px; page-break-inside: avoid; grid-column: 1 / -1; }
-    .area-group .area-members { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 8px; margin-top: 4px; }
+    .area-group .area-members,
+    .org-lane-group .area-members { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 8px; margin-top: 4px; }
+    .org-lane-group { margin-bottom: 12px; page-break-inside: avoid; }
+    .org-lane-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px 14px;
+      padding: 6px 12px;
+      margin-bottom: 6px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line);
+    }
+    .org-lane-label { font-size: 9pt; font-weight: 700; letter-spacing: 0.02em; }
+    .org-lane-hint { font-size: 7.5pt; color: var(--muted); flex: 1 1 120px; min-width: 0; line-height: 1.35; }
+    .org-lane-count { font-size: 7.5pt; font-weight: 600; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.06em; }
+    .org-lane-empty { font-size: 8.5pt; color: var(--muted); font-style: italic; padding: 6px 12px; }
     .area-title {
       font-size: 8.5px;
       letter-spacing: 0.11em;
@@ -745,7 +788,7 @@
       border-radius: 50%;
       background: #fff;
       border: 2px solid var(--accent);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--shell-accent) 18%, transparent);
+      box-shadow: 0 0 0 3px rgba(10, 110, 209, 0.18);
     }
     .timeline-date {
       font-size: 7pt;
@@ -823,9 +866,9 @@
       letter-spacing: 0.04em;
       padding: 2px 8px;
       border-radius: 999px;
-      background: color-mix(in srgb, var(--shell-accent) 14%, var(--surface));
+      background: #e8f2fc;
       color: var(--shell-accent);
-      border: 1px solid color-mix(in srgb, var(--shell-accent) 28%, var(--line));
+      border: 1px solid #b8d4f0;
     }
     .avvale-footprint {
       font-size: 10pt;
@@ -860,7 +903,7 @@
       font-weight: 700;
       padding: 2px 8px;
       border-radius: 999px;
-      background: color-mix(in srgb, var(--shell-accent) 18%, #fff);
+      background: #e8f2fc;
       color: var(--shell-accent-hover);
       margin-bottom: 4px;
     }
@@ -870,7 +913,7 @@
       padding: 14px 18px;
       border: 1px solid var(--line);
       border-radius: var(--radius-md);
-      background: linear-gradient(145deg, color-mix(in srgb, var(--shell-header) 6%, var(--surface)) 0%, var(--surface) 70%);
+      background: linear-gradient(145deg, #f4f6f8 0%, var(--surface) 70%);
       border-left: 4px solid var(--shell-accent);
       page-break-inside: avoid;
       box-shadow: 0 1px 3px rgba(53, 74, 95, 0.05);
@@ -885,7 +928,7 @@
     }
     .hyp-item {
       padding: 12px 0;
-      border-top: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+      border-top: 1px solid #ebecef;
     }
     .hyp-item:first-child { border-top: none; padding-top: 0; }
     .hyp-meta { font-size: 8pt; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
@@ -915,15 +958,113 @@
       flex-shrink: 0;
     }
 
+    /**
+     * Impresión / Guardar como PDF: forzar tintes y fondos (Chrome/Firefox/Safari suelen
+     * «omitir gráficos de fondo» si no hay print-color-adjust; color-mix() falla en algunos PDF).
+     */
     @media print {
-      body { background: #fff !important; }
+      html {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body {
+        background: #fff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
       .toolbar { display: none !important; }
       .sheet {
-        margin: 0;
-        box-shadow: none;
+        margin: 0 !important;
+        box-shadow: none !important;
         page-break-after: always;
+        break-after: page;
         width: 210mm;
+        max-width: 210mm;
         min-height: 297mm;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+        border-radius: 0 !important;
+        border: 1px solid #d5dce2 !important;
+        border-top: 3px solid #0a6ed1 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      #root > .sheet:last-of-type {
+        page-break-after: auto !important;
+        break-after: auto;
+      }
+      /* Portada: al menos una cara A4; el cuerpo crece para rellenar; sin partir si cabe */
+      .sheet.cover {
+        border-top: 1px solid #d5dce2 !important;
+        min-height: 297mm !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid;
+      }
+      /* Cada bloque numerado va en su propia hoja; el contenido largo puede seguir en páginas adicionales */
+      .section {
+        page-break-inside: auto !important;
+        break-inside: auto;
+      }
+      .block,
+      .metric,
+      .member-card,
+      .timeline-item,
+      .qcard,
+      .proj-table-wrap,
+      .hyp-item {
+        page-break-inside: avoid;
+        break-inside: avoid-page;
+      }
+      .sheet-inner {
+        box-sizing: border-box !important;
+        background: linear-gradient(180deg, #fafbfc 0%, #ffffff 14mm) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .cover-body,
+      .cover-top,
+      .partner-badge,
+      table.tbl thead th,
+      .proj-table th,
+      .section-num,
+      .metric::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .callout {
+        background: #f2f7fc !important;
+        border-color: #cfe4f7 !important;
+      }
+      .kv-row {
+        border-bottom-color: #e8eaed !important;
+      }
+      .hyp-item {
+        border-top-color: #e8eaed !important;
+      }
+      .timeline-item::before {
+        box-shadow: 0 0 0 3px rgba(10, 110, 209, 0.18) !important;
+      }
+      .proj-status {
+        background: #e8f2fc !important;
+        border-color: #b8d4f0 !important;
+        color: #0854a0 !important;
+      }
+      .presence-pill-on {
+        background: #e8f2fc !important;
+        color: #0854a0 !important;
+      }
+      .hyp-box {
+        background: linear-gradient(145deg, #f4f6f8 0%, #ffffff 70%) !important;
+      }
+      .proj-table-wrap {
+        overflow: visible !important;
+      }
+      .block::before {
+        opacity: 1 !important;
+        background: linear-gradient(180deg, rgba(10, 110, 209, 0.22) 0%, #0a6ed1 100%) !important;
+      }
+      .section-head::after {
+        background: linear-gradient(90deg, #0a6ed1 0%, rgba(10, 110, 209, 0.22) 42%, #e5e8eb 100%) !important;
       }
       .sheet:last-child { page-break-after: auto; }
       @page { size: A4; margin: 0; }
@@ -935,12 +1076,13 @@
     <div class="toolbar-brand">
       <img class="toolbar-logo" src="https://www.avvale.com/hubfs/avvale-logo-hor-col-neg-1.png" alt="Avvale" width="160" height="36" />
       <div class="toolbar-text">
-        <span class="toolbar-product">Informe KYC</span>
-        <span class="toolbar-tag">Companion App · Confidencial</span>
+        <span id="toolbar-product" class="toolbar-product">Informe KYC</span>
+        <span id="toolbar-tag" class="toolbar-tag">Companion App · Confidencial</span>
       </div>
     </div>
-    <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir / Guardar PDF</button>
-    <button type="button" class="btn" onclick="window.close()">Cerrar</button>
+    <button type="button" id="btn-report-lang" class="btn" onclick="void toggleReportLang()" aria-label="Switch language">English</button>
+    <button type="button" id="btn-print" class="btn btn-primary" onclick="window.print()">Imprimir / Guardar PDF</button>
+    <button type="button" id="btn-close" class="btn" onclick="window.close()">Cerrar</button>
     <span id="status" class="toolbar-status"></span>
   </div>
   <div id="root"></div>
@@ -950,6 +1092,303 @@ const qs = new URLSearchParams(location.search);
 const _idMatch = (qs.get('id') || '').match(/^(\d+)/);
 const companyId = _idMatch ? parseInt(_idMatch[1], 10) : NaN;
 function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+/** Idioma del informe (solo UI plantilla; los datos del cliente no se traducen). */
+let reportLang = 'es';
+window.__kycReportLast = null;
+/** Respuesta completa de POST /report-translate-en (cache por sesión de página). */
+window.__kycReportEnPayload = null;
+
+const REPORT_I18N = {
+  es: {
+    toolbarPrint: 'Imprimir / Guardar PDF',
+    toolbarClose: 'Cerrar',
+    toolbarLangToEn: 'English',
+    toolbarLangToEs: 'Español',
+    toolbarProduct: 'Informe KYC',
+    toolbarTag: 'Companion App · Confidencial',
+    statusLoading: 'Cargando...',
+    statusReady: 'Listo',
+    translateLoading: 'Traduciendo contenido con IA…',
+    translateError: 'No se pudo traducir el contenido',
+    errorMissingId: 'Falta parámetro ?id=',
+    docTitleSuffix: 'Informe KYC · ',
+    footerReport: 'Informe KYC',
+    coverClientKnowledge: 'Conocimiento del cliente',
+    coverConfidential: 'Informe confidencial · ',
+    coverBrandLine: 'Know your customer · Resumen ejecutivo',
+    coverReportLabel: 'Informe KYC · Companion App',
+    coverDefaultSummary: 'Perfil estratégico de cliente: organización, stack tecnológico, señales de mercado y contexto comercial.',
+    coverSector: 'Sector',
+    coverLocation: 'Ubicación',
+    coverCompleted: 'Completado',
+    coverPeopleMeta: 'personas',
+    sec01: 'Resumen',
+    sec02: 'Datos generales',
+    sec03: 'Perfil de negocio',
+    sec04: 'Proyectos',
+    sec05: 'Avvale',
+    sec06: 'Tecnología',
+    sec07: 'Organigrama',
+    sec08: 'Señales',
+    sec09: 'Por resolver',
+    emptySummary: 'Sin resumen. Usa la entrevista KYC o el chat para generarlo.',
+    emptyBlockData: 'Sin datos.',
+    metricPeople: 'Personas',
+    metricSignals: 'Señales',
+    metricOpen: 'Por resolver',
+    metricComplete: 'Completado',
+    kvLegalName: 'Razón social',
+    kvIndustry: 'Industria',
+    kvSector: 'Sector',
+    kvCity: 'Ciudad',
+    kvCountry: 'País',
+    kvWeb: 'Web',
+    kvRevenue: 'Facturación',
+    kvEmployees: 'Empleados',
+    kvStrategic: 'Estratégica',
+    kvYes: 'Sí',
+    kvNo: 'No',
+    projSub: 'en cuenta',
+    projColName: 'Proyecto',
+    projColStatus: 'Estado',
+    projColNotes: 'Notas',
+    emptyProjects: 'Sin proyectos en cuenta. Regístralos en la pestaña «Proyectos».',
+    footprintEmpty: 'Sin texto de footprint.',
+    presenceOn: 'Presencia indicada',
+    presenceOff: 'Sin indicar',
+    avvaleIntro: 'Footprint y líneas de solución (GROW, RUN, WISE, …), alineado con la pestaña «Avvale».',
+    avvaleSubAccount: 'Presencia en la cuenta',
+    subFootprint: 'Footprint',
+    subSolutionLines: 'Líneas de solución',
+    techIntro: 'Misma información que la pestaña «Tecnología» del perfil KYC.',
+    techStackHint: 'Stack declarado',
+    partnerLbl: 'Partner',
+    stackSectorial: 'Sistemas sectoriales',
+    stackBI: 'BI / Analítica',
+    stackIntegration: 'Integración',
+    orgPeopleSub: 'personas',
+    orgIntro: 'Personas por <strong>nivel</strong> (mismo orden que el tablero en «Organigrama»): VP/Dirección arriba, luego C-Suite, Director/Head, Manager, IC/Analyst y Sin asignar.',
+    orgEmpty: 'Sin miembros registrados.',
+    orgLevelPrefix: 'Nivel:',
+    orgLaneEmpty: 'Sin personas en este nivel.',
+    orgPerson: 'persona',
+    orgPersons: 'personas',
+    orgInformalRels: 'Relaciones informales',
+    tblFrom: 'De',
+    tblTo: 'A',
+    tblType: 'Tipo',
+    hypTitle: 'Posibles iniciativas (IA · hipótesis)',
+    hypIntro: 'Conjeturas a partir de señales; no sustituyen proyectos en cuenta hasta confirmarlos en «Proyectos».',
+    hypConfidence: 'Confianza (especulación):',
+    hypEmpty: 'Sin hipótesis guardadas. Generar desde la pestaña «Señales».',
+    signalsSub: 'registradas',
+    newsSignals: 'Noticias y señales',
+    signalsEmpty: 'Sin señales registradas.',
+    openSub: 'abiertas',
+    openIntro: 'Preguntas abiertas del perfil (pestaña «Por resolver»).',
+    openEmpty: 'Ninguna pregunta abierta.',
+    projPast: 'Pasado',
+    projNegotiating: 'En negociación',
+    projAnalyzing: 'En análisis',
+    projActive: 'Activo',
+    confLow: 'Baja',
+    confMedium: 'Media',
+    confHigh: 'Alta',
+    sentPos: 'Positivo',
+    sentNeu: 'Neutral',
+    sentNeg: 'Negativo',
+    sentMix: 'Mixto',
+    profileEconomics: 'Economía',
+    profileBusinessModel: 'Modelo de negocio',
+    profileCustomers: 'Clientes',
+    profileProcesses: 'Procesos críticos',
+    profileSector: 'Contexto sector',
+  },
+  en: {
+    toolbarPrint: 'Print / Save as PDF',
+    toolbarClose: 'Close',
+    toolbarLangToEn: 'English',
+    toolbarLangToEs: 'Español',
+    toolbarProduct: 'KYC Report',
+    toolbarTag: 'Companion App · Confidential',
+    statusLoading: 'Loading...',
+    statusReady: 'Ready',
+    translateLoading: 'Translating content with AI…',
+    translateError: 'Could not translate content',
+    errorMissingId: 'Missing ?id= parameter',
+    docTitleSuffix: 'KYC Report · ',
+    footerReport: 'KYC Report',
+    coverClientKnowledge: 'Client Knowledge',
+    coverConfidential: 'Confidential report · ',
+    coverBrandLine: 'Know your customer · Executive summary',
+    coverReportLabel: 'KYC Report · Companion App',
+    coverDefaultSummary: 'Strategic customer profile: organization, technology stack, market signals and commercial context.',
+    coverSector: 'Sector',
+    coverLocation: 'Location',
+    coverCompleted: 'Completion',
+    coverPeopleMeta: 'people',
+    sec01: 'Summary',
+    sec02: 'General information',
+    sec03: 'Business profile',
+    sec04: 'Projects',
+    sec05: 'Avvale',
+    sec06: 'Technology',
+    sec07: 'Organization chart',
+    sec08: 'Signals',
+    sec09: 'Open points',
+    emptySummary: 'No summary yet. Use the KYC interview or chat to generate it.',
+    emptyBlockData: 'No data.',
+    metricPeople: 'People',
+    metricSignals: 'Signals',
+    metricOpen: 'Open items',
+    metricComplete: 'Completion',
+    kvLegalName: 'Legal name',
+    kvIndustry: 'Industry',
+    kvSector: 'Sector',
+    kvCity: 'City',
+    kvCountry: 'Country',
+    kvWeb: 'Website',
+    kvRevenue: 'Revenue',
+    kvEmployees: 'Employees',
+    kvStrategic: 'Strategic account',
+    kvYes: 'Yes',
+    kvNo: 'No',
+    projSub: 'tracked',
+    projColName: 'Project',
+    projColStatus: 'Status',
+    projColNotes: 'Notes',
+    emptyProjects: 'No tracked projects. Add them in the «Projects» tab.',
+    footprintEmpty: 'No footprint text.',
+    presenceOn: 'Presence indicated',
+    presenceOff: 'Not indicated',
+    avvaleIntro: 'Footprint and solution lines (GROW, RUN, WISE, …), aligned with the «Avvale» tab.',
+    avvaleSubAccount: 'Account presence',
+    subFootprint: 'Footprint',
+    subSolutionLines: 'Solution lines',
+    techIntro: 'Same information as the «Technology» tab in the KYC profile.',
+    techStackHint: 'Declared stack',
+    partnerLbl: 'Partner',
+    stackSectorial: 'Industry-specific systems',
+    stackBI: 'BI / Analytics',
+    stackIntegration: 'Integration',
+    orgPeopleSub: 'people',
+    orgIntro: 'People by <strong>level</strong> (same order as the «Organization chart» board): VP/Executive first, then C-Suite, Director/Head, Manager, IC/Analyst and Unassigned.',
+    orgEmpty: 'No members on file.',
+    orgLevelPrefix: 'Level:',
+    orgLaneEmpty: 'No people at this level.',
+    orgPerson: 'person',
+    orgPersons: 'people',
+    orgInformalRels: 'Informal relationships',
+    tblFrom: 'From',
+    tblTo: 'To',
+    tblType: 'Type',
+    hypTitle: 'Possible initiatives (AI · hypotheses)',
+    hypIntro: 'Inferences from signals; they do not replace tracked projects until confirmed under «Projects».',
+    hypConfidence: 'Confidence (speculative):',
+    hypEmpty: 'No saved hypotheses. Generate them from the «Signals» tab.',
+    signalsSub: 'recorded',
+    newsSignals: 'News and signals',
+    signalsEmpty: 'No signals on file.',
+    openSub: 'open',
+    openIntro: 'Open questions from the profile («Open points» tab).',
+    openEmpty: 'No open questions.',
+    projPast: 'Past',
+    projNegotiating: 'In negotiation',
+    projAnalyzing: 'Under analysis',
+    projActive: 'Active',
+    confLow: 'Low',
+    confMedium: 'Medium',
+    confHigh: 'High',
+    sentPos: 'Positive',
+    sentNeu: 'Neutral',
+    sentNeg: 'Negative',
+    sentMix: 'Mixed',
+    profileEconomics: 'Economics',
+    profileBusinessModel: 'Business model',
+    profileCustomers: 'Customers',
+    profileProcesses: 'Critical processes',
+    profileSector: 'Sector context',
+  },
+};
+
+function tr(key) {
+  const pack = REPORT_I18N[reportLang] || REPORT_I18N.es;
+  const v = pack[key];
+  if (v !== undefined && v !== '') return v;
+  return REPORT_I18N.es[key] ?? key;
+}
+
+function updateToolbarChrome() {
+  const tp = document.getElementById('toolbar-product');
+  const tt = document.getElementById('toolbar-tag');
+  const bp = document.getElementById('btn-print');
+  const bc = document.getElementById('btn-close');
+  const bl = document.getElementById('btn-report-lang');
+  if (tp) tp.textContent = tr('toolbarProduct');
+  if (tt) tt.textContent = tr('toolbarTag');
+  if (bp) bp.textContent = tr('toolbarPrint');
+  if (bc) bc.textContent = tr('toolbarClose');
+  if (bl) bl.textContent = reportLang === 'es' ? tr('toolbarLangToEn') : tr('toolbarLangToEs');
+}
+
+async function fetchTranslatedReportEn() {
+  if (window.__kycReportEnPayload) return window.__kycReportEnPayload;
+  const token = localStorage.getItem('token');
+  const r = await fetch('/api/kyc/companies/' + companyId + '/report-translate-en', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  if (r.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    throw new Error('Sesión expirada');
+  }
+  if (!r.ok) {
+    let msg = r.statusText || String(r.status);
+    try {
+      const j = await r.json();
+      if (j.message != null) msg = Array.isArray(j.message) ? j.message.join(', ') : String(j.message);
+    } catch { /* empty */ }
+    throw new Error(msg);
+  }
+  window.__kycReportEnPayload = await r.json();
+  return window.__kycReportEnPayload;
+}
+
+async function toggleReportLang() {
+  const next = reportLang === 'es' ? 'en' : 'es';
+  reportLang = next;
+  document.documentElement.lang = next === 'en' ? 'en' : 'es';
+  setReportOrgLevels();
+  updateToolbarChrome();
+  const st = document.getElementById('status');
+  const bl = document.getElementById('btn-report-lang');
+  if (!window.__kycReportLast) return;
+
+  if (next === 'en') {
+    if (st) st.textContent = tr('translateLoading');
+    if (bl) bl.disabled = true;
+    try {
+      const data = await fetchTranslatedReportEn();
+      render(data, window.__kycReportLast.openQs);
+      if (st) st.textContent = tr('statusReady');
+      const nm = data?.company?.name;
+      if (nm) document.title = tr('docTitleSuffix') + nm;
+    } catch (e) {
+      const errMsg = e && e.message ? e.message : String(e);
+      if (st) st.textContent = tr('translateError') + ': ' + errMsg;
+      render(window.__kycReportLast.data, window.__kycReportLast.openQs);
+    } finally {
+      if (bl) bl.disabled = false;
+    }
+  } else {
+    render(window.__kycReportLast.data, window.__kycReportLast.openQs);
+    if (st) st.textContent = tr('statusReady');
+    const nm = window.__kycReportLast.data?.company?.name;
+    if (nm) document.title = tr('docTitleSuffix') + nm;
+  }
+}
 
 /** Mismos trazos que frontend/src/features/kyc/KycInlineIcons.tsx (KycIconMoney, …). */
 function kycIcoMoney() {
@@ -975,13 +1414,15 @@ function kycIcoStar(w, h) {
   return `<svg class="kyc-inline-ico" width="${w}" height="${h}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
 }
 
-const KYC_REPORT_PROFILE_BLOCKS = [
-  ['economics', kycIcoMoney, 'Economía'],
-  ['business_model', kycIcoCompass, 'Modelo de negocio'],
-  ['customers', kycIcoPeople, 'Clientes'],
-  ['critical_processes', kycIcoWorkflow, 'Procesos críticos'],
-  ['sector_context', kycIcoGlobe, 'Contexto sector'],
-];
+function getKycReportProfileBlocks() {
+  return [
+    ['economics', kycIcoMoney, tr('profileEconomics')],
+    ['business_model', kycIcoCompass, tr('profileBusinessModel')],
+    ['customers', kycIcoPeople, tr('profileCustomers')],
+    ['critical_processes', kycIcoWorkflow, tr('profileProcesses')],
+    ['sector_context', kycIcoGlobe, tr('profileSector')],
+  ];
+}
 
 function prettyLabel(k) { return String(k).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); }
 function toArr(v) {
@@ -992,23 +1433,77 @@ function toArr(v) {
 }
 function asStr(v) { return v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); }
 
-const AREA_COLORS = {
-  'ceo':'#6366f1','dirección':'#6366f1','general':'#6366f1',
-  'it':'#0ea5e9','sistemas':'#0ea5e9','tecnología':'#0ea5e9','tech':'#0ea5e9',
-  'finanzas':'#10b981','financiero':'#10b981','cfo':'#10b981',
-  'operaciones':'#f59e0b','coo':'#f59e0b',
-  'comercial':'#ec4899','ventas':'#ec4899','marketing':'#ec4899',
-  'rrhh':'#8b5cf6','personas':'#8b5cf6','hr':'#8b5cf6',
-  'compras':'#14b8a6','procurement':'#14b8a6',
-};
-function areaColor(area) {
-  const a = (area || '').toLowerCase();
-  for (const k of Object.keys(AREA_COLORS)) if (a.includes(k)) return AREA_COLORS[k];
-  return '#64748b';
+/** Misma jerarquía y orden de carril que `KycOrgPanel.tsx` (VP/Dirección primero en el tablero). */
+const ORG_LEVELS_REP_ES = [
+  { level: 1, label: 'C-Suite', hint: 'CEO · CFO · CTO · COO', color: '#6366f1' },
+  { level: 2, label: 'VP / Dirección', hint: 'VP · Director General', color: '#0ea5e9' },
+  { level: 3, label: 'Director / Head', hint: 'Director de área · Head', color: '#10b981' },
+  { level: 4, label: 'Manager', hint: 'Team Lead · Responsable', color: '#f59e0b' },
+  { level: 5, label: 'IC / Analyst', hint: 'Individual contributor', color: '#94a3b8' },
+  { level: 0, label: 'Sin asignar', hint: 'Sin nivel', color: '#cbd5e1' },
+];
+const ORG_LEVELS_REP_EN = [
+  { level: 1, label: 'C-Suite', hint: 'CEO · CFO · CTO · COO', color: '#6366f1' },
+  { level: 2, label: 'VP / Executive', hint: 'VP · General Manager', color: '#0ea5e9' },
+  { level: 3, label: 'Director / Head', hint: 'Functional director · Head', color: '#10b981' },
+  { level: 4, label: 'Manager', hint: 'Team lead · Lead', color: '#f59e0b' },
+  { level: 5, label: 'IC / Analyst', hint: 'Individual contributor', color: '#94a3b8' },
+  { level: 0, label: 'Unassigned', hint: 'No level set', color: '#cbd5e1' },
+];
+const ORG_BOARD_LEVEL_ORDER_REP = [2, 1, 3, 4, 5, 0];
+let _orgLevelsActive = ORG_LEVELS_REP_ES;
+let _orgByNumActive = Object.fromEntries(ORG_LEVELS_REP_ES.map((L) => [L.level, L]));
+function setReportOrgLevels() {
+  _orgLevelsActive = reportLang === 'en' ? ORG_LEVELS_REP_EN : ORG_LEVELS_REP_ES;
+  _orgByNumActive = Object.fromEntries(_orgLevelsActive.map((L) => [L.level, L]));
+}
+function orgLevelCanonicalRep(level) {
+  if (level == null || !Number.isFinite(Number(level))) return 0;
+  const n = Number(level);
+  if (Number.isInteger(n) && n >= 1 && n <= 5) return n;
+  return 0;
+}
+function orgLevelMetaRep(level) {
+  return _orgByNumActive[orgLevelCanonicalRep(level)] || _orgByNumActive[0];
+}
+function orgLevelColorRep(level) {
+  return orgLevelMetaRep(level).color;
+}
+function contrastInkForBgRep(hex) {
+  const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(String(hex).trim());
+  if (!m) return '#fff';
+  const r = parseInt(m[1], 16) / 255;
+  const g = parseInt(m[2], 16) / 255;
+  const b = parseInt(m[3], 16) / 255;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.62 ? '#0f172a' : '#fff';
+}
+function groupMembersByLevelRep(members) {
+  const buckets = {};
+  for (const L of _orgLevelsActive) buckets[L.level] = [];
+  for (const m of members) {
+    buckets[orgLevelCanonicalRep(m.level)].push(m);
+  }
+  for (const k of Object.keys(buckets)) {
+    buckets[k].sort((a, b) => {
+      const pa = a.reports_to_id || 0;
+      const pb = b.reports_to_id || 0;
+      if (pa !== pb) return pa - pb;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }
+  return buckets;
+}
+function orderedOrgLevelsForBoardRep() {
+  return ORG_BOARD_LEVEL_ORDER_REP.map((n) => _orgByNumActive[n]).filter(Boolean);
 }
 function initials(name) { return (name || '?').split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase(); }
 
-const REPORT_PAGE_TOTAL = 6;
+/** Portada + 9 hojas de contenido (bloques 01–09, cada uno en su primera cara A4). */
+const KYC_REPORT_TOTAL_PAGES = 10;
+function kycReportFooter(companyName, pageNum) {
+  return `<div class="sheet-footer"><div>${escapeHtml(tr('footerReport'))} · ${escapeHtml(companyName)}</div><div>${pageNum} / ${KYC_REPORT_TOTAL_PAGES} · Companion App</div></div>`;
+}
 const SOLUTION_SLUGS = ['grow','run','wise','yubiq','saiborg','axazure'];
 const SOLUTION_LABELS = { grow:'GROW', run:'RUN', wise:'WISE', yubiq:'YUBIQ', saiborg:'SAIBORG', axazure:'AXAZURE' };
 
@@ -1124,10 +1619,10 @@ function normalizeAvvaleRep(raw) {
   return { footprint, projects, solution_presence, solution_notes };
 }
 function projectStatusLabelRep(st) {
-  if (st === 'past') return 'Pasado';
-  if (st === 'negotiating') return 'En negociación';
-  if (st === 'analyzing') return 'En análisis';
-  return 'Activo';
+  if (st === 'past') return tr('projPast');
+  if (st === 'negotiating') return tr('projNegotiating');
+  if (st === 'analyzing') return tr('projAnalyzing');
+  return tr('projActive');
 }
 function parseSignalIntelRep(raw) {
   const empty = { hypotheses: [], updated_at: '' };
@@ -1151,21 +1646,21 @@ function parseSignalIntelRep(raw) {
 }
 function confidenceLabelRep(c) {
   const v = (c || '').toLowerCase();
-  if (v === 'medium') return 'Media';
-  if (v === 'high') return 'Alta';
-  return 'Baja';
+  if (v === 'medium') return tr('confMedium');
+  if (v === 'high') return tr('confHigh');
+  return tr('confLow');
 }
-function sentimentEs(s) {
+function sentimentReport(s) {
   const v = String(s || '').toLowerCase();
-  if (v === 'positive') return 'Positivo';
-  if (v === 'neutral') return 'Neutral';
-  if (v === 'negative') return 'Negativo';
-  if (v === 'mixed') return 'Mixto';
+  if (v === 'positive') return tr('sentPos');
+  if (v === 'neutral') return tr('sentNeu');
+  if (v === 'negative') return tr('sentNeg');
+  if (v === 'mixed') return tr('sentMix');
   return String(s || '');
 }
 
 function renderBlockKV(obj) {
-  if (!obj || Object.keys(obj).length === 0) return '<div class="block-empty">Sin datos.</div>';
+  if (!obj || Object.keys(obj).length === 0) return `<div class="block-empty">${escapeHtml(tr('emptyBlockData'))}</div>`;
   return `<dl>${Object.entries(obj).map(([k, v]) => `
     <dt>${escapeHtml(prettyLabel(k))}</dt>
     <dd>${Array.isArray(v)
@@ -1178,11 +1673,14 @@ function renderBlockKV(obj) {
 }
 
 async function load() {
-  if (!companyId) { document.getElementById('root').innerHTML = '<div style="padding:40px;color:#e11d48">Falta parámetro ?id=</div>'; return; }
+  if (!companyId) {
+    document.getElementById('root').innerHTML = '<div style="padding:40px;color:#e11d48">' + escapeHtml(tr('errorMissingId')) + '</div>';
+    return;
+  }
   const token = localStorage.getItem('token');
   if (!token) { window.location.href = '/login'; return; }
   const authH = { 'Authorization': 'Bearer ' + token };
-  document.getElementById('status').textContent = 'Cargando...';
+  document.getElementById('status').textContent = tr('statusLoading');
   const [full, openQs] = await Promise.all([
     fetch('/api/kyc/companies/' + companyId, { headers: authH }).then((r) => {
       if (r.status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; throw new Error('unauth'); }
@@ -1190,12 +1688,18 @@ async function load() {
     }),
     fetch('/api/kyc/companies/' + companyId + '/open-questions', { headers: authH }).then((r) => r.ok ? r.json() : []),
   ]);
+  window.__kycReportLast = { data: full, openQs };
+  window.__kycReportEnPayload = null;
+  setReportOrgLevels();
   render(full, openQs);
-  document.getElementById('status').textContent = 'Listo';
-  document.title = 'Informe KYC · ' + (full.company?.name || companyId);
+  document.getElementById('status').textContent = tr('statusReady');
+  document.title = tr('docTitleSuffix') + (full.company?.name || companyId);
+  updateToolbarChrome();
 }
 
 function render(data, openQs) {
+  setReportOrgLevels();
+  const dateLocale = reportLang === 'en' ? 'en-US' : 'es-ES';
   const { company, profile, completeness, org, signals } = data;
   const p = profile || {};
   const stack = p.tech_stack || {};
@@ -1204,10 +1708,40 @@ function render(data, openQs) {
     : (Array.isArray(openQs) ? openQs : []);
   const avvaleN = normalizeAvvaleRep(p.avvale);
   const sigIntel = parseSignalIntelRep(p.signal_intel);
-  const today = new Date().toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' });
+  const today = new Date().toLocaleDateString(dateLocale, { year:'numeric', month:'long', day:'numeric' });
   const yr = new Date().getFullYear();
   const members = org?.members || [];
-  const byArea = members.reduce((acc, m) => { const k = m.area || 'Sin área'; (acc[k] = acc[k] || []).push(m); return acc; }, {});
+  const orgBuckets = groupMembersByLevelRep(members);
+  const orgBoardHtml = orderedOrgLevelsForBoardRep().map((L) => {
+    const laneMembers = orgBuckets[L.level] || [];
+    const cards = laneMembers.map((m) => {
+      const lvlMeta = orgLevelMetaRep(m.level);
+      const laneCol = orgLevelColorRep(m.level);
+      const ink = contrastInkForBgRep(laneCol);
+      const parent = members.find((x) => x.id === m.reports_to_id);
+      return `
+                  <div class="member-card">
+                    <div class="avatar" style="background:${laneCol};color:${ink}">${escapeHtml(initials(m.name))}</div>
+                    <div class="member-info">
+                      <div class="member-name">${escapeHtml(m.name)}</div>
+                      <div class="member-role">${escapeHtml(m.role || '—')}</div>
+                      <div class="member-meta">${escapeHtml(tr('orgLevelPrefix'))} <strong>${escapeHtml(lvlMeta.label)}</strong></div>
+                      ${m.area ? `<div class="member-meta">${escapeHtml(m.area)}</div>` : ''}
+                      ${parent ? `<div class="member-meta">↑ ${escapeHtml(parent.name)}</div>` : ''}
+                    </div>
+                  </div>`;
+    }).join('');
+    const laneCountLbl = laneMembers.length === 1 ? tr('orgPerson') : tr('orgPersons');
+    return `
+            <div class="org-lane-group">
+              <div class="org-lane-head" style="background:linear-gradient(90deg, ${L.color}14, transparent)">
+                <div class="org-lane-label" style="color:${L.color}">${escapeHtml(L.label)}</div>
+                <div class="org-lane-hint">${escapeHtml(L.hint)}</div>
+                <div class="org-lane-count">${laneMembers.length} ${laneCountLbl}</div>
+              </div>
+              ${laneMembers.length ? `<div class="area-members">${cards}</div>` : `<div class="org-lane-empty">${escapeHtml(tr('orgLaneEmpty'))}</div>`}
+            </div>`;
+  }).join('');
 
   // Completeness ring path
   const r = 64, c = 2 * Math.PI * r;
@@ -1219,7 +1753,7 @@ function render(data, openQs) {
       <div class="cover-top">
         <div class="cover-top-brand">
           <img class="cover-logo" src="https://www.avvale.com/hubfs/avvale-logo-hor-col-neg-1.png" alt="Avvale" width="180" height="40" />
-          <div class="cover-top-meta">Client Knowledge<br />Informe confidencial · ${yr}</div>
+          <div class="cover-top-meta">${tr('coverClientKnowledge')}<br />${tr('coverConfidential')}${yr}</div>
         </div>
       </div>
       <div class="cover-body">
@@ -1228,26 +1762,26 @@ function render(data, openQs) {
             <div class="cover-brand-mark" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
             </div>
-            <div class="cover-brand-text">Know your customer · Resumen ejecutivo</div>
+            <div class="cover-brand-text">${tr('coverBrandLine')}</div>
           </div>
 
           <div>
-            <div class="cover-label">Informe KYC · Companion App</div>
+            <div class="cover-label">${tr('coverReportLabel')}</div>
             <h1 class="cover-title display">${escapeHtml(company.name)}</h1>
-            <p class="cover-subtitle">${escapeHtml(p.summary || 'Perfil estratégico de cliente: organización, stack tecnológico, señales de mercado y contexto comercial.')}</p>
+            <p class="cover-subtitle">${escapeHtml(p.summary || tr('coverDefaultSummary'))}</p>
 
             <div class="cover-meta">
               <div class="cover-meta-item">
-                <div class="k">Sector</div>
+                <div class="k">${tr('coverSector')}</div>
                 <div class="v">${escapeHtml(company.sector || '—')}</div>
               </div>
               <div class="cover-meta-item">
-                <div class="k">Ubicación</div>
+                <div class="k">${tr('coverLocation')}</div>
                 <div class="v">${escapeHtml([company.city, company.country].filter(Boolean).join(', ') || '—')}</div>
               </div>
               <div class="cover-meta-item">
-                <div class="k">Completado</div>
-                <div class="v">${completeness || 0}% · ${members.length} personas</div>
+                <div class="k">${tr('coverCompleted')}</div>
+                <div class="v">${completeness || 0}% · ${members.length} ${tr('coverPeopleMeta')}</div>
               </div>
             </div>
           </div>
@@ -1274,57 +1808,68 @@ function render(data, openQs) {
     </section>
   `;
 
-  // ─── SHEET 2 · RESUMEN + DATOS + PERFIL ─────────────────────────────
-  const sheet2 = `
+  // ─── Hojas de contenido: una cara A4 de inicio por bloque numerado (01–09) ───
+  const sheet_resumen = `
     <section class="sheet">
       <div class="sheet-inner">
         <div class="section">
           <div class="section-head">
             <div class="section-num">01</div>
-            <h2 class="section-title">Resumen</h2>
+            <h2 class="section-title">${tr('sec01')}</h2>
             <div class="section-sub">${today}</div>
           </div>
-          ${p.summary ? `<div class="callout">${escapeHtml(p.summary)}</div>` : '<div class="block-empty">Sin resumen. Usa la entrevista KYC o el chat para generarlo.</div>'}
-        </div>
-
-        <div class="section">
-          <div class="metrics">
-            <div class="metric"><div class="v">${members.length}</div><div class="l">Personas</div></div>
-            <div class="metric"><div class="v">${(signals || []).length}</div><div class="l">Señales</div></div>
-            <div class="metric"><div class="v">${openQuestions.length}</div><div class="l">Por resolver</div></div>
-            <div class="metric"><div class="v">${completeness || 0}%</div><div class="l">Completado</div></div>
+          ${p.summary ? `<div class="callout">${escapeHtml(p.summary)}</div>` : `<div class="block-empty">${escapeHtml(tr('emptySummary'))}</div>`}
+          <div class="metrics" style="margin-top:14px">
+            <div class="metric"><div class="v">${members.length}</div><div class="l">${tr('metricPeople')}</div></div>
+            <div class="metric"><div class="v">${(signals || []).length}</div><div class="l">${tr('metricSignals')}</div></div>
+            <div class="metric"><div class="v">${openQuestions.length}</div><div class="l">${tr('metricOpen')}</div></div>
+            <div class="metric"><div class="v">${completeness || 0}%</div><div class="l">${tr('metricComplete')}</div></div>
           </div>
         </div>
+      </div>
+      ${kycReportFooter(company.name, 2)}
+    </section>
+  `;
 
+  const sheet_datos = `
+    <section class="sheet">
+      <div class="sheet-inner">
         <div class="section">
           <div class="section-head">
             <div class="section-num">02</div>
-            <h2 class="section-title">Datos generales</h2>
+            <h2 class="section-title">${tr('sec02')}</h2>
           </div>
           <div class="kv-grid">
             <div>
-              <div class="kv-row"><dt>Razón social</dt><dd>${escapeHtml(company.name)}</dd></div>
-              <div class="kv-row"><dt>Industria</dt><dd>${escapeHtml(company.industry || '—')}</dd></div>
-              <div class="kv-row"><dt>Sector</dt><dd>${escapeHtml(company.sector || '—')}</dd></div>
-              <div class="kv-row"><dt>Ciudad</dt><dd>${escapeHtml(company.city || '—')}</dd></div>
-              <div class="kv-row"><dt>País</dt><dd>${escapeHtml(company.country || '—')}</dd></div>
+              <div class="kv-row"><dt>${tr('kvLegalName')}</dt><dd>${escapeHtml(company.name)}</dd></div>
+              <div class="kv-row"><dt>${tr('kvIndustry')}</dt><dd>${escapeHtml(company.industry || '—')}</dd></div>
+              <div class="kv-row"><dt>${tr('kvSector')}</dt><dd>${escapeHtml(company.sector || '—')}</dd></div>
+              <div class="kv-row"><dt>${tr('kvCity')}</dt><dd>${escapeHtml(company.city || '—')}</dd></div>
+              <div class="kv-row"><dt>${tr('kvCountry')}</dt><dd>${escapeHtml(company.country || '—')}</dd></div>
             </div>
             <div>
-              <div class="kv-row"><dt>Web</dt><dd>${escapeHtml(company.website || '—')}</dd></div>
-              <div class="kv-row"><dt>Facturación</dt><dd>${escapeHtml(company.revenue || '—')}</dd></div>
-              <div class="kv-row"><dt>Empleados</dt><dd>${escapeHtml(company.employees || '—')}</dd></div>
-              <div class="kv-row"><dt>Estratégica</dt><dd>${p.strategic ? `<span class="kv-strategic-yes">${kycIcoStar(14, 14)}<span>Sí</span></span>` : 'No'}</dd></div>
+              <div class="kv-row"><dt>${tr('kvWeb')}</dt><dd>${escapeHtml(company.website || '—')}</dd></div>
+              <div class="kv-row"><dt>${tr('kvRevenue')}</dt><dd>${escapeHtml(company.revenue || '—')}</dd></div>
+              <div class="kv-row"><dt>${tr('kvEmployees')}</dt><dd>${escapeHtml(company.employees || '—')}</dd></div>
+              <div class="kv-row"><dt>${tr('kvStrategic')}</dt><dd>${p.strategic ? `<span class="kv-strategic-yes">${kycIcoStar(14, 14)}<span>${escapeHtml(tr('kvYes'))}</span></span>` : escapeHtml(tr('kvNo'))}</dd></div>
             </div>
           </div>
         </div>
+      </div>
+      ${kycReportFooter(company.name, 3)}
+    </section>
+  `;
 
+  const sheet_perfil = `
+    <section class="sheet">
+      <div class="sheet-inner">
         <div class="section">
           <div class="section-head">
             <div class="section-num">03</div>
-            <h2 class="section-title">Perfil de negocio</h2>
+            <h2 class="section-title">${tr('sec03')}</h2>
           </div>
           <div class="block-grid">
-            ${KYC_REPORT_PROFILE_BLOCKS.map(([k, iconFn, label]) => `
+            ${getKycReportProfileBlocks().map(([k, iconFn, label]) => `
               <div class="block">
                 <div class="block-title">${iconFn()}<span>${escapeHtml(label)}</span></div>
                 ${renderBlockKV(p[k])}
@@ -1333,10 +1878,7 @@ function render(data, openQs) {
           </div>
         </div>
       </div>
-      <div class="sheet-footer">
-        <div>Informe KYC · ${escapeHtml(company.name)}</div>
-        <div>2 / ${REPORT_PAGE_TOTAL} · Companion App</div>
-      </div>
+      ${kycReportFooter(company.name, 4)}
     </section>
   `;
 
@@ -1349,12 +1891,12 @@ function render(data, openQs) {
       </tr>`).join('')
     : '';
   const projectsSection = projectsRows
-    ? `<div class="proj-table-wrap"><table class="proj-table"><thead><tr><th>Proyecto</th><th>Estado</th><th>Notas</th></tr></thead><tbody>${projectsRows}</tbody></table></div>`
-    : '<div class="block-empty">Sin proyectos en cuenta. Regístralos en la pestaña «Proyectos».</div>';
+    ? `<div class="proj-table-wrap"><table class="proj-table"><thead><tr><th>${escapeHtml(tr('projColName'))}</th><th>${escapeHtml(tr('projColStatus'))}</th><th>${escapeHtml(tr('projColNotes'))}</th></tr></thead><tbody>${projectsRows}</tbody></table></div>`
+    : `<div class="block-empty">${escapeHtml(tr('emptyProjects'))}</div>`;
 
   const footprintHtml = avvaleN.footprint && String(avvaleN.footprint).trim()
     ? `<div class="avvale-footprint">${escapeHtml(String(avvaleN.footprint).trim())}</div>`
-    : '<div class="block-empty">Sin texto de footprint.</div>';
+    : `<div class="block-empty">${escapeHtml(tr('footprintEmpty'))}</div>`;
 
   const presenceRows = SOLUTION_SLUGS.map((slug) => {
     const on = avvaleN.solution_presence.includes(slug);
@@ -1363,40 +1905,45 @@ function render(data, openQs) {
     return `<div class="presence-row">
       <div class="presence-line-label">${label}</div>
       <div>
-        ${on ? '<span class="presence-pill-on">Presencia indicada</span>' : '<span class="presence-pill-off">Sin indicar</span>'}
+        ${on ? `<span class="presence-pill-on">${escapeHtml(tr('presenceOn'))}</span>` : `<span class="presence-pill-off">${escapeHtml(tr('presenceOff'))}</span>`}
         ${note ? `<div style="margin-top:6px;font-size:9pt;color:var(--ink);line-height:1.45">${escapeHtml(note)}</div>` : ''}
       </div>
     </div>`;
   }).join('');
 
-  const sheet_projects = `
+  const sheet_proyectos = `
     <section class="sheet">
       <div class="sheet-inner">
         <div class="section">
           <div class="section-head">
             <div class="section-num">04</div>
-            <h2 class="section-title">Proyectos</h2>
-            <div class="section-sub">${avvaleN.projects.length} en cuenta</div>
+            <h2 class="section-title">${tr('sec04')}</h2>
+            <div class="section-sub">${avvaleN.projects.length} ${tr('projSub')}</div>
           </div>
           ${projectsSection}
         </div>
+      </div>
+      ${kycReportFooter(company.name, 5)}
+    </section>
+  `;
+
+  const sheet_avvale = `
+    <section class="sheet">
+      <div class="sheet-inner">
         <div class="section">
           <div class="section-head">
             <div class="section-num">05</div>
-            <h2 class="section-title">Avvale</h2>
-            <div class="section-sub">Presencia en la cuenta</div>
+            <h2 class="section-title">${tr('sec05')}</h2>
+            <div class="section-sub">${tr('avvaleSubAccount')}</div>
           </div>
-          <p style="font-size:9pt;color:var(--muted);margin:0 0 10px;line-height:1.45">Footprint y líneas de solución (GROW, RUN, WISE, …), alineado con la pestaña «Avvale».</p>
-          <div class="sub-section-head"><div class="sub-section-title">Footprint</div></div>
+          <p style="font-size:9pt;color:var(--muted);margin:0 0 10px;line-height:1.45">${tr('avvaleIntro')}</p>
+          <div class="sub-section-head"><div class="sub-section-title">${tr('subFootprint')}</div></div>
           ${footprintHtml}
-          <div class="sub-section-head sub-section-head--spaced"><div class="sub-section-title">Líneas de solución</div></div>
+          <div class="sub-section-head sub-section-head--spaced"><div class="sub-section-title">${tr('subSolutionLines')}</div></div>
           <div style="margin-top:8px">${presenceRows}</div>
         </div>
       </div>
-      <div class="sheet-footer">
-        <div>Informe KYC · ${escapeHtml(company.name)}</div>
-        <div>3 / ${REPORT_PAGE_TOTAL} · Companion App</div>
-      </div>
+      ${kycReportFooter(company.name, 6)}
     </section>
   `;
 
@@ -1418,32 +1965,29 @@ function render(data, openQs) {
         <div class="section">
           <div class="section-head">
             <div class="section-num">06</div>
-            <h2 class="section-title">Tecnología</h2>
-            <div class="section-sub">Stack declarado</div>
+            <h2 class="section-title">${tr('sec06')}</h2>
+            <div class="section-sub">${tr('techStackHint')}</div>
           </div>
-          <p style="font-size:9pt;color:var(--muted);margin:0 0 12px;line-height:1.45">Misma información que la pestaña «Tecnología» del perfil KYC.</p>
+          <p style="font-size:9pt;color:var(--muted);margin:0 0 12px;line-height:1.45">${tr('techIntro')}</p>
           <div class="stack-header">
-            ${partner ? `<div class="partner-badge"><span class="k">Partner</span><strong>${escapeHtml(partner)}</strong></div>` : ''}
+            ${partner ? `<div class="partner-badge"><span class="k">${escapeHtml(tr('partnerLbl'))}</span><strong>${escapeHtml(partner)}</strong></div>` : ''}
           </div>
           ${doloresArr.length ? doloresArr.map((d) => `<div class="pain">${kycIcoAlert()}<span>${escapeHtml(asStr(d))}</span></div>`).join('') : ''}
           <div class="stack-grid">
             ${stackBox('ERP', asStr(stack.erp), toArr(stack.erp_modulos || stack.modulos), '#0a6ed1')}
             ${stackBox('CRM', asStr(stack.crm), null, '#0854a0')}
             ${stackBox('Cloud / Infra', asStr(stack.cloud || stack.infra), null, '#0284c7')}
-            ${stackBox('BI / Analítica', asStr(stack.bi || stack.analytics), null, '#107e3e')}
+            ${stackBox(tr('stackBI'), asStr(stack.bi || stack.analytics), null, '#107e3e')}
             ${sectorialesArr.length ? `<div class="stack-box" style="--box-color:#6c32a9">
-              <div class="k">Sistemas sectoriales</div>
+              <div class="k">${escapeHtml(tr('stackSectorial'))}</div>
               <div class="sub" style="margin-top:6px">${sectorialesArr.map((x) => `<span class="chip chip-violet">${escapeHtml(asStr(x))}</span>`).join('')}</div>
             </div>` : ''}
-            ${stackBox('Integración', asStr(stack.integracion || stack.middleware || stack.btp), null, '#e9730c')}
+            ${stackBox(tr('stackIntegration'), asStr(stack.integracion || stack.middleware || stack.btp), null, '#e9730c')}
           </div>
           ${stack.notes || stack.notas ? `<div style="margin-top:14px;font-size:10pt;color:var(--muted);font-style:italic">${escapeHtml(asStr(stack.notes || stack.notas))}</div>` : ''}
         </div>
       </div>
-      <div class="sheet-footer">
-        <div>Informe KYC · ${escapeHtml(company.name)}</div>
-        <div>4 / ${REPORT_PAGE_TOTAL} · Companion App</div>
-      </div>
+      ${kycReportFooter(company.name, 7)}
     </section>
   `;
 
@@ -1453,36 +1997,17 @@ function render(data, openQs) {
         <div class="section">
           <div class="section-head">
             <div class="section-num">07</div>
-            <h2 class="section-title">Organigrama</h2>
-            <div class="section-sub">${members.length} personas</div>
+            <h2 class="section-title">${tr('sec07')}</h2>
+            <div class="section-sub">${members.length} ${tr('orgPeopleSub')}</div>
           </div>
-          <p style="font-size:9pt;color:var(--muted);margin:0 0 12px;line-height:1.45">Personas y relaciones como en la pestaña «Organigrama».</p>
-          ${members.length ? Object.entries(byArea).map(([area, list]) => `
-            <div class="area-group">
-              <div class="area-title" style="color:${areaColor(area)}">${escapeHtml(area)} · ${list.length}</div>
-              <div class="area-members">
-              ${list.map((m) => {
-                const col = areaColor(m.area);
-                const parent = members.find((x) => x.id === m.reports_to_id);
-                return `
-                  <div class="member-card">
-                    <div class="avatar" style="background:${col}">${escapeHtml(initials(m.name))}</div>
-                    <div class="member-info">
-                      <div class="member-name">${escapeHtml(m.name)}</div>
-                      <div class="member-role">${escapeHtml(m.role || '—')}${parent ? ' · ↑ ' + escapeHtml(parent.name) : ''}</div>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-              </div>
-            </div>
-          `).join('') : '<div class="block-empty">Sin miembros registrados.</div>'}
+          <p style="font-size:9pt;color:var(--muted);margin:0 0 12px;line-height:1.45">${tr('orgIntro')}</p>
+          ${members.length ? orgBoardHtml : `<div class="block-empty">${escapeHtml(tr('orgEmpty'))}</div>`}
 
           ${(org?.relationships || []).length ? `
             <div style="margin-top:16px">
-              <div class="area-title">Relaciones informales</div>
+              <div class="area-title">${escapeHtml(tr('orgInformalRels'))}</div>
               <table class="tbl">
-                <thead><tr><th>De</th><th>A</th><th>Tipo</th></tr></thead>
+                <thead><tr><th>${escapeHtml(tr('tblFrom'))}</th><th>${escapeHtml(tr('tblTo'))}</th><th>${escapeHtml(tr('tblType'))}</th></tr></thead>
                 <tbody>
                   ${org.relationships.map((r) => {
                     const f = members.find((m) => m.id === r.from_member_id);
@@ -1495,27 +2020,24 @@ function render(data, openQs) {
           ` : ''}
         </div>
       </div>
-      <div class="sheet-footer">
-        <div>Informe KYC · ${escapeHtml(company.name)}</div>
-        <div>5 / ${REPORT_PAGE_TOTAL} · Companion App</div>
-      </div>
+      ${kycReportFooter(company.name, 8)}
     </section>
   `;
 
   const hypBlock = sigIntel.hypotheses.length
     ? `<div class="hyp-box">
-        <div class="hyp-box-title">Posibles iniciativas (IA · hipótesis)${sigIntel.updated_at ? ' · ' + escapeHtml(new Date(sigIntel.updated_at).toLocaleString('es-ES')) : ''}</div>
-        <p style="font-size:8.5pt;color:var(--muted);margin:0 0 10px;line-height:1.4">Conjeturas a partir de señales; no sustituyen proyectos en cuenta hasta confirmarlos en «Proyectos».</p>
+        <div class="hyp-box-title">${escapeHtml(tr('hypTitle'))}${sigIntel.updated_at ? ' · ' + escapeHtml(new Date(sigIntel.updated_at).toLocaleString(dateLocale)) : ''}</div>
+        <p style="font-size:8.5pt;color:var(--muted);margin:0 0 10px;line-height:1.4">${escapeHtml(tr('hypIntro'))}</p>
         ${sigIntel.hypotheses.map((h) => `
           <div class="hyp-item">
-            <div class="hyp-meta">Confianza (especulación): ${escapeHtml(confidenceLabelRep(h.confidence))}</div>
+            <div class="hyp-meta">${escapeHtml(tr('hypConfidence'))} ${escapeHtml(confidenceLabelRep(h.confidence))}</div>
             <div class="hyp-title">${escapeHtml(h.title)}</div>
             ${h.rationale ? `<p class="hyp-rationale">${escapeHtml(h.rationale)}</p>` : ''}
           </div>`).join('')}
       </div>`
     : `<div class="hyp-box">
-        <div class="hyp-box-title">Posibles iniciativas (IA · hipótesis)</div>
-        <div class="block-empty" style="margin:0">Sin hipótesis guardadas. Generar desde la pestaña «Señales».</div>
+        <div class="hyp-box-title">${escapeHtml(tr('hypTitle'))}</div>
+        <div class="block-empty" style="margin:0">${escapeHtml(tr('hypEmpty'))}</div>
       </div>`;
 
   const sheet_signals = `
@@ -1524,33 +2046,40 @@ function render(data, openQs) {
         <div class="section">
           <div class="section-head">
             <div class="section-num">08</div>
-            <h2 class="section-title">Señales</h2>
-            <div class="section-sub">${(signals || []).length} registradas</div>
+            <h2 class="section-title">${tr('sec08')}</h2>
+            <div class="section-sub">${(signals || []).length} ${tr('signalsSub')}</div>
           </div>
           ${hypBlock}
           <div class="sub-section-head sub-section-head--spaced">
-            <div class="sub-section-title sub-section-title--lg">Noticias y señales</div>
+            <div class="sub-section-title sub-section-title--lg">${tr('newsSignals')}</div>
           </div>
           ${(signals || []).length ? `
             <div class="timeline">
               ${signals.slice(0, 24).map((s) => `
                 <div class="timeline-item">
-                  <div class="timeline-date">${s.published_at ? new Date(s.published_at).toLocaleDateString('es-ES') : (s.captured_at ? new Date(s.captured_at).toLocaleDateString('es-ES') : '—')} · ${escapeHtml(s.source || '')}</div>
+                  <div class="timeline-date">${s.published_at ? new Date(s.published_at).toLocaleDateString(dateLocale) : (s.captured_at ? new Date(s.captured_at).toLocaleDateString(dateLocale) : '—')} · ${escapeHtml(s.source || '')}</div>
                   <div class="timeline-title">${escapeHtml(s.title || s.text?.slice(0,140) || '—')}</div>
-                  ${s.sentiment ? `<div class="timeline-src">${escapeHtml(sentimentEs(s.sentiment))}${s.rating != null && s.rating !== '' ? ` · <span class="timeline-rating">${kycIcoStar(12, 12)}<span>${escapeHtml(String(s.rating))}</span></span>` : ''}</div>` : (s.rating != null && s.rating !== '' ? `<div class="timeline-src"><span class="timeline-rating">${kycIcoStar(12, 12)}<span>${escapeHtml(String(s.rating))}</span></span></div>` : '')}
+                  ${s.sentiment ? `<div class="timeline-src">${escapeHtml(sentimentReport(s.sentiment))}${s.rating != null && s.rating !== '' ? ` · <span class="timeline-rating">${kycIcoStar(12, 12)}<span>${escapeHtml(String(s.rating))}</span></span>` : ''}</div>` : (s.rating != null && s.rating !== '' ? `<div class="timeline-src"><span class="timeline-rating">${kycIcoStar(12, 12)}<span>${escapeHtml(String(s.rating))}</span></span></div>` : '')}
                 </div>
               `).join('')}
             </div>
-          ` : '<div class="block-empty">Sin señales registradas.</div>'}
+          ` : `<div class="block-empty">${escapeHtml(tr('signalsEmpty'))}</div>`}
         </div>
+      </div>
+      ${kycReportFooter(company.name, 9)}
+    </section>
+  `;
 
+  const sheet_openq = `
+    <section class="sheet">
+      <div class="sheet-inner">
         <div class="section">
           <div class="section-head">
             <div class="section-num">09</div>
-            <h2 class="section-title">Por resolver</h2>
-            <div class="section-sub">${openQuestions.length} abiertas</div>
+            <h2 class="section-title">${tr('sec09')}</h2>
+            <div class="section-sub">${openQuestions.length} ${tr('openSub')}</div>
           </div>
-          <p style="font-size:9pt;color:var(--muted);margin:0 0 10px;line-height:1.45">Preguntas abiertas del perfil (pestaña «Por resolver»).</p>
+          <p style="font-size:9pt;color:var(--muted);margin:0 0 10px;line-height:1.45">${tr('openIntro')}</p>
           ${openQuestions.length ? `<div class="qgrid">${openQuestions.map((q) => `
             <div class="qcard">
               <div class="qtop">
@@ -1559,17 +2088,24 @@ function render(data, openQs) {
               </div>
               <div class="qtext">${escapeHtml(q.question)}</div>
             </div>
-          `).join('')}</div>` : '<div class="block-empty">Ninguna pregunta abierta.</div>'}
+          `).join('')}</div>` : `<div class="block-empty">${escapeHtml(tr('openEmpty'))}</div>`}
         </div>
       </div>
-      <div class="sheet-footer">
-        <div>Informe KYC · ${escapeHtml(company.name)}</div>
-        <div>${REPORT_PAGE_TOTAL} / ${REPORT_PAGE_TOTAL} · Companion App</div>
-      </div>
+      ${kycReportFooter(company.name, 10)}
     </section>
   `;
 
-  document.getElementById('root').innerHTML = cover + sheet2 + sheet_projects + sheet_tech + sheet_org + sheet_signals;
+  document.getElementById('root').innerHTML =
+    cover +
+    sheet_resumen +
+    sheet_datos +
+    sheet_perfil +
+    sheet_proyectos +
+    sheet_avvale +
+    sheet_tech +
+    sheet_org +
+    sheet_signals +
+    sheet_openq;
 }
 
 load().catch((e) => {
