@@ -1299,6 +1299,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
               {tab === 'organigrama' && selId && (
                 <KycOrgPanel
                   companyId={selId}
+                  companyName={String((detail.company as Record<string, unknown>).name ?? 'Empresa')}
                   members={detail.org.members}
                   rels={detail.org.relationships}
                   onRefetch={refetchNow}

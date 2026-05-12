@@ -167,12 +167,15 @@ function initials(name: string) {
 
 export function KycOrgPanel({
   companyId,
+  companyName,
   members,
   rels,
   onRefetch,
   onBanner,
 }: {
   companyId: number;
+  /** Razón social / nombre de la ficha KYC (búsqueda LinkedIn «people»). */
+  companyName: string;
   members: M[];
   rels: R[];
   onRefetch: () => void;
@@ -233,6 +236,12 @@ export function KycOrgPanel({
     }
     return b;
   }, [visibleMembers]);
+
+  /** Misma base que LinkedIn UI; `keywords` codificado (espacios y caracteres especiales en nombre de empresa). */
+  const linkedinPeopleSearchUrl = useMemo(() => {
+    const q = companyName.trim() || 'Empresa';
+    return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(q)}`;
+  }, [companyName]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -447,6 +456,14 @@ export function KycOrgPanel({
           </button>
           <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`} onClick={openAdd}>
             + Miembro
+          </button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
+            onClick={() => window.open(linkedinPeopleSearchUrl, '_blank', 'noopener,noreferrer')}
+            aria-label={`Abrir búsqueda de personas en LinkedIn para ${companyName.trim() || 'Empresa'}`}
+          >
+            + LinkedIn
           </button>
         </div>
       </div>
