@@ -908,6 +908,18 @@
   border-color: var(--fiori-border, #cbd5e1);
 }
 
+/** Botón «+ LinkedIn» (marca LinkedIn). */
+.btnLinkedIn {
+  background: #0a66c2;
+  color: #fff;
+  border-color: #0a66c2;
+}
+.btnLinkedIn:hover {
+  background: #095195;
+  border-color: #095195;
+  color: #fff;
+}
+
 .btnDangerOutline {
   color: var(--fiori-error, #b91c1c);
   border-color: color-mix(in srgb, var(--fiori-error, #b91c1c) 45%, var(--fiori-border, #cbd5e1));

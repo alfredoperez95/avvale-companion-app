@@ -459,7 +459,7 @@ export function KycOrgPanel({
           </button>
           <button
             type="button"
-            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
+            className={`${styles.btn} ${styles.btnLinkedIn} ${styles.btnSm}`}
             onClick={() => window.open(linkedinPeopleSearchUrl, '_blank', 'noopener,noreferrer')}
             aria-label={`Abrir búsqueda de personas en LinkedIn para ${companyName.trim() || 'Empresa'}`}
           >
