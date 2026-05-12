@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { resolveApiUrl } from '@/lib/api';
 import styles from './login.module.css';
 
-const LOGIN_EMAIL_DOMAINS = ['@avvale.com', '@azure.com'] as const;
+const LOGIN_EMAIL_DOMAINS = ['@avvale.com', '@axazure.com'] as const;
 type LoginEmailDomain = (typeof LOGIN_EMAIL_DOMAINS)[number];
 
 const LOGIN_EMAIL_DOMAIN_STORAGE_KEY = 'avvale_login_email_domain';
