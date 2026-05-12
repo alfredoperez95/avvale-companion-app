@@ -15,7 +15,7 @@ export type User = {
   avatarPath?: string | null;
   appearance?: string | null;
   role?: string;
-  /** Orden de mosaicos App Launcher; permutación de activations, pipeline, yubiq, rfqAnalysis, meddpicc, kyc */
+  /** Orden de mosaicos App Launcher; permutación de los seis ids (kyc, pipeline, rfqAnalysis, meddpicc, activations, yubiq). */
   launcherTileOrder?: LauncherTileId[] | null;
   /** Indica si el usuario guardó clave Anthropic (módulos con IA en el launcher). */
   hasAnthropicApiKey?: boolean;

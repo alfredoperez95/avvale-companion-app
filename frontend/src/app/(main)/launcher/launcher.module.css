@@ -296,6 +296,34 @@
   opacity: 0.9;
 }
 
+.tileSections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fiori-space-7);
+}
+
+.tileSection {
+  margin: 0;
+}
+
+.tileSectionTitle {
+  font-family: "72Black", "72Blackfull", "72", "72full", Arial, Helvetica, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--fiori-text);
+  margin: 0 0 var(--fiori-space-4);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.tileSection:first-of-type .tileSectionTitle {
+  margin-top: var(--fiori-space-4);
+}
+
+.tileSection + .tileSection .tileSectionTitle {
+  margin-top: var(--fiori-space-5);
+}
+
 .tilesGrid {
   display: grid;
   grid-template-columns: 1fr;
@@ -340,6 +368,82 @@
 .tileAccentMeddpicc,
 .tileAccentKyc {
   border-top: 3px solid var(--fiori-shell-bg);
+}
+
+/* KYC: espacio principal del bloque comercial (jerarquía tipográfica + halo). */
+.tileFeaturedEyebrow {
+  margin: 0 0 var(--fiori-space-2);
+  padding: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fiori-text-secondary);
+}
+
+.tileFeaturedEyebrow::after {
+  content: "";
+  display: block;
+  width: 2.75rem;
+  height: 2px;
+  margin-top: var(--fiori-space-2);
+  background: currentColor;
+  opacity: 0.42;
+  border-radius: 1px;
+}
+
+.tileAccentKyc.tileFeaturedKyc {
+  border-top-color: #1d2d3e;
+}
+
+.tileFeaturedKyc .tileTitle {
+  margin-top: 0;
+}
+
+.tile.tileFeaturedKyc {
+  border-color: #1d2d3e;
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--fiori-shell-bg) 11%, var(--fiori-surface)) 0%,
+    var(--fiori-surface) 52%,
+    var(--fiori-surface) 100%
+  );
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 5%),
+    0 8px 24px rgb(0 0 0 / 6%),
+    0 0 0 1px rgb(28 45 62 / 32%),
+    0 0 22px rgb(28 45 62 / 26%),
+    0 0 44px rgb(28 45 62 / 14%);
+}
+
+.tileFeaturedKyc .tileIcon {
+  color: color-mix(in srgb, var(--fiori-shell-bg) 55%, var(--fiori-text-secondary));
+}
+
+.tileLink:hover .tileFeaturedKyc {
+  border-color: #1d2d3e;
+  box-shadow:
+    0 4px 18px rgb(0 0 0 / 8%),
+    0 1px 3px rgb(0 0 0 / 5%),
+    0 0 0 1px rgb(28 45 62 / 42%),
+    0 0 28px rgb(28 45 62 / 34%),
+    0 0 56px rgb(28 45 62 / 18%);
+}
+
+:global([data-theme="microsoft"]) .tile.tileFeaturedKyc {
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--fiori-shell-bg) 14%, var(--fiori-surface)) 0%,
+    var(--fiori-surface) 55%,
+    var(--fiori-surface) 100%
+  );
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 5%),
+    0 8px 24px rgb(0 0 0 / 6%),
+    0 0 0 1px rgb(28 45 62 / 34%),
+    0 0 24px rgb(28 45 62 / 28%),
+    0 0 52px rgb(28 45 62 / 15%);
 }
 
 .tileTitle {

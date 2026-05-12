@@ -30,10 +30,82 @@ import { apiFetch } from '@/lib/api';
 import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './launcher.module.css';
 
-const LAUNCHER_TILE_IDS_ALL: LauncherTileId[] = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc', 'kyc'];
+const COMMERCIAL_TILE_IDS = ['kyc', 'pipeline', 'rfqAnalysis', 'meddpicc'] as const satisfies readonly LauncherTileId[];
+const ADMIN_TILE_IDS = ['activations', 'yubiq'] as const satisfies readonly LauncherTileId[];
+
+const COMMERCIAL_TILE_ID_SET = new Set<LauncherTileId>(COMMERCIAL_TILE_IDS);
+const ADMIN_TILE_ID_SET = new Set<LauncherTileId>(ADMIN_TILE_IDS);
+
+const LAUNCHER_TILE_IDS_ALL: LauncherTileId[] = [...COMMERCIAL_TILE_IDS, ...ADMIN_TILE_IDS];
 const DEFAULT_TILE_ORDER: LauncherTileId[] = [...LAUNCHER_TILE_IDS_ALL];
 
+/** Orden por defecto histórico (antes de secciones comercial / administrativo). */
+const LEGACY_DEFAULT_TILE_ORDER: readonly LauncherTileId[] = [
+  'activations',
+  'pipeline',
+  'yubiq',
+  'rfqAnalysis',
+  'meddpicc',
+  'kyc',
+];
+
+/** Orden default intermedio (comercial con RFQ primero; sustituido por KYC primero). */
+const PREVIOUS_DEFAULT_TILE_ORDER: readonly LauncherTileId[] = [
+  'rfqAnalysis',
+  'meddpicc',
+  'kyc',
+  'activations',
+  'pipeline',
+  'yubiq',
+];
+
+/** Pipeline aún en bloque administrativo; KYC primero en comercial. */
+const PREVIOUS_DEFAULT_KYC_FIRST: readonly LauncherTileId[] = [
+  'kyc',
+  'rfqAnalysis',
+  'meddpicc',
+  'activations',
+  'pipeline',
+  'yubiq',
+];
+
 const LEGACY_FIVE_TILES = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc'] as const;
+
+function isLegacyDefaultTileOrder(order: LauncherTileId[]): boolean {
+  return (
+    order.length === LEGACY_DEFAULT_TILE_ORDER.length &&
+    order.every((id, i) => id === LEGACY_DEFAULT_TILE_ORDER[i])
+  );
+}
+
+function isPreviousDefaultTileOrder(order: LauncherTileId[]): boolean {
+  return (
+    order.length === PREVIOUS_DEFAULT_TILE_ORDER.length &&
+    order.every((id, i) => id === PREVIOUS_DEFAULT_TILE_ORDER[i])
+  );
+}
+
+function isPreviousDefaultKycFirst(order: LauncherTileId[]): boolean {
+  return (
+    order.length === PREVIOUS_DEFAULT_KYC_FIRST.length &&
+    order.every((id, i) => id === PREVIOUS_DEFAULT_KYC_FIRST[i])
+  );
+}
+
+function partitionLauncherOrder(order: LauncherTileId[]): {
+  commercial: LauncherTileId[];
+  administrative: LauncherTileId[];
+} {
+  const commercialRaw = order.filter((id) => COMMERCIAL_TILE_ID_SET.has(id));
+  const commercialRest = commercialRaw.filter((id) => id !== 'kyc');
+  const commercial: LauncherTileId[] = commercialRaw.includes('kyc')
+    ? ['kyc', ...commercialRest]
+    : commercialRaw;
+  return {
+    commercial,
+    administrative: order.filter((id) => ADMIN_TILE_ID_SET.has(id)),
+  };
+}
 
 function normalizeTileOrder(raw: unknown): LauncherTileId[] {
   const allowed = new Set<string>(LAUNCHER_TILE_IDS_ALL);
@@ -45,7 +117,15 @@ function normalizeTileOrder(raw: unknown): LauncherTileId[] {
     new Set(unique).size === LAUNCHER_TILE_IDS_ALL.length &&
     LAUNCHER_TILE_IDS_ALL.every((id) => unique.includes(id))
   ) {
-    return unique as LauncherTileId[];
+    const perm = unique as LauncherTileId[];
+    if (
+      isLegacyDefaultTileOrder(perm) ||
+      isPreviousDefaultTileOrder(perm) ||
+      isPreviousDefaultKycFirst(perm)
+    ) {
+      return [...DEFAULT_TILE_ORDER];
+    }
+    return perm;
   }
   const legacyFiveOk =
     unique.length === 5 &&
@@ -83,7 +163,8 @@ function TileLink({
   locked?: boolean;
 }) {
   const accent = TILE_ACCENT[id];
-  const tile = `${styles.tile} ${accent} ${tileClassName ?? ''}`.trim();
+  const featuredClass = id === 'kyc' && !tileClassName ? styles.tileFeaturedKyc : '';
+  const tile = `${styles.tile} ${accent} ${featuredClass} ${tileClassName ?? ''}`.trim();
   switch (id) {
     case 'activations':
       return (
@@ -93,9 +174,9 @@ function TileLink({
           aria-labelledby="tile-activations-heading"
         >
           <article className={tile}>
-            <h2 id="tile-activations-heading" className={styles.tileTitle}>
+            <h3 id="tile-activations-heading" className={styles.tileTitle}>
               Activaciones
-            </h2>
+            </h3>
             <p className={styles.tileDesc}>
               Dashboard, mis activaciones, nueva activación y toda la gestión de activaciones por email.
             </p>
@@ -114,9 +195,9 @@ function TileLink({
           rel="noopener noreferrer"
         >
           <article className={tile}>
-            <h2 id="tile-pipeline-heading" className={styles.tileTitle}>
+            <h3 id="tile-pipeline-heading" className={styles.tileTitle}>
               Pipeline Dashboard
-            </h2>
+            </h3>
             <p className={styles.tileDesc}>
               Pipeline de ventas, métricas y análisis por equipo y fase, basado en la recopilación semanal de datos desde HubSpot.
             </p>
@@ -136,9 +217,9 @@ function TileLink({
             role="group"
           >
             <article className={lockedTile}>
-              <h2 id="tile-yubiq-approve-seal-heading" className={styles.tileTitle}>
+              <h3 id="tile-yubiq-approve-seal-heading" className={styles.tileTitle}>
                 Yubiq Approve &amp; Seal Filler
-              </h2>
+              </h3>
               <p className={styles.tileDesc}>
                 Sube una oferta comercial en PDF, analízala con IA y obtén campos estructurados (título, cliente, importe,
                 área Avvale y resumen).
@@ -163,9 +244,9 @@ function TileLink({
           aria-labelledby="tile-yubiq-approve-seal-heading"
         >
           <article className={tile}>
-            <h2 id="tile-yubiq-approve-seal-heading" className={styles.tileTitle}>
+            <h3 id="tile-yubiq-approve-seal-heading" className={styles.tileTitle}>
               Yubiq Approve &amp; Seal Filler
-            </h2>
+            </h3>
             <p className={styles.tileDesc}>
               Sube una oferta comercial en PDF, analízala con IA y obtén campos estructurados (título, cliente, importe, área Avvale y resumen).
             </p>
@@ -185,9 +266,9 @@ function TileLink({
             role="group"
           >
             <article className={lockedTile}>
-              <h2 id="tile-rfq-analysis-heading" className={styles.tileTitle}>
+              <h3 id="tile-rfq-analysis-heading" className={styles.tileTitle}>
                 Análisis RFQs
-              </h2>
+              </h3>
               <p className={styles.tileDesc}>
                 Workspace por oportunidad: documentos, análisis estructurado con IA y chat sobre el mismo contexto (manual o
                 por email).
@@ -212,9 +293,9 @@ function TileLink({
           aria-labelledby="tile-rfq-analysis-heading"
         >
           <article className={tile}>
-            <h2 id="tile-rfq-analysis-heading" className={styles.tileTitle}>
+            <h3 id="tile-rfq-analysis-heading" className={styles.tileTitle}>
               Análisis RFQs
-            </h2>
+            </h3>
             <p className={styles.tileDesc}>
               Workspace por oportunidad: documentos, análisis estructurado con IA y chat sobre el mismo contexto (manual o por email).
             </p>
@@ -234,9 +315,9 @@ function TileLink({
             role="group"
           >
             <article className={lockedTile}>
-              <h2 id="tile-meddpicc-heading" className={styles.tileTitle}>
+              <h3 id="tile-meddpicc-heading" className={styles.tileTitle}>
                 MEDDPICC
-              </h2>
+              </h3>
               <p className={styles.tileDesc}>
                 Cualificación de oportunidades B2B: ocho dimensiones MEDDPICC, puntuación y análisis con IA sobre el contexto del deal.
               </p>
@@ -256,9 +337,9 @@ function TileLink({
       return (
         <Link href="/launcher/meddpicc" className={styles.tileLink} aria-labelledby="tile-meddpicc-heading">
           <article className={tile}>
-            <h2 id="tile-meddpicc-heading" className={styles.tileTitle}>
+            <h3 id="tile-meddpicc-heading" className={styles.tileTitle}>
               MEDDPICC
-            </h2>
+            </h3>
             <p className={styles.tileDesc}>
               Cualificación de oportunidades B2B: ocho dimensiones MEDDPICC, puntuación y análisis con IA sobre el contexto del deal.
             </p>
@@ -267,13 +348,23 @@ function TileLink({
           </article>
         </Link>
       );
-    case 'kyc':
+    case 'kyc': {
+      const hubMode = !tileClassName;
       return (
-        <Link href="/launcher/kyc" className={styles.tileLink} aria-labelledby="tile-kyc-heading">
+        <Link
+          href="/launcher/kyc"
+          className={styles.tileLink}
+          aria-labelledby={hubMode ? 'tile-kyc-eyebrow tile-kyc-heading' : 'tile-kyc-heading'}
+        >
           <article className={tile}>
-            <h2 id="tile-kyc-heading" className={styles.tileTitle}>
+            {hubMode ? (
+              <p id="tile-kyc-eyebrow" className={styles.tileFeaturedEyebrow}>
+                Espacio principal
+              </p>
+            ) : null}
+            <h3 id="tile-kyc-heading" className={styles.tileTitle}>
               KYC — Client Knowledge
-            </h2>
+            </h3>
             <p className={styles.tileDesc}>
               Base de cuentas, perfil comercial, organigrama, señales y chat de investigación. Actúa como punto central de otras
               herramientas.
@@ -283,6 +374,7 @@ function TileLink({
           </article>
         </Link>
       );
+    }
     default:
       return null;
   }
@@ -434,6 +526,7 @@ export default function LauncherPage() {
 
   const displayName = user?.name?.trim() || user?.email || 'Usuario';
   const aiLocked = user?.hasAnthropicApiKey !== true;
+  const { commercial: commercialTileOrder, administrative: administrativeTileOrder } = partitionLauncherOrder(order);
 
   return (
     <div className={styles.page}>
@@ -581,7 +674,8 @@ export default function LauncherPage() {
           <div className={styles.reorderStripBody}>
             <p className={styles.reorderStripTitle}>Modo edición activo</p>
             <p className={styles.reorderStripText}>
-              Arrastra cada mosaico por el asa superior izquierda. El orden se guarda automáticamente al soltar.
+              Arrastra cada mosaico por el asa superior izquierda. El orden se guarda automáticamente al soltar. En la vista
+              normal los mosaicos se muestran agrupados en herramientas comerciales y procesos administrativos.
             </p>
           </div>
           {isSaving && (
@@ -604,13 +698,32 @@ export default function LauncherPage() {
           </SortableContext>
         </DndContext>
       ) : (
-        <ul className={styles.tilesGrid} role="list">
-          {order.map((id) => (
-            <li key={id} className={styles.sortableItemStatic} role="listitem">
-              <TileLink id={id} locked={aiLocked && (id === 'yubiq' || id === 'rfqAnalysis' || id === 'meddpicc')} />
-            </li>
-          ))}
-        </ul>
+        <div className={styles.tileSections}>
+          <section className={styles.tileSection} aria-labelledby="launcher-section-commercial-heading">
+            <h2 id="launcher-section-commercial-heading" className={styles.tileSectionTitle}>
+              Herramientas comerciales
+            </h2>
+            <ul className={styles.tilesGrid} role="list">
+              {commercialTileOrder.map((id) => (
+                <li key={id} className={styles.sortableItemStatic} role="listitem">
+                  <TileLink id={id} locked={aiLocked && (id === 'yubiq' || id === 'rfqAnalysis' || id === 'meddpicc')} />
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section className={styles.tileSection} aria-labelledby="launcher-section-admin-heading">
+            <h2 id="launcher-section-admin-heading" className={styles.tileSectionTitle}>
+              Procesos administrativos
+            </h2>
+            <ul className={styles.tilesGrid} role="list">
+              {administrativeTileOrder.map((id) => (
+                <li key={id} className={styles.sortableItemStatic} role="listitem">
+                  <TileLink id={id} locked={aiLocked && (id === 'yubiq' || id === 'rfqAnalysis' || id === 'meddpicc')} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       )}
 
       <LauncherWalkthrough open={walkthroughOpen} onClose={handleWalkthroughClose} />

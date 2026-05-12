@@ -124,10 +124,13 @@ const STEPS = [
           aplicaciones internas.
         </p>
         <p>
-          Cada mosaico abre una herramienta: <strong>Activaciones</strong> (gestión por correo y dashboard),{' '}
-          <strong>Pipeline Dashboard</strong> (enlace externo a métricas de ventas),{' '}
-          <strong>Yubiq Approve &amp; Seal Filler</strong> (análisis de ofertas PDF e integración con Yubiq) y{' '}
-          <strong>Análisis RFQs</strong> (workspace por oportunidad con documentos, insight estructurado y chat).
+          Los mosaicos se agrupan en <strong>herramientas comerciales</strong> (por ejemplo KYC, Pipeline Dashboard, Análisis
+          RFQs y MEDDPICC) y <strong>procesos administrativos</strong> (como Activaciones o Yubiq Approve &amp; Seal Filler).
+        </p>
+        <p>
+          Cada mosaico abre una herramienta concreta: gestión por correo y dashboard, métricas de ventas en enlace
+          externo, análisis de ofertas PDF, workspace por oportunidad con documentos e IA, cualificación MEDDPICC o la base
+          de conocimiento de cuenta en KYC.
         </p>
       </>
     ),
