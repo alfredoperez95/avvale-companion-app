@@ -92,18 +92,41 @@ function isPreviousDefaultKycFirst(order: LauncherTileId[]): boolean {
   );
 }
 
+const COMMERCIAL_COUNT = COMMERCIAL_TILE_IDS.length;
+
+function canonicalizeLauncherOrder(perm: LauncherTileId[]): LauncherTileId[] {
+  const commercial = perm.filter((id) => COMMERCIAL_TILE_ID_SET.has(id));
+  const admin = perm.filter((id) => ADMIN_TILE_ID_SET.has(id));
+  if (commercial.length !== COMMERCIAL_COUNT || admin.length !== ADMIN_TILE_IDS.length) {
+    return [...DEFAULT_TILE_ORDER];
+  }
+  return [...commercial, ...admin];
+}
+
+/** Orden persistido del bloque comercial (primeros N del array). */
+function commercialSegment(order: LauncherTileId[]): LauncherTileId[] {
+  return order.slice(0, COMMERCIAL_COUNT);
+}
+
+/** Orden persistido del bloque administrativo. */
+function administrativeSegment(order: LauncherTileId[]): LauncherTileId[] {
+  return order.slice(COMMERCIAL_COUNT);
+}
+
+/** Vista normal: KYC primero dentro del bloque comercial. */
+function commercialDisplayOrder(order: LauncherTileId[]): LauncherTileId[] {
+  const seg = commercialSegment(order);
+  const rest = seg.filter((id) => id !== 'kyc');
+  return seg.includes('kyc') ? (['kyc', ...rest] as LauncherTileId[]) : [...seg];
+}
+
 function partitionLauncherOrder(order: LauncherTileId[]): {
   commercial: LauncherTileId[];
   administrative: LauncherTileId[];
 } {
-  const commercialRaw = order.filter((id) => COMMERCIAL_TILE_ID_SET.has(id));
-  const commercialRest = commercialRaw.filter((id) => id !== 'kyc');
-  const commercial: LauncherTileId[] = commercialRaw.includes('kyc')
-    ? ['kyc', ...commercialRest]
-    : commercialRaw;
   return {
-    commercial,
-    administrative: order.filter((id) => ADMIN_TILE_ID_SET.has(id)),
+    commercial: commercialDisplayOrder(order),
+    administrative: administrativeSegment(order),
   };
 }
 
@@ -125,20 +148,22 @@ function normalizeTileOrder(raw: unknown): LauncherTileId[] {
     ) {
       return [...DEFAULT_TILE_ORDER];
     }
-    return perm;
+    return canonicalizeLauncherOrder(perm);
   }
   const legacyFiveOk =
     unique.length === 5 &&
     new Set(unique).size === 5 &&
     LEGACY_FIVE_TILES.every((id) => unique.includes(id));
-  if (legacyFiveOk) return [...(unique as LauncherTileId[]), 'kyc'];
+  if (legacyFiveOk) {
+    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'kyc']);
+  }
   const legacyFour = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis'] as const;
   if (
     unique.length === 4 &&
     new Set(unique).size === 4 &&
     unique.every((id) => legacyFour.includes(id as (typeof legacyFour)[number]))
   ) {
-    return [...(unique as LauncherTileId[]), 'meddpicc', 'kyc'];
+    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'meddpicc', 'kyc']);
   }
   return [...DEFAULT_TILE_ORDER];
 }
@@ -428,7 +453,7 @@ function SortableTile({
           className={styles.dragHandle}
           {...attributes}
           {...listeners}
-          aria-label="Arrastrar para reordenar el mosaico"
+          aria-label="Arrastrar para reordenar el mosaico dentro de su sección"
         >
           <GripIcon />
         </button>
@@ -500,11 +525,28 @@ export default function LauncherPage() {
     async (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
-      const oldIndex = order.indexOf(active.id as LauncherTileId);
-      const newIndex = order.indexOf(over.id as LauncherTileId);
-      if (oldIndex < 0 || newIndex < 0) return;
+      const activeId = active.id as LauncherTileId;
+      const overId = over.id as LauncherTileId;
+
+      const commercialSeg = commercialSegment(order);
+      const adminSeg = administrativeSegment(order);
+      const isCommercial = (id: LauncherTileId) => COMMERCIAL_TILE_ID_SET.has(id);
+      if (isCommercial(activeId) !== isCommercial(overId)) return;
+
+      let newOrder: LauncherTileId[];
+      if (isCommercial(activeId)) {
+        const oldIndex = commercialSeg.indexOf(activeId);
+        const newIndex = commercialSeg.indexOf(overId);
+        if (oldIndex < 0 || newIndex < 0) return;
+        newOrder = [...arrayMove(commercialSeg, oldIndex, newIndex), ...adminSeg];
+      } else {
+        const oldIndex = adminSeg.indexOf(activeId);
+        const newIndex = adminSeg.indexOf(overId);
+        if (oldIndex < 0 || newIndex < 0) return;
+        newOrder = [...commercialSeg, ...arrayMove(adminSeg, oldIndex, newIndex)];
+      }
+
       const previous = [...order];
-      const newOrder = arrayMove(order, oldIndex, newIndex);
       setOrder(newOrder);
       setIsSaving(true);
       try {
@@ -674,8 +716,8 @@ export default function LauncherPage() {
           <div className={styles.reorderStripBody}>
             <p className={styles.reorderStripTitle}>Modo edición activo</p>
             <p className={styles.reorderStripText}>
-              Arrastra cada mosaico por el asa superior izquierda. El orden se guarda automáticamente al soltar. En la vista
-              normal los mosaicos se muestran agrupados en herramientas comerciales y procesos administrativos.
+              Arrastra cada mosaico por el asa dentro de su sección (comercial o administrativa). No se puede mover un
+              mosaico de una categoría a otra. El orden se guarda automáticamente al soltar.
             </p>
           </div>
           {isSaving && (
@@ -689,13 +731,32 @@ export default function LauncherPage() {
 
       {reorderMode ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={order} strategy={rectSortingStrategy}>
-            <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder}`} role="list">
-              {order.map((id) => (
-                <SortableTile key={id} id={id} reorderMode={reorderMode} aiLocked={aiLocked} />
-              ))}
-            </ul>
-          </SortableContext>
+          <div className={styles.tileSections}>
+            <section className={styles.tileSection} aria-labelledby="launcher-section-commercial-heading">
+              <h2 id="launcher-section-commercial-heading" className={styles.tileSectionTitle}>
+                Herramientas comerciales
+              </h2>
+              <SortableContext items={commercialSegment(order)} strategy={rectSortingStrategy}>
+                <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder}`} role="list">
+                  {commercialSegment(order).map((id) => (
+                    <SortableTile key={id} id={id} reorderMode={reorderMode} aiLocked={aiLocked} />
+                  ))}
+                </ul>
+              </SortableContext>
+            </section>
+            <section className={styles.tileSection} aria-labelledby="launcher-section-admin-heading">
+              <h2 id="launcher-section-admin-heading" className={styles.tileSectionTitle}>
+                Procesos administrativos
+              </h2>
+              <SortableContext items={administrativeSegment(order)} strategy={rectSortingStrategy}>
+                <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder}`} role="list">
+                  {administrativeSegment(order).map((id) => (
+                    <SortableTile key={id} id={id} reorderMode={reorderMode} aiLocked={aiLocked} />
+                  ))}
+                </ul>
+              </SortableContext>
+            </section>
+          </div>
         </DndContext>
       ) : (
         <div className={styles.tileSections}>

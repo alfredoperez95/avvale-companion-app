@@ -166,18 +166,50 @@
   border-radius: 1px;
 }
 
-.emailDomainBadge {
+.emailDomainPicker {
+  display: flex;
   flex-shrink: 0;
-  font-size: 0.9375rem;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.emailDomainOption {
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: #0f548c;
-  padding: 0.35rem 0.65rem;
+  padding: 0.3rem 0.5rem;
   border-radius: 0.4rem;
   background: linear-gradient(180deg, #f4f8fc 0%, #e8f0f8 100%);
   border: 1px solid #c5d8e8;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
   white-space: nowrap;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.25;
+}
+
+.emailDomainOption:hover {
+  border-color: #9eb8d4;
+  background: linear-gradient(180deg, #f8fbfe 0%, #ecf2f9 100%);
+}
+
+.emailDomainOption:focus-visible {
+  outline: 2px solid #0064d9;
+  outline-offset: 2px;
+}
+
+.emailDomainOptionActive {
+  color: #fff;
+  background: linear-gradient(180deg, #0f548c 0%, #0c4574 100%);
+  border-color: #0a3a61;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.emailDomainOptionActive:hover {
+  border-color: #0a3a61;
+  background: linear-gradient(180deg, #115f96 0%, #0d4a7a 100%);
 }
 
 .passwordWrap {
@@ -338,11 +370,27 @@
   );
 }
 
-:global(html[data-appearance='microsoft']) .emailDomainBadge {
+:global(html[data-appearance='microsoft']) .emailDomainOption {
   color: #0f548c;
   background: #f0f6fb;
   border-color: #b7c8dd;
   box-shadow: none;
+}
+
+:global(html[data-appearance='microsoft']) .emailDomainOption:hover {
+  background: #e8f2fa;
+  border-color: #9eb8d4;
+}
+
+:global(html[data-appearance='microsoft']) .emailDomainOptionActive {
+  color: #fff;
+  background: #0f548c;
+  border-color: #0c4574;
+}
+
+:global(html[data-appearance='microsoft']) .emailDomainOptionActive:hover {
+  background: #115f96;
+  border-color: #0a3a61;
 }
 
 .footerBar {

@@ -9,17 +9,21 @@ import { useRouter } from 'next/navigation';
 import { resolveApiUrl } from '@/lib/api';
 import styles from './login.module.css';
 
-const CORP_EMAIL_DOMAIN = '@avvale.com';
+const LOGIN_EMAIL_DOMAINS = ['@avvale.com', '@azure.com'] as const;
+type LoginEmailDomain = (typeof LOGIN_EMAIL_DOMAINS)[number];
+
+const LOGIN_EMAIL_DOMAIN_STORAGE_KEY = 'avvale_login_email_domain';
 
 /** Tras solicitar el enlace mágico, no permitir otra petición hasta pasados estos segundos (cliente). El backend sigue con su propio rate limit. */
 const MAGIC_LINK_COOLDOWN_SEC = 30;
 
 function parseEmailLocalPart(raw: string): string {
   let t = raw.trim();
-  const suffix = '@avvale.com';
   const lower = t.toLowerCase();
-  if (lower.endsWith(suffix)) {
-    return t.slice(0, -suffix.length).trim();
+  for (const suffix of LOGIN_EMAIL_DOMAINS) {
+    if (lower.endsWith(suffix.toLowerCase())) {
+      return t.slice(0, -suffix.length).trim();
+    }
   }
   const at = t.indexOf('@');
   if (at !== -1) {
@@ -28,12 +32,24 @@ function parseEmailLocalPart(raw: string): string {
   return t;
 }
 
-function buildCorporateEmail(localPart: string): string {
-  return `${localPart.trim()}${CORP_EMAIL_DOMAIN}`;
+function readStoredEmailDomain(): LoginEmailDomain {
+  if (typeof window === 'undefined') return LOGIN_EMAIL_DOMAINS[0];
+  try {
+    const v = localStorage.getItem(LOGIN_EMAIL_DOMAIN_STORAGE_KEY);
+    if (v && (LOGIN_EMAIL_DOMAINS as readonly string[]).includes(v)) return v as LoginEmailDomain;
+  } catch {
+    /* private mode / quota */
+  }
+  return LOGIN_EMAIL_DOMAINS[0];
+}
+
+function buildCorporateEmail(localPart: string, domain: LoginEmailDomain): string {
+  return `${localPart.trim()}${domain}`;
 }
 
 export default function LoginPage() {
   const router = useRouter();
+  const [emailDomain, setEmailDomain] = useState<LoginEmailDomain>(() => readStoredEmailDomain());
   const [emailLocal, setEmailLocal] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -63,7 +79,7 @@ export default function LoginPage() {
       const res = await fetch(loginUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: buildCorporateEmail(emailLocal), password }),
+        body: JSON.stringify({ email: buildCorporateEmail(emailLocal, emailDomain), password }),
       });
       const data = await res.json().catch(() => ({}));
       if (process.env.NODE_ENV === 'development') {
@@ -113,7 +129,7 @@ export default function LoginPage() {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: buildCorporateEmail(trimmed) }),
+        body: JSON.stringify({ email: buildCorporateEmail(trimmed, emailDomain) }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 429) {
@@ -174,9 +190,32 @@ export default function LoginPage() {
                 aria-describedby="email-domain-hint"
               />
               <span className={styles.emailSep} aria-hidden="true" />
-              <span id="email-domain-hint" className={styles.emailDomainBadge}>
-                {CORP_EMAIL_DOMAIN}
-              </span>
+              <div
+                id="email-domain-hint"
+                className={styles.emailDomainPicker}
+                role="group"
+                aria-label="Sufijo del dominio del correo"
+              >
+                {LOGIN_EMAIL_DOMAINS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={`${styles.emailDomainOption} ${emailDomain === d ? styles.emailDomainOptionActive : ''}`}
+                    onClick={() => {
+                      setEmailDomain(d);
+                      try {
+                        localStorage.setItem(LOGIN_EMAIL_DOMAIN_STORAGE_KEY, d);
+                      } catch {
+                        /* ignore */
+                      }
+                    }}
+                    aria-pressed={emailDomain === d}
+                    aria-label={`Usar dominio ${d}`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -204,7 +243,7 @@ export default function LoginPage() {
                   Te enviamos un enlace seguro para acceder sin contraseña a:
                   <span className={styles.magicLeadEmailLine}>
                     {emailLocal.trim() ? (
-                      <b className={styles.magicLeadStrong}>{buildCorporateEmail(emailLocal.trim())}</b>
+                      <b className={styles.magicLeadStrong}>{buildCorporateEmail(emailLocal.trim(), emailDomain)}</b>
                     ) : (
                       <b className={styles.magicLeadPlaceholder}>email corporativo</b>
                     )}

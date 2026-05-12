@@ -145,8 +145,8 @@ const STEPS = [
         </p>
         <p>
           Puedes cambiar el orden de los mosaicos con <strong>Editar mis intereses</strong> (o{' '}
-          <strong>Ordenar mosaicos</strong> si cerraste el banner): arrastra por el asa y el orden se guarda en tu
-          cuenta.
+          <strong>Ordenar mosaicos</strong> si cerraste el banner): arrastra por el asa dentro de cada sección (comercial o
+          administrativa); no puedes mover un mosaico de una categoría a otra. El orden se guarda en tu cuenta.
         </p>
       </>
     ),
