@@ -19,6 +19,7 @@ import { USER_INDUSTRY_OPTIONS, industryLabel, type UserIndustryValue } from '@/
 import { faviconApexFallbackFromWebsite, faviconUrlFromWebsite } from './kycFaviconUrl';
 import {
   KycIconChatSm,
+  KycIconFilterSm,
   KycIconListSm,
   KycIconSearchSm,
   KycPlusIcon,
@@ -237,6 +238,11 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [search, setSearch] = useState('');
   const [strategicOnly, setStrategicOnly] = useState(false);
+  /** Filtro por industria de ficha (valores `UserIndustry` / `KycCompany.industry`). */
+  const [listIndustry, setListIndustry] = useState('');
+  /** Panel del filtro por industria (selector bajo icono en la cabecera del aside). */
+  const [listIndustryFilterOpen, setListIndustryFilterOpen] = useState(false);
+  const listIndustryFilterRef = useRef<HTMLDivElement | null>(null);
   const [listErr, setListErr] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [selId, setSelId] = useState<number | null>(null);
@@ -328,6 +334,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     const q = new URLSearchParams();
     if (search.trim()) q.set('q', search.trim());
     if (strategicOnly) q.set('strategic', 'true');
+    if (listIndustry.trim()) q.set('industry', listIndustry.trim());
     try {
       const rows = await kycJson<CompanyRow[]>(`/api/kyc/companies?${q.toString()}`);
       setCompanies(Array.isArray(rows) ? rows : []);
@@ -337,7 +344,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     } finally {
       setLoadingList(false);
     }
-  }, [search, strategicOnly]);
+  }, [search, strategicOnly, listIndustry]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -496,6 +503,23 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
       document.removeEventListener('keydown', onKey);
     };
   }, [detailDangerMenuOpen]);
+
+  useEffect(() => {
+    if (!listIndustryFilterOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      const el = listIndustryFilterRef.current;
+      if (el && !el.contains(e.target as Node)) setListIndustryFilterOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setListIndustryFilterOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [listIndustryFilterOpen]);
 
   useEffect(() => {
     const el = msgAreaRef.current;
@@ -936,19 +960,76 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
           aria-modal={mobileListOpen ? true : undefined}
         >
           <div className={styles.asideHeader}>
-            <div className={styles.listCount}>
-              {listErr ? (
-                <span className={styles.listCountErr} title={listErr}>
-                  Error al cargar
-                </span>
-              ) : loadingList ? (
-                'Cargando…'
-              ) : (
-                <>
-                  <span className={styles.listCountN}>{companies.length}</span>
-                  <span className={styles.listCountLabel}>{companies.length === 1 ? 'empresa' : 'empresas'}</span>
-                </>
-              )}
+            <div className={styles.asideHeaderInner} ref={listIndustryFilterRef}>
+              <div className={styles.asideHeaderTopRow}>
+                <div className={styles.listCount}>
+                  {listErr ? (
+                    <span className={styles.listCountErr} title={listErr}>
+                      Error al cargar
+                    </span>
+                  ) : loadingList ? (
+                    'Cargando…'
+                  ) : (
+                    <>
+                      <span className={styles.listCountN}>{companies.length}</span>
+                      <span className={styles.listCountLabel}>{companies.length === 1 ? 'empresa' : 'empresas'}</span>
+                    </>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className={`${styles.asideFilterIconBtn} ${listIndustryFilterOpen ? styles.asideFilterIconBtnOpen : ''} ${listIndustry.trim() ? styles.asideFilterIconBtnActive : ''}`}
+                  aria-expanded={listIndustryFilterOpen}
+                  aria-controls="kyc-list-industry-filter-panel"
+                  aria-label={
+                    listIndustry.trim()
+                      ? listIndustryFilterOpen
+                        ? `Cerrar filtro. Activo: ${industryLabel(listIndustry)}`
+                        : `Filtrar lista. Activo: ${industryLabel(listIndustry)}`
+                      : listIndustryFilterOpen
+                        ? 'Cerrar filtro por industria'
+                        : 'Filtrar la lista por industria'
+                  }
+                  title={
+                    listIndustryFilterOpen
+                      ? 'Cerrar filtro por industria'
+                      : 'Filtrar la lista por industria de la ficha'
+                  }
+                  onClick={() => setListIndustryFilterOpen((v) => !v)}
+                >
+                  <span className={styles.asideFilterIconBtnGlyph} aria-hidden>
+                    <KycIconFilterSm size={16} />
+                  </span>
+                  {listIndustry.trim() ? (
+                    <span className={styles.asideFilterIconBadge} aria-hidden title="Hay un filtro de industria activo" />
+                  ) : null}
+                </button>
+              </div>
+              {listIndustryFilterOpen ? (
+                <div
+                  id="kyc-list-industry-filter-panel"
+                  className={styles.asideHeaderFilterPanel}
+                  role="region"
+                  aria-label="Filtro por industria"
+                >
+                  <label className={styles.asideFilterPanelLabel} htmlFor="kyc-list-industry-select">
+                    Industria en ficha
+                  </label>
+                  <select
+                    id="kyc-list-industry-select"
+                    className={styles.asideFilterSelect}
+                    value={listIndustry}
+                    onChange={(e) => setListIndustry(e.target.value)}
+                  >
+                    <option value="">Todas las industrias</option>
+                    {USER_INDUSTRY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
             </div>
           </div>
           <div className={styles.asideListWrap}>

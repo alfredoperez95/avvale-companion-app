@@ -46,12 +46,13 @@ export class KycController {
     @Query('q') q?: string,
     @Query('strategic') strategic?: string,
     @Query('all') all?: string,
+    @Query('industry') industry?: string,
   ) {
-    return this.kyc.listCompanies({ q, strategic, all });
+    return this.kyc.listCompanies({ q, strategic, all, industry });
   }
 
   @Post('companies')
-  create(@Body() body: Record<string, unknown>) {
+  create(@Body() body: Record<string, unknown>, @CurrentUser() user: UserPayload) {
     return this.kyc.createCompany(
       body as {
         name?: string;
@@ -68,6 +69,7 @@ export class KycController {
         notes?: string;
         source?: string;
       },
+      user.userId,
     );
   }
 

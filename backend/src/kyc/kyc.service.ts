@@ -13,7 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
 import { getKycChatModel, getKycReportTranslateModel, getKycSummaryModel } from './kyc.config';
-import { normalizeKycCompanyIndustry } from './kyc-industry.util';
+import { normalizeKycCompanyIndustry, KYC_COMPANY_INDUSTRY_SET } from './kyc-industry.util';
 import { normalizeTechStack } from './kyc-tech-stack-normalize.util';
 import { buildIntakePrompt, buildResearchPrompt } from './kyc-prompts';
 import {
@@ -491,8 +491,10 @@ export class KycService {
     private readonly anthropic: AnthropicClientService,
   ) {}
 
-  async listCompanies(q: { q?: string; strategic?: string; all?: string } = {}) {
-    const { q: search, strategic, all } = q;
+  async listCompanies(
+    q: { q?: string; strategic?: string; all?: string; industry?: string } = {},
+  ) {
+    const { q: search, strategic, all, industry } = q;
     const where: Prisma.KycCompanyWhereInput = {};
     if (all === 'true') {
       if (strategic === 'true') {
@@ -507,6 +509,10 @@ export class KycService {
     }
     if (search && search.trim()) {
       where.name = { contains: search.trim() };
+    }
+    const ind = (industry ?? '').trim();
+    if (ind && KYC_COMPANY_INDUSTRY_SET.has(ind)) {
+      where.industry = ind;
     }
     const rows = await this.prisma.kycCompany.findMany({
       where,
@@ -636,6 +642,7 @@ export class KycService {
       notes?: string;
       source?: string;
     },
+    createdByUserId?: string | null,
   ) {
     if (body.company_id != null) {
       const companyId = BigInt(body.company_id);
@@ -705,6 +712,7 @@ export class KycService {
           techStack: body.tech_stack ?? null,
           notes: body.notes ?? null,
           source: body.source ?? 'kyc',
+          createdByUserId: createdByUserId?.trim() || null,
         },
       });
       coId = c.id;

@@ -8,7 +8,9 @@ export const KYC_COMPANY_INDUSTRY_VALUES = [
   'INDUSTRIAL_CORPORATE_MARKETS',
 ] as const;
 
-const ALLOWED = new Set<string>(KYC_COMPANY_INDUSTRY_VALUES);
+export const KYC_COMPANY_INDUSTRY_SET = new Set<string>(KYC_COMPANY_INDUSTRY_VALUES);
+
+const ALLOWED = KYC_COMPANY_INDUSTRY_SET;
 
 /** Vacío o ausente → null. Valor desconocido → 400. */
 export function normalizeKycCompanyIndustry(raw: unknown): string | null {

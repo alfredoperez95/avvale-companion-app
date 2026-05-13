@@ -548,6 +548,8 @@ model KycCompany {
   techStack String?  @map("tech_stack")
   source    String?
   notes     String?  @db.Text
+  /** Usuario Companion que dio de alta la cuenta (POST /kyc/companies); null en importaciones o datos anteriores a este campo. */
+  createdByUserId String?  @map("created_by_user_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -564,6 +566,7 @@ model KycCompany {
   @@index([name])
   @@index([sector])
   @@index([industry])
+  @@index([createdByUserId])
   @@map("kyc_companies")
 }
 

@@ -206,7 +206,28 @@ export function KycStrategicStarIcon({ filled, size = 18 }: { filled: boolean; s
   );
 }
 
-/** Barra de comando KYC (tamaño pequeño, currentColor). */
+/** Filtros de lista KYC (industria, etc.): embudo compacto, currentColor. */
+export function KycIconFilterSm({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+      focusable="false"
+    >
+      <path
+        d="M3 5h14l-5 6.2V15l-4-1.2V11.2L3 5Z"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function KycIconSearchSm({ size = 14 }: { size?: number }) {
   return (
     <svg
