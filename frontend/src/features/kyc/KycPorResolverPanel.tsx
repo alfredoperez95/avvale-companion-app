@@ -30,6 +30,14 @@ function esc(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 }
 
+function formatOqSource(source: string | null | undefined): string {
+  const s = String(source ?? 'entrevista').trim().toLowerCase();
+  if (s === 'intake') return 'Entrevista';
+  if (s === 'manual') return 'Manual';
+  if (s === 'chat' || s === 'investigación' || s === 'investigacion') return 'Investigación';
+  return source?.trim() || 'Entrevista';
+}
+
 function topicLabel(topic: string): string {
   if ((KYC_BLOCK_KEYS as readonly string[]).includes(topic)) {
     return KYC_BLOCK_META[topic as KycBlockKey].label;
@@ -248,30 +256,45 @@ export function KycPorResolverPanel({
                 return (
                   <li key={q.id} className={styles.oqItem} data-priority={String(pr)}>
                     <div className={styles.oqItemMain}>
-                      <p className={styles.oqQ}>{esc(q.question)}</p>
-                      <div className={styles.oqMeta}>
-                        <span className={`${styles.oqMetaChip} ${prioChipClass}`}>P{pr}</span>
-                        <span className={styles.oqMetaChip}>{esc(q.source || 'entrevista')}</span>
-                        {dateStr ? (
-                          <span className={`${styles.oqMetaChip} ${styles.oqMetaChipMuted}`}>{dateStr}</span>
-                        ) : null}
+                        <p className={styles.oqQ}>{esc(q.question)}</p>
+                        <div className={styles.oqMeta}>
+                          <span className={`${styles.oqMetaChip} ${prioChipClass}`}>Prioridad {pr}</span>
+                          <span className={styles.oqMetaChip}>{esc(formatOqSource(q.source))}</span>
+                          {dateStr ? (
+                            <span className={`${styles.oqMetaChip} ${styles.oqMetaChipMuted}`}>{dateStr}</span>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                    <div className={styles.oqActions}>
-                      <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.oqBtnResolve}`} onClick={() => openResolve(q)}>
+                    <div className={styles.oqActions} role="group" aria-label="Acciones sobre la pregunta">
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnSm} ${styles.btnPrimary}`}
+                        onClick={() => openResolve(q)}
+                      >
                         Resuelta
                       </button>
-                      <button type="button" className={`${styles.btn} ${styles.btnSm} ${styles.oqBtnSkip}`} onClick={() => skipQ(q)}>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnSm} ${styles.btnSecondary}`}
+                        onClick={() => skipQ(q)}
+                      >
                         Omitir
                       </button>
                       <button
                         type="button"
-                        className={`${styles.btn} ${styles.btnSm} ${styles.oqBtnRemove}`}
+                        className={styles.oqRemoveBtn}
                         aria-label="Eliminar pregunta"
                         title="Eliminar"
                         onClick={() => setDelId(q.id)}
                       >
-                        ×
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <path
+                            d="M18 6L6 18M6 6l12 12"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
+                        </svg>
                       </button>
                     </div>
                   </li>
