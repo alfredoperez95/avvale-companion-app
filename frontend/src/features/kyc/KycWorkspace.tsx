@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { createPortal } from 'react-dom';
+import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useKycSearchParams } from './KycUrlParamsContext';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { kycJson, kycStreamChat } from './kycApi';
 import { buildKycChatQuickActions } from './kycChatQuickActions';
@@ -116,6 +118,13 @@ function buildKycUrl(pathname: string, baseSearch: URLSearchParams, patch: Recor
 
 type KycWorkspaceProps = { className?: string };
 
+const KYC_CHAT_CLOSE_MS = 280;
+
+function kycChatCloseDurationMs(): number {
+  if (typeof window === 'undefined') return KYC_CHAT_CLOSE_MS;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : KYC_CHAT_CLOSE_MS;
+}
+
 function escapeHtml(s: string) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 }
@@ -163,6 +172,10 @@ function scrollKycTabButtonIntoTabsStripMobile(strip: HTMLDivElement | null, tab
     }
     strip.scrollTo({ left: strip.scrollLeft + delta, behavior: 'smooth' });
   });
+}
+
+function sortCompaniesByName(list: CompanyRow[]): CompanyRow[] {
+  return [...list].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 }
 
 function companyListMeta(c: { sector: string | null; city: string | null }) {
@@ -224,7 +237,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams<{ id?: string }>();
-  const searchParams = useSearchParams();
+  const searchParams = useKycSearchParams();
 
   const routeCompanyId = useMemo(() => {
     const fromPath = parseKycCompanyIdFromPathname(pathname);
@@ -286,6 +299,9 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
 
   const [profileFocus, setProfileFocus] = useState<KycProfileFocus | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatClosing, setChatClosing] = useState(false);
+  const [chatPortalReady, setChatPortalReady] = useState(false);
+  const chatCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
@@ -328,8 +344,11 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     [loadMessages],
   );
 
+  const companiesLoadedRef = useRef(false);
+
   const loadCompanies = useCallback(async () => {
-    setLoadingList(true);
+    const showFullLoader = !companiesLoadedRef.current;
+    if (showFullLoader) setLoadingList(true);
     setListErr(null);
     const q = new URLSearchParams();
     if (search.trim()) q.set('q', search.trim());
@@ -337,12 +356,13 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     if (listIndustry.trim()) q.set('industry', listIndustry.trim());
     try {
       const rows = await kycJson<CompanyRow[]>(`/api/kyc/companies?${q.toString()}`);
-      setCompanies(Array.isArray(rows) ? rows : []);
+      setCompanies(sortCompaniesByName(Array.isArray(rows) ? rows : []));
+      companiesLoadedRef.current = true;
     } catch (e) {
       setListErr((e as Error).message);
       setCompanies([]);
     } finally {
-      setLoadingList(false);
+      if (showFullLoader) setLoadingList(false);
     }
   }, [search, strategicOnly, listIndustry]);
 
@@ -389,6 +409,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
 
   const commitChatOpen = useCallback(
     (open: boolean) => {
+      if (open) setChatClosing(false);
       setChatOpen(open);
       if (!pathname.startsWith('/launcher/kyc')) return;
       router.replace(buildKycUrl(pathname, searchParams, { chat: open ? '1' : null }), { scroll: false });
@@ -396,51 +417,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     [pathname, router, searchParams],
   );
 
-  /** Flechas ←/→ cambian pestaña sin necesitar foco en el tablist (salvo inputs, chat, modales). Home/End solo con foco en una pestaña (tabIndex 0). */
-  useEffect(() => {
-    const isTypingTarget = (t: EventTarget | null) => {
-      const el = t as HTMLElement | null;
-      if (!el) return false;
-      const tag = el.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'OPTION') return true;
-      if (el.isContentEditable) return true;
-      return false;
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (!pathname.startsWith('/launcher/kyc')) return;
-      if (!selId || !detail || detailLoading) return;
-      if (modal != null || confirm != null) return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (isTypingTarget(e.target)) return;
-
-      const tgt = e.target as Element | null;
-      if (tgt?.closest?.('[role="alertdialog"]')) return;
-      if (chatOpen && tgt?.closest?.('[aria-label="Chat KYC"]')) return;
-
-      const ids = TAB_IDS_ORDER;
-      const idx = ids.indexOf(tab);
-      if (idx < 0) return;
-
-      let nextIdx: number | null = null;
-      if (e.key === 'ArrowRight') nextIdx = (idx + 1) % ids.length;
-      else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + ids.length) % ids.length;
-      else if (e.key === 'Home' && tgt?.getAttribute?.('role') === 'tab') nextIdx = 0;
-      else if (e.key === 'End' && tgt?.getAttribute?.('role') === 'tab') nextIdx = ids.length - 1;
-      else return;
-
-      if (nextIdx === null || nextIdx === idx) return;
-      e.preventDefault();
-      const nextId = ids[nextIdx];
-      commitTab(nextId);
-      window.setTimeout(() => {
-        document.getElementById(`kyc-tab-${nextId}`)?.focus();
-      }, 0);
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [pathname, selId, detail, detailLoading, modal, confirm, chatOpen, tab, commitTab]);
 
   useEffect(() => {
     if (searchParams.get('chat') !== '1') return;
@@ -685,13 +661,115 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     if (selId) void refreshDetailOnly(selId);
   }, [selId, refreshDetailOnly]);
 
+  const finishCloseChat = useCallback(() => {
+    commitChatOpen(false);
+    if (selId) {
+      void refreshDetailOnly(selId);
+      void loadCompanies();
+    }
+  }, [commitChatOpen, selId, refreshDetailOnly, loadCompanies]);
+
+  const requestCloseChat = useCallback(() => {
+    if (chatClosing || !chatOpen) return;
+    setChatClosing(true);
+  }, [chatClosing, chatOpen]);
+
+  useEffect(() => {
+    setChatPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!chatClosing) return;
+    const duration = kycChatCloseDurationMs();
+    chatCloseTimerRef.current = setTimeout(() => {
+      chatCloseTimerRef.current = null;
+      setChatClosing(false);
+      finishCloseChat();
+    }, duration);
+    return () => {
+      if (chatCloseTimerRef.current) {
+        clearTimeout(chatCloseTimerRef.current);
+        chatCloseTimerRef.current = null;
+      }
+    };
+  }, [chatClosing, finishCloseChat]);
+
+  useEffect(() => {
+    if (!chatOpen && !chatClosing) {
+      delete document.body.dataset.kycChatOpen;
+      return;
+    }
+    document.body.dataset.kycChatOpen = '';
+    return () => {
+      if (!chatCloseTimerRef.current) {
+        delete document.body.dataset.kycChatOpen;
+      }
+    };
+  }, [chatOpen, chatClosing]);
+
+  /** Flechas ←/→ cambian pestaña sin necesitar foco en el tablist (salvo inputs, chat, modales). Home/End solo con foco en una pestaña (tabIndex 0). */
+  useEffect(() => {
+    const isTypingTarget = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      if (!el) return false;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'OPTION') return true;
+      if (el.isContentEditable) return true;
+      return false;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!pathname.startsWith('/launcher/kyc')) return;
+      if (modal != null || confirm != null) return;
+
+      if (e.key === 'Escape' && chatOpen && !chatClosing) {
+        e.preventDefault();
+        requestCloseChat();
+        return;
+      }
+
+      if (!selId || !detail || detailLoading) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const tgt = e.target as Element | null;
+      if (tgt?.closest?.('[role="alertdialog"]')) return;
+      if (isTypingTarget(e.target)) return;
+      if (chatOpen && tgt?.closest?.('[aria-label="Chat KYC"]')) return;
+
+      const ids = TAB_IDS_ORDER;
+      const idx = ids.indexOf(tab);
+      if (idx < 0) return;
+
+      let nextIdx: number | null = null;
+      if (e.key === 'ArrowRight') nextIdx = (idx + 1) % ids.length;
+      else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + ids.length) % ids.length;
+      else if (e.key === 'Home' && tgt?.getAttribute?.('role') === 'tab') nextIdx = 0;
+      else if (e.key === 'End' && tgt?.getAttribute?.('role') === 'tab') nextIdx = ids.length - 1;
+      else return;
+
+      if (nextIdx === null || nextIdx === idx) return;
+      e.preventDefault();
+      const nextId = ids[nextIdx];
+      commitTab(nextId);
+      window.setTimeout(() => {
+        document.getElementById(`kyc-tab-${nextId}`)?.focus();
+      }, 0);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [pathname, selId, detail, detailLoading, modal, confirm, chatOpen, chatClosing, tab, commitTab, requestCloseChat]);
+
+
   const syncStrategicInCompanyList = useCallback(
     (companyId: number, strategic: boolean) => {
       setCompanies((prev) => {
         if (strategicOnly && !strategic) {
-          return prev.filter((c) => c.id !== companyId);
+          return sortCompaniesByName(prev.filter((c) => c.id !== companyId));
         }
-        return prev.map((c) => (c.id === companyId ? { ...c, strategic } : c));
+        return sortCompaniesByName(
+          prev.map((c) => (c.id === companyId ? { ...c, strategic } : c)),
+        );
       });
     },
     [strategicOnly],
@@ -860,6 +938,147 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     detail?.org?.members?.length != null ? filterKycOrgChartMembers(detail.org.members).length : 0;
   const signalCount = detail?.signals?.length ?? 0;
   const openQCount = detail?.open_questions?.length ?? 0;
+
+  const showChatPanel = chatOpen || chatClosing;
+  const chatPanel = showChatPanel ? (
+    <>
+      <button
+        type="button"
+        className={chatClosing ? `${styles.chatScrim} ${styles.chatScrimLeaving}` : styles.chatScrim}
+        onClick={requestCloseChat}
+        aria-label="Cerrar chat"
+        disabled={chatClosing}
+      />
+      <aside
+        className={chatClosing ? `${styles.chatDrawer} ${styles.chatDrawerLeaving}` : styles.chatDrawer}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Chat KYC"
+      >
+        <header className={styles.chatHead}>
+          <div className={styles.chatHeadText}>
+            <div className={styles.chatHeadTitle}>Asistente KYC</div>
+            <div className={styles.chatHeadSub}>
+              {(activeChatSession?.session_type || '').toLowerCase() === 'intake'
+                ? 'Entrevista guiada'
+                : 'Investigación'}
+              {companyName ? ` · ${companyName}` : ''}
+            </div>
+          </div>
+          <button
+            type="button"
+            className={styles.chatClose}
+            onClick={requestCloseChat}
+            aria-label="Cerrar"
+            disabled={chatClosing}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+            </svg>
+          </button>
+        </header>
+        <div className={styles.sessions}>
+          {sessions.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`${styles.sessBtn} ${sessionId === s.id ? styles.sessBtnActive : ''}`}
+              onClick={() => {
+                setSessionId(s.id);
+                void loadMessages(s.id);
+              }}
+            >
+              {s.title || `#${s.id}`}
+            </button>
+          ))}
+          <button type="button" className={styles.sessBtn} onClick={newSession} disabled={chatBusy}>
+            Nueva
+          </button>
+          <button type="button" className={styles.sessBtn} onClick={requestCloseChat} disabled={chatClosing}>
+            Cerrar
+          </button>
+        </div>
+        <div ref={msgAreaRef} className={styles.msgArea}>
+          {msgs.length === 0 ? (
+            <p className={styles.chatEmpty}>Escribe un mensaje o elige una sugerencia abajo.</p>
+          ) : null}
+          {msgs.map((m, i) => {
+            const isLast = i === msgs.length - 1;
+            const showTyping = m.role === 'assistant' && chatBusy && isLast && m.content === '';
+            if (m.role === 'user') {
+              return (
+                <div key={i} className={styles.msgUser}>
+                  {stripKycProposedJsonFromChatText(m.content)}
+                </div>
+              );
+            }
+            if (showTyping) {
+              return (
+                <div key={i} className={`${styles.msgAi} ${styles.msgAiTyping}`} role="status" aria-live="polite">
+                  <span className={styles.chatTypingDots} aria-hidden>
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                  <span className={styles.srOnly}>El asistente está escribiendo</span>
+                </div>
+              );
+            }
+            return (
+              <div
+                key={i}
+                className={`${styles.msgAi} ${styles.msgAiRich}`}
+                dangerouslySetInnerHTML={{
+                  __html: formatKycAssistantMessageHtml(m.content) || '\u00A0',
+                }}
+              />
+            );
+          })}
+        </div>
+        <div className={styles.chatQuickWrap}>
+          <span className={styles.chatQuickLabel}>Siguiente acción</span>
+          <div className={styles.chatQuickRow}>
+            {chatQuickActions.map((a) => (
+              <button
+                key={`${a.label}:${a.message.slice(0, 48)}`}
+                type="button"
+                className={styles.chatQuickChip}
+                disabled={chatBusy || !selId}
+                title={a.message}
+                onClick={() => void sendUserMessage(a.message)}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <form className={styles.chatForm} onSubmit={sendChat}>
+          <textarea
+            className={styles.chatTextareaChat}
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                (e.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
+              }
+            }}
+            rows={2}
+            placeholder="Escribe aquí… (Mayús+Intro para salto de línea)"
+            disabled={chatBusy}
+            aria-busy={chatBusy}
+          />
+          <button
+            type="submit"
+            className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm} ${styles.chatSendBtn}`}
+            disabled={chatBusy || !chatInput.trim()}
+          >
+            {chatBusy ? '…' : 'Enviar'}
+          </button>
+        </form>
+      </aside>
+    </>
+  ) : null;
 
   return (
     <div className={className ? `${styles.root} ${className}` : styles.root}>
@@ -1428,130 +1647,6 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
             </>
           ) : null}
         </main>
-        {chatOpen && (
-          <aside className={`${styles.chat} ${styles.chatOpen}`} aria-label="Chat KYC">
-            <div className={styles.chatHead}>
-              <div className={styles.chatHeadText}>
-                <div className={styles.chatHeadTitle}>Asistente KYC</div>
-                <div className={styles.chatHeadSub}>
-                  {(activeChatSession?.session_type || '').toLowerCase() === 'intake'
-                    ? 'Entrevista guiada'
-                    : 'Investigación'}
-                  {companyName ? ` · ${companyName}` : ''}
-                </div>
-              </div>
-            </div>
-            <div className={styles.sessions}>
-              {sessions.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={`${styles.sessBtn} ${sessionId === s.id ? styles.sessBtnActive : ''}`}
-                  onClick={() => {
-                    setSessionId(s.id);
-                    void loadMessages(s.id);
-                  }}
-                >
-                  {s.title || `#${s.id}`}
-                </button>
-              ))}
-              <button type="button" className={styles.sessBtn} onClick={newSession} disabled={chatBusy}>
-                Nueva
-              </button>
-              <button
-                type="button"
-                className={styles.sessBtn}
-                onClick={() => {
-                  commitChatOpen(false);
-                  if (selId) {
-                    void refreshDetailOnly(selId);
-                    void loadCompanies();
-                  }
-                }}
-              >
-                Cerrar
-              </button>
-            </div>
-            <div ref={msgAreaRef} className={styles.msgArea}>
-              {msgs.length === 0 ? (
-                <p className={styles.chatEmpty}>Escribe un mensaje o elige una sugerencia abajo.</p>
-              ) : null}
-              {msgs.map((m, i) => {
-                const isLast = i === msgs.length - 1;
-                const showTyping = m.role === 'assistant' && chatBusy && isLast && m.content === '';
-                if (m.role === 'user') {
-                  return (
-                    <div key={i} className={styles.msgUser}>
-                      {stripKycProposedJsonFromChatText(m.content)}
-                    </div>
-                  );
-                }
-                if (showTyping) {
-                  return (
-                    <div key={i} className={`${styles.msgAi} ${styles.msgAiTyping}`} role="status" aria-live="polite">
-                      <span className={styles.chatTypingDots} aria-hidden>
-                        <span />
-                        <span />
-                        <span />
-                      </span>
-                      <span className={styles.srOnly}>El asistente está escribiendo</span>
-                    </div>
-                  );
-                }
-                return (
-                  <div
-                    key={i}
-                    className={`${styles.msgAi} ${styles.msgAiRich}`}
-                    dangerouslySetInnerHTML={{
-                      __html: formatKycAssistantMessageHtml(m.content) || '\u00A0',
-                    }}
-                  />
-                );
-              })}
-            </div>
-            <div className={styles.chatQuickWrap}>
-              <span className={styles.chatQuickLabel}>Siguiente acción</span>
-              <div className={styles.chatQuickRow}>
-                {chatQuickActions.map((a) => (
-                  <button
-                    key={`${a.label}:${a.message.slice(0, 48)}`}
-                    type="button"
-                    className={styles.chatQuickChip}
-                    disabled={chatBusy || !selId}
-                    title={a.message}
-                    onClick={() => void sendUserMessage(a.message)}
-                  >
-                    {a.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <form className={styles.chatForm} onSubmit={sendChat}>
-              <textarea
-                className={styles.chatTextareaChat}
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    (e.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
-                  }
-                }}
-                rows={2}
-                placeholder="Escribe aquí… (Mayús+Intro para salto de línea)"
-                disabled={chatBusy}
-                aria-busy={chatBusy}
-              />
-              <button
-                type="submit"
-                className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm} ${styles.chatSendBtn}`}
-                disabled={chatBusy || !chatInput.trim()}
-              >
-                {chatBusy ? '…' : 'Enviar'}
-              </button>
-            </form>
-          </aside>
-        )}
         {refreshIntelBusy && (
           <div className={styles.intelRefreshOverlay} role="status" aria-live="polite" aria-busy="true">
             <div className={styles.intelRefreshCard}>
@@ -1584,6 +1679,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
           </div>
         )}
       </div>
+      {chatPortalReady && showChatPanel ? createPortal(chatPanel, document.body) : null}
       {modal === 'add' && (
         <div className={styles.modalOverlay} onClick={() => setModal(null)} role="presentation">
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
