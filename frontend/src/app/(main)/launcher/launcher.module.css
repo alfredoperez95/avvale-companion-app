@@ -299,29 +299,52 @@
 .tileSections {
   display: flex;
   flex-direction: column;
-  gap: var(--fiori-space-7);
+  gap: var(--fiori-space-8);
 }
 
 .tileSection {
   margin: 0;
+  padding: var(--fiori-space-5) var(--fiori-space-5) var(--fiori-space-6);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--fiori-nav-bg) 22%, var(--fiori-surface));
+  border: 1px solid color-mix(in srgb, var(--fiori-text-secondary) 8%, var(--fiori-border-light));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
 .tileSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--fiori-space-3);
   font-family: "72Black", "72Blackfull", "72", "72full", Arial, Helvetica, sans-serif;
-  font-size: 1.0625rem;
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 700;
   color: var(--fiori-text);
-  margin: 0 0 var(--fiori-space-4);
+  margin: 0 0 var(--fiori-space-5);
+  padding-bottom: var(--fiori-space-3);
+  border-bottom: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 12%, var(--fiori-border-light));
   letter-spacing: -0.02em;
-  line-height: 1.25;
+  line-height: 1.3;
+}
+
+.tileSectionTitle::before {
+  content: "";
+  width: 4px;
+  height: 1.35rem;
+  border-radius: 2px;
+  background: var(--fiori-shell-bg);
+  flex-shrink: 0;
+}
+
+.tileSectionAdmin .tileSectionTitle::before {
+  background: color-mix(in srgb, var(--fiori-text-secondary) 35%, var(--fiori-shell-bg));
 }
 
 .tileSection:first-of-type .tileSectionTitle {
-  margin-top: var(--fiori-space-4);
+  margin-top: 0;
 }
 
 .tileSection + .tileSection .tileSectionTitle {
-  margin-top: var(--fiori-space-5);
+  margin-top: 0;
 }
 
 .tilesGrid {
@@ -341,6 +364,20 @@
   .tilesGrid {
     grid-template-columns: repeat(4, 1fr);
   }
+
+  .tilesGridAdmin {
+    grid-template-columns: repeat(2, minmax(0, 22rem));
+    justify-content: start;
+    column-gap: var(--fiori-space-6);
+    row-gap: var(--fiori-space-6);
+  }
+}
+
+@media (min-width: 52rem) and (max-width: 71.99rem) {
+  .tilesGridAdmin {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 44rem;
+  }
 }
 
 .tile {
@@ -354,6 +391,7 @@
   padding: var(--fiori-space-4);
   display: flex;
   flex-direction: column;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
@@ -371,6 +409,27 @@
 }
 
 /* KYC: espacio principal del bloque comercial (jerarquía tipográfica + halo). */
+@keyframes launcherKycTileGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 5%),
+      0 8px 24px rgb(0 0 0 / 6%),
+      0 0 0 1px rgba(28, 45, 62, 0.28),
+      0 0 18px rgba(28, 45, 62, 0.2),
+      0 0 40px rgba(28, 45, 62, 0.1);
+  }
+
+  50% {
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 5%),
+      0 8px 24px rgb(0 0 0 / 6%),
+      0 0 0 1px rgba(42, 123, 120, 0.34),
+      0 0 26px rgba(42, 123, 120, 0.28),
+      0 0 48px rgba(28, 45, 62, 0.14);
+  }
+}
+
 .tileFeaturedEyebrow {
   margin: 0 0 var(--fiori-space-2);
   padding: 0;
@@ -379,7 +438,7 @@
   line-height: 1.25;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--fiori-text-secondary);
+  color: color-mix(in srgb, #2a7b78 55%, var(--fiori-text-secondary));
 }
 
 .tileFeaturedEyebrow::after {
@@ -403,6 +462,9 @@
 
 .tile.tileFeaturedKyc {
   border-color: #2a7b78;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
   background: linear-gradient(
     155deg,
     color-mix(in srgb, var(--fiori-shell-bg) 11%, var(--fiori-surface)) 0%,
@@ -412,9 +474,23 @@
   box-shadow:
     0 1px 2px rgb(0 0 0 / 5%),
     0 8px 24px rgb(0 0 0 / 6%),
-    0 0 0 1px rgba(28, 45, 62, 0.32),
-    0 0 22px rgba(28, 45, 62, 0.26),
-    0 0 44px rgba(28, 45, 62, 0.14);
+    0 0 0 1px rgba(28, 45, 62, 0.28),
+    0 0 18px rgba(28, 45, 62, 0.2),
+    0 0 40px rgba(28, 45, 62, 0.1);
+  animation: launcherKycTileGlow 4.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.tileFeaturedKyc,
+  :global([data-theme="microsoft"]) .tile.tileFeaturedKyc {
+    animation: none;
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 5%),
+      0 8px 24px rgb(0 0 0 / 6%),
+      0 0 0 1px rgba(28, 45, 62, 0.32),
+      0 0 22px rgba(28, 45, 62, 0.26),
+      0 0 44px rgba(28, 45, 62, 0.14);
+  }
 }
 
 .tileFeaturedKyc .tileIcon {
@@ -422,6 +498,7 @@
 }
 
 .tileLink:hover .tileFeaturedKyc {
+  animation: none;
   border-color: #2a7b78;
   box-shadow:
     0 4px 18px rgb(0 0 0 / 8%),
@@ -442,9 +519,10 @@
   box-shadow:
     0 1px 2px rgb(0 0 0 / 5%),
     0 8px 24px rgb(0 0 0 / 6%),
-    0 0 0 1px rgba(28, 45, 62, 0.32),
-    0 0 22px rgba(28, 45, 62, 0.26),
-    0 0 44px rgba(28, 45, 62, 0.14);
+    0 0 0 1px rgba(28, 45, 62, 0.28),
+    0 0 18px rgba(28, 45, 62, 0.2),
+    0 0 40px rgba(28, 45, 62, 0.1);
+  animation: launcherKycTileGlow 4.2s ease-in-out infinite;
 }
 
 .tileTitle {
@@ -459,7 +537,7 @@
   font-size: 0.8125rem;
   color: var(--fiori-text-secondary);
   margin: 0 0 var(--fiori-space-4);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .tileLinkDisabled {
