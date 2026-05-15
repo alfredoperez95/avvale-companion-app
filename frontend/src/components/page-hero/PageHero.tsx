@@ -25,6 +25,7 @@ export function PageHero({
   actions,
   actionsClassName,
   className,
+  animateEnter = true,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -35,8 +36,10 @@ export function PageHero({
   actionsClassName?: string;
   /** Clases de motion adicionales (p. ej. app-enter-d2). */
   className?: string;
+  /** Entrada animada del bloque hero (desactivar si la página ya anima el contenido). */
+  animateEnter?: boolean;
 }) {
-  const heroClass = ['app-enter', className, styles.hero].filter(Boolean).join(' ');
+  const heroClass = [animateEnter ? 'app-enter' : null, className, styles.hero].filter(Boolean).join(' ');
 
   return (
     <header className={heroClass}>

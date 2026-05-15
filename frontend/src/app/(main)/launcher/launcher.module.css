@@ -306,6 +306,59 @@
   gap: var(--fiori-space-8);
 }
 
+/* Keyframes locales (CSS Modules no siempre resuelve app-* globales en animation) */
+/* Solo desplazamiento en el contenedor: no opacity para no ocultar hijos */
+@keyframes launcherSectionsEnter {
+  from {
+    transform: translate3d(0, 12px, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes launcherSectionEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes launcherSectionTitleEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes launcherTileEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.tileSectionsEnter {
+  animation: launcherSectionsEnter 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.25s;
+}
+
 .tileSection {
   margin: 0;
   padding: var(--fiori-space-5) var(--fiori-space-5) var(--fiori-space-6);
@@ -313,15 +366,30 @@
   background: color-mix(in srgb, var(--fiori-nav-bg) 22%, var(--fiori-surface));
   border: 1px solid color-mix(in srgb, var(--fiori-text-secondary) 8%, var(--fiori-border-light));
   box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
-  animation: app-fade-up var(--app-duration-enter) var(--app-ease-out) both;
 }
 
-.tileSections .tileSection:nth-child(1) {
-  animation-delay: 0.2s;
+.tileSectionEnter {
+  animation: launcherSectionEnter 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.tileSections .tileSection:nth-child(2) {
-  animation-delay: 0.34s;
+.tileSectionsEnter > .tileSectionEnter:nth-child(1) {
+  animation-delay: 0.32s;
+}
+
+.tileSectionsEnter > .tileSectionEnter:nth-child(2) {
+  animation-delay: 0.48s;
+}
+
+.tileSectionTitleEnter {
+  animation: launcherSectionTitleEnter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.tileSectionsEnter > .tileSectionEnter:nth-child(1) .tileSectionTitleEnter {
+  animation-delay: 0.42s;
+}
+
+.tileSectionsEnter > .tileSectionEnter:nth-child(2) .tileSectionTitleEnter {
+  animation-delay: 0.56s;
 }
 
 .tileSectionTitle {
@@ -775,35 +843,43 @@
 
 .sortableItemStatic {
   height: 100%;
-  animation: app-tile-enter var(--app-duration-tile) var(--app-ease-out) both;
 }
 
-.tileSection:nth-child(1) .tilesGrid > li:nth-child(1) {
-  animation-delay: 0.28s;
+/* Mosaicos: entrada escalonada tras el título de cada sección */
+.tilesGridAnimated > li {
+  animation: launcherTileEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.tileSection:nth-child(1) .tilesGrid > li:nth-child(2) {
-  animation-delay: 0.34s;
-}
-
-.tileSection:nth-child(1) .tilesGrid > li:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-.tileSection:nth-child(1) .tilesGrid > li:nth-child(4) {
-  animation-delay: 0.46s;
-}
-
-.tileSection:nth-child(2) .tilesGrid > li:nth-child(1) {
-  animation-delay: 0.42s;
-}
-
-.tileSection:nth-child(2) .tilesGrid > li:nth-child(2) {
+.tileSectionsEnter > .tileSectionEnter:nth-child(1) .tilesGridAnimated > li:nth-child(1) {
   animation-delay: 0.48s;
 }
 
-.sortableItem {
-  animation: app-tile-enter var(--app-duration-tile) var(--app-ease-out) both;
+.tileSectionsEnter > .tileSectionEnter:nth-child(1) .tilesGridAnimated > li:nth-child(2) {
+  animation-delay: 0.54s;
+}
+
+.tileSectionsEnter > .tileSectionEnter:nth-child(1) .tilesGridAnimated > li:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+.tileSectionsEnter > .tileSectionEnter:nth-child(1) .tilesGridAnimated > li:nth-child(4) {
+  animation-delay: 0.66s;
+}
+
+.tileSectionsEnter > .tileSectionEnter:nth-child(2) .tilesGridAnimated > li:nth-child(1) {
+  animation-delay: 0.62s;
+}
+
+.tileSectionsEnter > .tileSectionEnter:nth-child(2) .tilesGridAnimated > li:nth-child(2) {
+  animation-delay: 0.68s;
+}
+
+.tileSectionsEnter > .tileSectionEnter:nth-child(2) .tilesGridAnimated > li:nth-child(3) {
+  animation-delay: 0.74s;
+}
+
+.tileSectionsEnter > .tileSectionEnter:nth-child(2) .tilesGridAnimated > li:nth-child(4) {
+  animation-delay: 0.8s;
 }
 
 .app-motion-off .tileLink:hover .tile,
@@ -814,6 +890,13 @@
 .app-motion-off .tileLink:hover .tileCta,
 .app-motion-off .tileLink:hover .tileIcon {
   transform: none;
+}
+
+.app-motion-off .tileSectionsEnter,
+.app-motion-off .tileSectionEnter,
+.app-motion-off .tileSectionTitleEnter,
+.app-motion-off .tilesGridAnimated > li {
+  animation: none;
 }
 
 .tileLinkOuter,
@@ -976,9 +1059,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tileSection,
-  .sortableItemStatic,
-  .sortableItem,
+  .tileSectionsEnter,
+  .tileSectionEnter,
+  .tileSectionTitleEnter,
+  .tilesGridAnimated > li,
   .reorderStrip {
     animation: none;
   }

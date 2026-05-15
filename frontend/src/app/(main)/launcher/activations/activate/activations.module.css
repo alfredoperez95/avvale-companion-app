@@ -4,12 +4,36 @@
   padding-bottom: var(--fiori-space-8);
 }
 
+@keyframes activatePageEnter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.pageEnter {
+  animation: activatePageEnter 0.35s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pageEnter {
+    animation: none;
+  }
+}
+
 .filtersCard {
   margin-bottom: var(--fiori-space-5);
-  padding: var(--fiori-space-4) var(--fiori-space-5);
+  padding: var(--fiori-space-4) var(--fiori-space-5) var(--fiori-space-5);
   border: 1px solid var(--fiori-border-light);
   border-radius: 0.75rem;
-  background: var(--fiori-surface);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--fiori-nav-bg) 28%, var(--fiori-surface)) 0%,
+    var(--fiori-surface) 100%
+  );
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 

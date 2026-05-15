@@ -7,6 +7,16 @@
   list-style: none;
 }
 
+.gridCols3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 22rem) {
+  .gridCols3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .card {
   position: relative;
   aspect-ratio: 1;

@@ -36,14 +36,17 @@ export default function ConfigurationHubPage() {
 
   return (
     <div className={styles.page}>
-      <PageBreadcrumb>
-        <PageBackLink href="/launcher/activations/dashboard">← Dashboard</PageBackLink>
-      </PageBreadcrumb>
-      <PageHero
-        title="Configuración"
-        subtitle="Administra contactos, áreas, plantillas y firma según tus permisos. Cada tarjeta lleva a una sección concreta."
-      />
-      <ul className={styles.tilesGrid}>
+      <div className={styles.pageIntro}>
+        <PageBreadcrumb>
+          <PageBackLink href="/launcher/activations/dashboard">← Dashboard</PageBackLink>
+        </PageBreadcrumb>
+        <PageHero
+          animateEnter={false}
+          title="Configuración"
+          subtitle="Administra contactos, áreas, plantillas y firma según tus permisos. Cada tarjeta lleva a una sección concreta."
+        />
+      </div>
+      <ul className={`${styles.tilesGrid} ${styles.tilesGridAnimated}`}>
         {isAdmin && (
           <>
             <li>

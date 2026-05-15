@@ -20,6 +20,20 @@
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
+@keyframes configTileEnter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.pageIntro {
+  margin: 0;
+}
+
 .tilesGrid {
   display: grid;
   grid-template-columns: 1fr;
@@ -27,6 +41,35 @@
   margin: 0 0 var(--fiori-space-6);
   padding: 0;
   list-style: none;
+}
+
+.tilesGridAnimated > li {
+  animation: configTileEnter 0.4s ease-out forwards;
+  opacity: 0;
+}
+
+.tilesGridAnimated > li:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.tilesGridAnimated > li:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.tilesGridAnimated > li:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+.tilesGridAnimated > li:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+.tilesGridAnimated > li:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
+.tilesGridAnimated > li:nth-child(6) {
+  animation-delay: 0.3s;
 }
 
 @media (min-width: 52rem) {
@@ -52,9 +95,10 @@
   display: flex;
   flex-direction: column;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    border-color var(--app-duration-interactive, 0.28s) var(--app-ease-out, ease),
+    box-shadow var(--app-duration-interactive, 0.28s) var(--app-ease-out, ease),
+    transform var(--app-duration-interactive, 0.28s) var(--app-ease-out, ease);
+  transform: translate3d(0, 0, 0);
 }
 
 .tileTitle {
@@ -105,12 +149,6 @@
   text-decoration: none;
 }
 
-.tileLink:hover .tileCta {
-  color: var(--fiori-link);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 .tileCta {
   text-decoration: none;
   font-size: 0.875rem;
@@ -118,12 +156,26 @@
   color: var(--fiori-shell-bg);
   margin-top: auto;
   padding-top: var(--fiori-space-2);
+  display: inline-block;
+  transition: color 0.22s ease;
+}
+
+.tileLink:hover .tileCta {
+  color: var(--fiori-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .tilesGridAnimated > li {
+    animation: none;
+    opacity: 1;
+  }
+
   .tileLink:hover .tile {
     transform: none;
   }
+
 }
 
 .h2 {

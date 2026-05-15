@@ -737,13 +737,19 @@ export default function LauncherPage() {
 
       {reorderMode ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div className={styles.tileSections}>
-            <section className={styles.tileSection} aria-labelledby="launcher-section-commercial-heading">
-              <h2 id="launcher-section-commercial-heading" className={styles.tileSectionTitle}>
+          <div className={`${styles.tileSections} ${styles.tileSectionsEnter}`}>
+            <section
+              className={`${styles.tileSection} ${styles.tileSectionEnter}`}
+              aria-labelledby="launcher-section-commercial-heading"
+            >
+              <h2
+                id="launcher-section-commercial-heading"
+                className={`${styles.tileSectionTitle} ${styles.tileSectionTitleEnter}`}
+              >
                 Herramientas comerciales
               </h2>
               <SortableContext items={commercialSegment(order)} strategy={rectSortingStrategy}>
-                <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder}`} role="list">
+                <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder} ${styles.tilesGridAnimated}`} role="list">
                   {commercialSegment(order).map((id) => (
                     <SortableTile key={id} id={id} reorderMode={reorderMode} aiLocked={aiLocked} />
                   ))}
@@ -751,14 +757,20 @@ export default function LauncherPage() {
               </SortableContext>
             </section>
             <section
-              className={`${styles.tileSection} ${styles.tileSectionAdmin}`}
+              className={`${styles.tileSection} ${styles.tileSectionAdmin} ${styles.tileSectionEnter}`}
               aria-labelledby="launcher-section-admin-heading"
             >
-              <h2 id="launcher-section-admin-heading" className={styles.tileSectionTitle}>
+              <h2
+                id="launcher-section-admin-heading"
+                className={`${styles.tileSectionTitle} ${styles.tileSectionTitleEnter}`}
+              >
                 Procesos administrativos
               </h2>
               <SortableContext items={administrativeSegment(order)} strategy={rectSortingStrategy}>
-                <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder} ${styles.tilesGridAdmin}`} role="list">
+                <ul
+                  className={`${styles.tilesGrid} ${styles.tilesGridReorder} ${styles.tilesGridAdmin} ${styles.tilesGridAnimated}`}
+                  role="list"
+                >
                   {administrativeSegment(order).map((id) => (
                     <SortableTile key={id} id={id} reorderMode={reorderMode} aiLocked={aiLocked} />
                   ))}
@@ -768,12 +780,18 @@ export default function LauncherPage() {
           </div>
         </DndContext>
       ) : (
-        <div className={styles.tileSections}>
-          <section className={styles.tileSection} aria-labelledby="launcher-section-commercial-heading">
-            <h2 id="launcher-section-commercial-heading" className={styles.tileSectionTitle}>
+        <div className={`${styles.tileSections} ${styles.tileSectionsEnter}`}>
+          <section
+            className={`${styles.tileSection} ${styles.tileSectionEnter}`}
+            aria-labelledby="launcher-section-commercial-heading"
+          >
+            <h2
+              id="launcher-section-commercial-heading"
+              className={`${styles.tileSectionTitle} ${styles.tileSectionTitleEnter}`}
+            >
               Herramientas comerciales
             </h2>
-            <ul className={styles.tilesGrid} role="list">
+            <ul className={`${styles.tilesGrid} ${styles.tilesGridAnimated}`} role="list">
               {commercialTileOrder.map((id) => (
                 <li key={id} className={styles.sortableItemStatic} role="listitem">
                   <TileLink id={id} locked={aiLocked && (id === 'yubiq' || id === 'rfqAnalysis' || id === 'meddpicc')} />
@@ -782,13 +800,16 @@ export default function LauncherPage() {
             </ul>
           </section>
           <section
-            className={`${styles.tileSection} ${styles.tileSectionAdmin}`}
+            className={`${styles.tileSection} ${styles.tileSectionAdmin} ${styles.tileSectionEnter}`}
             aria-labelledby="launcher-section-admin-heading"
           >
-            <h2 id="launcher-section-admin-heading" className={styles.tileSectionTitle}>
+            <h2
+              id="launcher-section-admin-heading"
+              className={`${styles.tileSectionTitle} ${styles.tileSectionTitleEnter}`}
+            >
               Procesos administrativos
             </h2>
-            <ul className={`${styles.tilesGrid} ${styles.tilesGridAdmin}`} role="list">
+            <ul className={`${styles.tilesGrid} ${styles.tilesGridAdmin} ${styles.tilesGridAnimated}`} role="list">
               {administrativeTileOrder.map((id) => (
                 <li key={id} className={styles.sortableItemStatic} role="listitem">
                   <TileLink id={id} locked={aiLocked && (id === 'yubiq' || id === 'rfqAnalysis' || id === 'meddpicc')} />

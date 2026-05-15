@@ -15,6 +15,8 @@ import { offerCodeShortLabel } from '@/lib/offer-code-display';
 import { OfferCodeColumnHeader } from '@/components/OfferCodeTableCell/OfferCodeColumnHeader';
 import { OfferCodeTableCell } from '@/components/OfferCodeTableCell/OfferCodeTableCell';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
+import { Pagination } from '@/components/Pagination/Pagination';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import styles from './activations.module.css';
 
 export default function ActivationsPage() {
@@ -172,6 +174,17 @@ export default function ActivationsPage() {
     return data;
   }, [list, statusFilter, solicitanteFilter, searchValue]);
 
+  const filterKey = `${statusFilter}|${solicitanteFilter}|${searchValue.trim()}`;
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems,
+    pageStart,
+    pageEnd,
+    totalItems: filteredTotal,
+  } = useClientPagination(filtered, undefined, filterKey);
+
   const offerColumnShowToggle = useMemo(
     () => filtered.some((a) => Boolean(offerCodeShortLabel(a.offerCode).fullTitle)),
     [filtered],
@@ -256,11 +269,12 @@ export default function ActivationsPage() {
 
   return (
     <>
-      <div className={styles.page}>
+      <div className={`${styles.page} ${styles.pageEnter}`}>
         <PageBreadcrumb>
           <PageBackLink href="/launcher/activations/dashboard">← Dashboard</PageBackLink>
         </PageBreadcrumb>
         <PageHero
+          animateEnter={false}
           title="Mis activaciones"
           subtitle="Filtra por estado, busca por proyecto, cliente, oferta o destinatario y abre el detalle en el panel lateral."
           actions={
@@ -276,6 +290,8 @@ export default function ActivationsPage() {
         />
         <div className={styles.filtersCard}>
           <FilterBar
+            embedded
+            animateEnter={false}
             className={styles.filterBarEmbed}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
@@ -292,13 +308,15 @@ export default function ActivationsPage() {
           <p className={styles.resultsMeta}>
             {loading && list.length === 0 ? (
               'Obteniendo activaciones…'
-            ) : filtered.length === list.length ? (
+            ) : filteredTotal === list.length ? (
               <>
                 <strong>{list.length}</strong> {list.length === 1 ? 'activación' : 'activaciones'}
+                {filteredTotal > 10 ? ` · página ${page} de ${totalPages}` : ''}
               </>
             ) : (
               <>
-                Mostrando <strong>{filtered.length}</strong> de <strong>{list.length}</strong>
+                <strong>{filteredTotal}</strong> de <strong>{list.length}</strong> coinciden con los filtros
+                {filteredTotal > 10 ? ` · página ${page} de ${totalPages}` : ''}
               </>
             )}
           </p>
@@ -306,12 +324,23 @@ export default function ActivationsPage() {
         <section className={styles.tableSection} aria-label="Tabla de activaciones">
           <div className={styles.tableBlock}>
             <DataTable<Activation>
+              animateEnter={false}
               columns={columns}
-              data={filtered}
+              data={paginatedItems}
               loading={tableLoading}
               emptyMessage="No hay activaciones que coincidan con los filtros. Prueba a ampliar la búsqueda o crea una nueva activación."
               getRowId={(row) => row.id}
               onRowClick={(row) => setSelectedId(row.id)}
+            />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              pageStart={pageStart}
+              pageEnd={pageEnd}
+              totalItems={filteredTotal}
+              itemLabel="activaciones"
+              itemLabelSingular="activación"
             />
           </div>
         </section>

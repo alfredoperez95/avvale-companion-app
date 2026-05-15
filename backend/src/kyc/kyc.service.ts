@@ -519,12 +519,9 @@ export class KycService {
       take: 500,
       include: { profile: true, _count: { select: { signals: true, orgMembers: true } } },
     });
-    const sorted = rows.sort((a, b) => {
-      const sa = a.profile?.strategic ? 1 : 0;
-      const sb = b.profile?.strategic ? 1 : 0;
-      if (sa !== sb) return sb - sa;
-      return a.name.localeCompare(b.name);
-    });
+    const sorted = rows.sort((a, b) =>
+      a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
+    );
     return sorted.map((c) => toApiCompanyListRow(c as Parameters<typeof toApiCompanyListRow>[0]));
   }
 

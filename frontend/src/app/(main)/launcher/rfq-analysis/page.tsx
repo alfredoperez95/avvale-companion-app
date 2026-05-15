@@ -198,6 +198,7 @@ export default function RfqAnalysisListPage() {
           </div>
         </div>
         <FilterBar
+          embedded
           className={styles.filterBarEmbed}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}

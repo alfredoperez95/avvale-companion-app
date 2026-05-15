@@ -15,6 +15,8 @@ import { offerCodeShortLabel } from '@/lib/offer-code-display';
 import { OfferCodeColumnHeader } from '@/components/OfferCodeTableCell/OfferCodeColumnHeader';
 import { OfferCodeTableCell } from '@/components/OfferCodeTableCell/OfferCodeTableCell';
 import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
+import { Pagination } from '@/components/Pagination/Pagination';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import styles from './dashboard.module.css';
 
 export default function DashboardPage() {
@@ -89,6 +91,17 @@ export default function DashboardPage() {
     }
     return data;
   }, [list, statusFilter, solicitanteFilter, searchValue]);
+
+  const filterKey = `${statusFilter}|${solicitanteFilter}|${searchValue.trim()}`;
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems,
+    pageStart,
+    pageEnd,
+    totalItems: filteredTotal,
+  } = useClientPagination(filtered, undefined, filterKey);
 
   const offerColumnShowToggle = useMemo(
     () => filtered.some((a) => Boolean(offerCodeShortLabel(a.offerCode).fullTitle)),
@@ -221,6 +234,7 @@ export default function DashboardPage() {
 
         <div className={styles.filtersCard}>
           <FilterBar
+            embedded
             className={styles.filterBarEmbed}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
@@ -238,13 +252,15 @@ export default function DashboardPage() {
           <p className={styles.resultsMeta}>
             {loading && list.length === 0 ? (
               'Obteniendo datos…'
-            ) : filtered.length === list.length ? (
+            ) : filteredTotal === list.length ? (
               <>
                 <strong>{list.length}</strong> {list.length === 1 ? 'registro' : 'registros'}
+                {filteredTotal > 10 ? ` · página ${page} de ${totalPages}` : ''}
               </>
             ) : (
               <>
-                Mostrando <strong>{filtered.length}</strong> de <strong>{list.length}</strong>
+                <strong>{filteredTotal}</strong> de <strong>{list.length}</strong> coinciden con los filtros
+                {filteredTotal > 10 ? ` · página ${page} de ${totalPages}` : ''}
               </>
             )}
           </p>
@@ -254,11 +270,20 @@ export default function DashboardPage() {
           <div className={styles.tableBlock}>
             <DataTable<Activation>
               columns={columns}
-              data={filtered}
+              data={paginatedItems}
               loading={tableLoading}
               emptyMessage="No hay activaciones que coincidan con los filtros. Prueba a limpiar la búsqueda o crea una nueva activación."
               getRowId={(row) => row.id}
               onRowClick={(row) => setSelectedId(row.id)}
+            />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              pageStart={pageStart}
+              pageEnd={pageEnd}
+              totalItems={filteredTotal}
+              itemLabel="registros"
             />
           </div>
         </section>

@@ -224,12 +224,14 @@ interface AttachmentGridProps {
   apiFetch: ApiFetchFn;
   /** Llamado tras eliminar un adjunto para que el padre actualice la lista */
   onDeleted?: () => void;
+  /** Fijar número de columnas (p. ej. 3 en el panel lateral). Por defecto: auto-fill. */
+  columns?: 3;
 }
 
-export function AttachmentGrid({ attachments, activationId, apiFetch, onDeleted }: AttachmentGridProps) {
+export function AttachmentGrid({ attachments, activationId, apiFetch, onDeleted, columns }: AttachmentGridProps) {
   if (!attachments?.length) return null;
   return (
-    <ul className={styles.grid}>
+    <ul className={columns === 3 ? `${styles.grid} ${styles.gridCols3}` : styles.grid}>
       {attachments.map((att) => (
         <SingleCard
           key={att.id}

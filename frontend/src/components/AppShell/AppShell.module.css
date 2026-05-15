@@ -359,6 +359,30 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: min-content; /* crece con el contenido; con flex: 1 queda abajo cuando no hay scroll */
+  transition:
+    filter 0.25s ease,
+    opacity 0.25s ease;
+}
+
+/* Panel lateral abierto (activación o chat KYC): desenfocar contenido, sin capa gris encima */
+:global(body[data-detail-drawer-open]) .mainFooterWrap,
+:global(body[data-kyc-chat-open]) .mainFooterWrap {
+  filter: blur(5px);
+  opacity: 0.42;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mainFooterWrap {
+    transition: none;
+  }
+
+  :global(body[data-detail-drawer-open]) .mainFooterWrap,
+  :global(body[data-kyc-chat-open]) .mainFooterWrap {
+    filter: none;
+    opacity: 0.65;
+  }
 }
 
 .main {

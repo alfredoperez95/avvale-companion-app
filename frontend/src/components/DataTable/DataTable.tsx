@@ -20,6 +20,8 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   getRowId: (row: T) => string;
   onRowClick?: (row: T) => void;
+  /** Entrada animada del bloque (desactivar si la página ya anima el contenido). */
+  animateEnter?: boolean;
 }
 
 export function DataTable<T>({
@@ -29,8 +31,9 @@ export function DataTable<T>({
   emptyMessage = 'No hay datos.',
   getRowId,
   onRowClick,
+  animateEnter = true,
 }: DataTableProps<T>) {
-  const wrapClass = `${styles.wrap} app-enter`;
+  const wrapClass = [styles.wrap, animateEnter ? 'app-enter' : null].filter(Boolean).join(' ');
 
   if (loading) {
     const skeletonRows = 6;
