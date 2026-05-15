@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { MainContentMotion } from '@/components/AppMotion/MainContentMotion';
 import { Footer } from '@/components/Footer/Footer';
 import { Icon, type IconName } from '@/components/Icon/Icon';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
@@ -309,7 +310,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
             {pathname !== '/launcher' && (
               <>
                 {!pathname?.startsWith('/launcher/kyc') ? (
-                  <div className={styles.pageHeader}>
+                  <div className={`${styles.pageHeader} app-enter`}>
                     <div className={styles.pageHeaderInner}>
                       <h1 className={styles.pageHeaderTitle}>{pageHeader.title}</h1>
                     </div>
@@ -354,7 +355,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
             )}
             <div className={styles.mainFooterWrap}>
               <main className={styles.main} id="main-content">
-                {children}
+                <MainContentMotion>{children}</MainContentMotion>
               </main>
               {!pathname?.startsWith('/launcher/kyc') ? <Footer /> : null}
             </div>
@@ -391,7 +392,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
             </aside>
             <div className={styles.mainFooterWrap}>
               <main className={styles.main} id="main-content">
-                {children}
+                <MainContentMotion>{children}</MainContentMotion>
               </main>
               {!pathname?.startsWith('/launcher/kyc') ? <Footer /> : null}
             </div>

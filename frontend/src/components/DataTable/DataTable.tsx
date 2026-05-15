@@ -30,11 +30,13 @@ export function DataTable<T>({
   getRowId,
   onRowClick,
 }: DataTableProps<T>) {
+  const wrapClass = `${styles.wrap} app-enter`;
+
   if (loading) {
     const skeletonRows = 6;
     const skeletonGridStyle = { gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(4rem, 1fr))` };
     return (
-      <div className={styles.wrap}>
+      <div className={wrapClass}>
         <div className={styles.loading} role="status" aria-live="polite">
           <div className={styles.skeletonHeader} style={skeletonGridStyle}>
             {columns.map((col) => (
@@ -58,14 +60,14 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     return (
-      <div className={styles.wrap}>
+      <div className={wrapClass}>
         <div className={styles.empty}>{emptyMessage}</div>
       </div>
     );
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={wrapClass}>
       <table className={styles.table}>
         <thead>
           <tr>

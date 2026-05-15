@@ -65,7 +65,7 @@ export function FilterBar({
   const resolvedStatusOptions = statusOptions ?? ACTIVATION_STATUS_OPTIONS;
 
   return (
-    <div className={[styles.root, className].filter(Boolean).join(' ')}>
+    <div className={['app-enter', styles.root, className].filter(Boolean).join(' ')}>
       <button
         type="button"
         className={styles.mobileToggle}

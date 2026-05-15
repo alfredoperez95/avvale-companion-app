@@ -17,16 +17,7 @@
   justify-content: center;
   z-index: 1100;
   padding: var(--fiori-space-4);
-  animation: overlayIn 0.2s ease-out;
-}
-
-@keyframes overlayIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  animation: app-overlay-enter 0.22s var(--app-ease-out, ease-out) both;
 }
 
 .dialog {
@@ -37,18 +28,7 @@
   width: 100%;
   box-shadow: 0 8px 32px rgb(0 0 0 / 22%);
   overflow: hidden;
-  animation: dialogIn 0.25s ease-out;
-}
-
-@keyframes dialogIn {
-  from {
-    opacity: 0;
-    transform: scale(0.98) translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  animation: app-dialog-enter 0.32s var(--app-ease-out, ease-out) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

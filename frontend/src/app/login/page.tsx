@@ -154,7 +154,7 @@ export default function LoginPage() {
 
   return (
     <main className={styles.main} data-theme="microsoft">
-      <section className={styles.card} aria-busy={false}>
+      <section className={`${styles.card} app-enter`} aria-busy={false}>
         <header className={styles.header}>
           <div className={styles.brandRow}>
             <p className={styles.brandKicker}>AVVALE ID®</p>

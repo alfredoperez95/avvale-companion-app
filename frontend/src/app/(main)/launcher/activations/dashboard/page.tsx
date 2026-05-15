@@ -211,7 +211,7 @@ export default function DashboardPage() {
           <h2 id="dashboard-kpis-title" className={styles.kpiHeading}>
             Indicadores
           </h2>
-          <div className={styles.kpiSection} role="group" aria-label="Totales por estado">
+          <div className={`${styles.kpiSection} app-stagger`} role="group" aria-label="Totales por estado">
             <KpiCard title="Activaciones" value={kpis.total} icon="total" loading={loading} />
             <KpiCard title="Borradores" value={kpis.draft} icon="draft" loading={loading} />
             <KpiCard title="Enviadas" value={kpis.sent} icon="sent" loading={loading} />

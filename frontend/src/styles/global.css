@@ -1,5 +1,6 @@
 @import './tokens.css';
 @import './tokens-fiori.css';
+@import './motion.css';
 
 *,
 *::before,

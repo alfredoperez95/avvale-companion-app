@@ -24,6 +24,7 @@ export function PageHero({
   meta,
   actions,
   actionsClassName,
+  className,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -32,9 +33,13 @@ export function PageHero({
   actions?: ReactNode;
   /** Clase opcional en el contenedor de acciones (p. ej. alineación). */
   actionsClassName?: string;
+  /** Clases de motion adicionales (p. ej. app-enter-d2). */
+  className?: string;
 }) {
+  const heroClass = ['app-enter', className, styles.hero].filter(Boolean).join(' ');
+
   return (
-    <header className={styles.hero}>
+    <header className={heroClass}>
       <div className={styles.heroInner}>
         <div className={styles.heroText}>
           <h1 className={styles.h1}>{title}</h1>

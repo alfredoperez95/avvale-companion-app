@@ -571,14 +571,17 @@ export default function LauncherPage() {
   const { commercial: commercialTileOrder, administrative: administrativeTileOrder } = partitionLauncherOrder(order);
 
   return (
-    <div className={styles.page}>
-      <header className={styles.pageHeader}>
+    <div className={`${styles.page} ${reorderMode ? 'app-motion-off' : ''}`}>
+      <header className={`${styles.pageHeader} app-enter`}>
         <h2 className={styles.welcomeTitle}>Bienvenido, {displayName}</h2>
         <p className={styles.welcomeLead}>Tu espacio de trabajo con las aplicaciones internas de Avvale.</p>
       </header>
 
       {bannerVisible && (
-        <section className={styles.welcomeBanner} aria-label="Bienvenida a Avvale Companion App">
+        <section
+          className={`${styles.welcomeBanner} app-enter app-enter-d1`}
+          aria-label="Bienvenida a Avvale Companion App"
+        >
           <div className={styles.welcomeBannerOverlay}>
             <h3 className={styles.welcomeBannerTitle}>Te damos la bienvenida a Avvale Companion App</h3>
             <p className={styles.welcomeBannerSubtitle}>
@@ -629,10 +632,12 @@ export default function LauncherPage() {
         </section>
       )}
 
-      <PageHero
-        title="App Launcher"
-        subtitle="Elige una aplicación para abrirla en esta sesión."
-        actions={
+      <div className={styles.pageHeroWrap}>
+        <PageHero
+          className={bannerVisible ? 'app-enter-d2' : 'app-enter-d1'}
+          title="App Launcher"
+          subtitle="Elige una aplicación para abrirla en esta sesión."
+          actions={
           <>
             <button
               type="button"
@@ -699,7 +704,8 @@ export default function LauncherPage() {
             ) : null}
           </>
         }
-      />
+        />
+      </div>
 
       {reorderMode && (
         <div className={styles.reorderStrip} role="status" aria-live="polite">
