@@ -1,3 +1,47 @@
+@keyframes walkthroughBackdropIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes walkthroughCardIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes walkthroughBackdropOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes walkthroughCardOut {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.985);
+  }
+}
+
 .backdrop {
   position: fixed;
   inset: 0;
@@ -7,6 +51,7 @@
   justify-content: center;
   padding: var(--fiori-space-4);
   background: rgb(0 0 0 / 45%);
+  animation: walkthroughBackdropIn 0.32s ease both;
 }
 
 .card {
@@ -20,6 +65,38 @@
   border: 1px solid var(--fiori-border-light);
   box-shadow: 0 8px 32px rgb(0 0 0 / 18%);
   overflow: hidden;
+  animation: walkthroughCardIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.backdropExiting {
+  animation: walkthroughBackdropOut 0.32s ease both;
+}
+
+.cardExiting {
+  animation: walkthroughCardOut 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.slideViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.slideTrack {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.slidePane {
+  display: flex;
+  flex: 0 0 100%;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
 }
 
 .header {
@@ -46,6 +123,7 @@
 
 .body {
   padding: var(--fiori-space-4) var(--fiori-space-5);
+  overflow-x: hidden;
   overflow-y: auto;
   flex: 1 1 auto;
   min-height: 0;
@@ -216,13 +294,18 @@ a.extensionInstallBtn:focus-visible {
 .dot {
   width: 0.4rem;
   height: 0.4rem;
-  border-radius: 50%;
+  border-radius: 999px;
   background: color-mix(in srgb, var(--fiori-text-secondary) 45%, transparent);
+  transition:
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dotActive {
+  width: 1.125rem;
   background: var(--fiori-shell-bg);
-  transform: scale(1.15);
+  transform: scale(1);
 }
 
 .actions {
@@ -286,6 +369,23 @@ a.extensionInstallBtn:focus-visible {
 .btnSecondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .card,
+  .backdropExiting,
+  .cardExiting {
+    animation: none;
+  }
+
+  .slideTrack {
+    transition: none;
+  }
+
+  .dot {
+    transition: none;
+  }
 }
 
 @media (max-width: 28rem) {

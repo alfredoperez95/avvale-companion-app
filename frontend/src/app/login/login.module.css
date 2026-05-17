@@ -166,50 +166,136 @@
   border-radius: 1px;
 }
 
-.emailDomainPicker {
-  display: flex;
+.emailDomainWrap {
+  position: relative;
   flex-shrink: 0;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+}
+
+.emailDomainTrigger {
+  display: inline-flex;
   align-items: center;
-}
-
-.emailDomainOption {
-  font-size: 0.8125rem;
+  justify-content: space-between;
+  gap: 0.35rem;
+  min-width: 8.75rem;
+  max-width: 10.5rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.45rem 0.35rem 0.55rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #0f548c;
-  padding: 0.3rem 0.5rem;
-  border-radius: 0.4rem;
-  background: linear-gradient(180deg, #f4f8fc 0%, #e8f0f8 100%);
-  border: 1px solid #c5d8e8;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  white-space: nowrap;
-  cursor: pointer;
   font-family: inherit;
+  letter-spacing: 0.01em;
+  color: #0f548c;
   line-height: 1.25;
+  border: 1px solid #c5d8e8;
+  border-radius: 0.375rem;
+  background-color: #f0f6fb;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 80%);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.emailDomainOption:hover {
+.emailDomainTrigger:hover {
   border-color: #9eb8d4;
-  background: linear-gradient(180deg, #f8fbfe 0%, #ecf2f9 100%);
+  background-color: #e8f2fa;
 }
 
-.emailDomainOption:focus-visible {
+.emailDomainTrigger:focus {
+  outline: none;
+  border-color: #0064d9;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 80%),
+    0 0 0 2px rgb(0 100 217 / 22%);
+}
+
+.emailDomainTrigger:focus-visible {
   outline: 2px solid #0064d9;
   outline-offset: 2px;
 }
 
-.emailDomainOptionActive {
-  color: #fff;
-  background: linear-gradient(180deg, #0f548c 0%, #0c4574 100%);
-  border-color: #0a3a61;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+.emailDomainTriggerOpen {
+  border-color: #0064d9;
+  background-color: #e8f2fa;
 }
 
-.emailDomainOptionActive:hover {
-  border-color: #0a3a61;
-  background: linear-gradient(180deg, #115f96 0%, #0d4a7a 100%);
+.emailDomainValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+}
+
+.emailDomainChevron {
+  flex-shrink: 0;
+  width: 0.7rem;
+  height: 0.7rem;
+  opacity: 0.7;
+  transition: transform 0.2s ease;
+}
+
+.emailDomainTriggerOpen .emailDomainChevron {
+  transform: rotate(180deg);
+}
+
+.emailDomainMenu {
+  position: absolute;
+  z-index: 40;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 100%;
+  margin: 0;
+  padding: 0.4rem;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #c5d8e8;
+  border-radius: 0.5rem;
+  box-shadow:
+    0 4px 16px rgb(15 40 70 / 12%),
+    0 1px 3px rgb(15 40 70 / 8%);
+}
+
+.emailDomainMenu > li {
+  margin: 0;
+}
+
+.emailDomainMenuOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #1f3f5f;
+  text-align: left;
+  cursor: pointer;
+}
+
+.emailDomainMenuOption:hover {
+  background: #f0f6fb;
+}
+
+.emailDomainMenuOption:focus-visible {
+  outline: 2px solid #0064d9;
+  outline-offset: -1px;
+}
+
+.emailDomainMenuOptionSelected {
+  color: #0f548c;
+  background: #e8f2fa;
+}
+
+.emailDomainCheck {
+  flex-shrink: 0;
+  width: 0.9rem;
+  height: 0.9rem;
+  color: #0f548c;
 }
 
 .passwordWrap {
@@ -370,27 +456,27 @@
   );
 }
 
-:global(html[data-appearance='microsoft']) .emailDomainOption {
+:global(html[data-appearance='microsoft']) .emailDomainTrigger {
   color: #0f548c;
-  background: #f0f6fb;
+  background-color: #f0f6fb;
   border-color: #b7c8dd;
   box-shadow: none;
 }
 
-:global(html[data-appearance='microsoft']) .emailDomainOption:hover {
-  background: #e8f2fa;
+:global(html[data-appearance='microsoft']) .emailDomainTrigger:hover,
+:global(html[data-appearance='microsoft']) .emailDomainTriggerOpen {
+  background-color: #e8f2fa;
   border-color: #9eb8d4;
 }
 
-:global(html[data-appearance='microsoft']) .emailDomainOptionActive {
-  color: #fff;
-  background: #0f548c;
-  border-color: #0c4574;
+:global(html[data-appearance='microsoft']) .emailDomainTrigger:focus {
+  border-color: #115ea3;
+  box-shadow: 0 0 0 2px rgb(17 94 163 / 20%);
 }
 
-:global(html[data-appearance='microsoft']) .emailDomainOptionActive:hover {
-  background: #115f96;
-  border-color: #0a3a61;
+:global(html[data-appearance='microsoft']) .emailDomainMenu {
+  border-color: #b7c8dd;
+  box-shadow: 0 4px 14px rgb(15 40 70 / 14%);
 }
 
 .footerBar {

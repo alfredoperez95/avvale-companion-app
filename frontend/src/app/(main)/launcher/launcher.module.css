@@ -671,62 +671,32 @@
 }
 
 .tileFeaturedEyebrow {
-  margin: 0 0 var(--fiori-space-2);
-  padding: 0;
-  font-size: 0.6875rem;
+  position: absolute;
+  top: var(--fiori-space-3);
+  right: var(--fiori-space-3);
+  z-index: 1;
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.625rem;
   font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: 0.12em;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--fiori-text-secondary);
-}
-
-.tileFeaturedEyebrow::after {
-  content: "";
-  display: block;
-  width: 2.75rem;
-  height: 2px;
-  margin-top: var(--fiori-space-2);
-  border-radius: 1px;
+  white-space: nowrap;
+  color: #fff;
   background: var(--fiori-shell-bg);
-  opacity: 0.42;
+  border-radius: 0.25rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
 }
 
-.tileAccentKyc:has(.tileFeaturedEyebrow) .tileTitle {
-  margin-top: 0;
+.tile.tileFeaturedKyc .tileTitle {
+  padding-right: 6.25rem;
 }
 
-@keyframes launcherKycLinkGlow {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 18px rgb(0 100 217 / 14%)) drop-shadow(0 0 40px rgb(0 100 217 / 8%));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 26px rgb(0 100 217 / 22%)) drop-shadow(0 0 52px rgb(0 100 217 / 12%));
-  }
-}
-
-/* Caja blanca plana; glow en el enlace (solo contorno exterior del tile). */
+/* KYC destacado: misma caja que el resto de mosaicos (sin halo). */
 .tile.tileFeaturedKyc {
   background-color: #fff;
   background-image: none;
-}
-
-.tileLink:has(.tileFeaturedKyc) {
-  animation: launcherKycLinkGlow 4.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tileLink:has(.tileFeaturedKyc) {
-    animation: none;
-    filter: drop-shadow(0 0 20px rgb(0 100 217 / 16%)) drop-shadow(0 0 40px rgb(0 100 217 / 10%));
-  }
-}
-
-.tileLink:hover:has(.tileFeaturedKyc) {
-  animation: none;
-  filter: drop-shadow(0 0 28px rgb(0 100 217 / 22%)) drop-shadow(0 0 50px rgb(0 100 217 / 13%));
 }
 
 .tileTitle {
@@ -1005,11 +975,6 @@
 
 .app-motion-off .welcomeBannerOverlay::after {
   opacity: 0;
-}
-
-.app-motion-off .tileLink:has(.tileFeaturedKyc) {
-  animation: none;
-  filter: drop-shadow(0 0 20px rgb(0 100 217 / 16%)) drop-shadow(0 0 40px rgb(0 100 217 / 10%));
 }
 
 .app-motion-off .tileLink:hover .tile {

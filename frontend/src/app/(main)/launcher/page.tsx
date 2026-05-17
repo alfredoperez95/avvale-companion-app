@@ -387,12 +387,13 @@ function TileLink({
         >
           <article className={tile}>
             {hubMode ? (
-              <p id="tile-kyc-eyebrow" className={styles.tileFeaturedEyebrow}>
+              <span id="tile-kyc-eyebrow" className={styles.tileFeaturedEyebrow}>
                 Espacio principal
-              </p>
+              </span>
             ) : null}
             <h3 id="tile-kyc-heading" className={styles.tileTitle}>
-              KYC — Client Knowledge
+              KYC —<br />
+              Client Knowledge
             </h3>
             <p className={styles.tileDesc}>
               Base de cuentas, perfil comercial, organigrama, señales y chat de investigación. Actúa como punto central de otras

@@ -7,10 +7,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { resolveApiUrl } from '@/lib/api';
+import {
+  EmailDomainPicker,
+  LOGIN_EMAIL_DOMAINS,
+  type LoginEmailDomain,
+} from './EmailDomainPicker';
 import styles from './login.module.css';
-
-const LOGIN_EMAIL_DOMAINS = ['@avvale.com', '@axazure.com'] as const;
-type LoginEmailDomain = (typeof LOGIN_EMAIL_DOMAINS)[number];
 
 const LOGIN_EMAIL_DOMAIN_STORAGE_KEY = 'avvale_login_email_domain';
 
@@ -187,35 +189,22 @@ export default function LoginPage() {
                 className={`${styles.input} ${styles.emailLocal}`}
                 placeholder="nombre.apellido"
                 spellCheck={false}
-                aria-describedby="email-domain-hint"
+                aria-describedby="email-domain"
               />
               <span className={styles.emailSep} aria-hidden="true" />
-              <div
-                id="email-domain-hint"
-                className={styles.emailDomainPicker}
-                role="group"
-                aria-label="Sufijo del dominio del correo"
-              >
-                {LOGIN_EMAIL_DOMAINS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    className={`${styles.emailDomainOption} ${emailDomain === d ? styles.emailDomainOptionActive : ''}`}
-                    onClick={() => {
-                      setEmailDomain(d);
-                      try {
-                        localStorage.setItem(LOGIN_EMAIL_DOMAIN_STORAGE_KEY, d);
-                      } catch {
-                        /* ignore */
-                      }
-                    }}
-                    aria-pressed={emailDomain === d}
-                    aria-label={`Usar dominio ${d}`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
+              <EmailDomainPicker
+                id="email-domain"
+                value={emailDomain}
+                onChange={(d) => {
+                  setEmailDomain(d);
+                  try {
+                    localStorage.setItem(LOGIN_EMAIL_DOMAIN_STORAGE_KEY, d);
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+                aria-label="Dominio del correo corporativo"
+              />
             </div>
           </div>
 

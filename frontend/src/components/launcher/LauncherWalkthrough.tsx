@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { isDialogEnterTargetInteractive } from '@/lib/dialog-keyboard';
 import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './LauncherWalkthrough.module.css';
@@ -16,6 +16,13 @@ const EXT_HELP_URL =
 /** Ficha oficial en Chrome Web Store (instalación recomendada). */
 const CHROME_WEB_STORE_COMPANION_URL =
   'https://chromewebstore.google.com/detail/avvale-companion/afpdgamffgonkjblodeiefibbobmaibg';
+
+const WALKTHROUGH_CLOSE_MS = 400;
+
+function walkthroughCloseDelayMs(): number {
+  if (typeof window === 'undefined') return WALKTHROUGH_CLOSE_MS;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : WALKTHROUGH_CLOSE_MS;
+}
 
 type LauncherWalkthroughProps = {
   open: boolean;
@@ -153,7 +160,7 @@ const STEPS = [
   },
   {
     title: 'Extensión Chrome Avvale Companion',
-    body: <WalkthroughStepExtensionBody />,
+    body: null,
   },
 ];
 
@@ -162,20 +169,45 @@ export function LauncherWalkthrough({ open, onClose }: LauncherWalkthroughProps)
   const panelRef = useRef<HTMLDivElement>(null);
   const prevActive = useRef<HTMLElement | null>(null);
   const [step, setStep] = useState(0);
+  const [extensionMounted, setExtensionMounted] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const closeReasonRef = useRef<'later' | 'permanent'>('later');
+
+  const requestClose = useCallback((reason: 'later' | 'permanent') => {
+    if (isClosing) return;
+    closeReasonRef.current = reason;
+    setIsClosing(true);
+  }, [isClosing]);
+
+  useEffect(() => {
+    if (!isClosing) return;
+    const delayMs = walkthroughCloseDelayMs();
+    const t = window.setTimeout(() => {
+      setIsClosing(false);
+      onClose(closeReasonRef.current);
+    }, delayMs);
+    return () => window.clearTimeout(t);
+  }, [isClosing, onClose]);
 
   useEffect(() => {
     if (!open) {
       setStep(0);
+      setExtensionMounted(false);
+      setIsClosing(false);
     }
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (step === 2) setExtensionMounted(true);
+  }, [step]);
+
+  useEffect(() => {
+    if (!open || isClosing) return;
     const stepCount = STEPS.length;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose('later');
+        requestClose('later');
         return;
       }
       if (e.key === 'Enter') {
@@ -183,15 +215,15 @@ export function LauncherWalkthrough({ open, onClose }: LauncherWalkthroughProps)
         e.preventDefault();
         const isLast = step >= stepCount - 1;
         if (!isLast) setStep((s) => s + 1);
-        else onClose('later');
+        else requestClose('later');
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose, step]);
+  }, [open, isClosing, requestClose, step]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || isClosing) return;
     prevActive.current = document.activeElement as HTMLElement;
     const t = window.setTimeout(() => {
       panelRef.current?.querySelector<HTMLElement>('button')?.focus();
@@ -203,39 +235,67 @@ export function LauncherWalkthrough({ open, onClose }: LauncherWalkthroughProps)
       document.body.style.overflow = prevOverflow;
       prevActive.current?.focus?.();
     };
-  }, [open]);
+  }, [open, isClosing]);
 
-  if (!open) return null;
+  if (!open && !isClosing) return null;
 
   const stepCount = STEPS.length;
   const isLast = step >= stepCount - 1;
-  const content = STEPS[step];
 
   return (
     <div
-      className={styles.backdrop}
+      className={`${styles.backdrop} ${isClosing ? styles.backdropExiting : ''}`}
       role="presentation"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose('later');
+        if (e.target === e.currentTarget) requestClose('later');
       }}
     >
       <div
         ref={panelRef}
-        className={styles.card}
+        className={`${styles.card} ${isClosing ? styles.cardExiting : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={styles.header}>
-          <p className={styles.stepMeta}>
-            Paso {step + 1} de {stepCount}
-          </p>
-          <h2 id={titleId} className={styles.title}>
-            {content.title}
-          </h2>
+        <div className={styles.slideViewport}>
+          <div
+            className={styles.slideTrack}
+            style={{ transform: `translate3d(-${step * 100}%, 0, 0)` }}
+          >
+            {STEPS.map((slide, i) => (
+              <div
+                key={slide.title}
+                className={styles.slidePane}
+                aria-hidden={i !== step}
+                inert={i !== step ? true : undefined}
+              >
+                <div className={styles.header}>
+                  <p className={styles.stepMeta}>
+                    Paso {i + 1} de {stepCount}
+                  </p>
+                  <h2 id={i === step ? titleId : undefined} className={styles.title}>
+                    {slide.title}
+                  </h2>
+                </div>
+                <div className={styles.body}>
+                  {i === 2 ? (
+                    extensionMounted ? (
+                      <WalkthroughStepExtensionBody />
+                    ) : (
+                      <p>
+                        La extensión <strong>Avvale Companion</strong> conecta esta web con distintos flujos, como la
+                        extracción de información desde HubSpot o el envío de datos a Yubiq.
+                      </p>
+                    )
+                  ) : (
+                    slide.body
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className={styles.body}>{content.body}</div>
         <div className={styles.footer}>
           <div className={styles.dots} aria-hidden>
             {STEPS.map((_, i) => (
@@ -243,24 +303,39 @@ export function LauncherWalkthrough({ open, onClose }: LauncherWalkthroughProps)
             ))}
           </div>
           <div className={styles.actions}>
-            <button type="button" className={styles.btnGhost} onClick={() => onClose('later')}>
+            <button type="button" className={styles.btnGhost} onClick={() => requestClose('later')} disabled={isClosing}>
               Más tarde
             </button>
             {step > 0 ? (
-              <button type="button" className={styles.btnSecondary} onClick={() => setStep((s) => s - 1)}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => setStep((s) => s - 1)}
+                disabled={isClosing}
+              >
                 Anterior
               </button>
             ) : null}
             {!isLast ? (
-              <button type="button" className={styles.btnPrimary} onClick={() => setStep((s) => s + 1)}>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => setStep((s) => s + 1)}
+                disabled={isClosing}
+              >
                 Siguiente
               </button>
             ) : (
               <>
-                <button type="button" className={styles.btnSecondary} onClick={() => onClose('permanent')}>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  onClick={() => requestClose('permanent')}
+                  disabled={isClosing}
+                >
                   No volver a mostrar
                 </button>
-                <button type="button" className={styles.btnPrimary} onClick={() => onClose('later')}>
+                <button type="button" className={styles.btnPrimary} onClick={() => requestClose('later')} disabled={isClosing}>
                   Listo
                 </button>
               </>
