@@ -9,6 +9,7 @@
 }
 
 .pageHeader {
+  margin-top: var(--fiori-space-5);
   margin-bottom: var(--fiori-space-5);
 }
 
@@ -450,26 +451,18 @@
   .tilesGrid {
     grid-template-columns: repeat(4, 1fr);
   }
-
-  .tilesGridAdmin {
-    grid-template-columns: repeat(2, minmax(0, 22rem));
-    justify-content: start;
-    column-gap: var(--fiori-space-6);
-    row-gap: var(--fiori-space-6);
-  }
 }
 
-@media (min-width: 52rem) and (max-width: 71.99rem) {
-  .tilesGridAdmin {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-width: 44rem;
-  }
+.tilesGrid > li {
+  display: flex;
+  min-height: 0;
 }
 
 .tile {
   position: relative;
-  flex: 1;
+  flex: 1 1 auto;
   width: 100%;
+  height: 100%;
   min-height: 11.5rem;
   background: var(--fiori-surface);
   border: 1px solid var(--fiori-border-light);
@@ -494,28 +487,6 @@
   border-top: 3px solid var(--fiori-shell-bg);
 }
 
-/* KYC: espacio principal del bloque comercial (jerarquía tipográfica + halo). */
-@keyframes launcherKycTileGlow {
-  0%,
-  100% {
-    box-shadow:
-      0 1px 2px rgb(0 0 0 / 5%),
-      0 8px 24px rgb(0 0 0 / 6%),
-      0 0 0 1px rgba(28, 45, 62, 0.28),
-      0 0 18px rgba(28, 45, 62, 0.2),
-      0 0 40px rgba(28, 45, 62, 0.1);
-  }
-
-  50% {
-    box-shadow:
-      0 1px 2px rgb(0 0 0 / 5%),
-      0 8px 24px rgb(0 0 0 / 6%),
-      0 0 0 1px rgba(42, 123, 120, 0.34),
-      0 0 26px rgba(42, 123, 120, 0.28),
-      0 0 48px rgba(28, 45, 62, 0.14);
-  }
-}
-
 .tileFeaturedEyebrow {
   margin: 0 0 var(--fiori-space-2);
   padding: 0;
@@ -524,7 +495,7 @@
   line-height: 1.25;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: color-mix(in srgb, #2a7b78 55%, var(--fiori-text-secondary));
+  color: var(--fiori-text-secondary);
 }
 
 .tileFeaturedEyebrow::after {
@@ -533,82 +504,46 @@
   width: 2.75rem;
   height: 2px;
   margin-top: var(--fiori-space-2);
-  background: currentColor;
-  opacity: 0.42;
   border-radius: 1px;
+  background: var(--fiori-shell-bg);
+  opacity: 0.42;
 }
 
-.tileAccentKyc.tileFeaturedKyc {
-  border-top-color: #2a7b78;
-}
-
-.tileFeaturedKyc .tileTitle {
+.tileAccentKyc:has(.tileFeaturedEyebrow) .tileTitle {
   margin-top: 0;
 }
 
-.tile.tileFeaturedKyc {
-  border-color: #2a7b78;
-  transition:
-    border-color 0.2s ease,
-    transform 0.2s ease;
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--fiori-shell-bg) 11%, var(--fiori-surface)) 0%,
-    var(--fiori-surface) 52%,
-    var(--fiori-surface) 100%
-  );
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 5%),
-    0 8px 24px rgb(0 0 0 / 6%),
-    0 0 0 1px rgba(28, 45, 62, 0.28),
-    0 0 18px rgba(28, 45, 62, 0.2),
-    0 0 40px rgba(28, 45, 62, 0.1);
-  animation: launcherKycTileGlow 4.2s ease-in-out infinite;
-}
+@keyframes launcherKycLinkGlow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 18px rgb(0 100 217 / 14%)) drop-shadow(0 0 40px rgb(0 100 217 / 8%));
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .tile.tileFeaturedKyc,
-  :global([data-theme="microsoft"]) .tile.tileFeaturedKyc {
-    animation: none;
-    box-shadow:
-      0 1px 2px rgb(0 0 0 / 5%),
-      0 8px 24px rgb(0 0 0 / 6%),
-      0 0 0 1px rgba(28, 45, 62, 0.32),
-      0 0 22px rgba(28, 45, 62, 0.26),
-      0 0 44px rgba(28, 45, 62, 0.14);
+  50% {
+    filter: drop-shadow(0 0 26px rgb(0 100 217 / 22%)) drop-shadow(0 0 52px rgb(0 100 217 / 12%));
   }
 }
 
-.tileFeaturedKyc .tileIcon {
-  color: color-mix(in srgb, var(--fiori-shell-bg) 55%, var(--fiori-text-secondary));
+/* Caja blanca plana; glow en el enlace (solo contorno exterior del tile). */
+.tile.tileFeaturedKyc {
+  background-color: #fff;
+  background-image: none;
 }
 
-.tileLink:hover .tileFeaturedKyc {
+.tileLink:has(.tileFeaturedKyc) {
+  animation: launcherKycLinkGlow 4.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tileLink:has(.tileFeaturedKyc) {
+    animation: none;
+    filter: drop-shadow(0 0 20px rgb(0 100 217 / 16%)) drop-shadow(0 0 40px rgb(0 100 217 / 10%));
+  }
+}
+
+.tileLink:hover:has(.tileFeaturedKyc) {
   animation: none;
-  border-color: #2a7b78;
-  box-shadow:
-    0 4px 18px rgb(0 0 0 / 8%),
-    0 1px 3px rgb(0 0 0 / 5%),
-    0 0 0 1px rgba(28, 45, 62, 0.42),
-    0 0 28px rgba(28, 45, 62, 0.34),
-    0 0 56px rgba(28, 45, 62, 0.18);
-}
-
-:global([data-theme="microsoft"]) .tile.tileFeaturedKyc {
-  border-color: #2a7b78;
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--fiori-shell-bg) 11%, var(--fiori-surface)) 0%,
-    var(--fiori-surface) 52%,
-    var(--fiori-surface) 100%
-  );
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 5%),
-    0 8px 24px rgb(0 0 0 / 6%),
-    0 0 0 1px rgba(28, 45, 62, 0.28),
-    0 0 18px rgba(28, 45, 62, 0.2),
-    0 0 40px rgba(28, 45, 62, 0.1);
-  animation: launcherKycTileGlow 4.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 28px rgb(0 100 217 / 22%)) drop-shadow(0 0 50px rgb(0 100 217 / 13%));
 }
 
 .tileTitle {
@@ -706,10 +641,6 @@
 .tileLink:active .tile {
   transform: translate3d(0, -1px, 0);
   transition-duration: 0.12s;
-}
-
-.tileLink:hover .tileFeaturedKyc {
-  transform: translate3d(0, -4px, 0);
 }
 
 .tileLink:hover .tileReorder {
@@ -882,8 +813,12 @@
   animation-delay: 0.8s;
 }
 
-.app-motion-off .tileLink:hover .tile,
-.app-motion-off .tileLink:hover .tileFeaturedKyc {
+.app-motion-off .tileLink:has(.tileFeaturedKyc) {
+  animation: none;
+  filter: drop-shadow(0 0 20px rgb(0 100 217 / 16%)) drop-shadow(0 0 40px rgb(0 100 217 / 10%));
+}
+
+.app-motion-off .tileLink:hover .tile {
   transform: none;
 }
 
@@ -1075,7 +1010,6 @@
   }
 
   .tileLink:hover .tile,
-  .tileLink:hover .tileFeaturedKyc,
   .tileLink:active .tile {
     transform: none;
   }

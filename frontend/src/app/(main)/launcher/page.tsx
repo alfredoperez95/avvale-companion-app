@@ -768,7 +768,7 @@ export default function LauncherPage() {
               </h2>
               <SortableContext items={administrativeSegment(order)} strategy={rectSortingStrategy}>
                 <ul
-                  className={`${styles.tilesGrid} ${styles.tilesGridReorder} ${styles.tilesGridAdmin} ${styles.tilesGridAnimated}`}
+                  className={`${styles.tilesGrid} ${styles.tilesGridReorder} ${styles.tilesGridAnimated}`}
                   role="list"
                 >
                   {administrativeSegment(order).map((id) => (
@@ -809,7 +809,7 @@ export default function LauncherPage() {
             >
               Procesos administrativos
             </h2>
-            <ul className={`${styles.tilesGrid} ${styles.tilesGridAdmin} ${styles.tilesGridAnimated}`} role="list">
+            <ul className={`${styles.tilesGrid} ${styles.tilesGridAnimated}`} role="list">
               {administrativeTileOrder.map((id) => (
                 <li key={id} className={styles.sortableItemStatic} role="listitem">
                   <TileLink id={id} locked={aiLocked && (id === 'yubiq' || id === 'rfqAnalysis' || id === 'meddpicc')} />
