@@ -8,6 +8,31 @@
   border-radius: 0.375rem;
   overflow: hidden;
   box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.root[data-kyc-loading='true'] {
+  opacity: 0;
+  transform: translate3d(0, 0.45rem, 0);
+  pointer-events: none;
+}
+
+.root:not([data-kyc-loading='true']) {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .root[data-kyc-loading='true'] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    pointer-events: auto;
+  }
 }
 
 /**
@@ -742,6 +767,62 @@
 .list::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--fiori-text-secondary, #6a6d70) 28%, transparent);
   border-radius: 999px;
+}
+
+@keyframes kycListItemEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.75rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.list:not(.listReveal) .listItemRow,
+.list:not(.listReveal) .listEmpty {
+  opacity: 0;
+  transform: translate3d(0, 0.75rem, 0);
+  pointer-events: none;
+}
+
+.listReveal:not(.listCascade) .listItemRow,
+.listReveal:not(.listCascade) .listEmpty {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  pointer-events: auto;
+}
+
+/* `both`: durante el delay cada fila permanece oculta (estado `from`), no visible en bloque */
+.listReveal.listCascade .listItemRow {
+  animation: kycListItemEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--list-i, 0) * 58ms);
+  pointer-events: auto;
+}
+
+.listReveal.listCascade .listEmpty {
+  animation: kycListItemEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0ms;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list:not(.listReveal) .listItemRow,
+  .list:not(.listReveal) .listEmpty {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .listReveal.listCascade .listItemRow,
+  .listReveal.listCascade .listEmpty,
+  .listReveal:not(.listCascade) .listItemRow,
+  .listReveal:not(.listCascade) .listEmpty {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .listItemRow {

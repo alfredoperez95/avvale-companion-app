@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useKycSearchParams } from './KycUrlParamsContext';
@@ -258,6 +258,8 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   const listIndustryFilterRef = useRef<HTMLDivElement | null>(null);
   const [listErr, setListErr] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
+  /** Entrada del bloque KYC (independiente de la carga del listado). */
+  const [workspaceShellOn, setWorkspaceShellOn] = useState(false);
   const [selId, setSelId] = useState<number | null>(null);
   const [detail, setDetail] = useState<Full | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -345,10 +347,47 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   );
 
   const companiesLoadedRef = useRef(false);
+  /** Incrementa al recibir empresas para relanzar la entrada en cascada del aside. */
+  const [listAnimKey, setListAnimKey] = useState(0);
+  /** Listado visible tras la entrada del bloque (cascada de filas). */
+  const [listRevealOn, setListRevealOn] = useState(false);
+  /** Cascada solo en la primera carga; al filtrar el listado aparece de golpe. */
+  const [listCascadeOn, setListCascadeOn] = useState(false);
+  const listRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const KYC_LIST_REVEAL_DELAY_MS = 140;
+  const KYC_LIST_REVEAL_FAILSAFE_MS = 1100;
+  const companiesFetchDebounceRef = useRef(true);
+
+  const clearListRevealTimer = useCallback(() => {
+    if (listRevealTimerRef.current != null) {
+      window.clearTimeout(listRevealTimerRef.current);
+      listRevealTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleListReveal = useCallback(
+    (delayMs: number, withCascade: boolean) => {
+      clearListRevealTimer();
+      setListRevealOn(false);
+      setListCascadeOn(false);
+      listRevealTimerRef.current = window.setTimeout(() => {
+        setListRevealOn(true);
+        setListCascadeOn(withCascade);
+        listRevealTimerRef.current = null;
+      }, delayMs);
+    },
+    [clearListRevealTimer],
+  );
 
   const loadCompanies = useCallback(async () => {
     const showFullLoader = !companiesLoadedRef.current;
-    if (showFullLoader) setLoadingList(true);
+    if (showFullLoader) {
+      clearListRevealTimer();
+      setListRevealOn(false);
+      setListCascadeOn(false);
+      setLoadingList(true);
+    }
     setListErr(null);
     const q = new URLSearchParams();
     if (search.trim()) q.set('q', search.trim());
@@ -357,21 +396,68 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
     try {
       const rows = await kycJson<CompanyRow[]>(`/api/kyc/companies?${q.toString()}`);
       setCompanies(sortCompaniesByName(Array.isArray(rows) ? rows : []));
+      setListAnimKey((k) => k + 1);
       companiesLoadedRef.current = true;
     } catch (e) {
       setListErr((e as Error).message);
       setCompanies([]);
+      setListAnimKey((k) => k + 1);
     } finally {
-      if (showFullLoader) setLoadingList(false);
+      if (showFullLoader) {
+        setLoadingList(false);
+        scheduleListReveal(KYC_LIST_REVEAL_DELAY_MS, true);
+      } else {
+        clearListRevealTimer();
+        setListCascadeOn(false);
+        setListRevealOn(true);
+      }
     }
-  }, [search, strategicOnly, listIndustry]);
+  }, [search, strategicOnly, listIndustry, clearListRevealTimer, scheduleListReveal]);
+
+  useLayoutEffect(() => {
+    const id = requestAnimationFrame(() => setWorkspaceShellOn(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
+    const debounceMs = companiesFetchDebounceRef.current ? 0 : 250;
+    companiesFetchDebounceRef.current = false;
     const t = setTimeout(() => {
       void loadCompanies();
-    }, 250);
+    }, debounceMs);
     return () => clearTimeout(t);
   }, [loadCompanies]);
+
+  useLayoutEffect(() => {
+    if (loadingList) {
+      clearListRevealTimer();
+      setListRevealOn(false);
+      setListCascadeOn(false);
+    }
+  }, [loadingList, clearListRevealTimer]);
+
+  useEffect(() => {
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion && !loadingList) {
+      clearListRevealTimer();
+      setListRevealOn(true);
+      setListCascadeOn(false);
+    }
+  }, [loadingList, clearListRevealTimer]);
+
+  /** Si el temporizador de reveal falla, forzar visibilidad del listado. */
+  useEffect(() => {
+    if (loadingList || listRevealOn) return;
+    const t = window.setTimeout(() => {
+      setListRevealOn(true);
+      setListCascadeOn(false);
+    }, KYC_LIST_REVEAL_FAILSAFE_MS);
+    return () => window.clearTimeout(t);
+  }, [loadingList, listRevealOn]);
+
+  useEffect(() => () => clearListRevealTimer(), [clearListRevealTimer]);
 
   useEffect(() => {
     /** Mientras carga la ficha, `searchParams` puede seguir siendo el de la URL anterior y pisaría `tab` puesto por `selectCompany(..., { resetTab: true })`. */
@@ -1081,7 +1167,10 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   ) : null;
 
   return (
-    <div className={className ? `${styles.root} ${className}` : styles.root}>
+    <div
+      className={[styles.root, className].filter(Boolean).join(' ')}
+      data-kyc-loading={workspaceShellOn ? undefined : 'true'}
+    >
       {banner && <div className={styles.banner}>{banner}</div>}
       <div className={styles.command}>
         <div className={styles.commandHead}>
@@ -1258,11 +1347,14 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                 <p className={styles.asideListLoaderText}>Cargando empresas…</p>
               </div>
             ) : (
-              <div className={styles.list}>
-                {companies.map((c) => (
+              <div
+                className={`${styles.list} ${listRevealOn ? styles.listReveal : ''} ${listCascadeOn ? styles.listCascade : ''}`}
+              >
+                {companies.map((c, index) => (
                   <div
                     key={c.id}
                     className={`${styles.listItemRow} ${selId === c.id ? styles.listItemRowActive : ''}`}
+                    style={{ '--list-i': index } as React.CSSProperties}
                   >
                     <input
                       type="checkbox"
