@@ -8,6 +8,7 @@ import {
   DragEndEvent,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -93,6 +94,9 @@ function isPreviousDefaultKycFirst(order: LauncherTileId[]): boolean {
 }
 
 const COMMERCIAL_COUNT = COMMERCIAL_TILE_IDS.length;
+
+const LAUNCHER_SORTABLE_COMMERCIAL = 'launcher-commercial';
+const LAUNCHER_SORTABLE_ADMIN = 'launcher-admin';
 
 function canonicalizeLauncherOrder(perm: LauncherTileId[]): LauncherTileId[] {
   const commercial = perm.filter((id) => COMMERCIAL_TILE_ID_SET.has(id));
@@ -422,15 +426,30 @@ function SortableTile({
   id,
   reorderMode,
   aiLocked,
+  containerId,
 }: {
   id: LauncherTileId;
   reorderMode: boolean;
   aiLocked: boolean;
+  containerId: typeof LAUNCHER_SORTABLE_COMMERCIAL | typeof LAUNCHER_SORTABLE_ADMIN;
 }) {
   const tileLocked = aiLocked && (id === 'yubiq' || id === 'rfqAnalysis' || id === 'meddpicc');
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id,
     disabled: !reorderMode,
+    data: {
+      sortable: {
+        containerId,
+      },
+    },
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -448,17 +467,17 @@ function SortableTile({
       data-dragging={isDragging || undefined}
     >
       {reorderMode && (
-        <button
-          type="button"
-          className={styles.dragHandle}
-          {...attributes}
-          {...listeners}
-          aria-label="Arrastrar para reordenar el mosaico dentro de su sección"
-        >
+        <span className={styles.dragHandle} aria-hidden>
           <GripIcon />
-        </button>
+        </span>
       )}
-      <div className={reorderMode ? styles.tileLinkOuter : styles.tileLinkOuterStatic}>
+      <div
+        ref={setActivatorNodeRef}
+        className={reorderMode ? styles.tileLinkOuter : styles.tileLinkOuterStatic}
+        {...(reorderMode ? listeners : undefined)}
+        {...(reorderMode ? attributes : undefined)}
+        aria-label={reorderMode ? 'Arrastrar para reordenar el mosaico dentro de su sección' : undefined}
+      >
         <TileLink
           id={id}
           tileClassName={reorderMode ? styles.tileReorder : undefined}
@@ -517,7 +536,8 @@ export default function LauncherPage() {
   };
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -528,13 +548,15 @@ export default function LauncherPage() {
       const activeId = active.id as LauncherTileId;
       const overId = over.id as LauncherTileId;
 
+      const activeContainer = active.data.current?.sortable?.containerId as string | undefined;
+      const overContainer = over.data.current?.sortable?.containerId as string | undefined;
+      if (!activeContainer || activeContainer !== overContainer) return;
+
       const commercialSeg = commercialSegment(order);
       const adminSeg = administrativeSegment(order);
-      const isCommercial = (id: LauncherTileId) => COMMERCIAL_TILE_ID_SET.has(id);
-      if (isCommercial(activeId) !== isCommercial(overId)) return;
 
       let newOrder: LauncherTileId[];
-      if (isCommercial(activeId)) {
+      if (activeContainer === LAUNCHER_SORTABLE_COMMERCIAL) {
         const oldIndex = commercialSeg.indexOf(activeId);
         const newIndex = commercialSeg.indexOf(overId);
         if (oldIndex < 0 || newIndex < 0) return;
@@ -583,50 +605,80 @@ export default function LauncherPage() {
           aria-label="Bienvenida a Avvale Companion App"
         >
           <div className={styles.welcomeBannerOverlay}>
-            <h3 className={styles.welcomeBannerTitle}>Te damos la bienvenida a Avvale Companion App</h3>
-            <p className={styles.welcomeBannerSubtitle}>
-              Un ecosistema de aplicaciones internas creado para reunir en un único punto de acceso distintas soluciones desarrolladas por Avvale, orientadas a optimizar operaciones, acelerar tareas recurrentes y dar soporte a procesos de negocio y gestión interna.
-            </p>
-            <div className={styles.welcomeBannerActions}>
-              <button
-                type="button"
-                className={styles.welcomeBannerBtnPrimary}
-                onClick={() => setReorderMode((v) => !v)}
-                aria-pressed={reorderMode}
-                aria-label={reorderMode ? 'Salir del modo reordenar mosaicos' : 'Editar orden de mosaicos'}
-              >
-                {reorderMode ? (
-                  <>
-                    <span className={styles.bannerBtnIcon} aria-hidden>
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </span>
-                    Listo
-                  </>
-                ) : (
-                  <>
-                    <span className={styles.bannerBtnIcon} aria-hidden>
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    </span>
-                    Editar mis intereses
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                className={styles.welcomeBannerBtnSecondary}
-                onClick={() => {
-                  setBannerVisible(false);
-                  setReorderMode(false);
-                }}
-                aria-label="Cerrar banner"
-              >
-                Cerrar
-              </button>
+            <button
+              type="button"
+              className={styles.welcomeBannerClose}
+              onClick={() => {
+                setBannerVisible(false);
+                setReorderMode(false);
+              }}
+              aria-label="Cerrar banner de bienvenida"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M18 6L6 18M6 6l12 12"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+            <div className={styles.welcomeBannerInner}>
+              <p className={styles.welcomeBannerKicker}>Avvale Companion</p>
+              <h3 className={styles.welcomeBannerTitle}>Te damos la bienvenida a Avvale Companion App</h3>
+              <p className={styles.welcomeBannerSubtitle}>
+                Un ecosistema de aplicaciones internas creado para reunir en un único punto de acceso distintas
+                soluciones desarrolladas por Avvale, orientadas a optimizar operaciones, acelerar tareas recurrentes y
+                dar soporte a procesos de negocio y gestión interna.
+              </p>
+              <div className={styles.welcomeBannerActions}>
+                <button
+                  type="button"
+                  className={styles.welcomeBannerBtnPrimary}
+                  onClick={() => setReorderMode((v) => !v)}
+                  aria-pressed={reorderMode}
+                  aria-label={reorderMode ? 'Salir del modo reordenar mosaicos' : 'Editar orden de mosaicos'}
+                >
+                  {reorderMode ? (
+                    <>
+                      <span className={styles.bannerBtnIcon} aria-hidden>
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="18"
+                          height="18"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.25"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      </span>
+                      Listo
+                    </>
+                  ) : (
+                    <>
+                      <span className={styles.bannerBtnIcon} aria-hidden>
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="18"
+                          height="18"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </span>
+                      Editar mis intereses
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -722,8 +774,8 @@ export default function LauncherPage() {
           <div className={styles.reorderStripBody}>
             <p className={styles.reorderStripTitle}>Modo edición activo</p>
             <p className={styles.reorderStripText}>
-              Arrastra cada mosaico por el asa dentro de su sección (comercial o administrativa). No se puede mover un
-              mosaico de una categoría a otra. El orden se guarda automáticamente al soltar.
+              Arrastra cada mosaico dentro de su sección (comercial o administrativa). No se puede mover un mosaico de una
+              categoría a otra. El orden se guarda automáticamente al soltar.
             </p>
           </div>
           {isSaving && (
@@ -748,10 +800,20 @@ export default function LauncherPage() {
               >
                 Herramientas comerciales
               </h2>
-              <SortableContext items={commercialSegment(order)} strategy={rectSortingStrategy}>
-                <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder} ${styles.tilesGridAnimated}`} role="list">
+              <SortableContext
+                id={LAUNCHER_SORTABLE_COMMERCIAL}
+                items={commercialSegment(order)}
+                strategy={rectSortingStrategy}
+              >
+                <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder}`} role="list">
                   {commercialSegment(order).map((id) => (
-                    <SortableTile key={id} id={id} reorderMode={reorderMode} aiLocked={aiLocked} />
+                    <SortableTile
+                      key={id}
+                      id={id}
+                      reorderMode={reorderMode}
+                      aiLocked={aiLocked}
+                      containerId={LAUNCHER_SORTABLE_COMMERCIAL}
+                    />
                   ))}
                 </ul>
               </SortableContext>
@@ -766,13 +828,20 @@ export default function LauncherPage() {
               >
                 Procesos administrativos
               </h2>
-              <SortableContext items={administrativeSegment(order)} strategy={rectSortingStrategy}>
-                <ul
-                  className={`${styles.tilesGrid} ${styles.tilesGridReorder} ${styles.tilesGridAnimated}`}
-                  role="list"
-                >
+              <SortableContext
+                id={LAUNCHER_SORTABLE_ADMIN}
+                items={administrativeSegment(order)}
+                strategy={rectSortingStrategy}
+              >
+                <ul className={`${styles.tilesGrid} ${styles.tilesGridReorder}`} role="list">
                   {administrativeSegment(order).map((id) => (
-                    <SortableTile key={id} id={id} reorderMode={reorderMode} aiLocked={aiLocked} />
+                    <SortableTile
+                      key={id}
+                      id={id}
+                      reorderMode={reorderMode}
+                      aiLocked={aiLocked}
+                      containerId={LAUNCHER_SORTABLE_ADMIN}
+                    />
                   ))}
                 </ul>
               </SortableContext>
