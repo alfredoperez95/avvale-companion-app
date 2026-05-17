@@ -734,6 +734,7 @@
     }
     .stack-box .k { font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
     .stack-box .v { font-family: "72", sans-serif; font-size: 11.5pt; font-weight: 700; color: var(--shell-header); margin-top: 2px; line-height: 1.2; }
+    .stack-box .v.vNatural { font-weight: 500; font-size: 10pt; line-height: 1.45; }
     .stack-box .sub { margin-top: 5px; }
 
     /* ─── ORG ─── */
@@ -1426,7 +1427,7 @@ function updateToolbarChrome() {
 async function fetchTranslatedReportEn() {
   if (window.__kycReportEnPayload) return window.__kycReportEnPayload;
   const token = localStorage.getItem('token');
-  const r = await fetch('/kyc/companies/' + companyId + '/report-translate-en', {
+  const r = await fetch('/api/kyc/companies/' + companyId + '/report-translate-en', {
     method: 'POST',
     headers: {
       Authorization: 'Bearer ' + token,
@@ -1532,6 +1533,149 @@ function toArr(v) {
   return [String(v)];
 }
 function asStr(v) { return v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); }
+
+const STACK_KEY_LABELS_ES = {
+  systems: 'Sistemas',
+  system: 'Sistema',
+  modules: 'Módulos',
+  modulos: 'Módulos',
+  erp_modulos: 'Módulos ERP',
+  deployment: 'Despliegue',
+  integration: 'Integración',
+  integrations: 'Integraciones',
+  integracion: 'Integración',
+  middleware: 'Middleware',
+  cloud: 'Cloud',
+  infra: 'Infraestructura',
+  hosting: 'Hosting',
+  provider: 'Proveedor',
+  vendor: 'Proveedor',
+  platform: 'Plataforma',
+  product: 'Producto',
+  version: 'Versión',
+  notes: 'Notas',
+  notas: 'Notas',
+  previous: 'Anterior',
+  current: 'Actual',
+  db_farmavenix: 'Base de datos (Farmavenix)',
+  s4hana: 'S/4HANA',
+  farmavenix: 'Farmavenix',
+};
+const STACK_KEY_LABELS_EN = {
+  systems: 'Systems',
+  system: 'System',
+  modules: 'Modules',
+  modulos: 'Modules',
+  erp_modulos: 'ERP modules',
+  deployment: 'Deployment',
+  integration: 'Integration',
+  integrations: 'Integrations',
+  integracion: 'Integration',
+  middleware: 'Middleware',
+  cloud: 'Cloud',
+  infra: 'Infrastructure',
+  hosting: 'Hosting',
+  provider: 'Provider',
+  vendor: 'Vendor',
+  platform: 'Platform',
+  product: 'Product',
+  version: 'Version',
+  notes: 'Notes',
+  notas: 'Notes',
+  previous: 'Previous',
+  current: 'Current',
+  db_farmavenix: 'Farmavenix database',
+  s4hana: 'S/4HANA',
+  farmavenix: 'Farmavenix',
+};
+
+function stackKeyLabel(k) {
+  const nk = String(k).toLowerCase();
+  const pack = reportLang === 'en' ? STACK_KEY_LABELS_EN : STACK_KEY_LABELS_ES;
+  return pack[nk] || prettyLabel(k);
+}
+
+function unwrapStackValue(v) {
+  if (typeof v !== 'string') return v;
+  const t = v.trim();
+  if (!t) return v;
+  if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+    try {
+      return JSON.parse(t);
+    } catch {
+      return v;
+    }
+  }
+  return v;
+}
+
+/** Convierte valores de stack (objetos/arrays/JSON en string) a texto legible para el informe impreso. */
+function formatStackValue(v, depth) {
+  if (depth === undefined) depth = 0;
+  v = unwrapStackValue(v);
+  if (v == null || v === '') return '';
+  if (typeof v === 'boolean') {
+    return v ? (reportLang === 'en' ? 'Yes' : 'Sí') : (reportLang === 'en' ? 'No' : 'No');
+  }
+  if (typeof v === 'number') return String(v);
+  if (typeof v === 'string') return v.trim();
+
+  if (Array.isArray(v)) {
+    const parts = v
+      .map((x) => formatStackValue(x, depth + 1))
+      .filter(Boolean);
+    if (!parts.length) return '';
+    const sep = depth > 0 ? ', ' : (reportLang === 'en' ? '; ' : '; ');
+    return parts.join(sep);
+  }
+
+  if (typeof v === 'object') {
+    const entries = Object.entries(v).filter(([, val]) => val != null && val !== '');
+    if (!entries.length) return '';
+
+    if (entries.length === 1) {
+      const [k, val] = entries[0];
+      if (val !== null && typeof val !== 'object') {
+        return stackKeyLabel(k) + ': ' + formatStackValue(val, depth + 1);
+      }
+    }
+
+    const sentenceSep = depth === 0 ? '. ' : '; ';
+    return entries
+      .map(([k, val]) => {
+        const label = stackKeyLabel(k);
+        if (val !== null && typeof val === 'object') {
+          if (Array.isArray(val)) {
+            const inner = formatStackValue(val, depth + 1);
+            return inner ? label + ': ' + inner : '';
+          }
+          const innerParts = Object.entries(val)
+            .filter(([, iv]) => iv != null && iv !== '')
+            .map(([ik, iv]) => {
+              const fv = formatStackValue(iv, depth + 2);
+              if (!fv) return '';
+              if (typeof iv === 'object' && iv !== null && !Array.isArray(iv)) {
+                return stackKeyLabel(ik) + ': ' + fv;
+              }
+              return stackKeyLabel(ik) + ': ' + fv;
+            })
+            .filter(Boolean);
+          return innerParts.length ? label + ': ' + innerParts.join('; ') : '';
+        }
+        const formatted = formatStackValue(val, depth + 1);
+        return formatted ? label + ': ' + formatted : '';
+      })
+      .filter(Boolean)
+      .join(sentenceSep);
+  }
+
+  return String(v);
+}
+
+function stackValueIsStructured(v) {
+  v = unwrapStackValue(v);
+  return v !== null && typeof v === 'object';
+}
 
 /** Misma jerarquía y orden de carril que `KycOrgPanel.tsx` (VP/Dirección primero en el tablero). */
 const ORG_LEVELS_REP_ES = [
@@ -2053,16 +2197,27 @@ function render(data, openQs) {
   `;
 
   const stackBox = (label, value, sub, color) => {
-    if (!value) return '';
+    const main = formatStackValue(value);
+    const subItems = (sub || [])
+      .flatMap((x) => {
+        const u = unwrapStackValue(x);
+        if (Array.isArray(u)) return u;
+        if (u && typeof u === 'object') return [formatStackValue(u)];
+        return toArr(x);
+      })
+      .map((x) => formatStackValue(x))
+      .filter(Boolean);
+    if (!main && !subItems.length) return '';
+    const vClass = stackValueIsStructured(value) ? 'v vNatural' : 'v';
     return `<div class="stack-box" style="--box-color:${color}">
       <div class="k">${label}</div>
-      <div class="v">${escapeHtml(value)}</div>
-      ${sub && sub.length ? `<div class="sub">${sub.map((x) => `<span class="chip chip-blue">${escapeHtml(asStr(x))}</span>`).join('')}</div>` : ''}
+      ${main ? `<div class="${vClass}">${escapeHtml(main)}</div>` : ''}
+      ${subItems.length ? `<div class="sub">${subItems.map((x) => `<span class="chip chip-blue">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
     </div>`;
   };
   const sectorialesArr = toArr(stack.sectoriales || stack.sectorial);
   const doloresArr = toArr(stack.dolores || stack.pain_points);
-  const partner = asStr(stack.partner_actual || stack.partner);
+  const partner = formatStackValue(stack.partner_actual || stack.partner);
 
   const sheet_tech = `
     <section class="sheet">
@@ -2077,19 +2232,19 @@ function render(data, openQs) {
           <div class="stack-header">
             ${partner ? `<div class="partner-badge"><span class="k">${escapeHtml(tr('partnerLbl'))}</span><strong>${escapeHtml(partner)}</strong></div>` : ''}
           </div>
-          ${doloresArr.length ? doloresArr.map((d) => `<div class="pain">${kycIcoAlert()}<span>${escapeHtml(asStr(d))}</span></div>`).join('') : ''}
+          ${doloresArr.length ? doloresArr.map((d) => `<div class="pain">${kycIcoAlert()}<span>${escapeHtml(formatStackValue(d))}</span></div>`).join('') : ''}
           <div class="stack-grid">
-            ${stackBox('ERP', asStr(stack.erp), toArr(stack.erp_modulos || stack.modulos), '#0a6ed1')}
-            ${stackBox('CRM', asStr(stack.crm), null, '#0854a0')}
-            ${stackBox('Cloud / Infra', asStr(stack.cloud || stack.infra), null, '#0284c7')}
-            ${stackBox(tr('stackBI'), asStr(stack.bi || stack.analytics), null, '#107e3e')}
+            ${stackBox('ERP', stack.erp, toArr(stack.erp_modulos || stack.modulos), '#0a6ed1')}
+            ${stackBox('CRM', stack.crm, null, '#0854a0')}
+            ${stackBox('Cloud / Infra', stack.cloud || stack.infra, null, '#0284c7')}
+            ${stackBox(tr('stackBI'), stack.bi || stack.analytics, null, '#107e3e')}
             ${sectorialesArr.length ? `<div class="stack-box" style="--box-color:#6c32a9">
               <div class="k">${escapeHtml(tr('stackSectorial'))}</div>
-              <div class="sub" style="margin-top:6px">${sectorialesArr.map((x) => `<span class="chip chip-violet">${escapeHtml(asStr(x))}</span>`).join('')}</div>
+              <div class="sub" style="margin-top:6px">${sectorialesArr.map((x) => `<span class="chip chip-violet">${escapeHtml(formatStackValue(x))}</span>`).join('')}</div>
             </div>` : ''}
-            ${stackBox(tr('stackIntegration'), asStr(stack.integracion || stack.middleware || stack.btp), null, '#e9730c')}
+            ${stackBox(tr('stackIntegration'), stack.integracion || stack.middleware || stack.btp, null, '#e9730c')}
           </div>
-          ${stack.notes || stack.notas ? `<div style="margin-top:14px;font-size:10pt;color:var(--muted);font-style:italic">${escapeHtml(asStr(stack.notes || stack.notas))}</div>` : ''}
+          ${stack.notes || stack.notas ? `<div style="margin-top:14px;font-size:10pt;color:var(--muted);font-style:italic">${escapeHtml(formatStackValue(stack.notes || stack.notas))}</div>` : ''}
         </div>
       </div>
       ${kycReportFooter(company.name, 7)}
