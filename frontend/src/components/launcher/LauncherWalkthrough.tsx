@@ -2,20 +2,15 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { isDialogEnterTargetInteractive } from '@/lib/dialog-keyboard';
+import {
+  CHROME_WEB_STORE_COMPANION_URL,
+  LAUNCHER_EXTENSION_HELP_URL,
+} from '@/lib/companion-extension';
 import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './LauncherWalkthrough.module.css';
 
 export const LAUNCHER_WALKTHROUGH_STORAGE_KEY = 'avvale_launcher_walkthrough_v1';
 export const LAUNCHER_WALKTHROUGH_DISMISSED = 'dismissed';
-
-const EXT_HELP_URL =
-  typeof process !== 'undefined' && process.env.NEXT_PUBLIC_LAUNCHER_EXTENSION_HELP_URL
-    ? process.env.NEXT_PUBLIC_LAUNCHER_EXTENSION_HELP_URL.trim()
-    : '';
-
-/** Ficha oficial en Chrome Web Store (instalación recomendada). */
-const CHROME_WEB_STORE_COMPANION_URL =
-  'https://chromewebstore.google.com/detail/avvale-companion/afpdgamffgonkjblodeiefibbobmaibg';
 
 const WALKTHROUGH_CLOSE_MS = 400;
 
@@ -53,8 +48,8 @@ function WalkthroughStepExtensionBody() {
           <strong>HubSpot</strong> o el envío de datos a <strong>Yubiq</strong>). No necesitas instalar nada más en este
           paso. Es totalmente compatible con Microsoft Edge.
         </p>
-        {EXT_HELP_URL ? (
-          <a className={styles.docLink} href={EXT_HELP_URL} target="_blank" rel="noopener noreferrer">
+        {LAUNCHER_EXTENSION_HELP_URL ? (
+          <a className={styles.docLink} href={LAUNCHER_EXTENSION_HELP_URL} target="_blank" rel="noopener noreferrer">
             Documentación interna de la extensión
           </a>
         ) : null}
@@ -112,8 +107,8 @@ function WalkthroughStepExtensionBody() {
           instalarla desde Chrome Web Store, <strong>recarga la página</strong>.
         </p>
       ) : null}
-      {(probe === 'checking' || probe === 'no') && EXT_HELP_URL ? (
-        <a className={styles.docLink} href={EXT_HELP_URL} target="_blank" rel="noopener noreferrer">
+      {(probe === 'checking' || probe === 'no') && LAUNCHER_EXTENSION_HELP_URL ? (
+        <a className={styles.docLink} href={LAUNCHER_EXTENSION_HELP_URL} target="_blank" rel="noopener noreferrer">
           Documentación interna de la extensión
         </a>
       ) : null}
