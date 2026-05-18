@@ -303,7 +303,8 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatClosing, setChatClosing] = useState(false);
   const [chatPortalReady, setChatPortalReady] = useState(false);
-  const chatCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** En cliente el id de `window.setTimeout` es number (Node @types usa Timeout). */
+  const chatCloseTimerRef = useRef<number | null>(null);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
@@ -353,7 +354,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   const [listRevealOn, setListRevealOn] = useState(false);
   /** Cascada solo en la primera carga; al filtrar el listado aparece de golpe. */
   const [listCascadeOn, setListCascadeOn] = useState(false);
-  const listRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listRevealTimerRef = useRef<number | null>(null);
 
   const KYC_LIST_REVEAL_DELAY_MS = 140;
   const KYC_LIST_REVEAL_FAILSAFE_MS = 1100;
@@ -767,7 +768,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
   useEffect(() => {
     if (!chatClosing) return;
     const duration = kycChatCloseDurationMs();
-    chatCloseTimerRef.current = setTimeout(() => {
+    chatCloseTimerRef.current = window.setTimeout(() => {
       chatCloseTimerRef.current = null;
       setChatClosing(false);
       finishCloseChat();
