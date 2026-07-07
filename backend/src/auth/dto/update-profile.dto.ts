@@ -16,7 +16,15 @@ export const APPEARANCE_VALUES = ['microsoft', 'fiori'] as const;
 export type AppearanceValue = (typeof APPEARANCE_VALUES)[number];
 
 /** IDs de mosaicos del App Launcher (permutación completa). */
-export const LAUNCHER_TILE_IDS = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc', 'kyc'] as const;
+export const LAUNCHER_TILE_IDS = [
+  'activations',
+  'pipeline',
+  'yubiq',
+  'rfqAnalysis',
+  'meddpicc',
+  'kyc',
+  'administrativeProcesses',
+] as const;
 export type LauncherTileId = (typeof LAUNCHER_TILE_IDS)[number];
 
 export class UpdateProfileDto {
@@ -52,13 +60,14 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMinSize(6)
-  @ArrayMaxSize(6)
+  @ArrayMinSize(7)
+  @ArrayMaxSize(7)
   @ArrayUnique()
   @IsString({ each: true })
   @IsIn(LAUNCHER_TILE_IDS, {
     each: true,
-    message: 'Cada id de mosaico debe ser activations, pipeline, yubiq, rfqAnalysis, meddpicc o kyc',
+    message:
+      'Cada id de mosaico debe ser activations, pipeline, yubiq, rfqAnalysis, meddpicc, kyc o administrativeProcesses',
   })
   launcherTileOrder?: LauncherTileId[];
 }

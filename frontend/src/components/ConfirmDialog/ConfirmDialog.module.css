@@ -17,7 +17,18 @@
   justify-content: center;
   z-index: 1100;
   padding: var(--fiori-space-4);
+  box-sizing: border-box;
   animation: app-overlay-enter 0.22s var(--app-ease-out, ease-out) both;
+}
+
+.overlayScoped {
+  position: fixed;
+  top: var(--dialog-overlay-top, 0);
+  left: var(--dialog-overlay-left, 0);
+  width: var(--dialog-overlay-width, 100%);
+  height: var(--dialog-overlay-height, 100%);
+  min-height: unset;
+  inset: auto;
 }
 
 .dialog {
@@ -26,8 +37,11 @@
   border-radius: 0.75rem;
   max-width: 24rem;
   width: 100%;
-  box-shadow: 0 8px 32px rgb(0 0 0 / 22%);
+  margin: auto;
+  flex-shrink: 0;
+  max-height: calc(100% - 2 * var(--fiori-space-4));
   overflow: hidden;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 22%);
   animation: app-dialog-enter 0.32s var(--app-ease-out, ease-out) both;
 }
 

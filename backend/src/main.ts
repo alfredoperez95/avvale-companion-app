@@ -62,6 +62,7 @@ async function bootstrap() {
       return callback(null, false);
     },
     credentials: true,
+    exposedHeaders: ['Content-Disposition', 'X-Export-Expires-At'],
   });
   const port = process.env.PORT ?? 4000;
   await app.listen(port, '0.0.0.0');

@@ -72,6 +72,64 @@ export class AnthropicClientService {
     return { text: String(text), modelId: id };
   }
 
+  async extractJsonFromImage(params: {
+    apiKey: string;
+    model: AnthropicModelChoice;
+    prompt: string;
+    imageBase64: string;
+    mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+    maxTokens?: number;
+  }): Promise<{ text: string; modelId: string }> {
+    let id = modelId(params.model);
+    try {
+      id = await this.resolveAvailableModelId(params.apiKey, params.model);
+    } catch {
+      // mantener fallback
+    }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'x-api-key': params.apiKey,
+      },
+      body: JSON.stringify({
+        model: id,
+        max_tokens: params.maxTokens ?? 1200,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: params.mediaType,
+                  data: params.imageBase64,
+                },
+              },
+              { type: 'text', text: params.prompt },
+            ],
+          },
+        ],
+      }),
+    });
+    const bodyText = await res.text();
+    if (!res.ok) {
+      const snippet = bodyText.length > 400 ? `${bodyText.slice(0, 400)}…` : bodyText;
+      throw new Error(`Anthropic ${res.status}: ${snippet}`);
+    }
+    const json = JSON.parse(bodyText) as {
+      content?: { type?: string; text?: string }[];
+    };
+    const text =
+      json.content?.find((c) => c.type === 'text')?.text ??
+      json.content?.[0]?.text ??
+      '';
+    return { text: String(text), modelId: id };
+  }
+
   /**
    * Mensajes multi-turn (chat). `messages` alterna user/assistant; el último suele ser user.
    */

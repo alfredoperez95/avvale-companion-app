@@ -19,6 +19,7 @@ import { YubiqModule } from './yubiq/yubiq.module';
 import { RfqAnalysisModule } from './rfq-analysis/rfq-analysis.module';
 import { MeddpiccModule } from './meddpicc/meddpicc.module';
 import { KycModule } from './kyc/kyc.module';
+import { ExpensesModule } from './expenses/expenses.module';
 import * as path from 'path';
 
 @Module({
@@ -60,6 +61,7 @@ import * as path from 'path';
     RfqAnalysisModule,
     MeddpiccModule,
     KycModule,
+    ExpensesModule,
   ],
   controllers: [HealthController],
 })

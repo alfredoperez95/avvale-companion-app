@@ -32,7 +32,7 @@ import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './launcher.module.css';
 
 const COMMERCIAL_TILE_IDS = ['kyc', 'pipeline', 'rfqAnalysis', 'meddpicc'] as const satisfies readonly LauncherTileId[];
-const ADMIN_TILE_IDS = ['activations', 'yubiq'] as const satisfies readonly LauncherTileId[];
+const ADMIN_TILE_IDS = ['activations', 'yubiq', 'administrativeProcesses'] as const satisfies readonly LauncherTileId[];
 
 const COMMERCIAL_TILE_ID_SET = new Set<LauncherTileId>(COMMERCIAL_TILE_IDS);
 const ADMIN_TILE_ID_SET = new Set<LauncherTileId>(ADMIN_TILE_IDS);
@@ -70,6 +70,7 @@ const PREVIOUS_DEFAULT_KYC_FIRST: readonly LauncherTileId[] = [
   'yubiq',
 ];
 
+const LEGACY_SIX_TILES = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc', 'kyc'] as const;
 const LEGACY_FIVE_TILES = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc'] as const;
 
 function isLegacyDefaultTileOrder(order: LauncherTileId[]): boolean {
@@ -159,7 +160,14 @@ function normalizeTileOrder(raw: unknown): LauncherTileId[] {
     new Set(unique).size === 5 &&
     LEGACY_FIVE_TILES.every((id) => unique.includes(id));
   if (legacyFiveOk) {
-    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'kyc']);
+    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'kyc', 'administrativeProcesses']);
+  }
+  const legacySixOk =
+    unique.length === 6 &&
+    new Set(unique).size === 6 &&
+    LEGACY_SIX_TILES.every((id) => unique.includes(id));
+  if (legacySixOk) {
+    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'administrativeProcesses']);
   }
   const legacyFour = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis'] as const;
   if (
@@ -167,7 +175,7 @@ function normalizeTileOrder(raw: unknown): LauncherTileId[] {
     new Set(unique).size === 4 &&
     unique.every((id) => legacyFour.includes(id as (typeof legacyFour)[number]))
   ) {
-    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'meddpicc', 'kyc']);
+    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'meddpicc', 'kyc', 'administrativeProcesses']);
   }
   return [...DEFAULT_TILE_ORDER];
 }
@@ -179,6 +187,7 @@ const TILE_ACCENT: Record<LauncherTileId, string> = {
   rfqAnalysis: styles.tileAccentRfq,
   meddpicc: styles.tileAccentMeddpicc,
   kyc: styles.tileAccentKyc,
+  administrativeProcesses: styles.tileAccentAdministrativeProcesses,
 };
 
 function TileLink({
@@ -405,6 +414,25 @@ function TileLink({
         </Link>
       );
     }
+    case 'administrativeProcesses':
+      return (
+        <Link
+          href="/launcher/expenses-process/expenses"
+          className={styles.tileLink}
+          aria-labelledby="tile-expenses-process-heading"
+        >
+          <article className={tile}>
+            <h3 id="tile-expenses-process-heading" className={styles.tileTitle}>
+              Gastos
+            </h3>
+            <p className={styles.tileDesc}>
+              Sube recibos, extrae los datos con IA y conserva el archivo para futuras automatizaciones.
+            </p>
+            <span className={styles.tileCta}>Abrir Gastos →</span>
+            <span className={`${styles.tileIcon} ${styles.tileIconAdministrativeProcesses}`} aria-hidden="true" />
+          </article>
+        </Link>
+      );
     default:
       return null;
   }

@@ -42,6 +42,11 @@ enum ProjectType {
   SW
 }
 
+enum ExpenseStatus {
+  PENDING_REVIEW @map("pending_review")
+  PROCESSED      @map("processed")
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -67,6 +72,8 @@ model User {
   magicLoginTokens   MagicLoginToken[]
   rfqAnalyses        RfqAnalysis[]
   meddpiccDeals      MeddpiccDeal[]
+  expenses           Expense[]
+  expenseMonthExports ExpenseMonthExport[]
   sentInvitations    UserInvitation[] @relation("UserInvitedBy")
   kycChatSessions    KycChatSession[]
   kycFacts           KycFact[]
@@ -241,6 +248,50 @@ model RfqAnalysisJobEvent {
 
   @@index([analysisId])
   @@map("rfq_analysis_job_events")
+}
+
+model Expense {
+  id               String        @id @default(uuid())
+  userId           String        @map("user_id")
+  amount           Decimal?      @db.Decimal(12, 2)
+  type             String?       @db.VarChar(128)
+  description      String?       @db.Text
+  date             DateTime?     @map("expense_date")
+  fileUrl          String        @map("file_url") @db.VarChar(1024)
+  originalFileName String        @map("original_file_name") @db.VarChar(512)
+  storagePath      String        @map("storage_path") @db.VarChar(1024)
+  mimeType         String        @map("mime_type") @db.VarChar(255)
+  status           ExpenseStatus @default(PENDING_REVIEW)
+  extractionError  String?       @map("extraction_error") @db.Text
+  rawModelOutput   String?       @map("raw_model_output") @db.LongText
+  modelId          String?       @map("model_id") @db.VarChar(128)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([date])
+  @@map("expenses")
+}
+
+model ExpenseMonthExport {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  year        Int
+  month       Int
+  token       String   @unique @db.VarChar(64)
+  storagePath String   @map("storage_path") @db.VarChar(1024)
+  expenseIds  Json     @map("expense_ids")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("expense_month_exports")
 }
 
 /** Tokens de un solo uso para login por enlace mágico (hash almacenado, no el token en claro). */

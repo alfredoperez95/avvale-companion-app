@@ -146,6 +146,28 @@ const fioriTabsKyc: {
   },
 ];
 
+const fioriTabsAdministrativeProcesses: {
+  href: string;
+  label: string;
+  icon?: IconName;
+  iconOnly?: boolean;
+  isActive: (pathname: string | null) => boolean;
+}[] = [
+  {
+    href: '/launcher/expenses-process/expenses',
+    label: 'Gastos',
+    isActive: (p) =>
+      p != null &&
+      p.startsWith('/launcher/expenses-process/expenses') &&
+      !p.startsWith('/launcher/expenses-process/expenses/new'),
+  },
+  {
+    href: '/launcher/expenses-process/expenses/new',
+    label: 'Nuevo gasto',
+    isActive: (p) => p != null && p.startsWith('/launcher/expenses-process/expenses/new'),
+  },
+];
+
 function getInitials(name?: string | null, lastName?: string | null, email?: string): string {
   const n = (name ?? '').trim();
   const l = (lastName ?? '').trim();
@@ -171,6 +193,8 @@ function getPageHeader(pathname: string | null): { title: string } {
   if (pathname.startsWith('/launcher/rfq-analysis')) return { title: 'Análisis RFQs' };
   if (pathname.startsWith('/launcher/kyc')) return { title: 'KYC' };
   if (pathname.startsWith('/launcher/meddpicc')) return { title: 'MEDDPICC' };
+  if (pathname.startsWith('/launcher/expenses-process/expenses')) return { title: 'Gastos' };
+  if (pathname.startsWith('/launcher/expenses-process')) return { title: 'Gastos' };
   if (pathname.startsWith('/launcher/activations/activate')) return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/configuration')) return { title: 'Configuración' };
   if (pathname.startsWith('/admin')) return { title: 'Administración' };
@@ -200,9 +224,11 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
             ? fioriTabsKyc
             : pathname?.startsWith('/launcher/meddpicc')
               ? fioriTabsMeddpicc
-              : pathname?.startsWith('/launcher/yubiq')
-                ? fioriTabsYubiq
-                : fioriTabsActivations;
+              : pathname?.startsWith('/launcher/expenses-process')
+                ? fioriTabsAdministrativeProcesses
+                : pathname?.startsWith('/launcher/yubiq')
+                  ? fioriTabsYubiq
+                  : fioriTabsActivations;
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
 
@@ -304,7 +330,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
           </div>
         </div>
       </header>
-      <div className={styles.body}>
+      <div id="app-shell-body" className={styles.body}>
         {theme === 'fiori' ? (
           <>
             {pathname !== '/launcher' && (
@@ -353,7 +379,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
                 </div>
               </>
             )}
-            <div className={styles.mainFooterWrap}>
+            <div id="app-main-footer-wrap" className={styles.mainFooterWrap}>
               <main className={styles.main} id="main-content">
                 <MainContentMotion>{children}</MainContentMotion>
               </main>
@@ -390,7 +416,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
                 </Link>
               )}
             </aside>
-            <div className={styles.mainFooterWrap}>
+            <div id="app-main-footer-wrap" className={styles.mainFooterWrap}>
               <main className={styles.main} id="main-content">
                 <MainContentMotion>{children}</MainContentMotion>
               </main>

@@ -31,7 +31,7 @@ export default function AsistenciaLayout({ children }: { children: React.ReactNo
           </div>
         </div>
       </header>
-      <div className={styles.mainFooterWrap}>
+      <div id="app-main-footer-wrap" className={styles.mainFooterWrap}>
         <div className={styles.main}>{children}</div>
         <Footer />
       </div>

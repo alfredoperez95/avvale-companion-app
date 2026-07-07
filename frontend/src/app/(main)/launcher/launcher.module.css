@@ -666,7 +666,8 @@
 .tileAccentYubiq,
 .tileAccentRfq,
 .tileAccentMeddpicc,
-.tileAccentKyc {
+.tileAccentKyc,
+.tileAccentAdministrativeProcesses {
   border-top: 3px solid var(--fiori-shell-bg);
 }
 
@@ -871,6 +872,10 @@
   content: "\e0de";
 }
 
+:global([data-theme="fiori"]) .tileIconAdministrativeProcesses::before {
+  content: "\e0b8";
+}
+
 /* Microsoft: icono tipo documento/app en el tile de Activaciones */
 :global([data-theme="microsoft"]) .tileIcon::before {
   content: "\e026";
@@ -890,6 +895,10 @@
 
 :global([data-theme="microsoft"]) .tileIconKyc::before {
   content: "\e0de";
+}
+
+:global([data-theme="microsoft"]) .tileIconAdministrativeProcesses::before {
+  content: "\e0b8";
 }
 
 .tileReorder {

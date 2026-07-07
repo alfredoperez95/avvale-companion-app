@@ -1,7 +1,14 @@
 'use client';
 
-import { useEffect, useId, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { isDialogEnterTargetInteractive } from '@/lib/dialog-keyboard';
+import {
+  isScopedDialogPortalHost,
+  lockDialogScroll,
+  resolveDialogPortalHost,
+  syncDialogOverlayBounds,
+} from '@/lib/dialog-portal';
 import styles from './ConfirmDialog.module.css';
 
 export type ConfirmDialogProps = {
@@ -45,6 +52,13 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const titleId = useId();
+  const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalHost(resolveDialogPortalHost());
+  }, []);
+
+  const scopedOverlay = isScopedDialogPortalHost(portalHost);
 
   const resolvedConfirmVariant: 'primary' | 'danger' =
     confirmVariant ?? (variant === 'danger' ? 'danger' : 'primary');
@@ -54,6 +68,16 @@ export function ConfirmDialog({
     bodyContent != null &&
     bodyContent !== '' &&
     !(typeof bodyContent === 'string' && bodyContent.trim() === '');
+
+  useEffect(() => {
+    if (!open || !portalHost) return;
+    const unlockScroll = lockDialogScroll(portalHost);
+    const unsyncBounds = scopedOverlay ? syncDialogOverlayBounds(portalHost) : () => {};
+    return () => {
+      unlockScroll();
+      unsyncBounds();
+    };
+  }, [open, portalHost, scopedOverlay]);
 
   useEffect(() => {
     if (!open) return;
@@ -72,15 +96,21 @@ export function ConfirmDialog({
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onCancel, onConfirm, confirmBusy]);
 
-  if (!open) return null;
+  if (!open || !portalHost) return null;
 
   const handleOverlayClick = () => {
     if (!confirmBusy) onCancel();
   };
 
-  return (
+  const dialog = (
     <div
-      className={[styles.overlay, overlayClassName].filter(Boolean).join(' ')}
+      className={[
+        styles.overlay,
+        scopedOverlay ? styles.overlayScoped : null,
+        overlayClassName,
+      ]
+        .filter(Boolean)
+        .join(' ')}
       role="presentation"
       onClick={handleOverlayClick}
     >
@@ -125,4 +155,6 @@ export function ConfirmDialog({
       </div>
     </div>
   );
+
+  return createPortal(dialog, portalHost);
 }

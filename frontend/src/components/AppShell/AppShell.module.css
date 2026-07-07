@@ -306,10 +306,16 @@
 }
 
 .body {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
   padding-top: var(--fiori-shell-height);
+}
+
+.body[data-confirm-dialog-open] {
+  overflow: hidden !important;
+  overscroll-behavior: none;
 }
 
 .nav {
@@ -355,6 +361,7 @@
 
 /* Wrapper main + footer: ocupa espacio restante y crece con el contenido para que el footer quede al final o abajo del todo */
 .mainFooterWrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
