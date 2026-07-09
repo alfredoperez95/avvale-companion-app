@@ -677,7 +677,7 @@
 
 .expenseTableHead {
   display: none;
-  grid-template-columns: 7.25rem minmax(0, 1fr) 9.5rem 5.75rem;
+  grid-template-columns: 7.25rem minmax(0, 1fr) 8rem 9.5rem 5.75rem;
   gap: var(--fiori-space-3);
   align-items: center;
   padding: var(--fiori-space-2) var(--fiori-space-5);
@@ -698,6 +698,10 @@
 
 .expenseTableHeadActions {
   justify-self: end;
+}
+
+.expenseTableHeadPaid {
+  justify-self: center;
 }
 
 .sortButton {
@@ -958,6 +962,7 @@
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
       "date type"
+      "date paid"
       "date amount";
     column-gap: var(--fiori-space-3);
     align-items: center;
@@ -976,6 +981,12 @@
     grid-area: amount;
     justify-self: start;
     margin-top: 0.2rem;
+  }
+
+  .expensePaidBadge {
+    grid-area: paid;
+    justify-self: start;
+    margin-top: 0.25rem;
   }
 
   .expenseActions {
@@ -1004,14 +1015,14 @@
 
 @media (min-width: 48rem) {
   .expenseRow {
-    grid-template-columns: 7.25rem minmax(0, 1fr) 9.5rem 5.75rem;
+    grid-template-columns: 7.25rem minmax(0, 1fr) 8rem 9.5rem 5.75rem;
     align-items: center;
     padding-top: 0;
     padding-bottom: 0;
   }
 
   .expenseRowLink {
-    grid-column: 1 / 4;
+    grid-column: 1 / 5;
     grid-template-columns: subgrid;
     align-items: center;
     gap: var(--fiori-space-3);
@@ -1026,6 +1037,7 @@
 
   .expenseDate,
   .expenseTypeCell,
+  .expensePaidBadge,
   .expenseAmount {
     grid-area: auto;
   }
@@ -1256,6 +1268,34 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--fiori-text);
+}
+
+.expensePaidBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  min-width: 3.25rem;
+  min-height: 1.65rem;
+  padding: 0 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.expensePaidBadgeActive {
+  border-color: color-mix(in srgb, #16a34a 22%, var(--fiori-border-light));
+  background: color-mix(in srgb, #16a34a 12%, var(--fiori-surface));
+  color: #15803d;
+}
+
+.expensePaidBadgeInactive {
+  border-color: var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-text-secondary) 7%, var(--fiori-surface));
+  color: var(--fiori-text-secondary);
 }
 
 @media (max-width: 47.99rem) {

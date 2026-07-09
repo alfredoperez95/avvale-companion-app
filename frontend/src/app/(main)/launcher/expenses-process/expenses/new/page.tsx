@@ -220,10 +220,11 @@ export default function NewExpensePage() {
     setSaving(true);
     setError(null);
     try {
+      const payload = { amount: Number(amount), type, description: description.trim(), date, paidByCompany };
       const res = await apiFetch(`/api/expenses/${expense.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(amount), type, description: description.trim(), date, paidByCompany }),
+        body: JSON.stringify(payload),
       });
       if (res.status === 401) {
         redirectToLogin();

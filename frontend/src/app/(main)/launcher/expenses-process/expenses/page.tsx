@@ -516,6 +516,7 @@ export default function ExpensesPage() {
             <div className={styles.expenseTableHead} aria-hidden="true">
               <span>Fecha</span>
               <span>Tipología</span>
+              <span className={styles.expenseTableHeadPaid}>Paid company</span>
               <button
                 type="button"
                 className={`${styles.sortButton} ${styles.sortButtonActive}`}
@@ -566,6 +567,13 @@ export default function ExpensesPage() {
                             <span className={styles.expenseDescription}>{expense.description}</span>
                           ) : null}
                         </span>
+                      </span>
+                      <span
+                        className={`${styles.expensePaidBadge} ${
+                          expense.paidByCompany ? styles.expensePaidBadgeActive : styles.expensePaidBadgeInactive
+                        }`}
+                      >
+                        {expense.paidByCompany ? 'Sí' : 'No'}
                       </span>
                       <span className={styles.expenseAmount}>{formatCurrency(expense.amount ?? 0)}</span>
                     </Link>
