@@ -2521,6 +2521,43 @@
   box-shadow: 0 0 0 1px var(--fiori-shell-bg);
 }
 
+.checkboxField {
+  display: inline-flex;
+  align-items: center;
+  align-self: end;
+  gap: 0.75rem;
+  min-width: 0;
+  width: fit-content;
+  min-height: 2.5rem;
+  color: var(--fiori-text);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.checkboxField input {
+  flex: 0 0 auto;
+  width: 1.7rem;
+  height: 1.7rem;
+  margin: 0;
+  border: 2px solid var(--fiori-border);
+  border-radius: 0.25rem;
+  accent-color: var(--fiori-shell-bg);
+  cursor: pointer;
+}
+
+.checkboxField input:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}
+
+.checkboxField input:disabled,
+.checkboxField input:disabled + span {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .error,
 .success,
 .info {

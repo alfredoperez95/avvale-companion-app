@@ -19,6 +19,7 @@ type Expense = {
   type: string | null;
   description: string | null;
   date: string | null;
+  paidByCompany: boolean;
   fileUrl: string;
   originalFileName: string;
   mimeType: string;
@@ -44,6 +45,7 @@ export default function ExpenseDetailPage() {
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
+  const [paidByCompany, setPaidByCompany] = useState(false);
   const previewUrlRef = useRef<string | null>(null);
 
   const hydrateForm = useCallback((next: Expense) => {
@@ -51,6 +53,7 @@ export default function ExpenseDetailPage() {
     setType(next.type ?? '');
     setDescription(next.description ?? '');
     setDate(next.date ?? '');
+    setPaidByCompany(next.paidByCompany ?? false);
   }, []);
 
   useEffect(() => {
@@ -177,6 +180,7 @@ export default function ExpenseDetailPage() {
           type,
           description: description.trim(),
           date,
+          paidByCompany,
         }),
       });
       if (res.status === 401) {
@@ -307,6 +311,15 @@ export default function ExpenseDetailPage() {
                     required
                   />
                 </label>
+                <label className={styles.checkboxField}>
+                  <input
+                    type="checkbox"
+                    checked={paidByCompany}
+                    onChange={(event) => setPaidByCompany(event.target.checked)}
+                    disabled={saving}
+                  />
+                  <span>Paid by company</span>
+                </label>
                 <label className={`${styles.formGroup} ${styles.detailEditFull}`}>
                   <span className={styles.label}>Descripción</span>
                   <textarea
@@ -334,6 +347,10 @@ export default function ExpenseDetailPage() {
                 <div className={styles.detailItem}>
                   <dt>Fecha</dt>
                   <dd>{formatDate(expense.date)}</dd>
+                </div>
+                <div className={styles.detailItem}>
+                  <dt>Paid by company</dt>
+                  <dd>{expense.paidByCompany ? 'Sí' : 'No'}</dd>
                 </div>
                 <div className={styles.detailItem}>
                   <dt>Importe</dt>

@@ -34,6 +34,7 @@ export type ExpenseImportPayloadItem = {
   nombre_archivo: string;
   url_recibo: string;
   caduca_en: string;
+  paid_by_company: boolean;
 };
 
 export type GeneratedExpenseImportPayload = {
@@ -106,6 +107,7 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
             nombre_archivo: receipt?.copied ? receipt.fileName : '',
             url_recibo: receipt?.publicUrl ?? '',
             caduca_en: prepared.expiresAt.toISOString(),
+            paid_by_company: expense.paidByCompany,
           };
         }),
         meta: {
@@ -261,7 +263,18 @@ function isExpenseInMonth(expense: Expense, year: number, month: number): boolea
 function buildCsv(expenses: Expense[], receipts: ExportReceipt[], expiresAt: Date): Buffer {
   const receiptByExpenseId = new Map(receipts.map((receipt) => [receipt.expenseId, receipt]));
   const rows = [
-    ['id', 'fecha', 'importe', 'tipo', 'descripcion', 'estado', 'nombre_archivo', 'url_recibo', 'caduca_en'],
+    [
+      'id',
+      'fecha',
+      'importe',
+      'tipo',
+      'descripcion',
+      'estado',
+      'paid_by_company',
+      'nombre_archivo',
+      'url_recibo',
+      'caduca_en',
+    ],
     ...expenses.map((expense) => {
       const receipt = receiptByExpenseId.get(expense.id);
       return [
@@ -271,6 +284,7 @@ function buildCsv(expenses: Expense[], receipts: ExportReceipt[], expiresAt: Dat
         expense.type ?? '',
         expense.description ?? '',
         expense.status === 'PROCESSED' ? 'processed' : 'pending_review',
+        expense.paidByCompany ? 'true' : 'false',
         receipt?.copied ? receipt.fileName : '',
         receipt?.publicUrl ?? '',
         expiresAt.toISOString(),

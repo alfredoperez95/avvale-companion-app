@@ -1,4 +1,4 @@
-import { IsIn, IsISO8601, IsNotEmpty, IsNumber, IsString, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsISO8601, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { EXPENSE_CATEGORIES } from '../expense-categories';
 
@@ -21,4 +21,8 @@ export class UpdateExpenseDto {
   @IsString()
   @IsISO8601({}, { message: 'La fecha debe tener formato ISO' })
   date!: string;
+
+  @IsOptional()
+  @IsBoolean({ message: 'Paid by company debe ser verdadero o falso' })
+  paidByCompany?: boolean;
 }

@@ -28,6 +28,7 @@ type Expense = {
   type: string | null;
   description: string | null;
   date: string | null;
+  paidByCompany: boolean;
   fileUrl: string;
   originalFileName: string;
   mimeType: string;
@@ -55,6 +56,7 @@ type ExpensesImportPayload = {
     nombre_archivo: string;
     url_recibo: string;
     caduca_en: string;
+    paid_by_company: boolean;
   }>;
   meta?: {
     source?: string;

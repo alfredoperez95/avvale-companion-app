@@ -30,6 +30,7 @@ type Expense = {
   type: string | null;
   description: string | null;
   date: string | null;
+  paidByCompany: boolean;
   fileUrl: string;
   originalFileName: string;
   mimeType: string;
@@ -45,6 +46,7 @@ export default function NewExpensePage() {
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
+  const [paidByCompany, setPaidByCompany] = useState(false);
   const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
   const [processingPhase, setProcessingPhase] = useState<ProcessingPhase>('idle');
   const [processingStep, setProcessingStep] = useState(0);
@@ -94,6 +96,7 @@ export default function NewExpensePage() {
     setType('');
     setDescription('');
     setDate('');
+    setPaidByCompany(false);
     setDescriptionDialogOpen(false);
     setError(null);
     event.target.value = '';
@@ -106,6 +109,7 @@ export default function NewExpensePage() {
     setType('');
     setDescription('');
     setDate('');
+    setPaidByCompany(false);
     setDescriptionDialogOpen(false);
     setError(null);
   };
@@ -116,6 +120,7 @@ export default function NewExpensePage() {
     setType(next.type ?? '');
     setDescription(next.description ?? '');
     setDate(next.date ?? '');
+    setPaidByCompany(next.paidByCompany ?? false);
     setError(next.extractionError ?? null);
     if (options?.askDescription) {
       setDescriptionDialogOpen(true);
@@ -218,7 +223,7 @@ export default function NewExpensePage() {
       const res = await apiFetch(`/api/expenses/${expense.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(amount), type, description: description.trim(), date }),
+        body: JSON.stringify({ amount: Number(amount), type, description: description.trim(), date, paidByCompany }),
       });
       if (res.status === 401) {
         redirectToLogin();
@@ -495,6 +500,15 @@ export default function NewExpensePage() {
                     disabled={saving}
                     required
                   />
+                </label>
+                <label className={styles.checkboxField}>
+                  <input
+                    type="checkbox"
+                    checked={paidByCompany}
+                    onChange={(e) => setPaidByCompany(e.target.checked)}
+                    disabled={saving}
+                  />
+                  <span>Paid by company</span>
                 </label>
                 <label className={`${styles.formGroup} ${styles.formGroupFull}`}>
                   <span className={styles.label}>Descripción</span>
