@@ -1,0 +1,24 @@
+{
+  "name": "Gastos Avvale",
+  "short_name": "Gastos",
+  "description": "Gestión de gastos Avvale desde Companion App.",
+  "start_url": "/launcher/expenses-process/expenses",
+  "scope": "/launcher/expenses-process/expenses",
+  "display": "standalone",
+  "background_color": "#f5f7f9",
+  "theme_color": "#0f1f2e",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
