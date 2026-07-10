@@ -8,6 +8,7 @@ import { ExpensesService } from './expenses.service';
 import { ExpenseExportService } from './expense-export.service';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { GenerateExpenseExportDto } from './dto/generate-expense-export.dto';
+import { SyncExpenseImportStatusDto } from './dto/sync-expense-import-status.dto';
 import { EXPENSE_DEFAULT_MAX_FILE_BYTES } from './expenses.config';
 
 @Controller('expenses')
@@ -58,6 +59,11 @@ export class ExpensesController {
   @Post('import-payload')
   importPayload(@CurrentUser() user: UserPayload, @Body() dto: GenerateExpenseExportDto) {
     return this.expenseExports.generateImportPayload(user.userId, dto);
+  }
+
+  @Post('import-status')
+  syncImportStatus(@CurrentUser() user: UserPayload, @Body() dto: SyncExpenseImportStatusDto) {
+    return this.expenses.syncImportStatus(user.userId, dto);
   }
 
   @Post(':id/retry-extract')

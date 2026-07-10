@@ -6,18 +6,6 @@
   padding-bottom: var(--fiori-space-8);
 }
 
-.page::before {
-  content: '';
-  position: absolute;
-  inset: -2rem -1.5rem auto;
-  z-index: -1;
-  height: 18rem;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--fiori-shell-bg) 10%, transparent) 0%, transparent 32%),
-    radial-gradient(circle at 88% 18%, color-mix(in srgb, #38bdf8 10%, transparent) 0%, transparent 28%);
-}
-
 .pageIntro {
   margin: 0 0 var(--fiori-space-5);
 }
@@ -677,7 +665,7 @@
 
 .expenseTableHead {
   display: none;
-  grid-template-columns: 7.25rem minmax(0, 1fr) 8rem 9.5rem 5.75rem;
+  grid-template-columns: 7.25rem minmax(0, 1fr) 8rem 6.25rem 9.5rem 5.75rem;
   gap: var(--fiori-space-3);
   align-items: center;
   padding: var(--fiori-space-2) var(--fiori-space-5);
@@ -700,7 +688,8 @@
   justify-self: end;
 }
 
-.expenseTableHeadPaid {
+.expenseTableHeadPaid,
+.expenseTableHeadLoaded {
   justify-self: center;
 }
 
@@ -963,6 +952,7 @@
     grid-template-areas:
       "date type"
       "date paid"
+      "date loaded"
       "date amount";
     column-gap: var(--fiori-space-3);
     align-items: center;
@@ -985,6 +975,12 @@
 
   .expensePaidBadge {
     grid-area: paid;
+    justify-self: start;
+    margin-top: 0.25rem;
+  }
+
+  .expenseLoadedBadge {
+    grid-area: loaded;
     justify-self: start;
     margin-top: 0.25rem;
   }
@@ -1015,14 +1011,14 @@
 
 @media (min-width: 48rem) {
   .expenseRow {
-    grid-template-columns: 7.25rem minmax(0, 1fr) 8rem 9.5rem 5.75rem;
+    grid-template-columns: 7.25rem minmax(0, 1fr) 8rem 6.25rem 9.5rem 5.75rem;
     align-items: center;
     padding-top: 0;
     padding-bottom: 0;
   }
 
   .expenseRowLink {
-    grid-column: 1 / 5;
+    grid-column: 1 / 6;
     grid-template-columns: subgrid;
     align-items: center;
     gap: var(--fiori-space-3);
@@ -1038,6 +1034,7 @@
   .expenseDate,
   .expenseTypeCell,
   .expensePaidBadge,
+  .expenseLoadedBadge,
   .expenseAmount {
     grid-area: auto;
   }
@@ -1293,6 +1290,29 @@
 }
 
 .expensePaidBadgeInactive {
+  border-color: var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-text-secondary) 7%, var(--fiori-surface));
+  color: var(--fiori-text-secondary);
+}
+
+.expenseLoadedBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.expenseLoadedBadgeActive {
+  border-color: color-mix(in srgb, #16a34a 24%, var(--fiori-border-light));
+  background: color-mix(in srgb, #16a34a 12%, var(--fiori-surface));
+  color: #15803d;
+}
+
+.expenseLoadedBadgeInactive {
   border-color: var(--fiori-border-light);
   background: color-mix(in srgb, var(--fiori-text-secondary) 7%, var(--fiori-surface));
   color: var(--fiori-text-secondary);

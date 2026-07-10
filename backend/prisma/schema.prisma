@@ -258,6 +258,7 @@ model Expense {
   description      String?       @db.Text
   date             DateTime?     @map("expense_date")
   paidByCompany    Boolean       @default(false) @map("paid_by_company")
+  loaded           Boolean       @default(false)
   fileUrl          String        @map("file_url") @db.VarChar(1024)
   originalFileName String        @map("original_file_name") @db.VarChar(512)
   storagePath      String        @map("storage_path") @db.VarChar(1024)

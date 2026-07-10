@@ -6,6 +6,7 @@ import { ExpenseStorageService } from './expense-storage.service';
 import { ExpenseAiService } from './expense-ai.service';
 import { convertHeicBufferToJpeg, heicFileNameToJpeg, isHeicFile } from './expense-image.utils';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { SyncExpenseImportStatusDto } from './dto/sync-expense-import-status.dto';
 import { isExpenseCategory } from './expense-categories';
 
 const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'pdf', 'heic']);
@@ -136,6 +137,35 @@ export class ExpensesService {
     return mapExpense(updated);
   }
 
+  async syncImportStatus(userId: string, dto: SyncExpenseImportStatusDto) {
+    const loadedIds = dto.expenses.filter((expense) => expense.loaded).map((expense) => expense.id);
+    const notLoadedIds = dto.expenses.filter((expense) => !expense.loaded).map((expense) => expense.id);
+
+    const operations: Prisma.PrismaPromise<Prisma.BatchPayload>[] = [];
+    if (loadedIds.length) {
+      operations.push(
+        this.prisma.expense.updateMany({
+          where: { userId, id: { in: loadedIds } },
+          data: { loaded: true },
+        }),
+      );
+    }
+    if (notLoadedIds.length) {
+      operations.push(
+        this.prisma.expense.updateMany({
+          where: { userId, id: { in: notLoadedIds } },
+          data: { loaded: false },
+        }),
+      );
+    }
+
+    const results = operations.length ? await this.prisma.$transaction(operations) : [];
+    return {
+      ok: true,
+      updated: results.reduce((total, result) => total + result.count, 0),
+    };
+  }
+
   async getFile(userId: string, id: string): Promise<ExpenseFileDownload> {
     const expense = await this.ensureOwned(userId, id);
     let buffer = await this.storage.readFile(expense.storagePath).catch(() => {
@@ -233,6 +263,7 @@ export function mapExpense(expense: Expense) {
     description: expense.description,
     date: dateOnly(expense.date),
     paidByCompany: expense.paidByCompany,
+    loaded: expense.loaded,
     fileUrl: expense.fileUrl,
     originalFileName: expense.originalFileName,
     mimeType: expense.mimeType,

@@ -9,6 +9,8 @@ import {
   ArrowCounterclockwiseRegular,
   CalendarMonthRegular,
   CalendarRegular,
+  CheckmarkRegular,
+  DismissRegular,
   FilterRegular,
   MoneyRegular,
   TagRegular,
@@ -29,6 +31,7 @@ type Expense = {
   description: string | null;
   date: string | null;
   paidByCompany: boolean;
+  loaded?: boolean;
   fileUrl: string;
   originalFileName: string;
   mimeType: string;
@@ -66,6 +69,20 @@ type ExpensesImportPayload = {
 
 type ExpensesImportResult =
   | { ok: true; jobId?: string; count?: number; tabId?: number }
+  | {
+      ok: true;
+      phase: 'completed';
+      type: 'EXPENSES_IMPORT_COMPLETED';
+      jobId?: string;
+      count?: number;
+      imported?: number;
+      failed?: number;
+      skipped?: number;
+      loadedIds?: string[];
+      expenses?: Array<{ id: string; loaded: boolean; error?: string }>;
+      meta?: unknown;
+      report?: unknown;
+    }
   | { ok: false; error?: string };
 
 const PENDING_TYPE_FILTER = '__pending__';
@@ -119,6 +136,54 @@ export default function ExpensesPage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    function handleImportResult(event: Event) {
+      const result = (event as CustomEvent<ExpensesImportResult>).detail;
+      if (!isCompletedImportResult(result)) return;
+
+      const statusUpdates = normalizeImportStatusUpdates(result);
+      if (!statusUpdates.length) {
+        setExportMessage('Importación finalizada, pero la extensión no devolvió estados de carga.');
+        return;
+      }
+
+      apiFetch('/api/expenses/import-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expenses: statusUpdates }),
+      })
+        .then(async (res) => {
+          if (res.status === 401) {
+            redirectToLogin();
+            return null;
+          }
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || 'No se pudo actualizar el estado de carga.');
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (!data) return;
+          const loadedById = new Map(statusUpdates.map((expense) => [expense.id, expense.loaded]));
+          setItems((current) =>
+            current.map((expense) =>
+              loadedById.has(expense.id) ? { ...expense, loaded: loadedById.get(expense.id) ?? false } : expense,
+            ),
+          );
+          const imported = result.imported ?? statusUpdates.filter((expense) => expense.loaded).length;
+          const failed = result.failed ?? statusUpdates.filter((expense) => !expense.loaded).length;
+          setExportMessage(`Importación finalizada. Cargados: ${imported}. Fallidos/no cargados: ${failed}.`);
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : 'No se pudo actualizar el estado de carga.');
+        });
+    }
+
+    document.addEventListener(EXPENSES_IMPORT_RESULT_EVENT, handleImportResult);
+    return () => document.removeEventListener(EXPENSES_IMPORT_RESULT_EVENT, handleImportResult);
   }, []);
 
   const yearOptions = useMemo(() => {
@@ -517,6 +582,7 @@ export default function ExpensesPage() {
               <span>Fecha</span>
               <span>Tipología</span>
               <span className={styles.expenseTableHeadPaid}>Paid company</span>
+              <span className={styles.expenseTableHeadLoaded}>Cargado</span>
               <button
                 type="button"
                 className={`${styles.sortButton} ${styles.sortButtonActive}`}
@@ -533,6 +599,7 @@ export default function ExpensesPage() {
                 const dateParts = formatDateParts(expense.date);
                 const pendingReview = !expense.type;
                 const showCategoryIcon = !pendingReview && isExpenseCategory(expense.type);
+                const loaded = expense.loaded ?? false;
                 return (
                   <li key={expense.id} className={styles.expenseRow}>
                     <Link
@@ -574,6 +641,15 @@ export default function ExpensesPage() {
                         }`}
                       >
                         {expense.paidByCompany ? 'Sí' : 'No'}
+                      </span>
+                      <span
+                        className={`${styles.expenseLoadedBadge} ${
+                          loaded ? styles.expenseLoadedBadgeActive : styles.expenseLoadedBadgeInactive
+                        }`}
+                        aria-label={loaded ? 'Cargado: true' : 'Cargado: false'}
+                        title={loaded ? 'Cargado: true' : 'Cargado: false'}
+                      >
+                        {loaded ? <CheckmarkRegular fontSize={15} aria-hidden /> : <DismissRegular fontSize={15} aria-hidden />}
                       </span>
                       <span className={styles.expenseAmount}>{formatCurrency(expense.amount ?? 0)}</span>
                     </Link>
@@ -798,6 +874,41 @@ function formatExportExpiry(value: string | null): string | null {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
+}
+
+function isCompletedImportResult(result: ExpensesImportResult | undefined): result is Extract<
+  ExpensesImportResult,
+  { phase: 'completed'; type: 'EXPENSES_IMPORT_COMPLETED' }
+> {
+  return Boolean(
+    result?.ok &&
+      'phase' in result &&
+      result.phase === 'completed' &&
+      'type' in result &&
+      result.type === 'EXPENSES_IMPORT_COMPLETED',
+  );
+}
+
+function normalizeImportStatusUpdates(
+  result: Extract<ExpensesImportResult, { phase: 'completed'; type: 'EXPENSES_IMPORT_COMPLETED' }>,
+): Array<{ id: string; loaded: boolean; error?: string }> {
+  if (Array.isArray(result.expenses) && result.expenses.length > 0) {
+    return result.expenses
+      .filter((expense) => typeof expense.id === 'string' && expense.id.length > 0)
+      .map((expense) => ({
+        id: expense.id,
+        loaded: Boolean(expense.loaded),
+        ...(expense.error ? { error: expense.error } : {}),
+      }));
+  }
+
+  if (Array.isArray(result.loadedIds) && result.loadedIds.length > 0) {
+    return result.loadedIds
+      .filter((id) => typeof id === 'string' && id.length > 0)
+      .map((id) => ({ id, loaded: true }));
+  }
+
+  return [];
 }
 
 function dispatchExpensesImport(payload: ExpensesImportPayload): Promise<ExpensesImportResult> {

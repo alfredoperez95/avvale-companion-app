@@ -1,0 +1,2 @@
+ALTER TABLE `expenses`
+  ADD COLUMN `loaded` BOOLEAN NOT NULL DEFAULT false;
