@@ -844,8 +844,18 @@ export default function ExpensesPage() {
                             <span className={styles.expenseDescription}>{expense.description}</span>
                           ) : null}
                           {expense.source === 'email' ? (
-                            <span className={styles.expenseSourceWarning} title="Generado por email, revisar">
-                              Revisar <MailRegular className={styles.expenseSourceWarningIcon} aria-hidden="true" />
+                            <span
+                              className={`${styles.expenseSourceWarning} ${
+                                expense.status === 'processed' ? styles.expenseSourceWarningReviewed : ''
+                              }`}
+                              title={
+                                expense.status === 'processed'
+                                  ? 'Generado por email, revisado'
+                                  : 'Generado por email, revisar'
+                              }
+                            >
+                              {expense.status === 'processed' ? 'Revisado' : 'Revisar'}{' '}
+                              <MailRegular className={styles.expenseSourceWarningIcon} aria-hidden="true" />
                             </span>
                           ) : null}
                         </span>

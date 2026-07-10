@@ -1395,6 +1395,12 @@
   flex-shrink: 0;
 }
 
+.expenseSourceWarningReviewed {
+  border-color: color-mix(in srgb, #16a34a 32%, var(--fiori-border-light));
+  background: color-mix(in srgb, #16a34a 12%, var(--fiori-surface));
+  color: #15803d;
+}
+
 .expenseAmount {
   justify-self: end;
   font-size: 0.9375rem;
