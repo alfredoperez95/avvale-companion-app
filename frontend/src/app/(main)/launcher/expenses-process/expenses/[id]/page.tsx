@@ -208,8 +208,9 @@ export default function ExpenseDetailPage() {
 
   const quickUpdateExpense = async (patch: { type?: string; paidByCompany?: boolean }) => {
     if (!expense) return;
-    if (expense.amount == null || !expense.description?.trim() || !expense.date) {
-      setError('Para cambiar estos campos, primero completa importe, descripción y fecha del gasto.');
+    const nextType = patch.type ?? expense.type;
+    if (expense.amount == null || !nextType || !expense.description?.trim() || !expense.date) {
+      setError('Para guardar/revisar este gasto, primero completa importe, tipo, descripción y fecha.');
       return;
     }
 
@@ -221,7 +222,7 @@ export default function ExpenseDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: expense.amount,
-          type: patch.type ?? expense.type,
+          type: nextType,
           description: expense.description.trim(),
           date: expense.date,
           paidByCompany: patch.paidByCompany ?? expense.paidByCompany,
@@ -265,6 +266,14 @@ export default function ExpenseDetailPage() {
   };
 
   const previewIsPdf = expense ? isPdf(expense.mimeType, expense.originalFileName) : false;
+  const canMarkReviewed = Boolean(
+    expense &&
+      expense.status !== 'processed' &&
+      expense.amount != null &&
+      expense.type &&
+      expense.description?.trim() &&
+      expense.date,
+  );
 
   return (
     <div className={styles.page}>
@@ -302,8 +311,25 @@ export default function ExpenseDetailPage() {
           <section className={styles.detailCard} aria-labelledby="expense-summary-title">
             {expense.source === 'email' ? (
               <div className={styles.emailReviewWarning} role="status">
-                <strong>Gasto generado desde el workflow de email.</strong>
-                <span> Revisa importe, tipo, fecha, descripción y recibo antes de marcarlo como definitivo.</span>
+                <div>
+                  <strong>Gasto generado desde el workflow de email.</strong>
+                  <span> Revisa importe, tipo, fecha, descripción y recibo antes de enviarlo a Avvale Time Report.</span>
+                </div>
+                {expense.status !== 'processed' ? (
+                  <button
+                    type="button"
+                    className={styles.emailReviewButton}
+                    onClick={() => void quickUpdateExpense({})}
+                    disabled={saving || !canMarkReviewed}
+                    title={
+                      canMarkReviewed
+                        ? 'Marcar gasto como revisado'
+                        : 'Completa importe, tipo, descripción y fecha antes de marcarlo como revisado'
+                    }
+                  >
+                    {saving ? 'Guardando...' : 'Marcar revisado'}
+                  </button>
+                ) : null}
               </div>
             ) : null}
             <div className={styles.detailCardHeader}>

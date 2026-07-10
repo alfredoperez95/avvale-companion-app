@@ -434,8 +434,15 @@ export default function ExpensesPage() {
         setError(null);
         setExportMessage('Todos los gastos de este mes ya están cargados en AEP.');
       } else {
+        const pendingEmailItems = group.items.filter(
+          (expense) => expense.source === 'email' && expense.status !== 'processed',
+        );
         setExportMessage(null);
-        setError('No hay gastos procesados en este mes para enviar a Avvale Time Report.');
+        setError(
+          pendingEmailItems.length
+            ? `${pendingEmailItems.length} gasto${pendingEmailItems.length === 1 ? '' : 's'} generado${pendingEmailItems.length === 1 ? '' : 's'} por email pendiente${pendingEmailItems.length === 1 ? '' : 's'} de revisar. Abre cada gasto, valida sus datos y pulsa "Marcar revisado" antes de enviarlo a Avvale Time Report.`
+            : 'No hay gastos procesados en este mes para enviar a Avvale Time Report.',
+        );
       }
       return;
     }
@@ -513,7 +520,12 @@ export default function ExpensesPage() {
       </div>
 
       {error ? <div className={styles.error}>{error}</div> : null}
-      {exportMessage ? <div className={styles.success}>{exportMessage}</div> : null}
+      {exportMessage ? (
+        <div className={styles.success}>
+          <CheckmarkRegular className={styles.successIcon} aria-hidden />
+          <span>{exportMessage}</span>
+        </div>
+      ) : null}
 
       {!loading ? (
         <section className={`${styles.filtersCard} ${filtersOpen ? styles.filtersCardOpen : ''}`} aria-label="Filtros de gastos">
