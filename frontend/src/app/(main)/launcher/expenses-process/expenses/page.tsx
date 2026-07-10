@@ -491,8 +491,8 @@ export default function ExpensesPage() {
       const count = result.count ?? data.payload.expenses.length;
       setExportMessage(
         count === 1
-          ? 'Import started in Avvale Time Report para 1 gasto.'
-          : `Import started in Avvale Time Report para ${count} gastos.`,
+          ? 'Importación iniciada en Avvale Time Report para 1 gasto.'
+          : `Importación iniciada en Avvale Time Report para ${count} gastos.`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo enviar a Avvale Time Report.');
