@@ -47,6 +47,11 @@ enum ExpenseStatus {
   PROCESSED      @map("processed")
 }
 
+enum ExpenseSource {
+  MANUAL @map("manual")
+  EMAIL  @map("email")
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -264,6 +269,7 @@ model Expense {
   storagePath      String        @map("storage_path") @db.VarChar(1024)
   mimeType         String        @map("mime_type") @db.VarChar(255)
   status           ExpenseStatus @default(PENDING_REVIEW)
+  source           ExpenseSource @default(MANUAL)
   extractionError  String?       @map("extraction_error") @db.Text
   rawModelOutput   String?       @map("raw_model_output") @db.LongText
   modelId          String?       @map("model_id") @db.VarChar(128)

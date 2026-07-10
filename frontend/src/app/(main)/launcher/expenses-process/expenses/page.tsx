@@ -36,6 +36,7 @@ type Expense = {
   originalFileName: string;
   mimeType: string;
   status: 'pending_review' | 'processed';
+  source?: 'manual' | 'email';
   extractionError?: string | null;
 };
 
@@ -828,6 +829,9 @@ export default function ExpensesPage() {
                           )}
                           {expense.description ? (
                             <span className={styles.expenseDescription}>{expense.description}</span>
+                          ) : null}
+                          {expense.source === 'email' ? (
+                            <span className={styles.expenseSourceWarning}>Revisar: generado por email</span>
                           ) : null}
                         </span>
                       </span>

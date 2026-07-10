@@ -7,7 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Expense, ExpenseStatus, Prisma } from '@prisma/client';
+import { Expense, ExpenseSource, ExpenseStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -242,6 +242,7 @@ export class ExpensesService {
           mimeType: saved.mimeType,
           description: fallbackDescription,
           status: ExpenseStatus.PENDING_REVIEW,
+          source: ExpenseSource.EMAIL,
         },
       });
       await this.producer.enqueueExpenseExtract({ expenseId: expense.id, userId: user.id });
@@ -483,6 +484,7 @@ export function mapExpense(expense: Expense) {
     originalFileName: expense.originalFileName,
     mimeType: expense.mimeType,
     status: apiStatus(expense.status),
+    source: expense.source === ExpenseSource.EMAIL ? 'email' : 'manual',
     extractionError: expense.extractionError,
     createdAt: expense.createdAt.toISOString(),
     updatedAt: expense.updatedAt.toISOString(),

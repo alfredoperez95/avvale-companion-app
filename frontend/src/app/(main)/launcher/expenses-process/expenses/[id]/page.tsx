@@ -24,6 +24,7 @@ type Expense = {
   originalFileName: string;
   mimeType: string;
   status: 'pending_review' | 'processed';
+  source?: 'manual' | 'email';
   extractionError?: string | null;
 };
 
@@ -257,6 +258,12 @@ export default function ExpenseDetailPage() {
       {!loading && expense ? (
         <div className={styles.detailLayout}>
           <section className={styles.detailCard} aria-labelledby="expense-summary-title">
+            {expense.source === 'email' ? (
+              <div className={styles.emailReviewWarning} role="status">
+                <strong>Gasto generado desde el workflow de email.</strong>
+                <span> Revisa importe, tipo, fecha, descripción y recibo antes de marcarlo como definitivo.</span>
+              </div>
+            ) : null}
             <div className={styles.detailCardHeader}>
               <h2 id="expense-summary-title" className={styles.sectionTitle}>
                 {editing ? 'Editar datos' : 'Resumen'}
@@ -370,6 +377,14 @@ export default function ExpenseDetailPage() {
                   <dt>Estado</dt>
                   <dd>{expense.status === 'processed' ? 'Procesado' : 'Pendiente de revisar'}</dd>
                 </div>
+                {expense.source === 'email' ? (
+                  <div className={styles.detailItem}>
+                    <dt>Origen</dt>
+                    <dd>
+                      <span className={styles.emailSourceBadge}>Workflow de email</span>
+                    </dd>
+                  </div>
+                ) : null}
                 {expense.description ? (
                   <div className={`${styles.detailItem} ${styles.detailItemFull}`}>
                     <dt>Descripción</dt>
