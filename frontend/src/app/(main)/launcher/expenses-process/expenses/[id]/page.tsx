@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch, redirectToLogin } from '@/lib/api';
@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import {
   EXPENSE_CATEGORIES,
-  ExpenseCategoryLabel,
+  ExpenseCategoryIcon,
   expenseCategoryLabel,
 } from '../../expense-categories';
 import styles from '../../expenses-process.module.css';
@@ -26,6 +26,12 @@ type Expense = {
   status: 'pending_review' | 'processed';
   source?: 'manual' | 'email';
   extractionError?: string | null;
+};
+
+type DetailQuickDropdownOption = {
+  value: string;
+  label: string;
+  iconCategory?: string;
 };
 
 export default function ExpenseDetailPage() {
@@ -200,6 +206,42 @@ export default function ExpenseDetailPage() {
     }
   };
 
+  const quickUpdateExpense = async (patch: { type?: string; paidByCompany?: boolean }) => {
+    if (!expense) return;
+    if (expense.amount == null || !expense.description?.trim() || !expense.date) {
+      setError('Para cambiar estos campos, primero completa importe, descripción y fecha del gasto.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`/api/expenses/${expense.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: expense.amount,
+          type: patch.type ?? expense.type,
+          description: expense.description.trim(),
+          date: expense.date,
+          paidByCompany: patch.paidByCompany ?? expense.paidByCompany,
+        }),
+      });
+      if (res.status === 401) {
+        redirectToLogin();
+        return;
+      }
+      if (!res.ok) throw new Error(await errorMessage(res));
+      const updated = (await res.json()) as Expense;
+      setExpense(updated);
+      hydrateForm(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el gasto.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!expense) return;
     setDeleteBusy(true);
@@ -357,7 +399,18 @@ export default function ExpenseDetailPage() {
                 </div>
                 <div className={styles.detailItem}>
                   <dt>Paid by company</dt>
-                  <dd>{expense.paidByCompany ? 'Sí' : 'No'}</dd>
+                  <dd>
+                    <DetailQuickDropdown
+                      ariaLabel="Cambiar Paid by company"
+                      value={expense.paidByCompany ? 'true' : 'false'}
+                      options={[
+                        { value: 'false', label: 'No' },
+                        { value: 'true', label: 'Sí' },
+                      ]}
+                      onChange={(value) => void quickUpdateExpense({ paidByCompany: value === 'true' })}
+                      disabled={saving}
+                    />
+                  </dd>
                 </div>
                 <div className={styles.detailItem}>
                   <dt>Importe</dt>
@@ -366,11 +419,18 @@ export default function ExpenseDetailPage() {
                 <div className={styles.detailItem}>
                   <dt>Tipo</dt>
                   <dd>
-                    {expense.type ? (
-                      <ExpenseCategoryLabel category={expense.type} />
-                    ) : (
-                      'Pendiente de revisar'
-                    )}
+                    <DetailQuickDropdown
+                      ariaLabel="Cambiar tipo de gasto"
+                      value={expense.type ?? ''}
+                      placeholder="Pendiente de revisar"
+                      options={EXPENSE_CATEGORIES.map((category) => ({
+                        value: category,
+                        label: category,
+                        iconCategory: category,
+                      }))}
+                      onChange={(value) => void quickUpdateExpense({ type: value })}
+                      disabled={saving}
+                    />
                   </dd>
                 </div>
                 <div className={styles.detailItem}>
@@ -456,6 +516,97 @@ export default function ExpenseDetailPage() {
           if (!deleteBusy) setDeleteOpen(false);
         }}
       />
+    </div>
+  );
+}
+
+function DetailQuickDropdown({
+  ariaLabel,
+  value,
+  options,
+  onChange,
+  disabled = false,
+  placeholder = 'Seleccionar',
+}: {
+  ariaLabel: string;
+  value: string;
+  options: DetailQuickDropdownOption[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const listboxId = useId();
+  const selected = options.find((option) => option.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = rootRef.current;
+      if (!root || !(event.target instanceof Node)) return;
+      if (!root.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [open]);
+
+  return (
+    <div className={styles.detailQuickDropdown} ref={rootRef}>
+      <button
+        type="button"
+        className={styles.detailQuickDropdownButton}
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        disabled={disabled}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') setOpen(false);
+        }}
+      >
+        <span className={styles.detailQuickDropdownValue}>
+          {selected?.iconCategory ? (
+            <ExpenseCategoryIcon
+              category={selected.iconCategory}
+              className={styles.detailQuickDropdownCategoryIcon}
+            />
+          ) : null}
+          <span>{selected?.label ?? placeholder}</span>
+        </span>
+        <span className={styles.detailQuickDropdownChevron} aria-hidden="true" />
+      </button>
+      {open ? (
+        <div id={listboxId} className={styles.detailQuickDropdownMenu} role="listbox" aria-label={ariaLabel}>
+          {options.map((option) => {
+            const isSelected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`${styles.detailQuickDropdownOption} ${
+                  isSelected ? styles.detailQuickDropdownOptionSelected : ''
+                }`}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  setOpen(false);
+                  if (!isSelected) onChange(option.value);
+                }}
+              >
+                {option.iconCategory ? (
+                  <ExpenseCategoryIcon
+                    category={option.iconCategory}
+                    className={styles.detailQuickDropdownCategoryIcon}
+                  />
+                ) : null}
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

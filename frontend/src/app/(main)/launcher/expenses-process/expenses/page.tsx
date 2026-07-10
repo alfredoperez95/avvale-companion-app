@@ -12,6 +12,7 @@ import {
   CheckmarkRegular,
   DismissRegular,
   FilterRegular,
+  MailRegular,
   MoneyRegular,
   TagRegular,
 } from '@fluentui/react-icons';
@@ -831,7 +832,9 @@ export default function ExpensesPage() {
                             <span className={styles.expenseDescription}>{expense.description}</span>
                           ) : null}
                           {expense.source === 'email' ? (
-                            <span className={styles.expenseSourceWarning}>Revisar: generado por email</span>
+                            <span className={styles.expenseSourceWarning} title="Generado por email, revisar">
+                              Revisar <MailRegular className={styles.expenseSourceWarningIcon} aria-hidden="true" />
+                            </span>
                           ) : null}
                         </span>
                       </span>
