@@ -61,6 +61,34 @@ export class ExpensesService {
     return { ok: true };
   }
 
+  async bulkDelete(userId: string, ids: string[]): Promise<{ ok: true; deleted: number }> {
+    const uniqueIds = [...new Set(ids)];
+    const expenses = await this.prisma.expense.findMany({
+      where: { userId, id: { in: uniqueIds } },
+      select: { id: true },
+    });
+    if (!expenses.length) {
+      return { ok: true, deleted: 0 };
+    }
+
+    const expenseIds = expenses.map((expense) => expense.id);
+    const result = await this.prisma.expense.deleteMany({
+      where: { userId, id: { in: expenseIds } },
+    });
+
+    for (const id of expenseIds) {
+      try {
+        await this.storage.deleteExpenseFolder(id);
+      } catch (err) {
+        this.logger.warn(
+          `No se pudo borrar carpeta del gasto ${id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    return { ok: true, deleted: result.count };
+  }
+
   async extract(userId: string, file: Express.Multer.File | undefined) {
     if (!file?.buffer?.length) {
       throw new BadRequestException('Falta el archivo del recibo');

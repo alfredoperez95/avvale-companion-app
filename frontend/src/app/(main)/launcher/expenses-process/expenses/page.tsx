@@ -102,7 +102,11 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Expense | null>(null);
+  const [bulkDeleteTarget, setBulkDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [editingMonthKey, setEditingMonthKey] = useState<string | null>(null);
+  const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(() => new Set());
   const [typeFilter, setTypeFilter] = useState('');
   const [yearFilter, setYearFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
@@ -244,6 +248,75 @@ export default function ExpensesPage() {
     setAmountSort((current) => (current === 'desc' ? 'asc' : 'desc'));
   };
 
+  const selectedIdsForGroup = (group: MonthGroup) =>
+    group.items.filter((expense) => selectedExpenseIds.has(expense.id)).map((expense) => expense.id);
+
+  const toggleMonthEditing = (groupKey: string) => {
+    setEditingMonthKey((current) => {
+      const next = current === groupKey ? null : groupKey;
+      setSelectedExpenseIds(new Set());
+      return next;
+    });
+    setError(null);
+    setExportMessage(null);
+  };
+
+  const toggleExpenseSelection = (id: string) => {
+    setSelectedExpenseIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleGroupSelection = (group: MonthGroup) => {
+    setSelectedExpenseIds((current) => {
+      const next = new Set(current);
+      const allSelected = group.items.every((expense) => next.has(expense.id));
+      for (const expense of group.items) {
+        if (allSelected) next.delete(expense.id);
+        else next.add(expense.id);
+      }
+      return next;
+    });
+  };
+
+  const updateSelectedLoadedStatus = async (group: MonthGroup, loaded: boolean) => {
+    const ids = selectedIdsForGroup(group);
+    if (!ids.length) return;
+    setBulkBusy(true);
+    setError(null);
+    setExportMessage(null);
+    try {
+      const res = await apiFetch('/api/expenses/import-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expenses: ids.map((id) => ({ id, loaded })) }),
+      });
+      if (res.status === 401) {
+        redirectToLogin();
+        return;
+      }
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'No se pudo actualizar el estado de carga.');
+      }
+      setItems((current) =>
+        current.map((expense) => (ids.includes(expense.id) ? { ...expense, loaded } : expense)),
+      );
+      setExportMessage(
+        loaded
+          ? `${ids.length} ${ids.length === 1 ? 'gasto marcado' : 'gastos marcados'} como cargado.`
+          : `${ids.length} ${ids.length === 1 ? 'gasto marcado' : 'gastos marcados'} como no cargado.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el estado de carga.');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!toDelete) return;
     setDeleteBusy(true);
@@ -262,6 +335,40 @@ export default function ExpensesPage() {
       setToDelete(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el gasto.');
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!bulkDeleteTarget) return;
+    setDeleteBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch('/api/expenses/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: bulkDeleteTarget.ids }),
+      });
+      if (res.status === 401) {
+        redirectToLogin();
+        return;
+      }
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'No se pudieron eliminar los gastos seleccionados.');
+      }
+      const deletedIds = new Set(bulkDeleteTarget.ids);
+      setItems((current) => current.filter((expense) => !deletedIds.has(expense.id)));
+      setSelectedExpenseIds((current) => {
+        const next = new Set(current);
+        for (const id of deletedIds) next.delete(id);
+        return next;
+      });
+      setBulkDeleteTarget(null);
+      setExportMessage(`${bulkDeleteTarget.ids.length} gastos eliminados.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron eliminar los gastos seleccionados.');
     } finally {
       setDeleteBusy(false);
     }
@@ -318,9 +425,16 @@ export default function ExpensesPage() {
   };
 
   const sendMonthToAvvale = async (group: MonthGroup) => {
-    const processedItems = group.items.filter((expense) => expense.status === 'processed');
+    const processedItems = group.items.filter((expense) => expense.status === 'processed' && !expense.loaded);
     if (!processedItems.length) {
-      setError('No hay gastos procesados en este mes para enviar a Avvale Time Report.');
+      const hasLoadedProcessedItems = group.items.some((expense) => expense.status === 'processed' && expense.loaded);
+      if (hasLoadedProcessedItems) {
+        setError(null);
+        setExportMessage('Todos los gastos de este mes ya están cargados en AEP.');
+      } else {
+        setExportMessage(null);
+        setError('No hay gastos procesados en este mes para enviar a Avvale Time Report.');
+      }
       return;
     }
 
@@ -547,7 +661,12 @@ export default function ExpensesPage() {
       ) : null}
 
       <div className={styles.monthsList}>
-        {groups.map((group) => (
+        {groups.map((group) => {
+          const isEditingMonth = editingMonthKey === group.key;
+          const selectedIds = selectedIdsForGroup(group);
+          const selectedCount = selectedIds.length;
+          const allSelected = group.items.length > 0 && selectedCount === group.items.length;
+          return (
           <section key={group.key} className={styles.monthCard} aria-labelledby={`month-${group.key}`}>
             <header className={styles.monthHeader}>
               <div className={styles.monthHeaderMain}>
@@ -563,6 +682,14 @@ export default function ExpensesPage() {
                 <button
                   type="button"
                   className={styles.monthGenerateButton}
+                  onClick={() => toggleMonthEditing(group.key)}
+                  disabled={generatingKey !== null || sendingKey !== null || bulkBusy || deleteBusy}
+                >
+                  {isEditingMonth ? 'Cancelar edición' : 'Editar'}
+                </button>
+                <button
+                  type="button"
+                  className={styles.monthGenerateButton}
                   onClick={() => void generateMonthExport(group)}
                   disabled={generatingKey !== null || sendingKey !== null}
                 >
@@ -572,13 +699,65 @@ export default function ExpensesPage() {
                   type="button"
                   className={`${styles.monthGenerateButton} ${styles.monthSendButton}`}
                   onClick={() => void sendMonthToAvvale(group)}
-                  disabled={generatingKey !== null || sendingKey !== null || !group.items.some((expense) => expense.status === 'processed')}
+                  disabled={generatingKey !== null || sendingKey !== null}
                 >
                   {sendingKey === group.key ? 'Enviando…' : 'Enviar'}
                 </button>
               </div>
             </header>
-            <div className={styles.expenseTableHead} aria-hidden="true">
+            {isEditingMonth ? (
+              <div className={styles.bulkEditBar}>
+                <label className={styles.bulkSelectAll}>
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={() => toggleGroupSelection(group)}
+                    disabled={bulkBusy || deleteBusy}
+                  />
+                  <span>
+                    {selectedCount > 0
+                      ? `${selectedCount} ${selectedCount === 1 ? 'seleccionado' : 'seleccionados'}`
+                      : 'Seleccionar gastos'}
+                  </span>
+                </label>
+                <div className={styles.bulkEditActions}>
+                  <button
+                    type="button"
+                    className={styles.monthGenerateButton}
+                    onClick={() => void updateSelectedLoadedStatus(group, true)}
+                    disabled={!selectedCount || bulkBusy || deleteBusy}
+                  >
+                    Marcar cargado
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.monthGenerateButton}
+                    onClick={() => void updateSelectedLoadedStatus(group, false)}
+                    disabled={!selectedCount || bulkBusy || deleteBusy}
+                  >
+                    Marcar no cargado
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.monthGenerateButton} ${styles.bulkDeleteButton}`}
+                    onClick={() =>
+                      setBulkDeleteTarget({
+                        ids: selectedIds,
+                        label: capitalizeMonthLabel(group.label),
+                      })
+                    }
+                    disabled={!selectedCount || bulkBusy || deleteBusy}
+                  >
+                    Eliminar selección
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            <div
+              className={`${styles.expenseTableHead} ${isEditingMonth ? styles.expenseTableHeadEditing : ''}`}
+              aria-hidden="true"
+            >
+              {isEditingMonth ? <span className={styles.expenseTableHeadSelect}>Sel.</span> : null}
               <span>Fecha</span>
               <span>Tipología</span>
               <span className={styles.expenseTableHeadPaid}>Paid company</span>
@@ -600,8 +779,25 @@ export default function ExpensesPage() {
                 const pendingReview = !expense.type;
                 const showCategoryIcon = !pendingReview && isExpenseCategory(expense.type);
                 const loaded = expense.loaded ?? false;
+                const selected = selectedExpenseIds.has(expense.id);
                 return (
-                  <li key={expense.id} className={styles.expenseRow}>
+                  <li
+                    key={expense.id}
+                    className={`${styles.expenseRow} ${isEditingMonth ? styles.expenseRowEditing : ''} ${
+                      selected ? styles.expenseRowSelected : ''
+                    }`}
+                  >
+                    {isEditingMonth ? (
+                      <label className={styles.expenseSelectCell}>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleExpenseSelection(expense.id)}
+                          disabled={bulkBusy || deleteBusy}
+                          aria-label={`Seleccionar gasto del ${formatDate(expense.date)}`}
+                        />
+                      </label>
+                    ) : null}
                     <Link
                       href={`/launcher/expenses-process/expenses/${expense.id}`}
                       className={styles.expenseRowLink}
@@ -677,7 +873,8 @@ export default function ExpensesPage() {
               })}
             </ul>
           </section>
-        ))}
+          );
+        })}
       </div>
 
       <ConfirmDialog
@@ -695,6 +892,23 @@ export default function ExpensesPage() {
         onConfirm={() => void confirmDelete()}
         onCancel={() => {
           if (!deleteBusy) setToDelete(null);
+        }}
+      />
+      <ConfirmDialog
+        open={bulkDeleteTarget !== null}
+        title="Eliminar gastos seleccionados"
+        message={
+          bulkDeleteTarget
+            ? `¿Eliminar ${bulkDeleteTarget.ids.length} gastos de ${bulkDeleteTarget.label}? Se borrarán también sus recibos adjuntos. Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmLabel="Eliminar selección"
+        variant="danger"
+        confirmBusy={deleteBusy}
+        busyLabel="Eliminando…"
+        onConfirm={() => void confirmBulkDelete()}
+        onCancel={() => {
+          if (!deleteBusy) setBulkDeleteTarget(null);
         }}
       />
     </div>

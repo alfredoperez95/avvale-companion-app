@@ -678,6 +678,10 @@
   color: var(--fiori-text-secondary);
 }
 
+.expenseTableHeadEditing {
+  grid-template-columns: 2.25rem 7.25rem minmax(0, 1fr) 8rem 6.25rem 9.5rem 5.75rem;
+}
+
 @media (min-width: 48rem) {
   .expenseTableHead {
     display: grid;
@@ -686,6 +690,10 @@
 
 .expenseTableHeadActions {
   justify-self: end;
+}
+
+.expenseTableHeadSelect {
+  justify-self: center;
 }
 
 .expenseTableHeadPaid,
@@ -858,6 +866,72 @@
   color: var(--fiori-text-inverse);
 }
 
+.bulkEditBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fiori-space-3);
+  padding: var(--fiori-space-3) var(--fiori-space-5);
+  border-bottom: 1px solid var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-shell-bg) 5%, var(--fiori-surface));
+}
+
+.bulkSelectAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  color: var(--fiori-text);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bulkSelectAll input,
+.expenseSelectCell input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--fiori-shell-bg);
+  cursor: pointer;
+}
+
+.bulkEditActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--fiori-space-2);
+}
+
+.bulkDeleteButton {
+  border-color: color-mix(in srgb, var(--fiori-error) 26%, var(--fiori-border-light));
+  color: var(--fiori-error);
+}
+
+.bulkDeleteButton:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--fiori-error) 42%, var(--fiori-border-light));
+  background: color-mix(in srgb, var(--fiori-error) 7%, var(--fiori-surface));
+}
+
+@media (max-width: 42rem) {
+  .bulkEditBar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: var(--fiori-space-3) var(--fiori-space-4);
+  }
+
+  .bulkEditActions {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .bulkEditActions .monthGenerateButton {
+    width: 100%;
+  }
+}
+
 .monthTitle {
   margin: 0;
   font-size: clamp(1rem, 1.8vw, 1.15rem);
@@ -919,6 +993,10 @@
   background: color-mix(in srgb, var(--fiori-nav-bg) 48%, var(--fiori-surface));
 }
 
+.expenseRowSelected {
+  background: color-mix(in srgb, var(--fiori-shell-bg) 6%, var(--fiori-surface));
+}
+
 .expenseRowLink {
   display: grid;
   grid-template-columns: 1fr;
@@ -957,6 +1035,20 @@
     column-gap: var(--fiori-space-3);
     align-items: center;
     padding: 0 4.75rem 0 0;
+  }
+
+  .expenseRowEditing {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .expenseRowEditing .expenseRowLink {
+    padding-left: var(--fiori-space-2);
+  }
+
+  .expenseSelectCell {
+    align-self: center;
+    justify-self: start;
   }
 
   .expenseDate {
@@ -1009,6 +1101,13 @@
   border-radius: 0.25rem;
 }
 
+.expenseSelectCell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 @media (min-width: 48rem) {
   .expenseRow {
     grid-template-columns: 7.25rem minmax(0, 1fr) 8rem 6.25rem 9.5rem 5.75rem;
@@ -1025,6 +1124,18 @@
     padding: var(--fiori-space-3) 0;
   }
 
+  .expenseRowEditing {
+    grid-template-columns: 2.25rem 7.25rem minmax(0, 1fr) 8rem 6.25rem 9.5rem 5.75rem;
+  }
+
+  .expenseRowEditing .expenseRowLink {
+    grid-column: 2 / 7;
+  }
+
+  .expenseSelectCell {
+    justify-self: center;
+  }
+
   .expenseActions {
     position: static;
     justify-self: end;
@@ -1032,6 +1143,7 @@
   }
 
   .expenseDate,
+  .expenseSelectCell,
   .expenseTypeCell,
   .expensePaidBadge,
   .expenseLoadedBadge,
