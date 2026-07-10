@@ -2,15 +2,19 @@ import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ActivationsModule } from '../activations/activations.module';
+import { ExpensesModule } from '../expenses/expenses.module';
 import { RfqAnalysisModule } from '../rfq-analysis/rfq-analysis.module';
 import {
   activationSendQueueDefaultsFactory,
   bullRootModuleOptionsFactory,
+  expenseExtractQueueDefaultsFactory,
   rfqAnalysisQueueDefaultsFactory,
 } from './bullmq.config';
-import { ACTIVATION_SEND_QUEUE, RFQ_ANALYSIS_QUEUE } from './queue.constants';
+import { ACTIVATION_SEND_QUEUE, EXPENSE_EXTRACT_QUEUE, RFQ_ANALYSIS_QUEUE } from './queue.constants';
 import { ActivationSendProducer } from './producers/activation-send-producer.service';
 import { ActivationSendProcessor } from './processors/activation-send.processor';
+import { ExpenseExtractProducer } from './producers/expense-extract-producer.service';
+import { ExpenseExtractProcessor } from './processors/expense-extract.processor';
 import { RfqAnalysisProducer } from './producers/rfq-analysis-producer.service';
 import { RfqAnalysisProcessor } from './processors/rfq-analysis.processor';
 
@@ -49,15 +53,26 @@ import { RfqAnalysisProcessor } from './processors/rfq-analysis.processor';
       }),
       inject: [ConfigService],
     }),
+    BullModule.registerQueueAsync({
+      name: EXPENSE_EXTRACT_QUEUE,
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        defaultJobOptions: expenseExtractQueueDefaultsFactory(config),
+      }),
+      inject: [ConfigService],
+    }),
     forwardRef(() => ActivationsModule),
     forwardRef(() => RfqAnalysisModule),
+    forwardRef(() => ExpensesModule),
   ],
   providers: [
     ActivationSendProducer,
     ActivationSendProcessor,
     RfqAnalysisProducer,
     RfqAnalysisProcessor,
+    ExpenseExtractProducer,
+    ExpenseExtractProcessor,
   ],
-  exports: [BullModule, ActivationSendProducer, RfqAnalysisProducer],
+  exports: [BullModule, ActivationSendProducer, RfqAnalysisProducer, ExpenseExtractProducer],
 })
 export class QueueModule {}

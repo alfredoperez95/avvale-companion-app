@@ -1,15 +1,32 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Expense, ExpenseStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveRfqInboundAttachmentMime } from '../rfq-analysis/rfq-inbound-attachment-mime';
+import {
+  areInboundEmailTextsEquivalent,
+  sanitizeInboundEmailText,
+} from '../rfq-analysis/rfq-email-inbound-text';
+import { ExpenseExtractProducer } from '../queue/producers/expense-extract-producer.service';
 import { ExpenseStorageService } from './expense-storage.service';
 import { ExpenseAiService } from './expense-ai.service';
 import { convertHeicBufferToJpeg, heicFileNameToJpeg, isHeicFile } from './expense-image.utils';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { SyncExpenseImportStatusDto } from './dto/sync-expense-import-status.dto';
+import type { ExpenseEmailInboundDto } from './dto/expense-email-inbound.dto';
 import { isExpenseCategory } from './expense-categories';
+import { getExpenseMaxFileBytes } from './expenses.config';
 
-const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'pdf', 'heic']);
+const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'pdf', 'heic', 'heif']);
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
   'image/jpg',
@@ -25,14 +42,29 @@ export type ExpenseFileDownload = {
   fileName: string;
 };
 
+type ExpenseEmailSkippedAttachment = {
+  fileName: string;
+  reason: string;
+};
+
+type ExpenseEmailInboundResult = {
+  ok: boolean;
+  reason?: string;
+  expenseIds?: string[];
+  skipped?: ExpenseEmailSkippedAttachment[];
+};
+
 @Injectable()
 export class ExpensesService {
   private readonly logger = new Logger(ExpensesService.name);
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly creds: AnthropicCredentialsService,
     private readonly storage: ExpenseStorageService,
     private readonly ai: ExpenseAiService,
+    private readonly producer: ExpenseExtractProducer,
   ) {}
 
   async list(userId: string) {
@@ -118,6 +150,118 @@ export class ExpensesService {
     return mapExpense(expense);
   }
 
+  async handleInboundEmail(dto: ExpenseEmailInboundDto): Promise<ExpenseEmailInboundResult> {
+    const expected = this.config.get<string>('EXPENSE_EMAIL_WEBHOOK_SECRET')?.trim();
+    if (!expected) {
+      this.logger.warn('EXPENSE_EMAIL_WEBHOOK_SECRET no configurada');
+      throw new ServiceUnavailableException('Webhook no disponible');
+    }
+    if (dto.secret !== expected) {
+      throw new UnauthorizedException('Secreto inválido');
+    }
+
+    const email = dto.fromEmail.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      this.logger.warn(`Expense email rechazado: remitente no registrado ${email}`);
+      return { ok: false, reason: 'unknown_sender' };
+    }
+
+    try {
+      await this.creds.getApiKeyPlainOrThrow(user.id);
+    } catch {
+      this.logger.warn(`Expense email rechazado: usuario sin clave Anthropic ${email}`);
+      return { ok: false, reason: 'no_anthropic_key' };
+    }
+
+    const attachments = dto.attachments ?? [];
+    const maxAtt = getExpenseEmailMaxAttachments(this.config);
+    const maxFile = getExpenseMaxFileBytes(this.config);
+    const maxTotal = maxAtt * maxFile;
+
+    if (attachments.length > maxAtt) {
+      this.logger.warn(`Expense email rechazado: demasiados adjuntos (${attachments.length})`);
+      return { ok: false, reason: 'too_many_attachments' };
+    }
+
+    let estimatedTotal = 0;
+    for (const att of attachments) {
+      const b64len = att.contentBase64?.length ?? 0;
+      const approx = Math.floor((b64len * 3) / 4);
+      if (approx > maxFile) {
+        this.logger.warn(
+          `Expense email rechazado: adjunto supera límite por fichero (aprox ${formatBytesHuman(approx)} > máx ${formatBytesHuman(maxFile)}, fileName=${att.fileName?.slice(0, 120) ?? '?'})`,
+        );
+        return { ok: false, reason: 'attachment_too_large' };
+      }
+      estimatedTotal += approx;
+    }
+    if (estimatedTotal > maxTotal) {
+      this.logger.warn(
+        `Expense email rechazado: tamaño total de adjuntos aprox ${formatBytesHuman(estimatedTotal)} > máx ${formatBytesHuman(maxTotal)}`,
+      );
+      return { ok: false, reason: 'total_size_exceeded' };
+    }
+
+    const description = buildExpenseEmailDescription({
+      subject: sanitizeInboundEmailText(dto.subject),
+      bodyPlain: sanitizeInboundEmailText(dto.bodyPlain),
+      threadContext: sanitizeInboundEmailText(dto.threadContext),
+    });
+    const expenseIds: string[] = [];
+    const skipped: ExpenseEmailSkippedAttachment[] = [];
+
+    for (const att of attachments) {
+      const buffer = Buffer.from(att.contentBase64, 'base64');
+      if (buffer.length > maxFile) {
+        this.logger.warn(
+          `Expense email: tras decodificar base64, adjunto ${formatBytesHuman(buffer.length)} > máx ${formatBytesHuman(maxFile)} (${att.fileName?.slice(0, 120) ?? '?'})`,
+        );
+        return { ok: false, reason: 'attachment_too_large' };
+      }
+
+      const resolvedMime = resolveExpenseInboundAttachmentMime({
+        contentType: att.contentType,
+        mimeType: att.mimeType,
+        fileName: att.fileName,
+      });
+
+      try {
+        validateReceiptFile({ originalname: att.fileName, mimetype: resolvedMime });
+      } catch {
+        skipped.push({ fileName: att.fileName, reason: 'unsupported_format' });
+        continue;
+      }
+
+      const id = randomUUID();
+      const saved = await this.storage.saveUploadedFile(id, {
+        buffer,
+        originalname: att.fileName,
+        mimetype: resolvedMime,
+      });
+      const expense = await this.prisma.expense.create({
+        data: {
+          id,
+          userId: user.id,
+          fileUrl: `/expenses/${id}/file`,
+          originalFileName: saved.fileName,
+          storagePath: saved.storedPath,
+          mimeType: saved.mimeType,
+          description,
+          status: ExpenseStatus.PENDING_REVIEW,
+        },
+      });
+      await this.producer.enqueueExpenseExtract({ expenseId: expense.id, userId: user.id });
+      expenseIds.push(expense.id);
+    }
+
+    if (!expenseIds.length) {
+      return { ok: false, reason: 'no_valid_attachments', skipped: skipped.length ? skipped : undefined };
+    }
+
+    return { ok: true, expenseIds, skipped: skipped.length ? skipped : undefined };
+  }
+
   async convertHeicUpload(file: Express.Multer.File | undefined): Promise<ExpenseFileDownload> {
     if (!file?.buffer?.length) {
       throw new BadRequestException('Falta el archivo HEIC');
@@ -143,6 +287,11 @@ export class ExpensesService {
     const expense = await this.ensureOwned(userId, id);
     const next = await this.runExtraction(userId, expense);
     return mapExpense(next);
+  }
+
+  async processQueuedExtraction(userId: string, id: string): Promise<void> {
+    const expense = await this.ensureOwned(userId, id);
+    await this.runExtraction(userId, expense, { rethrow: true });
   }
 
   async update(userId: string, id: string, dto: UpdateExpenseDto) {
@@ -228,7 +377,11 @@ export class ExpensesService {
     return expense;
   }
 
-  private async runExtraction(userId: string, expense: Expense): Promise<Expense> {
+  private async runExtraction(
+    userId: string,
+    expense: Expense,
+    options: { rethrow?: boolean } = {},
+  ): Promise<Expense> {
     try {
       const buffer = await this.storage.readFile(expense.storagePath);
       const extracted = await this.ai.extract(userId, {
@@ -250,7 +403,7 @@ export class ExpensesService {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(`No se pudo extraer recibo ${expense.id}: ${message}`);
-      return this.prisma.expense.update({
+      const updated = await this.prisma.expense.update({
         where: { id: expense.id },
         data: {
           extractionError: message,
@@ -258,16 +411,65 @@ export class ExpensesService {
           modelId: null,
         },
       });
+      if (options.rethrow) {
+        throw err;
+      }
+      return updated;
     }
   }
 }
 
-function validateReceiptFile(file: Express.Multer.File): void {
+function validateReceiptFile(file: { originalname: string; mimetype: string }): void {
   const ext = extensionOf(file.originalname);
   const mime = (file.mimetype || '').toLowerCase();
   if (!ALLOWED_EXTENSIONS.has(ext) && !ALLOWED_MIME_TYPES.has(mime)) {
     throw new BadRequestException('Formato no soportado. Usa JPG, JPEG, PNG, PDF o HEIC.');
   }
+}
+
+function getExpenseEmailMaxAttachments(config: ConfigService): number {
+  const raw = config.get<string>('EXPENSE_EMAIL_MAX_ATTACHMENTS');
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+}
+
+function formatBytesHuman(bytes: number): string {
+  if (!Number.isFinite(bytes)) return `${bytes}`;
+  const mib = bytes / (1024 * 1024);
+  return `${mib.toFixed(1)} MiB`;
+}
+
+function buildExpenseEmailDescription(input: {
+  subject?: string;
+  bodyPlain?: string;
+  threadContext?: string;
+}): string | null {
+  const lines: string[] = [];
+  if (input.subject) lines.push(`Email: ${input.subject}`);
+  if (input.bodyPlain) lines.push(input.bodyPlain);
+  if (
+    input.threadContext &&
+    !areInboundEmailTextsEquivalent(input.bodyPlain, input.threadContext)
+  ) {
+    lines.push(input.threadContext);
+  }
+  const description = lines.join('\n\n').trim();
+  return description ? description.slice(0, 5000) : null;
+}
+
+function resolveExpenseInboundAttachmentMime(input: {
+  contentType?: string | null;
+  mimeType?: string | null;
+  fileName: string;
+}): string {
+  const resolved = resolveRfqInboundAttachmentMime(input);
+  if (resolved !== 'application/octet-stream') return resolved;
+  const ext = extensionOf(input.fileName);
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'heic') return 'image/heic';
+  if (ext === 'heif') return 'image/heif';
+  return resolved;
 }
 
 function extensionOf(fileName: string): string {

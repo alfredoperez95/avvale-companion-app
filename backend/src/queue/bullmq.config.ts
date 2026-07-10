@@ -89,3 +89,20 @@ export function rfqAnalysisQueueDefaultsFactory(config: ConfigService): {
     removeOnFail: false,
   };
 }
+
+export function expenseExtractQueueDefaultsFactory(config: ConfigService): {
+  attempts: number;
+  backoff: { type: 'exponential'; delay: number };
+  removeOnComplete: boolean;
+  removeOnFail: boolean;
+} {
+  return {
+    attempts: parsePositiveInt(config.get<string>('EXPENSE_QUEUE_ATTEMPTS'), 3),
+    backoff: {
+      type: 'exponential',
+      delay: parsePositiveInt(config.get<string>('EXPENSE_QUEUE_BACKOFF_MS'), 8000),
+    },
+    removeOnComplete: true,
+    removeOnFail: false,
+  };
+}

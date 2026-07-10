@@ -36,6 +36,23 @@ export default function AdministrativeProcessesPage() {
             </article>
           </Link>
         </li>
+        <li>
+          <Link
+            href="/launcher/expenses-process/email"
+            className={styles.tileLink}
+            aria-labelledby="tile-expenses-email-heading"
+          >
+            <article className={styles.tile}>
+              <h2 id="tile-expenses-email-heading" className={styles.tileTitle}>
+                Gastos por email
+              </h2>
+              <p className={styles.tileDesc}>
+                Configura Make para reenviar recibos por correo al webhook y crear gastos en background, uno por adjunto válido.
+              </p>
+              <span className={styles.tileCta}>Configurar webhook →</span>
+            </article>
+          </Link>
+        </li>
       </ul>
     </div>
   );

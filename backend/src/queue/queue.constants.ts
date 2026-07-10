@@ -8,3 +8,8 @@ export const ACTIVATION_SEND_JOB_NAME = 'send';
 export const RFQ_ANALYSIS_QUEUE = 'rfq-analysis';
 
 export const RFQ_ANALYSIS_JOB_NAME = 'process';
+
+/** Cola BullMQ para extracción IA de gastos creados por email. */
+export const EXPENSE_EXTRACT_QUEUE = 'expense-extract';
+
+export const EXPENSE_EXTRACT_JOB_NAME = 'extract';

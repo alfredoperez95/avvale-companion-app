@@ -1777,6 +1777,64 @@
   color: var(--fiori-text-secondary);
 }
 
+.emailFlowCard {
+  display: grid;
+  gap: var(--fiori-space-3);
+  margin-bottom: var(--fiori-space-5);
+  padding: var(--fiori-space-5);
+  border: 1px solid color-mix(in srgb, var(--fiori-border-light) 84%, transparent);
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 62%), transparent 3.5rem),
+    var(--fiori-surface);
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 4%),
+    0 14px 34px rgb(15 23 42 / 6%);
+}
+
+.emailFlowSteps {
+  display: grid;
+  gap: var(--fiori-space-3);
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--fiori-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.emailFlowSteps strong {
+  color: var(--fiori-text);
+}
+
+.emailFlowCard code {
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--fiori-shell-bg) 8%, var(--fiori-surface));
+  color: var(--fiori-shell-bg);
+  font-size: 0.8125em;
+}
+
+.emailFlowPre {
+  overflow: auto;
+  margin: 0;
+  padding: var(--fiori-space-4);
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 16%, var(--fiori-border-light));
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--fiori-nav-bg) 38%, var(--fiori-surface));
+  color: var(--fiori-text);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.emailFlowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fiori-space-3);
+  margin: var(--fiori-space-5) 0 0;
+}
+
 .uploadGrid {
   display: grid;
   grid-template-columns: 1fr;
