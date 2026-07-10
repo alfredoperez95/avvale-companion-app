@@ -9,6 +9,7 @@ import { EXPENSE_CATEGORIES, ExpenseCategory, isExpenseCategory } from './expens
 export type ExpenseExtraction = {
   amount: number | null;
   type: ExpenseCategory | null;
+  description: string | null;
   date: string | null;
   rawModelOutput: string | null;
   modelId: string | null;
@@ -17,6 +18,7 @@ export type ExpenseExtraction = {
 type RawExpenseExtraction = {
   amount?: unknown;
   expenseType?: unknown;
+  description?: unknown;
   date?: unknown;
 };
 
@@ -69,6 +71,7 @@ Return ONLY a valid JSON object with exactly these keys:
 {
   "amount": number | null,
   "expenseType": string | null,
+  "description": string | null,
   "date": "YYYY-MM-DD" | null
 }
 
@@ -76,6 +79,11 @@ Rules:
 - Extract only the final total amount paid. Do not extract subtotal, tax, change, or card digits.
 - The expenseType MUST be exactly one of these categories: ${EXPENSE_CATEGORIES.map((c) => `"${c}"`).join(', ')}.
 - If no category is clearly supported, choose the closest category from the list.
+- The description must summarize what the attached document is for, based only on the receipt/invoice/proforma content.
+- For travel documents, include the relevant traveler/guest name, service, destination/hotel/place and supplier when present.
+- Keep description concise, in Spanish, one sentence, max 180 characters.
+- Do not copy email threads, signatures, disclaimers, URLs, QR references, contact blocks, legal notices, or raw OCR noise.
+- If the document content is too unclear to describe the expense, return null for description.
 - The date must be the receipt date in YYYY-MM-DD format.
 - If a field cannot be read, return null for that field.
 - Do not include currency or any explanation.
@@ -93,6 +101,7 @@ function parseExtraction(rawText: string, modelId: string): ExpenseExtraction {
   return {
     amount: normalizeAmount(parsed.amount),
     type: normalizeType(parsed.expenseType),
+    description: normalizeDescription(parsed.description),
     date: normalizeDate(parsed.date),
     rawModelOutput: recoveredJson || rawText,
     modelId,
@@ -119,6 +128,16 @@ function normalizeType(value: unknown): ExpenseCategory | null {
   if (typeof value !== 'string') return null;
   const lower = value.trim().toLowerCase();
   return EXPENSE_CATEGORIES.find((c) => c.toLowerCase() === lower) ?? null;
+}
+
+function normalizeDescription(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value
+    .replace(/\s+/g, ' ')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .trim();
+  if (!normalized) return null;
+  return normalized.length > 180 ? normalized.slice(0, 177).trimEnd() + '...' : normalized;
 }
 
 function normalizeDate(value: unknown): string | null {

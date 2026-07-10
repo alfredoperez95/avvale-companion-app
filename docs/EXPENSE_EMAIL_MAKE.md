@@ -4,6 +4,8 @@ El backend expone un webhook **HTTP** para que un escenario de **Make** envíe r
 
 Cada adjunto válido crea un gasto independiente y encola la extracción IA en BullMQ. La llamada responde rápido; la extracción de importe, tipo y fecha ocurre en background.
 
+La descripción del gasto se genera a partir del contenido del adjunto (recibo, factura o proforma). El asunto del email solo se guarda como fallback corto mientras la extracción está pendiente o si el documento no aporta una descripción fiable.
+
 ## URL
 
 - **Método:** `POST`

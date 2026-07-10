@@ -12,10 +12,7 @@ import { randomUUID } from 'crypto';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolveRfqInboundAttachmentMime } from '../rfq-analysis/rfq-inbound-attachment-mime';
-import {
-  areInboundEmailTextsEquivalent,
-  sanitizeInboundEmailText,
-} from '../rfq-analysis/rfq-email-inbound-text';
+import { sanitizeInboundEmailText } from '../rfq-analysis/rfq-email-inbound-text';
 import { ExpenseExtractProducer } from '../queue/producers/expense-extract-producer.service';
 import { ExpenseStorageService } from './expense-storage.service';
 import { ExpenseAiService } from './expense-ai.service';
@@ -203,11 +200,7 @@ export class ExpensesService {
       return { ok: false, reason: 'total_size_exceeded' };
     }
 
-    const description = buildExpenseEmailDescription({
-      subject: sanitizeInboundEmailText(dto.subject),
-      bodyPlain: sanitizeInboundEmailText(dto.bodyPlain),
-      threadContext: sanitizeInboundEmailText(dto.threadContext),
-    });
+    const fallbackDescription = buildExpenseEmailFallbackDescription(sanitizeInboundEmailText(dto.subject));
     const expenseIds: string[] = [];
     const skipped: ExpenseEmailSkippedAttachment[] = [];
 
@@ -247,7 +240,7 @@ export class ExpensesService {
           originalFileName: saved.fileName,
           storagePath: saved.storedPath,
           mimeType: saved.mimeType,
-          description,
+          description: fallbackDescription,
           status: ExpenseStatus.PENDING_REVIEW,
         },
       });
@@ -394,6 +387,7 @@ export class ExpensesService {
         data: {
           amount: extracted.amount != null ? new Prisma.Decimal(extracted.amount) : null,
           type: extracted.type,
+          description: extracted.description ?? expense.description,
           date: extracted.date ? new Date(extracted.date) : null,
           extractionError: null,
           rawModelOutput: extracted.rawModelOutput,
@@ -439,22 +433,13 @@ function formatBytesHuman(bytes: number): string {
   return `${mib.toFixed(1)} MiB`;
 }
 
-function buildExpenseEmailDescription(input: {
-  subject?: string;
-  bodyPlain?: string;
-  threadContext?: string;
-}): string | null {
-  const lines: string[] = [];
-  if (input.subject) lines.push(`Email: ${input.subject}`);
-  if (input.bodyPlain) lines.push(input.bodyPlain);
-  if (
-    input.threadContext &&
-    !areInboundEmailTextsEquivalent(input.bodyPlain, input.threadContext)
-  ) {
-    lines.push(input.threadContext);
-  }
-  const description = lines.join('\n\n').trim();
-  return description ? description.slice(0, 5000) : null;
+function buildExpenseEmailFallbackDescription(subject: string | undefined): string | null {
+  if (!subject) return null;
+  const cleaned = subject
+    .replace(/^(re|rv|fw|fwd)\s*:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned ? `Email: ${cleaned.slice(0, 180)}` : null;
 }
 
 function resolveExpenseInboundAttachmentMime(input: {
