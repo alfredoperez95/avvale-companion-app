@@ -865,7 +865,8 @@ export default function ExpensesPage() {
                           expense.paidByCompany ? styles.expensePaidBadgeActive : styles.expensePaidBadgeInactive
                         }`}
                       >
-                        {expense.paidByCompany ? 'Sí' : 'No'}
+                        <span className={styles.expenseBadgeLabel}>Company Paid:</span>
+                        <span className={styles.expenseBadgeValue}>{expense.paidByCompany ? 'Sí' : 'No'}</span>
                       </span>
                       <span
                         className={`${styles.expenseLoadedBadge} ${
@@ -874,7 +875,9 @@ export default function ExpensesPage() {
                         aria-label={loaded ? 'Cargado: true' : 'Cargado: false'}
                         title={loaded ? 'Cargado: true' : 'Cargado: false'}
                       >
+                        <span className={styles.expenseBadgeLabel}>Cargado:</span>
                         {loaded ? <CheckmarkRegular fontSize={15} aria-hidden /> : <DismissRegular fontSize={15} aria-hidden />}
+                        <span className={styles.expenseLoadedText}>{loaded ? 'Sí' : 'No'}</span>
                       </span>
                       <span className={styles.expenseAmount}>{formatCurrency(expense.amount ?? 0)}</span>
                     </Link>
