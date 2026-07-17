@@ -7,6 +7,7 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { verifyElevenlabsWebhookPayload } from './elevenlabs-webhook-signature';
@@ -26,6 +27,7 @@ export class MeddpiccConvaiWebhookController {
   ) {}
 
   @Post('meddpicc')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   async postCallMeddpicc(@Req() req: Request): Promise<{ ok: true; duplicate?: boolean }> {
     const secret = this.config.get<string>('ELEVENLABS_WEBHOOK_SECRET')?.trim();
     if (!secret) {

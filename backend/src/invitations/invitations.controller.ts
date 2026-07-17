@@ -1,5 +1,5 @@
 import { Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { InvitationsService } from './invitations.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -21,8 +21,7 @@ export class InvitationsController {
   }
 
   @Post(':id/resend')
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ 'magic-link': { limit: 20, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   resend(@Param('id') id: string) {
     return this.invitationsService.resendByAdmin(id);
   }

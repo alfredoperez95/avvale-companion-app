@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import '@/styles/global.css';
 
 export const metadata: Metadata = {
@@ -16,14 +17,20 @@ export const viewport: Viewport = {
   interactiveWidget: 'overlays-content',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        {/* Expuesto para Client Components (p. ej. next/script de ElevenLabs) que no pueden usar headers(). */}
+        {nonce ? <meta name="csp-nonce" content={nonce} /> : null}
+        {children}
+      </body>
     </html>
   );
 }

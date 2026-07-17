@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Script from 'next/script';
 import { apiFetch, apiUpload } from '@/lib/api';
+import { readCspNonceFromDom } from '@/lib/csp-nonce';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import confirmDialogStyles from '@/components/ConfirmDialog/ConfirmDialog.module.css';
@@ -1707,7 +1708,11 @@ export default function MeddpiccDealDetailPage() {
                   startConvaiShadowConversationIdWatch();
                 }}
               />
-              <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="lazyOnload" />
+              <Script
+                src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+                strategy="lazyOnload"
+                nonce={readCspNonceFromDom()}
+              />
             </>,
             document.body,
           )

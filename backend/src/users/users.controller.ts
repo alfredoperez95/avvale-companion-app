@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, HttpCode } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -29,8 +29,7 @@ export class UsersController {
   }
 
   @Post('invite')
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ 'magic-link': { limit: 20, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async invite(@CurrentUser() payload: UserPayload, @Body() dto: InviteUserDto) {
     return this.invitationsService.createAndSendInvite(dto, payload.userId);
   }

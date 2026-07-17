@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, redirectToLogin } from '@/lib/api';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
+import { sanitizeUserHtml } from '@/lib/sanitize-html';
 import styles from '../configuration.module.css';
 
 export default function EmailSignaturePage() {
@@ -15,6 +16,7 @@ export default function EmailSignaturePage() {
   const [systemError, setSystemError] = useState('');
   const [applyInitialSaving, setApplyInitialSaving] = useState(false);
   const [resetFromInitialSaving, setResetFromInitialSaving] = useState(false);
+  const sanitizedPreview = useMemo(() => sanitizeUserHtml(content), [content]);
 
   useEffect(() => {
     apiFetch('/api/auth/me')
@@ -163,7 +165,7 @@ export default function EmailSignaturePage() {
             </p>
             <div className={styles.signaturePreviewBox} aria-live="polite">
               {content.trim() ? (
-                <div dangerouslySetInnerHTML={{ __html: content }} />
+                <div dangerouslySetInnerHTML={{ __html: sanitizedPreview }} />
               ) : (
                 <p className={styles.signaturePreviewEmpty}>Sin contenido aún</p>
               )}

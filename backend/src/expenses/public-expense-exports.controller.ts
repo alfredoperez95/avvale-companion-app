@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { ExpenseExportService } from './expense-export.service';
 
@@ -7,6 +8,7 @@ export class PublicExpenseExportsController {
   constructor(private readonly expenseExports: ExpenseExportService) {}
 
   @Get(':token/:fileName')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   async download(@Param('token') token: string, @Param('fileName') fileName: string, @Res() res: Response) {
     const file = await this.expenseExports.getPublicFile(token, fileName);
     res.setHeader('Content-Type', file.contentType);

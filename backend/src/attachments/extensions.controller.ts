@@ -1,4 +1,5 @@
 import { Controller, Get, NotFoundException, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
@@ -9,6 +10,7 @@ export class ExtensionsController {
   constructor(private readonly config: ConfigService) {}
 
   @Get('avvale-companion-extension.zip')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async downloadCompanionExtension(@Res() res: Response) {
     const attachmentsDir =
       this.config.get<string>('ATTACHMENTS_DIR') ?? path.join(process.cwd(), 'uploads');
@@ -31,4 +33,3 @@ export class ExtensionsController {
     res.sendFile(filePath);
   }
 }
-

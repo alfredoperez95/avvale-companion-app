@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
@@ -26,9 +27,8 @@ import * as path from 'path';
   imports: [
     ThrottlerModule.forRoot({
       throttlers: [
-        { name: 'magic-link', ttl: 60_000, limit: 5 },
-        /** Login, registro y verificación de magic link (por IP). En varias réplicas usar storage Redis del throttler. */
-        { name: 'auth-brute', ttl: 60_000, limit: 20 },
+        /** Límite global por IP (réplicas: configurar storage Redis del throttler). */
+        { name: 'default', ttl: 60_000, limit: 200 },
       ],
     }),
     ConfigModule.forRoot({
@@ -64,5 +64,11 @@ import * as path from 'path';
     ExpensesModule,
   ],
   controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

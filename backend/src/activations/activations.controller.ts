@@ -9,6 +9,7 @@ import { UserPayload } from '../auth/decorators/user-payload';
 import { ActivationStatus } from '@prisma/client';
 import { CreateActivationDto } from './dto/create-activation.dto';
 import { UpdateActivationDto } from './dto/update-activation.dto';
+import { validateActivationAttachmentFile } from './validate-activation-attachment';
 
 @Controller('activations')
 @UseGuards(JwtAuthGuard)
@@ -48,6 +49,10 @@ export class ActivationsController {
   ) {
     await this.activationsService.findOneByIdAndUser(id, user.userId);
     if (!file?.buffer) throw new BadRequestException('Falta el archivo');
+    validateActivationAttachmentFile({
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+    });
     const attachment = await this.attachmentsService.saveUploadedFile(
       id,
       { buffer: file.buffer, originalname: file.originalname, mimetype: file.mimetype },

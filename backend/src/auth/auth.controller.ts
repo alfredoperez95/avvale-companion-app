@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -36,48 +36,45 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ 'auth-brute': { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Post('login')
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ 'auth-brute': { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
   @Post('magic-link/request')
   @HttpCode(200)
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ 'magic-link': { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async requestMagicLink(@Body() dto: MagicLinkRequestDto) {
     return this.authService.requestMagicLink(dto.email);
   }
 
   @Post('magic-link/verify')
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ 'auth-brute': { limit: 15, ttl: 60_000 } })
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
   async verifyMagicLink(@Body() dto: MagicLinkVerifyDto) {
     return this.authService.verifyMagicLink(dto.token);
   }
 
   @Get('invitations/preview')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async previewInvitation(@Query('token') token: string) {
     return this.invitationsService.getPreviewByToken(token ?? '');
   }
 
   @Post('invitations/accept')
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ 'magic-link': { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async acceptInvitation(@Body() dto: AcceptInvitationDto) {
     const user = await this.invitationsService.acceptInvitation(dto);
     return this.authService.buildTokenResponse(user.id, user.email);
   }
 
   @Get('branding')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   getBranding() {
     return this.authService.getLoginBranding();
   }

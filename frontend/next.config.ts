@@ -20,6 +20,10 @@ if (process.env.NODE_ENV === 'production' && !process.env.INTERNAL_API_URL?.trim
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  /**
+   * CSP y cabeceras anti-inyección van en `src/middleware.ts` (nonce por request).
+   * Aquí solo cabeceras de recursos estáticos concretos.
+   */
   async headers() {
     return [
       {

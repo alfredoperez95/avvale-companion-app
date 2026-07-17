@@ -14,6 +14,7 @@ import { parseAttachmentNames, parseAttachmentUrls } from '@/lib/activation-atta
 import { shouldWarnScannedUrlsOnly } from '@/lib/activation-attachment-warning';
 import { formatProjectAmountDisplay } from '@/lib/format-project-amount';
 import { HubSpotIcon } from '@/components/HubSpotIcon/HubSpotIcon';
+import { sanitizeUserHtml } from '@/lib/sanitize-html';
 import styles from './DetailDrawer.module.css';
 
 interface DetailDrawerProps {
@@ -302,7 +303,7 @@ function ActivationDrawerBody({
                   {openEmailPanel === 'body' ? (
                     <div id="email-body-panel" role="region" aria-labelledby="email-body-trigger" className={styles.emailBodyEmbedded}>
                       {/<[a-z][\s\S]*>/i.test(activation.body) ? (
-                        <div dangerouslySetInnerHTML={{ __html: activation.body }} />
+                        <div dangerouslySetInnerHTML={{ __html: sanitizeUserHtml(activation.body) }} />
                       ) : (
                         <pre>{activation.body}</pre>
                       )}

@@ -3,6 +3,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { json, urlencoded, type Request } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { assertProductionSecrets } from './security/assert-production-secrets';
 
 /**
  * Límite global del body JSON/urlencoded (Express).
@@ -12,17 +13,27 @@ const HTTP_BODY_LIMIT = process.env.HTTP_BODY_LIMIT?.trim() || '50mb';
 const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
+  assertProductionSecrets();
+
   const app = await NestFactory.create(AppModule, {
     bodyParser: false,
   });
-  if (process.env.NODE_ENV === 'production') {
-    app.use(
-      helmet({
-        contentSecurityPolicy: false,
-        crossOriginResourcePolicy: { policy: 'cross-origin' },
-      }),
-    );
-  }
+
+  const isProd = process.env.NODE_ENV === 'production';
+  app.use(
+    helmet({
+      // El documento HTML lo endurece Next (CSP con nonce); aquí no forzamos CSP en JSON API.
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginOpenerPolicy: { policy: 'same-origin' },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      hsts: isProd
+        ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
+        : false,
+      permittedCrossDomainPolicies: { permittedPolicies: 'none' },
+    }),
+  );
+
   app.use(
     json({
       limit: HTTP_BODY_LIMIT,
@@ -68,7 +79,7 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   console.log(`Backend running at http://localhost:${port}`);
   console.log(`HTTP body limit (JSON / urlencoded): ${HTTP_BODY_LIMIT}`);
-  console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`CORS allowed origins: ${allowedOrigins.join(', ') || '(vacío)'}`);
   if (process.env.MAIL_SKIP_SEND === 'true') {
     console.warn(
       '[MAIL] MAIL_SKIP_SEND=true: no se envían correos reales (solo enlace en logs). Producción: MAIL_SKIP_SEND=false (o sin definir) y SMTP_HOST/SMTP_USER/SMTP_PASS.',
