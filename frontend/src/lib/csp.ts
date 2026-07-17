@@ -8,7 +8,7 @@
 export type CspEnv = {
   isDev: boolean;
   /** Orígenes extra permitidos en connect-src (p. ej. NEXT_PUBLIC_API_URL). */
-  connectOrigins?: string[];
+  connectOrigins?: Array<string | undefined>;
 };
 
 function originFromUrl(raw: string | undefined): string | null {
