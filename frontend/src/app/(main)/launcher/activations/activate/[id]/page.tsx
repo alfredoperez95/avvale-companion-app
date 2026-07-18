@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -23,6 +23,7 @@ import {
   type ExtensionDownloadPhase,
 } from '@/hooks/useActivationExtensionDownloads';
 import { uploadAccept, validateUploadFiles } from '@/lib/validate-upload';
+import { sanitizeUserHtml } from '@/lib/sanitize-html';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from './detail.module.css';
 
@@ -70,7 +71,6 @@ export default function ActivationDetailPage() {
   const [showUploadProgress, setShowUploadProgress] = useState(false);
   const [uploadToast, setUploadToast] = useState<null | { kind: 'success'; message: string }>(null);
   const [toastPortalHost, setToastPortalHost] = useState<HTMLElement | null>(null);
-  const [sanitizedBody, setSanitizedBody] = useState<string | null>(null);
   const [showDiscardExtensionConfirm, setShowDiscardExtensionConfirm] = useState(false);
   const [discardExtensionBusy, setDiscardExtensionBusy] = useState(false);
   const [showDeleteAllAttachmentsConfirm, setShowDeleteAllAttachmentsConfirm] = useState(false);
@@ -81,6 +81,10 @@ export default function ActivationDetailPage() {
   const disableAutoImportRef = useRef(false);
 
   const extensionBridge = useActivationExtensionDownloads();
+  const sanitizedBody = useMemo(() => {
+    const body = activation?.body;
+    return body && isHtmlBody(body) ? sanitizeUserHtml(body) : null;
+  }, [activation?.body]);
 
   useEffect(() => {
     if (!id) return;
@@ -96,19 +100,6 @@ export default function ActivationDetailPage() {
       .then(setActivation)
       .finally(() => setLoading(false));
   }, [id]);
-
-  useEffect(() => {
-    const body = activation?.body;
-    if (!body || !isHtmlBody(body)) {
-      setSanitizedBody(null);
-      return;
-    }
-    let cancelled = false;
-    import('dompurify').then(({ default: DOMPurify }) => {
-      if (!cancelled) setSanitizedBody(DOMPurify.sanitize(body));
-    });
-    return () => { cancelled = true; };
-  }, [activation?.body]);
 
   useEffect(() => {
     if (!showExtensionAlreadyImportedTip) return;

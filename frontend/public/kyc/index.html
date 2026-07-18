@@ -323,7 +323,7 @@ async function addExisting(id) {
 async function submitAdd() {
   if (state.addTab !== 'new') return;
   const name = document.getElementById('add-name').value.trim();
-  if (!name) return alert('Nombre requerido');
+  if (!name) { showLegacyMessage('Nombre requerido'); return; }
   const body = {
     name,
     sector: document.getElementById('add-sector').value || null,
@@ -339,7 +339,7 @@ async function submitAdd() {
     closeAddModal();
     loadCompanies();
     selectCompany(r.id);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { showLegacyMessage('Error: ' + e.message); }
 }
 
 function openImportModal() { document.getElementById('modal-import').classList.remove('hidden'); }
@@ -377,7 +377,7 @@ async function submitImport() {
     loadCompanies();
     setTimeout(closeImportModal, 2000);
   } catch (e) {
-    document.getElementById('import-result').innerHTML = '<span class="text-red-500">Error: ' + e.message + '</span>';
+    document.getElementById('import-result').innerHTML = '<span class="text-red-500">Error: ' + escapeHtml(e.message) + '</span>';
   }
 }
 
@@ -425,7 +425,7 @@ function renderDetail() {
           <h2 class="text-xl font-bold">${escapeHtml(company.name)}</h2>
           <div class="text-sm text-slate-500 mt-1">
             ${escapeHtml(company.sector || '—')} · ${escapeHtml(company.city || '')} · ${escapeHtml(company.country || '')}
-            ${company.website ? `· <a href="${escapeAttr(company.website)}" target="_blank" class="text-blue-600">${escapeHtml(company.website)}</a>` : ''}
+            ${company.website ? `· ${externalLink(company.website, company.website, 'text-blue-600')}` : ''}
           </div>
           <div class="mt-2 flex items-center gap-3">
             <div class="text-xs text-slate-500">KYC ${completeness}%</div>
@@ -488,7 +488,7 @@ function renderTab() {
               <span>${escapeHtml(s.source)} · ${s.sentiment || ''} ${s.rating ? '· ⭐ ' + s.rating : ''}</span>
               <span>${s.published_at ? new Date(s.published_at).toLocaleDateString() : ''}</span>
             </div>
-            <div class="font-medium text-sm">${s.source_url ? `<a href="${escapeAttr(s.source_url)}" target="_blank" class="text-blue-600">${escapeHtml(s.title || '(sin título)')}</a>` : escapeHtml(s.title || '(sin título)')}</div>
+            <div class="font-medium text-sm">${s.source_url ? externalLink(s.source_url, s.title || '(sin título)', 'text-blue-600') : escapeHtml(s.title || '(sin título)')}</div>
             ${s.text ? `<div class="text-xs text-slate-500 mt-1">${escapeHtml(s.text.slice(0, 280))}</div>` : ''}
           </div>
         `).join('')
@@ -510,7 +510,7 @@ async function loadTimeline() {
         <div class="text-xs text-slate-400">${new Date(it.ts).toLocaleString()} · ${it.kind}${it.source ? ' · ' + escapeHtml(it.source) : ''}${it.type ? ' · ' + escapeHtml(it.type) : ''}</div>
         <div class="text-sm">${escapeHtml(it.title || it.subject || it.summary || '(sin título)')}</div>
       </div>`).join('') : '<div class="text-sm text-slate-400">Timeline vacío.</div>';
-  } catch (e) { el.innerHTML = '<div class="text-sm text-red-500">Error: ' + e.message + '</div>'; }
+  } catch (e) { el.innerHTML = '<div class="text-sm text-red-500">Error: ' + escapeHtml(e.message) + '</div>'; }
 }
 
 async function activateKyc(id) { await api('/api/kyc/companies/' + id + '/activate', { method: 'POST' }); selectCompany(id); }
@@ -523,7 +523,7 @@ async function enrichCompany(id) {
   const btn = event.target;
   btn.disabled = true; btn.textContent = 'Enriqueciendo…';
   try { await api('/api/kyc/companies/' + id + '/enrich', { method: 'POST' }); }
-  catch (e) { alert('Error: ' + e.message); }
+  catch (e) { showLegacyMessage('Error: ' + e.message); }
   btn.disabled = false; btn.textContent = '⟳ Enriquecer';
   selectCompany(id);
 }
@@ -646,7 +646,7 @@ async function applyFormalReport(srcId, targetId) {
       body: JSON.stringify({ reports_to_id: targetId, level: childLvl })
     });
     selectCompany(state.selected.company.id);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { showLegacyMessage('Error: ' + e.message); }
 }
 async function applyInformalRel(srcId, targetId, type) {
   document.getElementById('rel-menu')?.remove();
@@ -656,7 +656,7 @@ async function applyInformalRel(srcId, targetId, type) {
       body: JSON.stringify({ from_member_id: srcId, to_member_id: targetId, type })
     });
     selectCompany(state.selected.company.id);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { showLegacyMessage('Error: ' + e.message); }
 }
 
 // Responsibility levels (swimlanes)
@@ -714,7 +714,7 @@ async function laneDrop(ev, newLevel) {
       body: JSON.stringify({ level: newLevel === 0 ? null : newLevel })
     });
     selectCompany(state.selected.company.id);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { showLegacyMessage('Error: ' + e.message); }
 }
 
 function renderOrg() {
@@ -874,12 +874,12 @@ async function deleteMember(id) {
 }
 async function addRelPrompt() {
   const members = state.selected.org.members;
-  if (members.length < 2) return alert('Añade al menos 2 miembros primero.');
+  if (members.length < 2) { showLegacyMessage('Añade al menos 2 miembros primero.'); return; }
   const fromName = prompt('Desde (nombre):'); const toName = prompt('Hacia (nombre):');
   const type = prompt('Tipo (aliado, bloqueador, influencer, mentor, rival, otro):') || 'otro';
   const from = members.find((m) => m.name.toLowerCase().includes((fromName || '').toLowerCase()));
   const to = members.find((m) => m.name.toLowerCase().includes((toName || '').toLowerCase()));
-  if (!from || !to) return alert('No encontré esos miembros.');
+  if (!from || !to) { showLegacyMessage('No encontré esos miembros.'); return; }
   await api('/api/kyc/companies/' + state.selected.company.id + '/org/relationships', {
     method: 'POST', body: JSON.stringify({ from_member_id: from.id, to_member_id: to.id, type })
   });
@@ -1034,7 +1034,7 @@ function renderDashboard() {
             <div class="text-base font-bold text-slate-900 truncate">${escapeHtml(company.name)}</div>
             ${profile.strategic ? '<span class="text-amber-500 text-sm">★</span>' : ''}
           </div>
-          <div class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(company.sector || '—')} · ${escapeHtml(company.city || '')} · ${escapeHtml(company.country || '')}${company.website ? ` · <a href="${escapeAttr(company.website)}" target="_blank" class="text-blue-600 hover:underline">${escapeHtml(company.website)} ↗</a>` : ''}</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(company.sector || '—')} · ${escapeHtml(company.city || '')} · ${escapeHtml(company.country || '')}${company.website ? ` · ${externalLink(company.website, company.website + ' ↗', 'text-blue-600 hover:underline')}` : ''}</div>
           <div class="mt-2 text-[13px] text-slate-700 leading-snug line-clamp-3">${escapeHtml(profile.summary || 'Sin resumen todavía. Inicia una entrevista para generarlo automáticamente.')}</div>
         </div>
         <div class="flex flex-col items-center shrink-0">
@@ -1328,7 +1328,7 @@ async function loadChatSessions() {
 }
 
 async function newChatSession() {
-  if (!state.selected) return alert('Selecciona una empresa primero.');
+  if (!state.selected) { showLegacyMessage('Selecciona una empresa primero.'); return; }
   const s = await api('/api/kyc/companies/' + state.selected.company.id + '/chat/sessions', {
     method: 'POST', body: JSON.stringify({ title: 'Sesión ' + new Date().toLocaleString() })
   });
@@ -1426,6 +1426,35 @@ async function sendChat(ev) {
 // ───────────────────────────────────────────────────────────────────────────
 function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 function escapeAttr(s) { return escapeHtml(s); }
+function safeExternalUrl(url) {
+  try {
+    const raw = String(url ?? '').trim();
+    if (!/^https?:\/\//i.test(raw)) return '';
+    const u = new URL(raw);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : '';
+  } catch {
+    return '';
+  }
+}
+function externalLink(url, label, className) {
+  const href = safeExternalUrl(url);
+  const text = escapeHtml(label || url || '');
+  if (!href) return text;
+  return `<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer" class="${escapeAttr(className || 'text-blue-600')}">${text}</a>`;
+}
+function showLegacyMessage(message) {
+  const id = 'legacy-toast';
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    el.className = 'fixed bottom-4 right-4 z-[80] max-w-sm rounded-lg bg-slate-900 text-white text-sm px-4 py-3 shadow-xl';
+    document.body.appendChild(el);
+  }
+  el.textContent = String(message || 'Error');
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => { el.remove(); }, 4500);
+}
 
 // ───────────────────────────────────────────────────────────────────────────
 // Init

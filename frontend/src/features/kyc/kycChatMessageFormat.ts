@@ -1,4 +1,4 @@
-import DOMPurify from 'dompurify';
+import { sanitizeRestrictedHtml } from '@/lib/sanitize-html';
 
 /** Oculta la línea de sincronización interna (no debe verse en el chat). */
 export function stripKycProposedJsonFromChatText(text: string): string {
@@ -82,7 +82,5 @@ export function formatKycAssistantMessageHtml(raw: string): string {
 
   closeUl();
 
-  return DOMPurify.sanitize(parts.join(''), {
-    ALLOWED_TAGS: ['p', 'ul', 'li', 'h2', 'h3', 'strong', 'em', 'code'],
-  });
+  return sanitizeRestrictedHtml(parts.join(''), ['p', 'ul', 'li', 'h2', 'h3', 'strong', 'em', 'code']);
 }
