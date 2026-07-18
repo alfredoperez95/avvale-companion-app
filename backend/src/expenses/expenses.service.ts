@@ -22,16 +22,7 @@ import { SyncExpenseImportStatusDto } from './dto/sync-expense-import-status.dto
 import type { ExpenseEmailInboundDto } from './dto/expense-email-inbound.dto';
 import { isExpenseCategory } from './expense-categories';
 import { getExpenseMaxFileBytes } from './expenses.config';
-
-const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'pdf', 'heic', 'heif']);
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/heic',
-  'image/heif',
-  'application/pdf',
-]);
+import { validateSafeFile } from '../files/safe-file-validation';
 
 export type ExpenseFileDownload = {
   buffer: Buffer;
@@ -220,7 +211,7 @@ export class ExpensesService {
       });
 
       try {
-        validateReceiptFile({ originalname: att.fileName, mimetype: resolvedMime });
+        validateReceiptFile({ originalname: att.fileName, mimetype: resolvedMime, buffer, size: buffer.length });
       } catch {
         skipped.push({ fileName: att.fileName, reason: 'unsupported_format' });
         continue;
@@ -414,12 +405,8 @@ export class ExpensesService {
   }
 }
 
-function validateReceiptFile(file: { originalname: string; mimetype: string }): void {
-  const ext = extensionOf(file.originalname);
-  const mime = (file.mimetype || '').toLowerCase();
-  if (!ALLOWED_EXTENSIONS.has(ext) && !ALLOWED_MIME_TYPES.has(mime)) {
-    throw new BadRequestException('Formato no soportado. Usa JPG, JPEG, PNG, PDF o HEIC.');
-  }
+function validateReceiptFile(file: { originalname: string; mimetype: string; buffer: Buffer; size?: number }): void {
+  validateSafeFile('expense', file);
 }
 
 function getExpenseEmailMaxAttachments(config: ConfigService): number {

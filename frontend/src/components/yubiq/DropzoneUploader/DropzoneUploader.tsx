@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { uploadAccept, validateUploadFile } from '@/lib/validate-upload';
 import styles from './DropzoneUploader.module.css';
 
 function PdfIcon() {
@@ -32,11 +33,18 @@ export function DropzoneUploader({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(false);
+  const [error, setError] = useState('');
 
   const pick = () => inputRef.current?.click();
 
   const acceptFile = (f: File | null | undefined) => {
     if (!f) return;
+    const validationError = validateUploadFile('yubiq', f);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError('');
     onFileSelected(f);
   };
 
@@ -74,7 +82,7 @@ export function DropzoneUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf,.pdf"
+        accept={uploadAccept('yubiq')}
         className={styles.hiddenInput}
         onChange={(e) => {
           acceptFile(e.target.files?.[0]);
@@ -88,6 +96,7 @@ export function DropzoneUploader({
         Seleccionar PDF
       </button>
       <div className={styles.meta}>Solo PDF · Máx. 20&nbsp;MB</div>
+      {error ? <div className={styles.fileNote} role="alert">{error}</div> : null}
 
       {file && (
         <div className={styles.fileChip} aria-label="Archivo seleccionado">

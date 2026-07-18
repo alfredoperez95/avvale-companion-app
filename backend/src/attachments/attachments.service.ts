@@ -3,11 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { lookup } from 'dns/promises';
+import { isIP } from 'net';
 import { randomUUID } from 'crypto';
+import { validateSafeFile } from '../files/safe-file-validation';
+import { resolvePathWithinBase } from '../files/safe-path';
 
 const DOWNLOAD_TIMEOUT_MS = 30_000;
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 const PUBLIC_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+const MAX_DOWNLOAD_REDIRECTS = 3;
 
 export interface DownloadResult {
   saved: string[];
@@ -58,6 +63,46 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
     } catch {
       return false;
     }
+  }
+
+  private isBlockedHostname(hostname: string): boolean {
+    const h = hostname.toLowerCase();
+    return h === 'localhost' || h.endsWith('.localhost') || h === 'metadata.google.internal';
+  }
+
+  private isPrivateIpAddress(address: string): boolean {
+    if (address === '169.254.169.254') return true;
+    if (isIP(address) === 6) {
+      const lower = address.toLowerCase();
+      return lower === '::1' || lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80:');
+    }
+    const parts = address.split('.').map((p) => Number.parseInt(p, 10));
+    if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return true;
+    const [a, b] = parts;
+    return (
+      a === 10 ||
+      a === 127 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 169 && b === 254) ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      a === 0
+    );
+  }
+
+  private async assertPublicDownloadTarget(rawUrl: string): Promise<URL> {
+    const u = new URL(rawUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+      throw new Error('URL no permitida: solo http o https');
+    }
+    if (this.isBlockedHostname(u.hostname)) {
+      throw new Error('URL no permitida: host interno');
+    }
+    const addresses = await lookup(u.hostname, { all: true, verbatim: true });
+    if (addresses.length === 0 || addresses.some((entry) => this.isPrivateIpAddress(entry.address))) {
+      throw new Error('URL no permitida: destino privado o local');
+    }
+    return u;
   }
 
   /** URLs de HubSpot requieren sesión; el backend no la tiene, no intentar descargar. */
@@ -130,18 +175,29 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
   async downloadFromUrl(
     url: string,
   ): Promise<{ buffer: Buffer; contentType?: string; suggestedName?: string }> {
-    if (!this.isValidUrl(url)) {
-      throw new Error('URL no permitida: solo http o https');
-    }
+    if (!this.isValidUrl(url)) throw new Error('URL no permitida: solo http o https');
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
     try {
-      const res = await fetch(url, {
-        signal: controller.signal,
-        redirect: 'follow',
-        headers: { 'User-Agent': 'AvvaleCompanion/1.0' },
-      });
+      let current = url;
+      let res: Response | null = null;
+      for (let i = 0; i <= MAX_DOWNLOAD_REDIRECTS; i++) {
+        await this.assertPublicDownloadTarget(current);
+        res = await fetch(current, {
+          signal: controller.signal,
+          redirect: 'manual',
+          headers: { 'User-Agent': 'AvvaleCompanion/1.0' },
+        });
+        if (![301, 302, 303, 307, 308].includes(res.status)) break;
+        const location = res.headers.get('location');
+        if (!location) throw new Error('Redirect sin Location');
+        current = new URL(location, current).toString();
+      }
       clearTimeout(timeout);
+      if (!res) throw new Error('No se pudo descargar el archivo');
+      if ([301, 302, 303, 307, 308].includes(res.status)) {
+        throw new Error('Demasiadas redirecciones');
+      }
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -189,27 +245,19 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
       }
       try {
         const { buffer, contentType, suggestedName } = await this.downloadFromUrl(trimmed);
-        let ext = this.getExtensionFromUrl(trimmed);
-        if (ext === '.bin' && contentType) ext = this.getExtensionFromContentType(contentType);
-        const fileId = randomUUID();
-        const hasSuggestedExt = suggestedName && path.extname(suggestedName);
-        const baseFromSuggested = suggestedName ? path.basename(suggestedName).replace(/[^a-zA-Z0-9._-]/g, '_') : '';
-        let safeFileName =
-          hasSuggestedExt
-            ? baseFromSuggested
-            : baseFromSuggested
-              ? `${baseFromSuggested}${ext}`
-              : `documento_${fileId}${ext}`;
-        if (safeFileName.endsWith('.bin') && contentType) {
-          const betterExt = this.getExtensionFromContentType(contentType);
-          if (betterExt !== '.bin') {
-            const withoutBin = safeFileName.slice(0, -4);
-            safeFileName = withoutBin.endsWith('.') ? withoutBin + betterExt.slice(1) : withoutBin + betterExt;
-          }
-        }
-        const storedFileName = `${fileId}_${safeFileName}`;
+        const fallbackExt = this.getExtensionFromUrl(trimmed);
+        const inferredExt = fallbackExt === '.bin' && contentType ? this.getExtensionFromContentType(contentType) : fallbackExt;
+        const originalname = suggestedName || `documento${inferredExt}`;
+        const safe = validateSafeFile('activation', {
+          buffer,
+          originalname,
+          mimetype: contentType,
+          size: buffer.length,
+        });
+        const safeFileName = safe.displayName;
+        const storedFileName = safe.storedFileName;
         const storedPath = path.join('activations', activationId, storedFileName);
-        const fullPath = path.join(this.baseDir, storedPath);
+        const fullPath = resolvePathWithinBase(this.baseDir, storedPath);
         await fs.writeFile(fullPath, buffer);
         await this.prisma.activationAttachment.create({
           data: {
@@ -217,7 +265,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
             originalUrl: trimmed,
             storedPath,
             fileName: safeFileName,
-            contentType: contentType ?? null,
+            contentType: safe.contentType,
           },
         });
         saved.push(trimmed);
@@ -238,15 +286,18 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
     file: { buffer: Buffer; originalname: string; mimetype?: string },
     originalUrl?: string,
   ) {
-    const ext = path.extname(file.originalname) || this.getExtensionFromContentType(file.mimetype);
-    const fileId = randomUUID();
-    const baseName = path.basename(file.originalname, path.extname(file.originalname)).replace(/[^a-zA-Z0-9._-]/g, '_') || 'documento';
-    const safeFileName = `${baseName}${ext}`;
-    const storedFileName = `${fileId}_${safeFileName}`;
+    const safe = validateSafeFile('activation', {
+      buffer: file.buffer,
+      originalname: file.originalname || 'documento.bin',
+      mimetype: file.mimetype,
+      size: file.buffer.length,
+    });
+    const safeFileName = safe.displayName;
+    const storedFileName = safe.storedFileName;
     const storedPath = path.join('activations', activationId, storedFileName);
     const activationDir = path.join(this.baseDir, 'activations', activationId);
     await this.ensureDir(activationDir);
-    const fullPath = path.join(this.baseDir, storedPath);
+    const fullPath = resolvePathWithinBase(this.baseDir, storedPath);
     await fs.writeFile(fullPath, file.buffer);
     return this.prisma.activationAttachment.create({
       data: {
@@ -254,7 +305,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
         originalUrl: originalUrl?.trim() || '',
         storedPath,
         fileName: safeFileName,
-        contentType: file.mimetype?.split(';')[0].trim() || null,
+        contentType: safe.contentType,
       },
     });
   }
@@ -278,7 +329,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
       rows.map(async (r) => {
         let fileSizeBytes: number | null = null;
         try {
-          const st = await fs.stat(path.join(this.baseDir, r.storedPath));
+          const st = await fs.stat(resolvePathWithinBase(this.baseDir, r.storedPath));
           fileSizeBytes = st.size;
         } catch {
           fileSizeBytes = null;
@@ -305,7 +356,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
       where: { id: attachmentId, activationId },
     });
     if (!attachment) throw new NotFoundException('Adjunto no encontrado');
-    const fullPath = path.join(this.baseDir, attachment.storedPath);
+    const fullPath = resolvePathWithinBase(this.baseDir, attachment.storedPath);
     try {
       const buffer = await fs.readFile(fullPath);
       return {
@@ -367,7 +418,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
       select: { storedPath: true, fileName: true, contentType: true },
     });
     if (!attachment) throw new NotFoundException('Adjunto público no encontrado o expirado');
-    const fullPath = path.join(this.baseDir, attachment.storedPath);
+    const fullPath = resolvePathWithinBase(this.baseDir, attachment.storedPath);
     try {
       const buffer = await fs.readFile(fullPath);
       return {
@@ -387,7 +438,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
       select: { id: true, storedPath: true },
     });
     if (!attachment) throw new NotFoundException('Adjunto no encontrado');
-    const fullPath = path.join(this.baseDir, attachment.storedPath);
+    const fullPath = resolvePathWithinBase(this.baseDir, attachment.storedPath);
     try {
       await fs.unlink(fullPath);
     } catch {
@@ -404,7 +455,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
     });
     const dir = path.join(this.baseDir, 'activations', activationId);
     for (const a of list) {
-      const fullPath = path.join(this.baseDir, a.storedPath);
+      const fullPath = resolvePathWithinBase(this.baseDir, a.storedPath);
       try {
         await fs.unlink(fullPath);
       } catch {

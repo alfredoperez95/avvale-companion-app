@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { convertHeicBufferToJpeg, heicFileNameToJpeg, isHeicFile } from './expense-image.utils';
+import { validateSafeFile } from '../files/safe-file-validation';
+import { resolvePathWithinBase } from '../files/safe-path';
 
 @Injectable()
 export class ExpenseStorageService {
@@ -13,24 +14,32 @@ export class ExpenseStorageService {
     this.baseDir = this.config.get<string>('ATTACHMENTS_DIR') ?? path.join(process.cwd(), 'uploads');
   }
 
-  private sanitizeFileName(name: string): string {
-    const base = path.basename(name).replace(/[^\w.\- ()\[\]]+/g, '_');
-    return base.length > 200 ? base.slice(0, 200) : base;
-  }
-
   async saveUploadedFile(
     expenseId: string,
     file: { buffer: Buffer; originalname: string; mimetype: string },
   ): Promise<{ storedPath: string; fileName: string; mimeType: string }> {
-    let buffer = file.buffer;
-    let safeName = this.sanitizeFileName(file.originalname || 'receipt.bin');
-    let mimeType = file.mimetype || 'application/octet-stream';
+    let safe = validateSafeFile('expense', {
+      buffer: file.buffer,
+      originalname: file.originalname || 'receipt.bin',
+      mimetype: file.mimetype,
+      size: file.buffer.length,
+    });
+    let buffer = safe.buffer;
+    let safeName = safe.displayName;
+    let mimeType = safe.contentType;
 
     if (isHeicFile(mimeType, safeName)) {
       try {
         buffer = await convertHeicBufferToJpeg(buffer);
         safeName = heicFileNameToJpeg(safeName);
         mimeType = 'image/jpeg';
+        safe = validateSafeFile('expense', {
+          buffer,
+          originalname: safeName,
+          mimetype: mimeType,
+          size: buffer.length,
+        });
+        safeName = safe.displayName;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         throw new BadRequestException(
@@ -39,9 +48,9 @@ export class ExpenseStorageService {
       }
     }
 
-    const storedFileName = `${randomUUID()}_${safeName}`;
+    const storedFileName = safe.storedFileName;
     const relative = path.join('expenses', expenseId, storedFileName);
-    const full = path.join(this.baseDir, relative);
+    const full = resolvePathWithinBase(this.baseDir, relative);
     await fs.mkdir(path.dirname(full), { recursive: true });
     await fs.writeFile(full, buffer);
     return {
@@ -52,10 +61,13 @@ export class ExpenseStorageService {
   }
 
   async readFile(relativePath: string): Promise<Buffer> {
-    return fs.readFile(path.join(this.baseDir, relativePath));
+    return fs.readFile(resolvePathWithinBase(this.baseDir, relativePath));
   }
 
   async deleteExpenseFolder(expenseId: string): Promise<void> {
-    await fs.rm(path.join(this.baseDir, 'expenses', expenseId), { recursive: true, force: true });
+    await fs.rm(resolvePathWithinBase(this.baseDir, path.join('expenses', expenseId)), {
+      recursive: true,
+      force: true,
+    });
   }
 }

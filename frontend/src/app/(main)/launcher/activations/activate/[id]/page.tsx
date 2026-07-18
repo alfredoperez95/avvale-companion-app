@@ -22,6 +22,7 @@ import {
   useActivationExtensionDownloads,
   type ExtensionDownloadPhase,
 } from '@/hooks/useActivationExtensionDownloads';
+import { uploadAccept, validateUploadFiles } from '@/lib/validate-upload';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from './detail.module.css';
 
@@ -247,11 +248,17 @@ export default function ActivationDetailPage() {
     if (!id || !files?.length) return;
     setUploadError('');
     setUploadToast(null);
+    const allFiles = Array.from(files);
+    const validationError = validateUploadFiles('activation', allFiles);
+    if (validationError) {
+      setUploadError(validationError);
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     setUploadProgress(0);
     setShowUploadProgress(true);
     let failed = false;
-    const allFiles = Array.from(files);
     const totalBytes = allFiles.reduce((acc, file) => acc + Math.max(file.size, 1), 0);
     let uploadedBytes = 0;
     try {
@@ -689,7 +696,7 @@ export default function ActivationDetailPage() {
             equipo y súbelo aquí (o usa el botón de la extensión en «URLs escaneadas»).
           </p>
           <label className={`${styles.linkButton} ${uploading ? styles.uploadLabelDisabled : ''}`}>
-            <input type="file" multiple disabled={uploading} onChange={handleFileUpload} className={styles.hiddenFileInput} />
+            <input type="file" multiple accept={uploadAccept('activation')} disabled={uploading} onChange={handleFileUpload} className={styles.hiddenFileInput} />
             {uploading ? 'Subiendo…' : 'Seleccionar archivos'}
           </label>
           {uploading ? (

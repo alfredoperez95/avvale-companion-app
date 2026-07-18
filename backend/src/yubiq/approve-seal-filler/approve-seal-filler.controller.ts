@@ -13,6 +13,7 @@ import type { ClaudeOfferExtraction, ClaudeOfferExtractionInternal } from './off
 import { normalizeClaudeExtraction } from './offer-extraction-normalizer';
 import { mergeTranslatedExtraction } from './merge-translated-extraction';
 import { TranslateExtractionDto } from './translate-extraction.dto';
+import { validateSafeFile } from '../../files/safe-file-validation';
 
 type AnalyzeOfferResponse = {
   success: boolean;
@@ -46,18 +47,17 @@ export class ApproveSealFillerController {
     const log: string[] = [];
     try {
       if (!file?.buffer) throw new BadRequestException('Falta el archivo');
-      if (file.mimetype !== 'application/pdf') {
-        throw new BadRequestException('El archivo debe ser un PDF');
-      }
-      const maxBytes = 20 * 1024 * 1024;
-      if (file.size != null && file.size > maxBytes) {
-        throw new BadRequestException('El PDF supera el tamaño máximo (20MB)');
-      }
+      const safe = validateSafeFile('yubiq', {
+        buffer: file.buffer,
+        originalname: file.originalname || 'document.pdf',
+        mimetype: file.mimetype,
+        size: file.size,
+      });
       log.push('PDF received');
 
-      const fileName = file.originalname ?? 'document.pdf';
+      const fileName = safe.displayName;
       const cleanTitleFromFilename = cleanOfferTitleFromFilename(fileName);
-      const extractedText = await this.pdf.extractTextFromPdfBuffer(file.buffer);
+      const extractedText = await this.pdf.extractTextFromPdfBuffer(safe.buffer);
       log.push('Text extracted');
 
       const model: AnthropicModelChoice =

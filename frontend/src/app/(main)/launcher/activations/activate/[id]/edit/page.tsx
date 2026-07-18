@@ -11,6 +11,7 @@ import { CssStyled } from '@/components/CssStyled/CssStyled';
 import { replaceTemplateVariables, replaceUrlsEscaneadasPlaceholder } from '@/lib/replace-template-variables';
 import { formatActivationCode } from '@/lib/activation-code';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
+import { uploadAccept, validateUploadFiles } from '@/lib/validate-upload';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import styles from '../../new/form.module.css';
 
@@ -372,10 +373,16 @@ export default function EditActivationPage() {
     const files = e.target.files;
     if (!id || !files?.length) return;
     setUploadError('');
+    const allFiles = Array.from(files);
+    const validationError = validateUploadFiles('activation', allFiles);
+    if (validationError) {
+      setUploadError(validationError);
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     setUploadProgress(0);
     let failed = false;
-    const allFiles = Array.from(files);
     const totalBytes = allFiles.reduce((acc, file) => acc + Math.max(file.size, 1), 0);
     let uploadedBytes = 0;
     try {
@@ -1093,7 +1100,7 @@ export default function EditActivationPage() {
               ) : null}
               <p className={styles.helperText}>Añade archivos descargados desde HubSpot (o desde tu ordenador).</p>
               <label className={`${styles.btnSecondary} ${styles.fileUploadLabel} ${uploading ? styles.fileUploadLabelDisabled : ''}`}>
-                <input type="file" multiple disabled={uploading} onChange={handleFileUploadEdit} className={styles.hiddenFileInput} />
+                <input type="file" multiple accept={uploadAccept('activation')} disabled={uploading} onChange={handleFileUploadEdit} className={styles.hiddenFileInput} />
                 {uploading ? 'Subiendo…' : 'Añadir archivos'}
               </label>
               {uploading ? (

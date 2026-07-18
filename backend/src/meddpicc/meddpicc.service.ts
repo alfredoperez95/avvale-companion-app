@@ -24,6 +24,7 @@ import { getMeddpiccModel } from './meddpicc.config';
 import { buildCombinedDealContextForPrompt, buildVoiceSessionContextForPrompt } from './meddpicc-context';
 import { MeddpiccStorageService } from './meddpicc-storage.service';
 import { MeddpiccExtractService } from './meddpicc-extract.service';
+import { validateSafeFile } from '../files/safe-file-validation';
 
 const MAX_ATTACHMENTS_PER_DEAL = 25;
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
@@ -520,15 +521,21 @@ export class MeddpiccService {
       if (file.size > MAX_UPLOAD_BYTES) {
         throw new BadRequestException(`El archivo «${file.originalname}» supera el máximo de 25 MB`);
       }
-      const md = await this.extract.extractToMarkdown(
-        file.buffer,
-        file.originalname || 'documento',
-        file.mimetype || 'application/octet-stream',
-      );
-      const saved = await this.storage.saveUploadedFile(dealId, {
+      const safe = validateSafeFile('meddpicc', {
         buffer: file.buffer,
         originalname: file.originalname || 'documento',
         mimetype: file.mimetype || 'application/octet-stream',
+        size: file.size,
+      });
+      const md = await this.extract.extractToMarkdown(
+        file.buffer,
+        safe.displayName,
+        safe.contentType,
+      );
+      const saved = await this.storage.saveUploadedFile(dealId, {
+        buffer: file.buffer,
+        originalname: safe.displayName,
+        mimetype: safe.contentType,
       });
       order += 1;
       await this.prisma.meddpiccDealAttachment.create({

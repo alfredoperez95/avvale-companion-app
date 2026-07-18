@@ -52,6 +52,8 @@ export class ActivationsController {
     validateActivationAttachmentFile({
       originalname: file.originalname,
       mimetype: file.mimetype,
+      buffer: file.buffer,
+      size: file.size,
     });
     const attachment = await this.attachmentsService.saveUploadedFile(
       id,
@@ -77,7 +79,8 @@ export class ActivationsController {
     await this.activationsService.findOneByIdAndUser(id, user.userId);
     const { buffer, fileName, contentType } = await this.attachmentsService.getAttachmentFile(id, attachmentId);
     res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"`);
-    if (contentType) res.setHeader('Content-Type', contentType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Type', contentType || 'application/octet-stream');
     res.send(buffer);
   }
 

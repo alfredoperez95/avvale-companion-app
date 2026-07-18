@@ -14,7 +14,8 @@ export class PublicAttachmentsController {
       token,
     );
     res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"`);
-    if (contentType) res.setHeader('Content-Type', contentType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Type', contentType || 'application/octet-stream');
     res.send(buffer);
   }
 }

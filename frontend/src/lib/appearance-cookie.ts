@@ -1,14 +1,20 @@
 export type Appearance = 'microsoft' | 'fiori';
 
-const COOKIE_NAME = 'appearance';
-const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
+const LEGACY_COOKIE_NAME = 'appearance';
+const STORAGE_KEY = 'appearance';
 
 /** Tema por defecto en toda la aplicación (SAP Fiori). */
 export const DEFAULT_APPEARANCE: Appearance = 'fiori';
 
-function parseStoredCookie(value: string | null | undefined): Appearance | null {
+function parseStoredAppearance(value: string | null | undefined): Appearance | null {
   if (!value) return null;
   return value === 'fiori' ? 'fiori' : value === 'microsoft' ? 'microsoft' : null;
+}
+
+function clearLegacyAppearanceCookie() {
+  if (typeof document === 'undefined') return;
+  const secure = window.location.protocol === 'https:' || process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  document.cookie = `${LEGACY_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax${secure}`;
 }
 
 /**
@@ -20,21 +26,36 @@ export function resolveAppearance(raw: string | null | undefined): Appearance {
   return 'fiori';
 }
 
-export function getAppearanceFromCookie(): Appearance | null {
-  if (typeof document === 'undefined') return null;
-  const target = document.cookie
-    .split('; ')
-    .find((part) => part.startsWith(`${COOKIE_NAME}=`))
-    ?.split('=')[1];
-  return parseStoredCookie(target ? decodeURIComponent(target) : null);
+export function getStoredAppearance(): Appearance | null {
+  if (typeof window === 'undefined') return null;
+  clearLegacyAppearanceCookie();
+  try {
+    return parseStoredAppearance(window.localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return null;
+  }
 }
 
-export function setAppearanceCookie(value: Appearance) {
-  if (typeof document === 'undefined') return;
-  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(value)}; path=/; max-age=${ONE_YEAR_SECONDS}; SameSite=Lax`;
+export function setStoredAppearance(value: Appearance) {
+  if (typeof window === 'undefined') return;
+  clearLegacyAppearanceCookie();
+  try {
+    window.localStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    /* ignore quota / private mode */
+  }
 }
 
-export function clearAppearanceCookie() {
-  if (typeof document === 'undefined') return;
-  document.cookie = `${COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
+export function clearStoredAppearance() {
+  if (typeof window === 'undefined') return;
+  clearLegacyAppearanceCookie();
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore quota / private mode */
+  }
 }
+
+export const getAppearanceFromCookie = getStoredAppearance;
+export const setAppearanceCookie = setStoredAppearance;
+export const clearAppearanceCookie = clearStoredAppearance;

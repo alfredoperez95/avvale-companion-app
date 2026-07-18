@@ -12,6 +12,7 @@ import {
   sanitizeEuroDigitsFromInput,
 } from '@/lib/euro-deal-value';
 import { useUser } from '@/contexts/UserContext';
+import { validateUploadFiles } from '@/lib/validate-upload';
 import styles from '../meddpicc.module.css';
 
 type AdminUserRow = { id: string; email: string; name: string | null; lastName: string | null };
@@ -85,10 +86,9 @@ export default function MeddpiccNewPage() {
     if (!list?.length) return;
     const incoming = Array.from(list);
     const prev = pendingFilesRef.current;
-    if (prev.length + incoming.length > MAX_MEDDPICC_ATTACHMENTS) {
-      setError(
-        `Como máximo ${MAX_MEDDPICC_ATTACHMENTS} adjuntos por deal. Quitar algunos de la cola o súbelos después en la ficha.`,
-      );
+    const validationError = validateUploadFiles('meddpicc', incoming, prev.length);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setPendingFiles([...prev, ...incoming]);
@@ -102,6 +102,11 @@ export default function MeddpiccNewPage() {
   const submit = async () => {
     if (!name.trim()) {
       setError('El nombre del deal es obligatorio');
+      return;
+    }
+    const validationError = validateUploadFiles('meddpicc', pendingFiles);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setBusy(true);

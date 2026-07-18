@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { apiFetch, redirectToLogin } from '@/lib/api';
-import { clearAppearanceCookie, resolveAppearance, setAppearanceCookie } from '@/lib/appearance-cookie';
+import { clearStoredAppearance, resolveAppearance, setStoredAppearance } from '@/lib/appearance-cookie';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { PhoneCountryPicker } from '@/components/PhoneCountryPicker/PhoneCountryPicker';
 import { buildStoredPhone, parseStoredPhone } from '@/lib/phone-country-codes';
@@ -11,6 +11,7 @@ import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/compo
 import { CredentialsForm } from '@/components/profile/CredentialsForm/CredentialsForm';
 import { USER_INDUSTRY_OPTIONS, type UserIndustryValue } from '@/lib/user-industry';
 import { getPositionOptionsForProfileEditor, type UserPositionValue } from '@/lib/user-position';
+import { uploadAccept, validateUploadFile } from '@/lib/validate-upload';
 import styles from './profile.module.css';
 
 type Profile = {
@@ -97,7 +98,7 @@ export default function PerfilPage() {
           if (typeof document !== 'undefined') {
             const appearanceValue = resolveAppearance(data.appearance);
             document.documentElement.setAttribute('data-appearance', appearanceValue);
-            setAppearanceCookie(appearanceValue);
+            setStoredAppearance(appearanceValue);
           }
         }
       })
@@ -134,7 +135,7 @@ export default function PerfilPage() {
       });
       if (res.status === 401) {
         localStorage.removeItem('token');
-        clearAppearanceCookie();
+        clearStoredAppearance();
         redirectToLogin();
         return;
       }
@@ -172,8 +173,9 @@ export default function PerfilPage() {
       setError('Selecciona una imagen (JPEG, PNG, WebP o GIF).');
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setError('La imagen no puede superar 2 MB.');
+    const validationError = validateUploadFile('avatar', file);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setError('');
@@ -187,7 +189,7 @@ export default function PerfilPage() {
       });
       if (res.status === 401) {
         localStorage.removeItem('token');
-        clearAppearanceCookie();
+        clearStoredAppearance();
         redirectToLogin();
         return;
       }
@@ -215,7 +217,7 @@ export default function PerfilPage() {
       const res = await apiFetch('/api/auth/me/avatar', { method: 'DELETE' });
       if (res.status === 401) {
         localStorage.removeItem('token');
-        clearAppearanceCookie();
+        clearStoredAppearance();
         redirectToLogin();
         return;
       }
@@ -245,7 +247,7 @@ export default function PerfilPage() {
       });
       if (res.status === 401) {
         localStorage.removeItem('token');
-        clearAppearanceCookie();
+        clearStoredAppearance();
         redirectToLogin();
         return;
       }
@@ -258,7 +260,7 @@ export default function PerfilPage() {
       if (typeof document !== 'undefined') {
         const appearanceValue = resolveAppearance(data.appearance);
         document.documentElement.setAttribute('data-appearance', appearanceValue);
-        setAppearanceCookie(appearanceValue);
+        setStoredAppearance(appearanceValue);
         window.dispatchEvent(new CustomEvent('theme-changed', { detail: { appearance: data.appearance } }));
       }
     } finally {
@@ -308,7 +310,7 @@ export default function PerfilPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept={uploadAccept('avatar')}
             className={styles.avatarFileInput}
             aria-hidden
             onChange={handleAvatarFileChange}

@@ -8,9 +8,8 @@ import { RegisterDto } from '../auth/dto/register.dto';
 import { UserIndustry, UserPosition, UserRole } from '@prisma/client';
 import { CreateUserByAdminDto } from './dto/create-user-by-admin.dto';
 import { UpdateUserByAdminDto } from './dto/update-user-by-admin.dto';
-
-const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
-const AVATAR_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+import { validateSafeFile } from '../files/safe-file-validation';
+import { resolvePathWithinBase } from '../files/safe-path';
 
 @Injectable()
 export class UsersService {
@@ -200,41 +199,30 @@ export class UsersService {
       // Mantener lectura/borrado, pero los nuevos avatares se guardan en uploads (privado).
       return path.resolve(process.cwd(), '..', 'frontend', 'public', 'resources', 'avatar', path.basename(avatarPath));
     }
-    return path.join(this.uploadsDir, avatarPath);
-  }
-
-  private getExtensionFromMime(mimetype: string): string {
-    const m = mimetype?.split(';')[0].trim().toLowerCase();
-    if (m === 'image/jpeg' || m === 'image/jpg') return '.jpg';
-    if (m === 'image/png') return '.png';
-    if (m === 'image/webp') return '.webp';
-    if (m === 'image/gif') return '.gif';
-    return '.jpg';
+    return resolvePathWithinBase(this.uploadsDir, avatarPath);
   }
 
   async setAvatar(userId: string, file: { buffer: Buffer; mimetype?: string }): Promise<{ avatarPath: string }> {
-    if (!file.buffer || file.buffer.length > AVATAR_MAX_BYTES) {
-      throw new BadRequestException('Imagen no válida o demasiado grande (máx. 2 MB)');
-    }
-    const mime = file.mimetype?.split(';')[0].trim().toLowerCase();
-    if (!mime || !AVATAR_MIMES.includes(mime)) {
-      throw new BadRequestException('Formato no permitido. Use JPEG, PNG, WebP o GIF.');
-    }
+    const safe = validateSafeFile('avatar', {
+      buffer: file.buffer,
+      originalname: `avatar.${(file.mimetype ?? 'image/jpeg').split('/').pop() || 'jpg'}`,
+      mimetype: file.mimetype,
+      size: file.buffer?.length,
+    });
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario no encontrado');
 
     const avatarDir = this.getAvatarDir();
     await fs.mkdir(avatarDir, { recursive: true });
-    const ext = this.getExtensionFromMime(mime);
-    const fileName = `${userId}${ext}`;
-    const fullPath = path.join(avatarDir, fileName);
+    const fileName = `${userId}_${safe.storedFileName}`;
+    const fullPath = resolvePathWithinBase(this.uploadsDir, path.join('avatars', fileName));
 
     if (user.avatarPath) {
       const oldPath = this.getAvatarFullPath(user.avatarPath);
       await fs.unlink(oldPath).catch(() => {});
     }
 
-    await fs.writeFile(fullPath, file.buffer);
+    await fs.writeFile(fullPath, safe.buffer);
     const storedPath = path.join('avatars', fileName);
     await this.prisma.user.update({
       where: { id: userId },

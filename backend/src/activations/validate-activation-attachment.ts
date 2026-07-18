@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { validateSafeFile } from '../files/safe-file-validation';
 
 /** Adjuntos típicos de activaciones (ofimática + imágenes + PDF). */
 const ALLOWED_EXTENSIONS = new Set([
@@ -49,7 +50,19 @@ function extensionOf(fileName: string): string {
 export function validateActivationAttachmentFile(file: {
   originalname: string;
   mimetype: string;
+  buffer?: Buffer;
+  size?: number;
 }): void {
+  if (file.buffer) {
+    validateSafeFile('activation', {
+      buffer: file.buffer,
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+    return;
+  }
+
   const ext = extensionOf(file.originalname || '');
   const mime = (file.mimetype || '').toLowerCase();
 

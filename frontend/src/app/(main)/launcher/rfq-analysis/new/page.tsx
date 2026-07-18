@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch, apiUpload } from '@/lib/api';
 import { MultiDropzoneUploader } from '@/components/rfq/MultiDropzoneUploader/MultiDropzoneUploader';
+import { validateUploadFiles } from '@/lib/validate-upload';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
 import styles from '../rfq-analysis.module.css';
 import layout from './page.module.css';
@@ -84,6 +85,11 @@ export default function RfqAnalysisNewPage() {
     }
     if (files.length === 0) {
       setError('Adjunta al menos un archivo (la documentación de la oportunidad es obligatoria).');
+      return;
+    }
+    const validationError = validateUploadFiles('rfq', files);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setBusy(true);

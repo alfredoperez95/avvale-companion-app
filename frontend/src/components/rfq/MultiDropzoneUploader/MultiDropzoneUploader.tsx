@@ -2,11 +2,11 @@
 
 import { useCallback, useRef, useState } from 'react';
 import dz from '@/components/yubiq/DropzoneUploader/DropzoneUploader.module.css';
+import { uploadAccept, validateUploadFiles } from '@/lib/validate-upload';
 import styles from './MultiDropzoneUploader.module.css';
 
 /** Extensiones alineadas con extracción backend (PDF, texto, hojas, etc.). */
-export const RFQ_SOURCES_ACCEPT =
-  '.pdf,.txt,.text,.md,.csv,.tsv,.json,.xml,.html,.htm,.xlsx,.xls,.log';
+export const RFQ_SOURCES_ACCEPT = uploadAccept('rfq');
 
 function fileKey(f: File) {
   return `${f.name}\0${f.size}\0${f.lastModified}`;
@@ -59,13 +59,21 @@ export function MultiDropzoneUploader({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(false);
+  const [error, setError] = useState('');
 
   const pick = () => inputRef.current?.click();
 
   const addFiles = useCallback(
     (list: FileList | null | undefined) => {
       if (!list?.length) return;
-      onFilesChange(mergeUnique(files, Array.from(list)));
+      const added = Array.from(list);
+      const validationError = validateUploadFiles('rfq', added, files.length);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+      setError('');
+      onFilesChange(mergeUnique(files, added));
     },
     [files, onFilesChange],
   );
@@ -129,6 +137,7 @@ export function MultiDropzoneUploader({
       <div className={dz.meta}>
         PDF, texto, Excel… · Varios adjuntos · Máx. ~50&nbsp;MB por archivo (límite del servidor)
       </div>
+      {error ? <div className={dz.fileNote} role="alert">{error}</div> : null}
 
       {files.length > 0 ? (
         <>

@@ -2,10 +2,10 @@
 
 import { useRef, useState } from 'react';
 import dz from '@/components/yubiq/DropzoneUploader/DropzoneUploader.module.css';
+import { uploadAccept, validateUploadFiles } from '@/lib/validate-upload';
 
 /** Alineado con backend MEDDPICC (extracción a Markdown). */
-export const MEDDPICC_ATTACH_ACCEPT =
-  '.pdf,.xlsx,.xls,.xlsm,.docx,.eml,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,message/rfc822';
+export const MEDDPICC_ATTACH_ACCEPT = uploadAccept('meddpicc');
 
 function DocumentsGlyph() {
   return (
@@ -36,12 +36,20 @@ type Props = {
 export function MeddpiccContextDropzone({ uploading, disabled, onFilesSelected }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(false);
+  const [error, setError] = useState('');
   const isDisabled = Boolean(uploading || disabled);
 
   const pick = () => inputRef.current?.click();
 
   const addFiles = (list: FileList | null | undefined) => {
     if (!list?.length) return;
+    const files = Array.from(list);
+    const validationError = validateUploadFiles('meddpicc', files);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError('');
     onFilesSelected(list);
   };
 
@@ -110,6 +118,7 @@ export function MeddpiccContextDropzone({ uploading, disabled, onFilesSelected }
       <div className={dz.meta}>
         PDF, Excel, Word (.docx), correo (.eml) · El texto se extrae a Markdown · Hasta 25 adjuntos por deal · 25&nbsp;MB por archivo
       </div>
+      {error ? <div className={dz.fileNote} role="alert">{error}</div> : null}
     </div>
   );
 }

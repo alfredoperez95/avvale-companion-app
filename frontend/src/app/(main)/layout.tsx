@@ -9,19 +9,19 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { UserProvider, type User } from '@/contexts/UserContext';
 import { useSmoothLoading } from '@/hooks/useSmoothLoading';
 import {
-  clearAppearanceCookie,
-  getAppearanceFromCookie,
+  clearStoredAppearance,
+  getStoredAppearance,
   resolveAppearance,
-  setAppearanceCookie,
+  setStoredAppearance,
 } from '@/lib/appearance-cookie';
 import '@/styles/fonts-fiori.css';
 import '@/styles/icons-fiori.css';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const cookieAppearance = getAppearanceFromCookie();
+  const storedAppearance = getStoredAppearance();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<'microsoft' | 'fiori'>(resolveAppearance(cookieAppearance ?? undefined));
+  const [theme, setTheme] = useState<'microsoft' | 'fiori'>(resolveAppearance(storedAppearance ?? undefined));
   const showLoading = useSmoothLoading(loading, { delayMs: 150, minVisibleMs: 250 });
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         if (data == null || typeof data !== 'object' || !('id' in data)) {
           if (typeof window !== 'undefined') {
             localStorage.removeItem('token');
-            clearAppearanceCookie();
+            clearStoredAppearance();
             redirectToLogin();
           }
           return;
@@ -54,7 +54,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         setUser(data);
         const nextTheme = resolveAppearance(data.appearance);
         setTheme(nextTheme);
-        setAppearanceCookie(nextTheme);
+        setStoredAppearance(nextTheme);
         if (data?.id) {
           apiFetch('/api/user-config/bootstrap', { method: 'POST' }).catch(() => {});
         }
@@ -62,7 +62,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       .catch(() => {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
-          clearAppearanceCookie();
+          clearStoredAppearance();
           redirectToLogin();
         }
       })
@@ -84,14 +84,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     setUser(data);
     const nextTheme = resolveAppearance(data.appearance);
     setTheme(nextTheme);
-    setAppearanceCookie(nextTheme);
+    setStoredAppearance(nextTheme);
   }, []);
 
   useEffect(() => {
     if (typeof document === 'undefined' || !user) return;
     const value = resolveAppearance(user.appearance);
     document.documentElement.setAttribute('data-appearance', value);
-    setAppearanceCookie(value);
+    setStoredAppearance(value);
   }, [user]);
 
   useEffect(() => {
@@ -100,7 +100,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       if (detail && 'appearance' in detail) {
         const nextTheme = resolveAppearance(detail.appearance);
         setTheme(nextTheme);
-        setAppearanceCookie(nextTheme);
+        setStoredAppearance(nextTheme);
       }
     };
     window.addEventListener('theme-changed', handler);

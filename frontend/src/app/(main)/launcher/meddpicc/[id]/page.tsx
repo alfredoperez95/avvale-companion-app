@@ -31,6 +31,7 @@ import {
   buildConvaiFirstMessageSpanish,
   buildMeddpiccConvaiDynamicPayload,
 } from '@/lib/meddpicc-convai-context';
+import { validateUploadFiles } from '@/lib/validate-upload';
 import styles from '../meddpicc.module.css';
 
 type Owner = { email: string; name: string | null; lastName: string | null };
@@ -1049,11 +1050,18 @@ export default function MeddpiccDealDetailPage() {
 
   const uploadAttachments = async (fileList: FileList | null) => {
     if (!id || !fileList?.length) return;
+    const files = Array.from(fileList);
+    const existingCount = deal?.attachments?.length ?? 0;
+    const validationError = validateUploadFiles('meddpicc', files, existingCount);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setUploadBusy(true);
     setError(null);
     try {
       const fd = new FormData();
-      for (let i = 0; i < fileList.length; i++) fd.append('files', fileList[i]);
+      for (const file of files) fd.append('files', file);
       const res = await apiUpload(`/api/meddpicc/deals/${id}/attachments`, fd);
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { message?: string | string[] };

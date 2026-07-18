@@ -97,6 +97,7 @@ export class ExpensesController {
   async file(@CurrentUser() user: UserPayload, @Param('id') id: string, @Res() res: Response) {
     const download = await this.expenses.getFile(user.userId, id);
     res.setHeader('Content-Type', download.mimeType || 'application/octet-stream');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Disposition', contentDisposition(download.fileName));
     res.send(download.buffer);
   }

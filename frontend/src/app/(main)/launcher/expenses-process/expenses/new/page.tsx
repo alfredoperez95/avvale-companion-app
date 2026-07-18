@@ -18,6 +18,7 @@ import {
 import styles from '../../expenses-process.module.css';
 import { EXPENSE_CATEGORIES } from '../../expense-categories';
 import { convertHeicToJpeg, isHeicFile } from '@/lib/heic';
+import { uploadAccept, validateUploadFile } from '@/lib/validate-upload';
 
 const PROCESSING_STEPS = ['Guardando recibo', 'Analizando documento', 'Extrayendo datos'] as const;
 const HEIC_CONVERT_STEP = 'Convirtiendo HEIC a JPG' as const;
@@ -90,6 +91,14 @@ export default function NewExpensePage() {
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextFile = event.target.files?.[0] ?? null;
+    if (nextFile) {
+      const validationError = validateUploadFile('expense', nextFile);
+      if (validationError) {
+        setError(validationError);
+        event.target.value = '';
+        return;
+      }
+    }
     setFile(nextFile);
     setExpense(null);
     setAmount('');
@@ -376,7 +385,7 @@ export default function NewExpensePage() {
                     </span>
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/heic,.jpg,.jpeg,.png,.heic"
+                      accept=".jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif"
                       capture="environment"
                       onChange={handleFileChange}
                       disabled={processing || saving}
@@ -397,7 +406,7 @@ export default function NewExpensePage() {
                     </span>
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/heic,application/pdf,.jpg,.jpeg,.png,.pdf,.heic"
+                      accept={uploadAccept('expense')}
                       onChange={handleFileChange}
                       disabled={processing || saving}
                     />

@@ -7,6 +7,7 @@ import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolveBackendPublicBaseUrl } from '../config/backend-public-base-url';
 import { GenerateExpenseExportDto } from './dto/generate-expense-export.dto';
+import { resolvePathWithinBase } from '../files/safe-path';
 
 const EXPORT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 const DEFAULT_EXPORT_TTL_HOURS = 2;
@@ -143,7 +144,7 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
 
     const token = randomUUID();
     const relativeDir = path.join('expense-exports', token);
-    const fullDir = path.join(this.baseDir, relativeDir);
+    const fullDir = resolvePathWithinBase(this.baseDir, relativeDir);
     const expiresAt = this.computeExpiresAt();
     await fs.mkdir(fullDir, { recursive: true });
 
@@ -187,7 +188,7 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      const buffer = await fs.readFile(path.join(this.baseDir, exportRecord.storagePath, safeName));
+      const buffer = await fs.readFile(resolvePathWithinBase(this.baseDir, path.join(exportRecord.storagePath, safeName)));
       return {
         buffer,
         fileName: safeName,
@@ -205,7 +206,7 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
     });
 
     for (const item of expired) {
-      await fs.rm(path.join(this.baseDir, item.storagePath), { recursive: true, force: true }).catch((err) => {
+      await fs.rm(resolvePathWithinBase(this.baseDir, item.storagePath), { recursive: true, force: true }).catch((err) => {
         this.logger.warn(`No se pudo borrar export de gastos ${item.id}: ${errorText(err)}`);
       });
     }
@@ -232,7 +233,7 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
     token: string,
   ): Promise<ExportReceipt> {
     const fileName = `${expense.id}_${sanitizeFileName(expense.originalFileName) || 'recibo'}`;
-    const source = path.join(this.baseDir, expense.storagePath);
+    const source = resolvePathWithinBase(this.baseDir, expense.storagePath);
     const target = path.join(fullDir, fileName);
 
     try {

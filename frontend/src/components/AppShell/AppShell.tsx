@@ -8,7 +8,7 @@ import { MainContentMotion } from '@/components/AppMotion/MainContentMotion';
 import { Footer } from '@/components/Footer/Footer';
 import { Icon, type IconName } from '@/components/Icon/Icon';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
-import { clearAppearanceCookie } from '@/lib/appearance-cookie';
+import { clearStoredAppearance } from '@/lib/appearance-cookie';
 import { redirectToLogin } from '@/lib/api';
 import { positionLabel } from '@/lib/user-position';
 import styles from './AppShell.module.css';
@@ -246,7 +246,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
-      clearAppearanceCookie();
+      clearStoredAppearance();
       redirectToLogin();
     }
   };
