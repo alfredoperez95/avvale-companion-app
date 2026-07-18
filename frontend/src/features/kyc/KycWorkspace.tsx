@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useKycSearchParams } from './KycUrlParamsContext';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { kycJson, kycStreamChat } from './kycApi';
 import { buildKycChatQuickActions } from './kycChatQuickActions';
@@ -1352,10 +1353,11 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                 className={`${styles.list} ${listRevealOn ? styles.listReveal : ''} ${listCascadeOn ? styles.listCascade : ''}`}
               >
                 {companies.map((c, index) => (
-                  <div
+                  <CssStyled
+                    as="div"
                     key={c.id}
                     className={`${styles.listItemRow} ${selId === c.id ? styles.listItemRowActive : ''}`}
-                    style={{ '--list-i': index } as React.CSSProperties}
+                    cssProperties={{ '--list-i': index }}
                   >
                     <input
                       type="checkbox"
@@ -1409,7 +1411,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                         <KycToolbarInterviewIcon size={15} />
                       </span>
                     </button>
-                  </div>
+                  </CssStyled>
                 ))}
                 {!companies.length ? (
                   <div className={styles.listEmpty}>No hay empresas. Usa «+ Empresa» arriba.</div>
@@ -1781,12 +1783,12 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
               <label className={styles.label}>Nombre empresa *</label>
               <input className={styles.input} value={addName} onChange={(e) => setAddName(e.target.value)} />
             </div>
-            <div className={styles.row} style={{ gap: '0.75rem' }}>
-              <div className={styles.formRow} style={{ flex: 1, minWidth: '12rem' }}>
+            <div className={`${styles.row} ${styles.rowGapMd}`}>
+              <div className={`${styles.formRow} ${styles.formRowFlex}`}>
                 <label className={styles.label}>Sector</label>
                 <input className={styles.input} value={addSector} onChange={(e) => setAddSector(e.target.value)} />
               </div>
-              <div className={styles.formRow} style={{ flex: 1, minWidth: '12rem' }}>
+              <div className={`${styles.formRow} ${styles.formRowFlex}`}>
                 <label className={styles.label} htmlFor="kyc-add-industry">
                   Industria
                 </label>
@@ -1805,7 +1807,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                   ))}
                 </select>
               </div>
-              <div className={styles.formRow} style={{ flex: 1, minWidth: '12rem' }}>
+              <div className={`${styles.formRow} ${styles.formRowFlex}`}>
                 <label className={styles.label}>Ciudad</label>
                 <input className={styles.input} value={addCity} onChange={(e) => setAddCity(e.target.value)} />
               </div>
@@ -1814,12 +1816,12 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
               <label className={styles.label}>Website (ej: acme.com)</label>
               <input className={styles.input} value={addWebsite} onChange={(e) => setAddWebsite(e.target.value)} />
             </div>
-            <div className={styles.row} style={{ gap: '0.75rem' }}>
-              <div className={styles.formRow} style={{ flex: 1, minWidth: '12rem' }}>
+            <div className={`${styles.row} ${styles.rowGapMd}`}>
+              <div className={`${styles.formRow} ${styles.formRowFlex}`}>
                 <label className={styles.label}>Facturación</label>
                 <input className={styles.input} value={addRevenue} onChange={(e) => setAddRevenue(e.target.value)} />
               </div>
-              <div className={styles.formRow} style={{ flex: 1, minWidth: '12rem' }}>
+              <div className={`${styles.formRow} ${styles.formRowFlex}`}>
                 <label className={styles.label}>Empleados</label>
                 <input className={styles.input} value={addEmployees} onChange={(e) => setAddEmployees(e.target.value)} />
               </div>
@@ -1828,7 +1830,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
               <label className={styles.label}>Notas</label>
               <textarea className={styles.textareaLg} value={addNotes} onChange={(e) => setAddNotes(e.target.value)} />
             </div>
-            <label className={styles.row} style={{ cursor: 'pointer' }}>
+            <label className={`${styles.row} ${styles.clickableRow}`}>
               <input type="checkbox" checked={addStrategic} onChange={(e) => setAddStrategic(e.target.checked)} /> Estratégica
             </label>
             <div className={styles.modalActions}>

@@ -1,0 +1,38 @@
+---
+description: Contexto incidente Jul 2026 (Next RCE/XMRig) y prácticas de seguridad obligatorias en auth, CSP, Docker, Coolify y deploys.
+alwaysApply: true
+---
+
+# Seguridad — Avvale Companion App
+
+## Incidente (2026-07)
+
+- Sintoma público: falsa CAPTCHA tipo ClearFake/ClickFix en la web.
+- Causa más probable: RCE en **Next.js 15.1.0** dentro del contenedor frontend → payload temporal **XMRig** (`/tmp/cheddar`).
+- Evidencia: `/root/incident-20260717/cheddar` (+ sha256) en el servidor.
+- Mitigación: upgrade a **Next.js ≥ 15.5.9**, rebuild completo de imagen, redeploy Coolify.
+- El host no mostró compromiso persistente (SSH keys OK, sin cron/systemd maliciosos tras limpieza).
+- Traefik no tenía access logs → no hubo IP/request de explotación reconstruible.
+
+## Estado asumido
+
+Proyecto limpio para desarrollo normal. **No** reintroducir dependencias Next vulnerables; en cada cambio de `next` comprobar CVE / release notes.
+
+## Obligatorio en cambios sensibles
+
+Cualquier trabajo en autenticación, middleware, CSP, Docker, Coolify, Traefik o despliegues debe:
+
+1. **Mantener CSP con nonce + `strict-dynamic`** (`frontend/src/lib/csp.ts`, `middleware.ts`). Sin `'unsafe-eval'` en producción. No debilitar `connect-src` / `script-src` sin justificación.
+2. **Headers de seguridad** (HSTS en prod, `frame-ancestors 'none'`, COOP/CORP, etc.) coherentes con lo ya desplegado.
+3. **No** usar `window.confirm` / `alert` / `prompt` en flujos de producto (usar `ConfirmDialog`).
+4. Sanitizar HTML de usuario antes de `dangerouslySetInnerHTML` (`sanitizeUserHtml`).
+5. Secretos fuertes en prod (`assertProductionSecrets`); no defaults.
+6. Imágenes Docker: Alpine/mínimas, **usuario no root** en runners, healthchecks; preferir filesystem read-only cuando Coolify/runtime lo permitan.
+7. Dependencias: no bajar de Next parchado; preferir `npm audit` / Dependabot en CI cuando exista.
+8. Proxy: no exponer Traefik dashboard (`8080`), ni DB ports (`5432`/`3306`) a `0.0.0.0`. Preferir access logs Traefik para forense futuro.
+9. Tras incidentes o sospecha de RCE en contenedor: rotar JWT/magic-link/DB secrets y rebuild desde CI, no “parchear” el filesystem del contenedor en marcha.
+
+## Qué no asumir
+
+- Vecinos en el mismo VPS (WordPress, File Browser, MinIO) no aíslan por “otro proyecto Coolify”; comparten host/red.
+- Un reinicio que quite malware efímero **no** sustituye upgrade de framework + rotación de secretos.

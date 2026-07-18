@@ -217,7 +217,7 @@ export function KycAvvalePanel({ companyId, profile, onRefetch, onBanner }: Prop
               ? presence.map((slug) => {
                   const meta = KYC_SOLUTION_LINES.find((l) => l.slug === slug);
                   return (
-                    <div key={slug} className={styles.formRow} style={{ marginTop: '0.75rem' }}>
+                    <div key={slug} className={`${styles.formRow} ${styles.formRowTopGap}`}>
                       <label className={styles.label} htmlFor={`avvale-note-${slug}`}>
                         Nota — {meta?.label ?? slug}
                       </label>
@@ -241,7 +241,7 @@ export function KycAvvalePanel({ companyId, profile, onRefetch, onBanner }: Prop
                     const meta = KYC_SOLUTION_LINES.find((l) => l.slug === slug);
                     const note = (solutionNotes[slug] ?? '').trim();
                     return (
-                      <div key={slug} style={{ marginTop: '0.75rem' }}>
+                      <div key={slug} className={styles.formRowTopGap}>
                         <div className={styles.avvaleLineNoteReadLabel}>Nota — {meta?.label ?? slug}</div>
                         {note ? (
                           <p className={styles.avvaleLineNoteRead}>{note}</p>
@@ -252,7 +252,7 @@ export function KycAvvalePanel({ companyId, profile, onRefetch, onBanner }: Prop
                     );
                   })
                 : (
-                    <p className={styles.objectSectionEmpty} style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+                    <p className={`${styles.objectSectionEmpty} ${styles.objectSectionEmptyTop}`}>
                       Ninguna línea marcada con presencia.
                     </p>
                   )}

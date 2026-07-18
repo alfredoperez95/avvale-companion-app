@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { DragEvent } from 'react';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { kycJson } from './kycApi';
 import { KYC_REL_TYPES } from './kycConstants';
@@ -511,13 +513,17 @@ export function KycOrgPanel({
                 void laneDrop(L.level);
               }}
             >
-              <div className={styles.orgLaneHead} style={{ background: `linear-gradient(90deg, ${L.color}14, transparent)` }}>
-                <div className={styles.orgLaneLabel} style={{ color: L.color }}>
+              <CssStyled
+                as="div"
+                className={styles.orgLaneHead}
+                cssProperties={{ background: `linear-gradient(90deg, ${L.color}14, transparent)` }}
+              >
+                <CssStyled as="div" className={styles.orgLaneLabel} cssProperties={{ color: L.color }}>
                   {L.label}
-                </div>
+                </CssStyled>
                 <div className={styles.orgLaneHint}>{L.hint}</div>
                 <div className={styles.orgLaneCount}>{laneMembers.length} {laneMembers.length === 1 ? 'persona' : 'personas'}</div>
-              </div>
+              </CssStyled>
               <div className={styles.orgLaneBody}>
                 {laneMembers.length === 0 ? (
                   <div className={styles.orgLaneEmpty}>Arrastra aquí para asignar {L.label}</div>
@@ -526,12 +532,13 @@ export function KycOrgPanel({
                     const laneCol = orgLevelColor(m.level);
                     const parent = m.reports_to_id ? byId[Number(m.reports_to_id)] : null;
                     return (
-                      <div
+                      <CssStyled
+                        as="div"
                         key={m.id}
                         className={`${styles.orgCard} ${dropTargetId === m.id ? styles.orgCardDropTarget : ''}`}
-                        style={{ borderTopColor: laneCol }}
+                        cssProperties={{ borderTopColor: laneCol }}
                         draggable
-                        onDragStart={(e) => {
+                        onDragStart={(e: DragEvent<HTMLElement>) => {
                           setOrgCardMenuId(null);
                           setDragSrcId(m.id);
                           setDropTargetId(null);
@@ -547,12 +554,12 @@ export function KycOrgPanel({
                           setLaneHint(null);
                           setDropTargetId(null);
                         }}
-                        onDragOver={(e) => {
+                        onDragOver={(e: DragEvent<HTMLElement>) => {
                           if (dragSrcId == null) return;
                           e.preventDefault();
                           setDropTargetId(m.id);
                         }}
-                        onDrop={(e) => {
+                        onDrop={(e: DragEvent<HTMLElement>) => {
                           e.preventDefault();
                           const srcId = dragSrcId ?? Number(e.dataTransfer.getData('text/plain'));
                           setDragSrcId(null);
@@ -562,12 +569,13 @@ export function KycOrgPanel({
                           openRelMenu(srcId, m.id, e.clientX, e.clientY);
                         }}
                       >
-                        <div
+                        <CssStyled
+                          as="div"
                           className={styles.orgAvatar}
-                          style={{ background: laneCol, color: contrastInkForBg(laneCol) }}
+                          cssProperties={{ background: laneCol, color: contrastInkForBg(laneCol) }}
                         >
                           {initials(m.name)}
-                        </div>
+                        </CssStyled>
                         <div className={styles.orgCardText}>
                           <div className={styles.orgCardName}>{esc(m.name)}</div>
                           <div className={styles.orgCardRole}>{esc(m.role || '—')}</div>
@@ -624,7 +632,7 @@ export function KycOrgPanel({
                             </div>
                           ) : null}
                         </div>
-                      </div>
+                      </CssStyled>
                     );
                   })
                 )}
@@ -646,9 +654,9 @@ export function KycOrgPanel({
                 <div key={r.id} className={styles.orgRelRow}>
                   <span>
                     <strong>{esc(f?.name || '?')}</strong> → <strong>{esc(t?.name || '?')}</strong>{' '}
-                    <span className={styles.orgRelType} style={{ background: col }}>
+                    <CssStyled as="span" className={styles.orgRelType} cssProperties={{ background: col }}>
                       {esc(r.type)}
-                    </span>
+                    </CssStyled>
                   </span>
                   <button type="button" className={styles.orgRelDel} onClick={() => setDelRelId(r.id)}>
                     ×
@@ -661,10 +669,11 @@ export function KycOrgPanel({
       ) : null}
 
       {relMenu && (
-        <div
+        <CssStyled
+          as="div"
           id="kyc-rel-menu"
           className={styles.relMenu}
-          style={{ left: relMenu.x, top: relMenu.y }}
+          cssProperties={{ left: `${relMenu.x}px`, top: `${relMenu.y}px` }}
           role="dialog"
           aria-label="Relación"
         >
@@ -679,14 +688,14 @@ export function KycOrgPanel({
             <div className={styles.relMenuCaption}>Relación informal</div>
             {KYC_REL_TYPES.map((t) => (
               <button key={t} type="button" className={styles.relMenuBtn} onClick={() => void applyInformalRel(relMenu.srcId, relMenu.targetId, t)}>
-                <span className={styles.relDot} style={{ background: REL_COLORS[t] }} /> <span className={styles.relLegendLabel}>{t}</span>
+                <CssStyled as="span" className={styles.relDot} cssProperties={{ background: REL_COLORS[t] }} /> <span className={styles.relLegendLabel}>{t}</span>
               </button>
             ))}
           </div>
           <button type="button" className={styles.relMenuCancel} onClick={() => setRelMenu(null)}>
             Cancelar
           </button>
-        </div>
+        </CssStyled>
       )}
 
       {addRelOpen && (
@@ -759,7 +768,7 @@ export function KycOrgPanel({
             </div>
             <div className={styles.formRow}>
               <span className={styles.label}>Notas</span>
-              <textarea className={styles.textareaLg} value={form.notes} onChange={(e) => setForm((x) => ({ ...x, notes: e.target.value }))} style={{ minHeight: '2.5rem' }} />
+              <textarea className={`${styles.textareaLg} ${styles.textareaCompact}`} value={form.notes} onChange={(e) => setForm((x) => ({ ...x, notes: e.target.value }))} />
             </div>
             <div className={styles.formRow}>
               <span className={styles.label}>Nivel</span>
@@ -808,10 +817,9 @@ export function KycOrgPanel({
             <div className={styles.formRow}>
               <span className={styles.label}>Notas</span>
               <textarea
-                className={styles.textareaLg}
+                className={`${styles.textareaLg} ${styles.textareaCompact}`}
                 value={form.notes}
                 onChange={(e) => setForm((x) => ({ ...x, notes: e.target.value }))}
-                style={{ minHeight: '2.5rem' }}
               />
             </div>
             <div className={styles.formRow}>
