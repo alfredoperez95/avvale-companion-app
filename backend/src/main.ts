@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import { json, urlencoded, type Request } from 'express';
+import { json, urlencoded, type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { assertProductionSecrets } from './security/assert-production-secrets';
@@ -10,6 +10,8 @@ import { assertProductionSecrets } from './security/assert-production-secrets';
  * Debe cubrir webhooks con adjuntos en base64 (p. ej. RFQ email). Ajustable vía HTTP_BODY_LIMIT (p. ej. 50mb).
  */
 const HTTP_BODY_LIMIT = process.env.HTTP_BODY_LIMIT?.trim() || '50mb';
+const PERMISSIONS_POLICY =
+  'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()';
 const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
@@ -24,7 +26,9 @@ async function bootstrap() {
     helmet({
       // El documento HTML lo endurece Next (CSP con nonce); aquí no forzamos CSP en JSON API.
       contentSecurityPolicy: false,
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      frameguard: { action: 'deny' },
+      crossOriginEmbedderPolicy: { policy: 'credentialless' },
+      crossOriginResourcePolicy: { policy: 'same-origin' },
       crossOriginOpenerPolicy: { policy: 'same-origin' },
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       hsts: isProd
@@ -33,6 +37,10 @@ async function bootstrap() {
       permittedCrossDomainPolicies: { permittedPolicies: 'none' },
     }),
   );
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
+    next();
+  });
 
   app.use(
     json({

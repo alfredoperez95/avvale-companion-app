@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
+import { buildBaseSecurityHeaders } from '@/lib/csp';
 
 const MAX_REPORT_BYTES = 16 * 1024;
 const LOG_PREVIEW_BYTES = 4 * 1024;
+const IS_DEV = process.env.NODE_ENV === 'development';
+
+function noContentResponse(): NextResponse {
+  const response = new NextResponse(null, { status: 204 });
+  for (const { key, value } of buildBaseSecurityHeaders({ isDev: IS_DEV })) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
 
 function truncate(value: string, maxLength: number): string {
   return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
@@ -16,7 +26,7 @@ export async function POST(request: Request) {
       contentType,
       bytes: body.length,
     });
-    return new NextResponse(null, { status: 204 });
+    return noContentResponse();
   }
 
   let report: unknown = body;
@@ -31,5 +41,5 @@ export async function POST(request: Request) {
     report,
   });
 
-  return new NextResponse(null, { status: 204 });
+  return noContentResponse();
 }

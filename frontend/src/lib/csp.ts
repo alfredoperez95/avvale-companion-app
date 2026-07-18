@@ -15,6 +15,8 @@ export type CspMode = 'report-only' | 'enforce';
 
 const CSP_REPORT_ENDPOINT = '/api/csp-report';
 const CSP_REPORT_GROUP = 'csp-endpoint';
+const PERMISSIONS_POLICY =
+  'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()';
 
 function originFromUrl(raw: string | undefined): string | null {
   if (!raw?.trim()) return null;
@@ -89,6 +91,32 @@ export function buildContentSecurityPolicy(nonce: string, env: CspEnv): string {
   return directives.join('; ').replace(/\s{2,}/g, ' ').trim();
 }
 
+/** Cabeceras de endurecimiento reutilizables para respuestas sin CSP nonce (assets, report endpoint, etc.). */
+export function buildBaseSecurityHeaders(
+  options: { isDev: boolean } = { isDev: false },
+): Array<{ key: string; value: string }> {
+  const headers: Array<{ key: string; value: string }> = [
+    { key: 'X-Content-Type-Options', value: 'nosniff' },
+    { key: 'X-Frame-Options', value: 'DENY' },
+    { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+    { key: 'Permissions-Policy', value: PERMISSIONS_POLICY },
+    { key: 'X-DNS-Prefetch-Control', value: 'off' },
+    { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
+    { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+    { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+    { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
+  ];
+
+  if (!options.isDev) {
+    headers.push({
+      key: 'Strict-Transport-Security',
+      value: 'max-age=31536000; includeSubDomains; preload',
+    });
+  }
+
+  return headers;
+}
+
 /** Cabeceras de endurecimiento complementarias (además de CSP). */
 export function buildSecurityHeaders(
   csp: string,
@@ -106,26 +134,8 @@ export function buildSecurityHeaders(
         endpoints: [{ url: CSP_REPORT_ENDPOINT }],
       }),
     },
-    { key: 'X-Content-Type-Options', value: 'nosniff' },
-    { key: 'X-Frame-Options', value: 'DENY' },
-    { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-    {
-      key: 'Permissions-Policy',
-      value:
-        'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()',
-    },
-    { key: 'X-DNS-Prefetch-Control', value: 'off' },
-    { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-    { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
-    { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
+    ...buildBaseSecurityHeaders({ isDev: options.isDev }),
   ];
-
-  if (!options.isDev) {
-    headers.push({
-      key: 'Strict-Transport-Security',
-      value: 'max-age=31536000; includeSubDomains; preload',
-    });
-  }
 
   return headers;
 }

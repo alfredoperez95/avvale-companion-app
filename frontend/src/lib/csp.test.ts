@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildContentSecurityPolicy, buildSecurityHeaders, collectConnectOrigins } from './csp';
+import { buildBaseSecurityHeaders, buildContentSecurityPolicy, buildSecurityHeaders, collectConnectOrigins } from './csp';
 
 describe('buildContentSecurityPolicy', () => {
   it('incluye nonce y strict-dynamic; sin inline/eval/hosts externos en producción', () => {
@@ -43,6 +43,17 @@ describe('buildContentSecurityPolicy', () => {
 });
 
 describe('buildSecurityHeaders', () => {
+  const requiredSecurityHeaders = [
+    'Strict-Transport-Security',
+    'X-Frame-Options',
+    'X-Content-Type-Options',
+    'Referrer-Policy',
+    'Permissions-Policy',
+    'Cross-Origin-Embedder-Policy',
+    'Cross-Origin-Opener-Policy',
+    'Cross-Origin-Resource-Policy',
+  ];
+
   it('añade HSTS solo fuera de desarrollo', () => {
     const csp = buildContentSecurityPolicy('n', { isDev: false });
     const prod = buildSecurityHeaders(csp, { isDev: false });
@@ -50,6 +61,36 @@ describe('buildSecurityHeaders', () => {
     expect(prod.some((h) => h.key === 'Strict-Transport-Security')).toBe(true);
     expect(dev.some((h) => h.key === 'Strict-Transport-Security')).toBe(false);
     expect(prod.some((h) => h.key === 'Cross-Origin-Resource-Policy')).toBe(true);
+  });
+
+  it('incluye el set requerido de headers HTTP de seguridad en producción', () => {
+    const csp = buildContentSecurityPolicy('n', { isDev: false });
+    const headers = buildSecurityHeaders(csp, { isDev: false });
+    const byName = new Map(headers.map((h) => [h.key, h.value]));
+
+    for (const key of requiredSecurityHeaders) {
+      expect(byName.has(key)).toBe(true);
+    }
+    expect(byName.get('X-Frame-Options')).toBe('DENY');
+    expect(byName.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(byName.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
+    expect(byName.get('Cross-Origin-Embedder-Policy')).toBe('credentialless');
+    expect(byName.get('Cross-Origin-Opener-Policy')).toBe('same-origin');
+    expect(byName.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+    expect(byName.get('Permissions-Policy')).toContain('geolocation=()');
+  });
+
+  it('expone headers base sin CSP para estáticos y report endpoints', () => {
+    const prod = buildBaseSecurityHeaders({ isDev: false });
+    const dev = buildBaseSecurityHeaders({ isDev: true });
+    const prodKeys = new Set(prod.map((h) => h.key));
+
+    expect(prodKeys.has('Content-Security-Policy')).toBe(false);
+    expect(prodKeys.has('Content-Security-Policy-Report-Only')).toBe(false);
+    for (const key of requiredSecurityHeaders) {
+      expect(prodKeys.has(key)).toBe(true);
+    }
+    expect(dev.some((h) => h.key === 'Strict-Transport-Security')).toBe(false);
   });
 
   it('emite Report-Only por defecto y Enforce cuando se solicita', () => {

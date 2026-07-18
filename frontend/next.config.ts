@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { buildBaseSecurityHeaders } from './src/lib/csp';
 
 /**
  * Destino del proxy **server-side** para `/api/*` (solo el proceso Node de Next).
@@ -10,6 +11,8 @@ const apiRewriteTarget =
   process.env.NODE_ENV === 'development'
     ? 'http://localhost:4000'
     : (process.env.INTERNAL_API_URL?.trim() || 'http://localhost:4000');
+const isDev = process.env.NODE_ENV === 'development';
+const staticSecurityHeaders = buildBaseSecurityHeaders({ isDev });
 
 if (process.env.NODE_ENV === 'production' && !process.env.INTERNAL_API_URL?.trim()) {
   console.warn(
@@ -21,11 +24,15 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   /**
-   * CSP y cabeceras anti-inyección van en `src/middleware.ts` (nonce por request).
-   * Aquí solo cabeceras de recursos estáticos concretos.
+   * CSP con nonce va en `src/middleware.ts`.
+   * Aquí añadimos headers no-CSP también para assets/rutas excluidas del middleware.
    */
   async headers() {
     return [
+      {
+        source: '/:path*',
+        headers: staticSecurityHeaders,
+      },
       {
         source: '/extension/avvale-companion-extension.zip',
         headers: [
