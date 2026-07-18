@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { Extension } from '@tiptap/core';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
@@ -8,25 +9,69 @@ import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
-import { Color } from '@tiptap/extension-color';
 import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
 import Image from '@tiptap/extension-image';
 import { VariableHighlightExtension } from './variableHighlightExtension';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import { Icon } from '@/components/Icon/Icon';
 import styles from './RichTextEditor.module.css';
 
 /** 9 colores estándar para email (3x3) */
 const TEXT_COLORS = [
-  '#000000',
-  '#333333',
-  '#0066cc',
-  '#008000',
-  '#cc0000',
-  '#e67e00',
-  '#6b2d5c',
-  '#008080',
-  '#795548',
+  { hex: '#000000', className: 'rte-color-black', swatchClassName: styles.colorSwatchBlack },
+  { hex: '#333333', className: 'rte-color-charcoal', swatchClassName: styles.colorSwatchCharcoal },
+  { hex: '#0066cc', className: 'rte-color-blue', swatchClassName: styles.colorSwatchBlue },
+  { hex: '#008000', className: 'rte-color-green', swatchClassName: styles.colorSwatchGreen },
+  { hex: '#cc0000', className: 'rte-color-red', swatchClassName: styles.colorSwatchRed },
+  { hex: '#e67e00', className: 'rte-color-orange', swatchClassName: styles.colorSwatchOrange },
+  { hex: '#6b2d5c', className: 'rte-color-plum', swatchClassName: styles.colorSwatchPlum },
+  { hex: '#008080', className: 'rte-color-teal', swatchClassName: styles.colorSwatchTeal },
+  { hex: '#795548', className: 'rte-color-brown', swatchClassName: styles.colorSwatchBrown },
 ];
+
+const COLOR_CLASS_BY_HEX = new Map(TEXT_COLORS.map((color) => [color.hex, color.className]));
+const COLOR_CLASS_NAMES = new Set(TEXT_COLORS.map((color) => color.className));
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    colorClass: {
+      setColorClass: (hex: string) => ReturnType;
+    };
+  }
+}
+
+const ColorClassExtension = Extension.create({
+  name: 'colorClass',
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['textStyle'],
+        attributes: {
+          colorClass: {
+            default: null,
+            parseHTML: (element: HTMLElement) =>
+              [...element.classList].find((className) => COLOR_CLASS_NAMES.has(className)) ?? null,
+            renderHTML: (attributes: { colorClass?: string | null }) =>
+              attributes.colorClass ? { class: attributes.colorClass } : {},
+          },
+        },
+      },
+    ];
+  },
+
+  addCommands() {
+    return {
+      setColorClass:
+        (hex: string) =>
+        ({ chain }) => {
+          const className = COLOR_CLASS_BY_HEX.get(hex);
+          if (!className) return false;
+          return chain().setMark('textStyle', { colorClass: className }).run();
+        },
+    };
+  },
+});
 
 /** Emojis por categoría (Objetos y oficina primero; resto como en teclado móvil) */
 const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [
@@ -194,7 +239,7 @@ function Toolbar({
       >
         <u>S</u>
       </button>
-      <span ref={colorGroupRef} className={styles.toolbarGroup} style={{ position: 'relative' }}>
+      <span ref={colorGroupRef} className={`${styles.toolbarGroup} ${styles.toolbarGroupRelative}`}>
         <button
           type="button"
           className={colorOpen ? styles.toolbarBtnActive : styles.toolbarBtn}
@@ -208,15 +253,14 @@ function Toolbar({
         {colorOpen && (
           <div className={styles.toolbarDropdown} role="menu">
             <div className={styles.colorGrid}>
-              {TEXT_COLORS.map((hex) => (
+              {TEXT_COLORS.map(({ hex, swatchClassName }) => (
                 <button
                   key={hex}
                   type="button"
-                  className={styles.colorSwatch}
-                  style={{ backgroundColor: hex }}
+                  className={`${styles.colorSwatch} ${swatchClassName}`}
                   title={hex}
                   onClick={() => {
-                    editor.chain().focus().setColor(hex).run();
+                    editor.chain().focus().setColorClass(hex).run();
                     setColorOpen(false);
                   }}
                 />
@@ -225,7 +269,7 @@ function Toolbar({
           </div>
         )}
       </span>
-      <span ref={emojiGroupRef} className={styles.toolbarGroup} style={{ position: 'relative' }}>
+      <span ref={emojiGroupRef} className={`${styles.toolbarGroup} ${styles.toolbarGroupRelative}`}>
         <button
           type="button"
           className={emojiOpen ? styles.toolbarBtnActive : styles.toolbarBtn}
@@ -281,7 +325,7 @@ function Toolbar({
       >
         <Icon name="listNumber" size={16} />
       </button>
-      <span ref={linkGroupRef} className={styles.toolbarGroup} style={{ position: 'relative' }}>
+      <span ref={linkGroupRef} className={`${styles.toolbarGroup} ${styles.toolbarGroupRelative}`}>
         <button
           type="button"
           onClick={() => {
@@ -345,7 +389,7 @@ function Toolbar({
         )}
       </span>
       {!disableTableFeatures && (
-        <span ref={tableSizeGroupRef} className={styles.toolbarGroup} style={{ position: 'relative' }}>
+        <span ref={tableSizeGroupRef} className={`${styles.toolbarGroup} ${styles.toolbarGroupRelative}`}>
           <button
             type="button"
             className={tableSizeOpen ? styles.toolbarBtnActive : styles.toolbarBtn}
@@ -460,14 +504,15 @@ function VariablePicker({
   }, [editor.view.dom, onClose]);
 
   return (
-    <div
+    <CssStyled
+      as="div"
       ref={ref}
       className={styles.variablePicker}
-      style={{
+      cssProperties={{
         position: 'fixed',
-        left: coords.left,
-        top: coords.bottom + 4,
-        zIndex: 1000,
+        left: `${coords.left}px`,
+        top: `${coords.bottom + 4}px`,
+        zIndex: '1000',
       }}
       role="listbox"
       aria-label="Sustituir variable"
@@ -488,7 +533,7 @@ function VariablePicker({
           </li>
         ))}
       </ul>
-    </div>
+    </CssStyled>
   );
 }
 
@@ -529,7 +574,7 @@ export function RichTextEditor({
       Placeholder.configure({ placeholder: placeholder ?? '' }),
       Underline,
       TextStyle,
-      Color,
+      ColorClassExtension,
       ...(disableTableFeatures
         ? []
         : [
@@ -621,7 +666,12 @@ export function RichTextEditor({
   }, [editor, disableTableFeatures]);
 
   return (
-    <div className={styles.richTextEditorWrapper} style={{ minHeight }} data-rich-editor>
+    <CssStyled
+      as="div"
+      className={styles.richTextEditorWrapper}
+      cssProperties={{ minHeight: `${minHeight}px` }}
+      data-rich-editor
+    >
       <Toolbar
         editor={editor}
         insertableVariables={insertableVariables}
@@ -702,6 +752,6 @@ export function RichTextEditor({
             onClose={() => setVariablePicker(null)}
           />
         )}
-    </div>
+    </CssStyled>
   );
 }

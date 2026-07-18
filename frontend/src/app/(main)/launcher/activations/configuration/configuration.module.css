@@ -199,6 +199,18 @@
   margin: 0 0 var(--fiori-space-3);
 }
 
+.sectionDescBottom {
+  margin-bottom: var(--fiori-space-3);
+}
+
+.sectionDescNoTop {
+  margin-top: 0;
+}
+
+.templateCardRestore {
+  margin-top: var(--fiori-space-6);
+}
+
 /* ——— Áreas: bloque "Añadir área" ——— */
 .areasAddCard {
   background: var(--fiori-surface);
@@ -243,6 +255,12 @@
   flex-wrap: wrap;
   --fiori-space-3: 0.75rem;
   margin-bottom: 0.75rem;
+}
+
+.inlineCheckLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .contactsInput {

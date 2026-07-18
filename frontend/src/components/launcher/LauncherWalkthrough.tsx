@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { isDialogEnterTargetInteractive } from '@/lib/dialog-keyboard';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import {
   CHROME_WEB_STORE_COMPANION_URL,
   LAUNCHER_EXTENSION_HELP_URL,
@@ -254,9 +255,10 @@ export function LauncherWalkthrough({ open, onClose }: LauncherWalkthroughProps)
         onClick={(e) => e.stopPropagation()}
       >
         <div className={styles.slideViewport}>
-          <div
+          <CssStyled
+            as="div"
             className={styles.slideTrack}
-            style={{ transform: `translate3d(-${step * 100}%, 0, 0)` }}
+            cssProperties={{ transform: `translate3d(-${step * 100}%, 0, 0)` }}
           >
             {STEPS.map((slide, i) => (
               <div
@@ -289,7 +291,7 @@ export function LauncherWalkthrough({ open, onClose }: LauncherWalkthroughProps)
                 </div>
               </div>
             ))}
-          </div>
+          </CssStyled>
         </div>
         <div className={styles.footer}>
           <div className={styles.dots} aria-hidden>

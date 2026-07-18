@@ -1,20 +1,17 @@
 /* SAP Fiori icon font – Icon Explorer style (https://ui5.sap.com/test-resources/sap/m/demokit/iconExplorer) */
-/* Font from OpenUI5 SDK; load only when Fiori theme is used */
+/* Font from OpenUI5 SDK, vendored in /public to keep font-src same-origin. */
 @font-face {
   font-family: "SAP-icons";
-  src:
-    url("https://sdk.openui5.org/resources/sap/ui/core/themes/base/fonts/SAP-icons.woff2") format("woff2"),
-    url("https://ui5.sap.com/resources/sap/ui/core/themes/base/fonts/SAP-icons.woff2") format("woff2");
+  src: url("/fonts/sap/SAP-icons.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: block;
 }
 
-/* SAP-icons-TNT (sap-icon://SAP-icons-TNT/intranet → \e07e). OpenUI5 no sirve TNT; uso CDN npm. */
+/* SAP-icons-TNT (sap-icon://SAP-icons-TNT/intranet -> \e07e). */
 @font-face {
   font-family: "SAP-icons-TNT";
-  src:
-    url("https://cdn.jsdelivr.net/npm/@sap-theming/theming-base-content@11.33.0/content/Base/baseLib/baseTheme/fonts/SAP-icons-TNT.woff2") format("woff2");
+  src: url("/fonts/sap/SAP-icons-TNT.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: block;

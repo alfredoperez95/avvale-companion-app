@@ -235,8 +235,12 @@ export default function RfqAnalysisListPage() {
         >
           {[0, 1, 2].map((i) => (
             <div key={i} className={styles.skeletonCard}>
-              <div className={styles.skeletonLine} style={{ width: `${55 + i * 8}%` }} />
-              <div className={styles.skeletonLine} style={{ width: '88%' }} />
+              <div
+                className={`${styles.skeletonLine} ${
+                  i === 0 ? styles.skeletonLine55 : i === 1 ? styles.skeletonLine63 : styles.skeletonLine71
+                }`}
+              />
+              <div className={`${styles.skeletonLine} ${styles.skeletonLine88}`} />
             </div>
           ))}
         </div>

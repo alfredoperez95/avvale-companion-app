@@ -371,6 +371,14 @@
   outline-offset: 2px;
 }
 
+.fileUploadLabel {
+  margin-top: var(--fiori-space-2);
+}
+
+.fileUploadLabelDisabled {
+  cursor: not-allowed;
+}
+
 .areaTagsRow {
   display: flex;
   flex-wrap: wrap;
@@ -549,6 +557,10 @@
   margin-top: var(--fiori-space-1);
   font-size: 0.75rem;
   color: var(--fiori-text-secondary);
+}
+
+.hiddenFileInput {
+  display: none;
 }
 
 .emptyUrlsCta {

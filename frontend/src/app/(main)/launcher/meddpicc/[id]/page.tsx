@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Script from 'next/script';
 import { apiFetch, apiUpload } from '@/lib/api';
 import { readCspNonceFromDom } from '@/lib/csp-nonce';
 import { PageBreadcrumb, PageHero, PageBackLink, ChevronBackIcon } from '@/components/page-hero';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import confirmDialogStyles from '@/components/ConfirmDialog/ConfirmDialog.module.css';
 import { useUser } from '@/contexts/UserContext';
 import { MeddpiccDimensionIcon } from '@/lib/meddpicc-dimension-icon';
@@ -1374,13 +1375,13 @@ export default function MeddpiccDealDetailPage() {
             MEDDPICC
           </PageBackLink>
         </PageBreadcrumb>
-        <div className={styles.loadingSkeleton} style={{ marginTop: 'var(--fiori-space-4)' }} aria-busy="true" aria-label="Cargando deal">
+        <div className={`${styles.loadingSkeleton} ${styles.loadingSkeletonWithTopMargin}`} aria-busy="true" aria-label="Cargando deal">
           <span className="sr-only">Cargando…</span>
           <div className={styles.skeletonCard}>
-            <div className={styles.skeletonLine} style={{ width: '55%' }} />
-            <div className={styles.skeletonLine} style={{ width: '100%' }} />
-            <div className={styles.skeletonLine} style={{ width: '88%' }} />
-            <div className={styles.skeletonLine} style={{ width: '40%' }} />
+            <div className={`${styles.skeletonLine} ${styles.skeletonLine55}`} />
+            <div className={`${styles.skeletonLine} ${styles.skeletonLineFull}`} />
+            <div className={`${styles.skeletonLine} ${styles.skeletonLine88}`} />
+            <div className={`${styles.skeletonLine} ${styles.skeletonLine40}`} />
           </div>
         </div>
       </div>
@@ -1396,7 +1397,7 @@ export default function MeddpiccDealDetailPage() {
             MEDDPICC
           </PageBackLink>
         </PageBreadcrumb>
-        <p className={styles.inlineError} style={{ marginTop: 'var(--fiori-space-4)' }}>
+        <p className={`${styles.inlineError} ${styles.inlineErrorWithTopMargin}`}>
           {error}
         </p>
       </div>
@@ -1919,11 +1920,12 @@ export default function MeddpiccDealDetailPage() {
             const isOpen = openDimKey === dim.key;
             const dimScore = Math.min(10, Math.max(0, scores[dim.key] ?? 0));
             return (
-              <section
+              <CssStyled
+                as="section"
                 key={dim.key}
                 id={`dim-section-${dim.key}`}
                 className={`${styles.dimCard} ${styles.dimCardAccordion} ${isOpen ? styles.dimCardOpen : ''}`}
-                style={{ borderLeft: `4px solid ${dim.color}` }}
+                cssProperties={{ borderLeft: `4px solid ${dim.color}` }}
               >
                 <div className={styles.dimCardHeaderRow}>
                   <button
@@ -1934,9 +1936,9 @@ export default function MeddpiccDealDetailPage() {
                     aria-controls={`dim-panel-${dim.key}`}
                     onClick={() => setOpenDimKey((prev) => (prev === dim.key ? null : dim.key))}
                   >
-                    <span className={styles.dimCardTitleIcon} style={{ color: dim.color }} aria-hidden>
+                    <CssStyled as="span" className={styles.dimCardTitleIcon} cssProperties={{ color: dim.color }} aria-hidden>
                       <MeddpiccDimensionIcon dimensionKey={dim.key} size={20} />
-                    </span>
+                    </CssStyled>
                     <span className={styles.dimCardTitleText}>{dim.name}</span>
                     <span className={styles.dimChevron} aria-hidden>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -1979,12 +1981,13 @@ export default function MeddpiccDealDetailPage() {
                         }}
                       />
                     ) : (
-                      <button
+                      <CssStyled
+                        as="button"
                         type="button"
                         className={styles.dimScoreChip}
-                        style={{ borderLeftColor: dim.color }}
+                        cssProperties={{ borderLeftColor: dim.color }}
                         aria-label={`Puntuación ${dim.name}: ${dimScore} de 10. Pulsa para editar manualmente`}
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent<HTMLButtonElement>) => {
                           e.stopPropagation();
                           setEditingDimScoreKey(dim.key);
                         }}
@@ -1993,7 +1996,7 @@ export default function MeddpiccDealDetailPage() {
                         <span className={styles.dimScoreChipSuffix} aria-hidden>
                           /10
                         </span>
-                      </button>
+                      </CssStyled>
                     )}
                   </div>
                 </div>
@@ -2008,9 +2011,10 @@ export default function MeddpiccDealDetailPage() {
                       aria-valuenow={dimScore}
                       aria-label={`Puntuación ${dim.name}: ${dimScore} de 10`}
                     >
-                      <div
+                      <CssStyled
+                        as="div"
                         className={styles.dimScoreProgressFill}
-                        style={{ width: `${dimScore * 10}%`, backgroundColor: dim.color }}
+                        cssProperties={{ width: `${dimScore * 10}%`, backgroundColor: dim.color }}
                       />
                     </div>
                     <span className={styles.dimScoreProgressValue} aria-hidden>
@@ -2123,7 +2127,7 @@ export default function MeddpiccDealDetailPage() {
                     })()}
                   </div>
                 )}
-              </section>
+              </CssStyled>
             );
           })}
 
@@ -2286,26 +2290,27 @@ export default function MeddpiccDealDetailPage() {
                           aria-label={`${dim.name}: ${dimScore} de 10. Abrir en Evaluación`}
                         >
                           <span className={styles.dashboardDimRowLead}>
-                            <span className={styles.dashboardDimRowIcon} style={{ color: dim.color }} aria-hidden>
+                            <CssStyled as="span" className={styles.dashboardDimRowIcon} cssProperties={{ color: dim.color }} aria-hidden>
                               <MeddpiccDimensionIcon dimensionKey={dim.key} size={20} />
-                            </span>
+                            </CssStyled>
                             <span className={styles.dashboardDimRowCode}>{dim.key}</span>
                           </span>
                           <span className={styles.dashboardDimRowName}>{dim.name}</span>
                           <span className={styles.dashboardDimRowBarWrap}>
                             <span className={styles.dashboardBarTrack}>
-                              <span
+                              <CssStyled
+                                as="span"
                                 className={`${styles.dashboardBarFill} ${fillClass}`}
-                                style={{ width: `${dimScore * 10}%` }}
+                                cssProperties={{ width: `${dimScore * 10}%` }}
                               />
                             </span>
                           </span>
                           <span className={styles.dashboardDimRowScore}>{dimScore}/10</span>
                         </button>
                         <div id={tipId} className={chartStyles.tooltip} role="tooltip">
-                          <p className={chartStyles.tooltipName} style={{ color: dim.color }}>
+                          <CssStyled as="p" className={chartStyles.tooltipName} cssProperties={{ color: dim.color }}>
                             {dim.name}
-                          </p>
+                          </CssStyled>
                           <p className={chartStyles.tooltipScore}>
                             Score actual: <strong>{dimScore}/10</strong>
                           </p>
@@ -2348,9 +2353,9 @@ export default function MeddpiccDealDetailPage() {
                       onClick={() => goToDimensionEval(dim.key)}
                       aria-label={`${dim.name}: ${dimScore} de 10 (${qual}). Abrir en Evaluación`}
                     >
-                      <span className={styles.dashboardAttentionIcon} style={{ color: dim.color }} aria-hidden>
+                      <CssStyled as="span" className={styles.dashboardAttentionIcon} cssProperties={{ color: dim.color }} aria-hidden>
                         <MeddpiccDimensionIcon dimensionKey={dim.key} size={20} />
-                      </span>
+                      </CssStyled>
                       <span className={styles.dashboardAttentionName}>{dim.name}</span>
                       <span className={styles.dashboardAttentionMeta}>
                         <strong>{dimScore}/10</strong>
@@ -2455,13 +2460,14 @@ export default function MeddpiccDealDetailPage() {
                     return (
                       <div key={`crit-${row.dimensionKey}`} className={styles.strategyActionCardCritical}>
                         <div className={styles.strategyActionCardHead}>
-                          <span
+                          <CssStyled
+                            as="span"
                             className={styles.strategyActionDimIcon}
-                            style={dimDef ? { color: dimDef.color } : undefined}
+                            cssProperties={{ color: dimDef?.color }}
                             aria-hidden
                           >
                             <MeddpiccDimensionIcon dimensionKey={row.dimensionKey} size={20} />
-                          </span>
+                          </CssStyled>
                           <span className={styles.strategyActionDimName}>{row.name}</span>
                           <span className={styles.strategyActionBadgeCritical}>{badgeScore}/10</span>
                         </div>
@@ -2486,13 +2492,14 @@ export default function MeddpiccDealDetailPage() {
                     return (
                       <div key={`area-${row.dimensionKey}`} className={styles.strategyActionCardAmber}>
                         <div className={styles.strategyActionCardHead}>
-                          <span
+                          <CssStyled
+                            as="span"
                             className={styles.strategyActionDimIcon}
-                            style={dimDef ? { color: dimDef.color } : undefined}
+                            cssProperties={{ color: dimDef?.color }}
                             aria-hidden
                           >
                             <MeddpiccDimensionIcon dimensionKey={row.dimensionKey} size={20} />
-                          </span>
+                          </CssStyled>
                           <span className={styles.strategyActionDimName}>{row.name}</span>
                           <span className={styles.strategyActionBadgeAmber}>{badgeScore}/10</span>
                         </div>

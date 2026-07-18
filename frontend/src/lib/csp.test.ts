@@ -2,14 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { buildContentSecurityPolicy, buildSecurityHeaders, collectConnectOrigins } from './csp';
 
 describe('buildContentSecurityPolicy', () => {
-  it('incluye nonce y strict-dynamic; sin unsafe-eval en producción', () => {
+  it('incluye nonce y strict-dynamic; sin inline/eval/hosts externos en producción', () => {
     const csp = buildContentSecurityPolicy('testNonce123', { isDev: false });
     expect(csp).toContain("script-src");
     expect(csp).toContain("'nonce-testNonce123'");
     expect(csp).toContain("'strict-dynamic'");
+    expect(csp).not.toContain("'unsafe-inline'");
     expect(csp).not.toContain("'unsafe-eval'");
+    expect(csp).not.toContain('https://unpkg.com');
+    expect(csp).toContain("style-src 'self' 'nonce-testNonce123'");
     expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("base-uri 'none'");
+    expect(csp).toContain("form-action 'none'");
+    expect(csp).toContain('frame-src blob: https://*.elevenlabs.io');
     expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain('report-uri /api/csp-report');
+    expect(csp).toContain('report-to csp-endpoint');
   });
 
   it('permite unsafe-eval solo en desarrollo (HMR)', () => {
@@ -42,5 +50,17 @@ describe('buildSecurityHeaders', () => {
     expect(prod.some((h) => h.key === 'Strict-Transport-Security')).toBe(true);
     expect(dev.some((h) => h.key === 'Strict-Transport-Security')).toBe(false);
     expect(prod.some((h) => h.key === 'Cross-Origin-Resource-Policy')).toBe(true);
+  });
+
+  it('emite Report-Only por defecto y Enforce cuando se solicita', () => {
+    const csp = buildContentSecurityPolicy('n', { isDev: false });
+    const reportOnly = buildSecurityHeaders(csp, { isDev: false });
+    const enforce = buildSecurityHeaders(csp, { isDev: false, mode: 'enforce' });
+
+    expect(reportOnly.some((h) => h.key === 'Content-Security-Policy-Report-Only')).toBe(true);
+    expect(reportOnly.some((h) => h.key === 'Content-Security-Policy')).toBe(false);
+    expect(enforce.some((h) => h.key === 'Content-Security-Policy')).toBe(true);
+    expect(enforce.some((h) => h.key === 'Content-Security-Policy-Report-Only')).toBe(false);
+    expect(enforce.some((h) => h.key === 'Report-To')).toBe(true);
   });
 });

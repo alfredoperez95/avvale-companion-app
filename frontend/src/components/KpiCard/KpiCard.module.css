@@ -11,6 +11,11 @@
   overflow: visible;
 }
 
+.cardLink {
+  color: inherit;
+  text-decoration: none;
+}
+
 /* Tema Microsoft: cajas cuadradas, número junto al icono (grande), texto abajo */
 :global([data-theme="microsoft"]) .card {
   width: 100%;

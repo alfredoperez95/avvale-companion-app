@@ -346,6 +346,10 @@
   flex-shrink: 0;
 }
 
+.tabIconHome {
+  font-size: 18px;
+}
+
 .navLink:hover {
   background: var(--fiori-nav-item-hover);
   text-decoration: none;

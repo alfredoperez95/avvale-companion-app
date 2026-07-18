@@ -3,6 +3,7 @@
 /** Reglas de negocio (UI oferta): docs/YUBIQ_OFERTA_REGLAS.md */
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import type { ClaudeOfferExtraction } from '@/types/yubiq';
 import styles from './ExtractionResultCard.module.css';
 
@@ -142,20 +143,21 @@ function CompromisoInfoTooltip({ text }: { text: string }) {
 
   const panel =
     open && typeof document !== 'undefined' ? (
-      <div
+      <CssStyled
+        as="div"
         ref={panelRef}
         id={panelId}
         role="region"
         aria-label="Detalle del cálculo del total de compromiso"
         className={styles.compromisoInfoPanel}
-        style={{
-          top: panelPos.top,
-          left: panelPos.left,
-          width: panelPos.width,
+        cssProperties={{
+          top: `${panelPos.top}px`,
+          left: `${panelPos.left}px`,
+          width: `${panelPos.width}px`,
         }}
       >
         {text}
-      </div>
+      </CssStyled>
     ) : null;
 
   return (

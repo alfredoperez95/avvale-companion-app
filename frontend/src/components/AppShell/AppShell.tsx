@@ -364,7 +364,10 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
                         if (iconOnly && icon === 'home') {
                           return (
                             <Link key={href} href={href} className={tabClass} aria-label={label}>
-                              <span className={`${styles.tabIcon} sap-icon sap-icon--launchpad`} style={{ fontSize: 18 }} aria-hidden />
+                              <span
+                                className={`${styles.tabIcon} ${styles.tabIconHome} sap-icon sap-icon--launchpad`}
+                                aria-hidden
+                              />
                             </Link>
                           );
                         }

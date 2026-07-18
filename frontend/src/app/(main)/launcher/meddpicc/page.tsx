@@ -172,9 +172,9 @@ export default function MeddpiccListPage() {
           <span className="sr-only">Cargando…</span>
           {[1, 2, 3].map((i) => (
             <div key={i} className={styles.skeletonCard}>
-              <div className={styles.skeletonLine} style={{ width: '72%' }} />
-              <div className={styles.skeletonLine} style={{ width: '48%' }} />
-              <div className={styles.skeletonLine} style={{ width: '56%' }} />
+              <div className={`${styles.skeletonLine} ${styles.skeletonLine72}`} />
+              <div className={`${styles.skeletonLine} ${styles.skeletonLine48}`} />
+              <div className={`${styles.skeletonLine} ${styles.skeletonLine56}`} />
             </div>
           ))}
         </div>

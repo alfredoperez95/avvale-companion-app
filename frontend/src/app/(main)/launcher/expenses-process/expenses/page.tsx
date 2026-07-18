@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, redirectToLogin } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import {
   ArrowCounterclockwiseRegular,
@@ -1228,9 +1229,10 @@ function AmountRangeSelector({
     <div className={styles.rangeSlider}>
       <div className={styles.rangeTrackWrap}>
         <div className={styles.rangeTrackBg} aria-hidden="true" />
-        <div
+        <CssStyled
+          as="div"
           className={styles.rangeTrackFill}
-          style={{
+          cssProperties={{
             left: `calc(var(--range-thumb-radius) + (100% - var(--range-thumb-size)) * ${lowPercent / 100})`,
             width: `calc((100% - var(--range-thumb-size)) * ${Math.max(0, highPercent - lowPercent) / 100})`,
           }}

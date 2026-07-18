@@ -1,6 +1,7 @@
 'use client';
 
 import { useTheme } from '@/contexts/ThemeContext';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import styles from './Icon.module.css';
 
 /** Nombres semánticos de iconos: usados en KPI, nav, etc. */
@@ -69,7 +70,7 @@ function ListNumberIconSvg({ size }: { size: number }) {
   const contentCenterY = (contentTop + contentBottom) / 2;
   const translateY = 12 - contentCenterY;
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ display: 'block', verticalAlign: 'middle' }}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={styles.svgBlock}>
       <g transform={`translate(${translateX}, ${translateY})`}>
         <text x="0" y={lineY1} dominantBaseline="middle" fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize="8" fontWeight="600" fill="currentColor">1</text>
         <text x="0" y={lineY2} dominantBaseline="middle" fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize="8" fontWeight="600" fill="currentColor">2</text>
@@ -83,7 +84,7 @@ function ListNumberIconSvg({ size }: { size: number }) {
 /** Icono emoji: carita sonriente dibujada con líneas (outline) */
 function EmojiIconSvg({ size }: { size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ display: 'block' }}>
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={styles.svgBlock}>
       <circle cx="10" cy="10" r="6.5" />
       <circle cx="7.5" cy="8.5" r="1" />
       <circle cx="12.5" cy="8.5" r="1" />
@@ -135,9 +136,10 @@ export function Icon({ name, className, size = 24, 'aria-hidden': ariaHidden = t
   if (useFioriLinkTable) {
     const fioriClass = FIORI_ICON_CLASS[name];
     return (
-      <span
+      <CssStyled
+        as="span"
         className={`sap-icon ${fioriClass} ${styles.fioriIcon} ${className ?? ''}`.trim()}
-        style={{ fontSize: size }}
+        cssProperties={{ fontSize: `${size}px` }}
         aria-hidden={ariaHidden}
       />
     );
@@ -152,9 +154,10 @@ export function Icon({ name, className, size = 24, 'aria-hidden': ariaHidden = t
           ? FIORI_ICON_CLASS['draft']
           : FIORI_ICON_CLASS[name];
     return (
-      <span
+      <CssStyled
+        as="span"
         className={`sap-icon ${fioriClass} ${styles.fioriIcon} ${className ?? ''}`.trim()}
-        style={{ fontSize: size }}
+        cssProperties={{ fontSize: `${size}px` }}
         aria-hidden={ariaHidden}
       />
     );
@@ -163,26 +166,37 @@ export function Icon({ name, className, size = 24, 'aria-hidden': ariaHidden = t
   /* Listas: siempre SVG tipo Microsoft, en todos los temas */
   if (useEditorIcons) {
     return (
-      <span className={className} aria-hidden={ariaHidden} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: size, height: size }}>
+      <CssStyled
+        as="span"
+        className={`${styles.inlineIcon} ${className ?? ''}`.trim()}
+        aria-hidden={ariaHidden}
+        cssProperties={{ width: `${size}px`, height: `${size}px` }}
+      >
         {name === 'listNumber' ? <ListNumberIconSvg size={size} /> : name === 'emoji' ? <EmojiIconSvg size={size} /> : <FluentIconSvg name={name} size={size} />}
-      </span>
+      </CssStyled>
     );
   }
 
   if (theme === 'fiori') {
     const fioriClass = FIORI_ICON_CLASS[name];
     return (
-      <span
+      <CssStyled
+        as="span"
         className={`sap-icon ${fioriClass} ${styles.fioriIcon} ${className ?? ''}`.trim()}
-        style={{ fontSize: size }}
+        cssProperties={{ fontSize: `${size}px` }}
         aria-hidden={ariaHidden}
       />
     );
   }
 
   return (
-    <span className={className} aria-hidden={ariaHidden} style={{ display: 'inline-flex', width: size, height: size }}>
+    <CssStyled
+      as="span"
+      className={`${styles.inlineIcon} ${className ?? ''}`.trim()}
+      aria-hidden={ariaHidden}
+      cssProperties={{ width: `${size}px`, height: `${size}px` }}
+    >
       <FluentIconSvg name={name} size={size} />
-    </span>
+    </CssStyled>
   );
 }

@@ -66,7 +66,7 @@ export function KpiCard({ title, value, subtitle, href, icon, loading = false }:
 
   if (href) {
     return (
-      <Link href={href} {...cardProps} style={{ textDecoration: 'none', color: 'inherit' }}>
+      <Link href={href} {...cardProps} className={`${cardClass} ${styles.cardLink}`}>
         {content}
       </Link>
     );

@@ -782,7 +782,7 @@ export default function RfqAnalysisDetailPage() {
             {detail.manualContext?.trim() ? (
               <div className={styles.kvRow}>
                 <dt className={styles.kvDt}>Contexto manual</dt>
-                <dd className={styles.kvDd} style={{ whiteSpace: 'pre-wrap' }}>
+                <dd className={`${styles.kvDd} ${styles.kvDdPreWrap}`}>
                   {detail.manualContext}
                 </dd>
               </div>
@@ -794,7 +794,7 @@ export default function RfqAnalysisDetailPage() {
           <section className={styles.sectionCard} aria-label="Error">
             <h2 className={styles.sectionHeading}>Incidencia</h2>
             <div className={styles.sectionBody}>
-              <p className={styles.errorBox} style={{ margin: 0 }}>
+              <p className={`${styles.errorBox} ${styles.errorBoxNoMargin}`}>
                 {detail.failureReason}
               </p>
             </div>

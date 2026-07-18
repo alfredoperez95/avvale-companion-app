@@ -9,6 +9,7 @@ import { buildContentSecurityPolicy, buildSecurityHeaders } from '@/lib/csp';
 export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const isDev = process.env.NODE_ENV === 'development';
+  const cspMode = process.env.CSP_ENFORCE === 'true' ? 'enforce' : 'report-only';
 
   const csp = buildContentSecurityPolicy(nonce, {
     isDev,
@@ -22,13 +23,14 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
   // Next usa esta cabecera en el request para aplicar el nonce a sus propios scripts.
+  // La respuesta puede ir en Report-Only hasta activar CSP_ENFORCE=true.
   requestHeaders.set('Content-Security-Policy', csp);
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },
   });
 
-  for (const { key, value } of buildSecurityHeaders(csp, { isDev })) {
+  for (const { key, value } of buildSecurityHeaders(csp, { isDev, mode: cspMode })) {
     response.headers.set(key, value);
   }
 
@@ -41,7 +43,8 @@ export const config = {
      * Excluir estáticos y prefetch; CSP aplica al documento HTML.
      */
     {
-      source: '/((?!_next/static|_next/image|favicon.ico|icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|zip|webmanifest)$).*)',
+      source:
+        '/((?!_next/static|_next/image|api/csp-report|kyc/.*\\.html|favicon.ico|icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|zip|webmanifest)$).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

@@ -1,5 +1,6 @@
 'use client';
 
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import styles from './DataTable.module.css';
 
 export interface Column<T> {
@@ -41,18 +42,18 @@ export function DataTable<T>({
     return (
       <div className={wrapClass}>
         <div className={styles.loading} role="status" aria-live="polite">
-          <div className={styles.skeletonHeader} style={skeletonGridStyle}>
+          <CssStyled as="div" className={styles.skeletonHeader} cssProperties={skeletonGridStyle}>
             {columns.map((col) => (
               <span key={`header-${col.key}`} className={styles.skeletonHeaderCell} />
             ))}
-          </div>
+          </CssStyled>
           <div className={styles.skeletonBody}>
             {Array.from({ length: skeletonRows }).map((_, rowIndex) => (
-              <div key={`row-${rowIndex}`} className={styles.skeletonRow} style={skeletonGridStyle}>
+              <CssStyled key={`row-${rowIndex}`} as="div" className={styles.skeletonRow} cssProperties={skeletonGridStyle}>
                 {columns.map((col) => (
                   <span key={`cell-${rowIndex}-${col.key}`} className={styles.skeletonCell} />
                 ))}
-              </div>
+              </CssStyled>
             ))}
           </div>
           <span className={styles.loadingText}>Cargando datos...</span>
@@ -75,14 +76,15 @@ export function DataTable<T>({
         <thead>
           <tr>
             {columns.map((col) => (
-              <th
+              <CssStyled
+                as="th"
                 key={col.key}
                 className={styles.th}
                 scope="col"
-                style={col.minWidthPx != null ? { minWidth: `${col.minWidthPx}px` } : undefined}
+                cssProperties={{ minWidth: col.minWidthPx != null ? `${col.minWidthPx}px` : undefined }}
               >
                 {col.renderHeader ? col.renderHeader() : col.header}
-              </th>
+              </CssStyled>
             ))}
           </tr>
         </thead>
@@ -106,13 +108,14 @@ export function DataTable<T>({
               }
             >
               {columns.map((col) => (
-                <td
+                <CssStyled
+                  as="td"
                   key={col.key}
                   className={styles.td}
-                  style={col.minWidthPx != null ? { minWidth: `${col.minWidthPx}px` } : undefined}
+                  cssProperties={{ minWidth: col.minWidthPx != null ? `${col.minWidthPx}px` : undefined }}
                 >
                   {col.render(row)}
-                </td>
+                </CssStyled>
               ))}
             </tr>
           ))}

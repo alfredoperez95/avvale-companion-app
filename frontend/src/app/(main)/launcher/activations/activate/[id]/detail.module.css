@@ -241,6 +241,10 @@
   text-decoration: none;
 }
 
+.uploadLabelDisabled {
+  cursor: not-allowed;
+}
+
 .linkButton:focus-visible {
   outline: 2px solid var(--fiori-shell-bg);
   outline-offset: 2px;
@@ -537,6 +541,15 @@
   overflow: hidden;
   position: relative;
   height: 0.75rem;
+}
+
+.uploadProgressWrapFixed {
+  margin-top: 0;
+  width: 100%;
+}
+
+.hiddenFileInput {
+  display: none;
 }
 
 .uploadProgressBar {

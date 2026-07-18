@@ -7,6 +7,7 @@ import { apiFetch, apiUpload, redirectToLogin } from '@/lib/api';
 import { parseHubSpotStyleProjectName } from '@/lib/parse-project-name';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import { replaceTemplateVariables, replaceUrlsEscaneadasPlaceholder } from '@/lib/replace-template-variables';
 import { formatActivationCode } from '@/lib/activation-code';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
@@ -1091,16 +1092,13 @@ export default function EditActivationPage() {
                 />
               ) : null}
               <p className={styles.helperText}>Añade archivos descargados desde HubSpot (o desde tu ordenador).</p>
-              <label
-                className={styles.btnSecondary}
-                style={{ marginTop: 'var(--fiori-space-2)', cursor: uploading ? 'not-allowed' : 'pointer' }}
-              >
-                <input type="file" multiple disabled={uploading} onChange={handleFileUploadEdit} style={{ display: 'none' }} />
+              <label className={`${styles.btnSecondary} ${styles.fileUploadLabel} ${uploading ? styles.fileUploadLabelDisabled : ''}`}>
+                <input type="file" multiple disabled={uploading} onChange={handleFileUploadEdit} className={styles.hiddenFileInput} />
                 {uploading ? 'Subiendo…' : 'Añadir archivos'}
               </label>
               {uploading ? (
                 <div className={styles.uploadProgressWrap} aria-live="polite">
-                  <div className={styles.uploadProgressBar} style={{ width: `${uploadProgress}%` }} />
+                  <CssStyled as="div" className={styles.uploadProgressBar} cssProperties={{ width: `${uploadProgress}%` }} />
                   <span className={styles.uploadProgressText}>{uploadProgress}%</span>
                 </div>
               ) : null}

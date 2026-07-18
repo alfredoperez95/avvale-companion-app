@@ -26,6 +26,7 @@ import {
   LAUNCHER_WALKTHROUGH_DISMISSED,
   LAUNCHER_WALKTHROUGH_STORAGE_KEY,
 } from '@/components/launcher/LauncherWalkthrough';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import { PageHero } from '@/components/page-hero';
 import { apiFetch } from '@/lib/api';
 import { probeCompanionExtension } from '@/lib/yubiq';
@@ -480,7 +481,7 @@ function SortableTile({
       },
     },
   });
-  const style = {
+  const sortableStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : undefined,
@@ -488,9 +489,10 @@ function SortableTile({
   };
 
   return (
-    <li
+    <CssStyled
+      as="li"
       ref={setNodeRef}
-      style={style}
+      cssProperties={sortableStyle}
       className={`${styles.sortableItem} ${isDragging ? styles.sortableItemDragging : ''}`}
       role="listitem"
       data-dragging={isDragging || undefined}
@@ -513,7 +515,7 @@ function SortableTile({
           locked={tileLocked}
         />
       </div>
-    </li>
+    </CssStyled>
   );
 }
 

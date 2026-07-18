@@ -235,7 +235,7 @@ export default function AdminEmailTemplatesPage() {
             </div>
           </form>
         ) : (
-          <p className={styles.sectionDesc} style={{ marginBottom: 'var(--fiori-space-3)' }}>
+          <p className={`${styles.sectionDesc} ${styles.sectionDescBottom}`}>
             Usa el botón para abrir el editor y crear una nueva plantilla.
           </p>
         )}
@@ -274,14 +274,13 @@ export default function AdminEmailTemplatesPage() {
       )}
 
       <section
-        className={styles.templateCard}
+        className={`${styles.templateCard} ${styles.templateCardRestore}`}
         aria-labelledby="restore-templates-heading"
-        style={{ marginTop: 'var(--fiori-space-6)' }}
       >
         <h2 id="restore-templates-heading" className={styles.templateCardTitle}>
           {isAdmin ? 'Restaurar copias personales' : 'Restaurar desde el catálogo de sistema'}
         </h2>
-        <p className={styles.sectionDesc} style={{ marginTop: 0 }}>
+        <p className={`${styles.sectionDesc} ${styles.sectionDescNoTop}`}>
           {isAdmin
             ? 'El botón aplica a tus copias para activaciones (no modifica el catálogo de sistema de esta pantalla).'
             : 'Puedes volver a las plantillas predefinidas del administrador en cualquier momento; se sustituirán tus plantillas actuales por copias del catálogo de sistema.'}

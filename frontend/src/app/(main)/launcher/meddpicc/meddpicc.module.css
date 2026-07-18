@@ -100,6 +100,58 @@
   animation: meddpiccSkeletonShimmer 1.2s ease-in-out infinite;
 }
 
+.skeletonLine40 {
+  width: 40%;
+}
+
+.skeletonLine48 {
+  width: 48%;
+}
+
+.skeletonLine55 {
+  width: 55%;
+}
+
+.skeletonLine56 {
+  width: 56%;
+}
+
+.skeletonLine72 {
+  width: 72%;
+}
+
+.skeletonLine88 {
+  width: 88%;
+}
+
+.skeletonLineFull {
+  width: 100%;
+}
+
+.loadingSkeletonWithTopMargin {
+  margin-top: var(--fiori-space-4);
+}
+
+.inlineErrorWithTopMargin {
+  margin-top: var(--fiori-space-4);
+}
+
+.dimCardNewDeal {
+  margin-top: var(--fiori-space-5);
+}
+
+.dealCardMetaIntro {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.dealCardMetaTop {
+  margin-top: var(--fiori-space-2);
+}
+
+.inlineErrorNewDeal {
+  margin-top: var(--fiori-space-3);
+}
+
 @keyframes meddpiccSkeletonShimmer {
   0% {
     background-position: 100% 0;

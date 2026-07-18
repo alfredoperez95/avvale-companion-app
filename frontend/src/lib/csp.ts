@@ -11,6 +11,11 @@ export type CspEnv = {
   connectOrigins?: Array<string | undefined>;
 };
 
+export type CspMode = 'report-only' | 'enforce';
+
+const CSP_REPORT_ENDPOINT = '/api/csp-report';
+const CSP_REPORT_GROUP = 'csp-endpoint';
+
 function originFromUrl(raw: string | undefined): string | null {
   if (!raw?.trim()) return null;
   try {
@@ -53,29 +58,27 @@ export function buildContentSecurityPolicy(nonce: string, env: CspEnv): string {
   }
 
   const scriptSrc = [
-    "'self'",
     `'nonce-${nonce}'`,
     "'strict-dynamic'",
-    // Fallback para navegadores sin strict-dynamic; con nonce, el inline malicioso sin nonce sigue bloqueado.
-    "'unsafe-inline'",
     ...(env.isDev ? ["'unsafe-eval'"] : []),
-    'https://unpkg.com',
   ];
 
   const directives: string[] = [
     "default-src 'self'",
     `script-src ${scriptSrc.join(' ')}`,
-    "style-src 'self' 'unsafe-inline'",
+    `style-src 'self' 'nonce-${nonce}'`,
     "img-src 'self' data: blob: https://www.sap.com https://www.avvale.com https://t3.gstatic.com https://*.hubspot.com https://*.hsforms.com",
     "font-src 'self' data:",
     `connect-src ${[...new Set(connect)].join(' ')}`,
     "media-src 'self' blob:",
     "worker-src 'self' blob:",
-    "frame-src 'self' https://*.elevenlabs.io",
+    "frame-src blob: https://*.elevenlabs.io",
     "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
     "frame-ancestors 'none'",
+    `report-uri ${CSP_REPORT_ENDPOINT}`,
+    `report-to ${CSP_REPORT_GROUP}`,
   ];
 
   // Solo en prod: en http://localhost rompería el front al forzar HTTPS.
@@ -89,10 +92,20 @@ export function buildContentSecurityPolicy(nonce: string, env: CspEnv): string {
 /** Cabeceras de endurecimiento complementarias (además de CSP). */
 export function buildSecurityHeaders(
   csp: string,
-  options: { isDev: boolean } = { isDev: false },
+  options: { isDev: boolean; mode?: CspMode } = { isDev: false, mode: 'report-only' },
 ): Array<{ key: string; value: string }> {
+  const cspHeaderName =
+    options.mode === 'enforce' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only';
   const headers: Array<{ key: string; value: string }> = [
-    { key: 'Content-Security-Policy', value: csp },
+    { key: cspHeaderName, value: csp },
+    {
+      key: 'Report-To',
+      value: JSON.stringify({
+        group: CSP_REPORT_GROUP,
+        max_age: 10886400,
+        endpoints: [{ url: CSP_REPORT_ENDPOINT }],
+      }),
+    },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
     { key: 'X-Frame-Options', value: 'DENY' },
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

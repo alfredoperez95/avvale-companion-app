@@ -347,7 +347,7 @@ export function KycPorResolverPanel({
         <div className={styles.modalOverlay} onClick={() => setRes(null)} role="presentation">
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h2>Marcar como resuelta</h2>
-            <p className={styles.hint} style={{ marginTop: 0 }}>
+            <p className={`${styles.hint} ${styles.hintNoTopMargin}`}>
               {esc(res.question)}
             </p>
             <div className={styles.formRow}>
@@ -367,7 +367,7 @@ export function KycPorResolverPanel({
                 onChange={(e) => setApplyFieldPath(e.target.value)}
               />
             </div>
-            <p className={styles.hint} style={{ marginTop: 0 }}>
+            <p className={`${styles.hint} ${styles.hintNoTopMargin}`}>
               Si el ámbito es organigrama o señales, indica una ruta explícita o desmarca guardar en perfil.
             </p>
             <div className={styles.modalActions}>

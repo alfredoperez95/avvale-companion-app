@@ -8,6 +8,7 @@ import { apiFetch, apiUpload, redirectToLogin } from '@/lib/api';
 import type { Activation } from '@/types/activation';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { formatActivationCode } from '@/lib/activation-code';
 import { displayActivationErrorMessage } from '@/lib/activation-error-message';
@@ -601,9 +602,10 @@ export default function ActivationDetailPage() {
                 {extensionBridge.chainProgress !== null ? (
                   <div className={styles.extensionChainProgress}>
                     <div className={styles.uploadProgressWrap}>
-                      <div
+                      <CssStyled
+                        as="div"
                         className={styles.uploadProgressBar}
-                        style={{ width: `${extensionBridge.chainProgress}%` }}
+                        cssProperties={{ width: `${extensionBridge.chainProgress}%` }}
                       />
                     </div>
                     <span className={styles.uploadProgressText}>{extensionBridge.chainProgress}%</span>
@@ -686,19 +688,19 @@ export default function ActivationDetailPage() {
             Para documentos detrás de HubSpot: en «URLs escaneadas» usa «Descargar localmente», guarda cada archivo en tu
             equipo y súbelo aquí (o usa el botón de la extensión en «URLs escaneadas»).
           </p>
-          <label className={styles.linkButton} style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
-            <input type="file" multiple disabled={uploading} onChange={handleFileUpload} style={{ display: 'none' }} />
+          <label className={`${styles.linkButton} ${uploading ? styles.uploadLabelDisabled : ''}`}>
+            <input type="file" multiple disabled={uploading} onChange={handleFileUpload} className={styles.hiddenFileInput} />
             {uploading ? 'Subiendo…' : 'Seleccionar archivos'}
           </label>
           {uploading ? (
             <div className={styles.uploadProgressWrap} aria-live="polite">
-              <div className={styles.uploadProgressBar} style={{ width: `${uploadProgress}%` }} />
+              <CssStyled as="div" className={styles.uploadProgressBar} cssProperties={{ width: `${uploadProgress}%` }} />
               <span className={styles.uploadProgressText}>{uploadProgress}%</span>
             </div>
           ) : null}
           {!uploading && showUploadProgress ? (
             <div className={styles.uploadProgressWrap} aria-live="polite">
-              <div className={styles.uploadProgressBar} style={{ width: `${uploadProgress}%` }} />
+              <CssStyled as="div" className={styles.uploadProgressBar} cssProperties={{ width: `${uploadProgress}%` }} />
               <span className={styles.uploadProgressText}>{uploadProgress}%</span>
             </div>
           ) : null}
@@ -840,10 +842,11 @@ export default function ActivationDetailPage() {
               </span>
             </div>
             <div className={styles.fixedWorkProgress}>
-              <div className={styles.uploadProgressWrap} style={{ marginTop: 0, width: '100%' }}>
-                <div
+              <div className={`${styles.uploadProgressWrap} ${styles.uploadProgressWrapFixed}`}>
+                <CssStyled
+                  as="div"
                   className={styles.uploadProgressBar}
-                  style={{ width: `${extensionBridge.chainProgress}%` }}
+                  cssProperties={{ width: `${extensionBridge.chainProgress}%` }}
                 />
               </div>
               <span className={styles.uploadProgressText}>{extensionBridge.chainProgress}%</span>

@@ -1,3 +1,14 @@
 .fioriIcon {
   line-height: 1;
 }
+
+.svgBlock {
+  display: block;
+  vertical-align: middle;
+}
+
+.inlineIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

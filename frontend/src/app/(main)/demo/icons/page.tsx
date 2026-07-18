@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CssStyled } from '@/components/CssStyled/CssStyled';
 import styles from './icons-demo.module.css';
 
 const START = 0xe001;
@@ -43,13 +44,14 @@ export default function DemoIconsPage() {
       <div className={styles.grid}>
         {codes.map((code) => (
           <div key={code} className={styles.cell}>
-            <span
+            <CssStyled
+              as="span"
               className={styles.icon}
-              style={{ fontSize: `${iconSize}px` }}
+              cssProperties={{ fontSize: `${iconSize}px` }}
               aria-hidden
             >
               {String.fromCharCode(code)}
-            </span>
+            </CssStyled>
             <span className={styles.code}>
               {'\\e' + code.toString(16).padStart(3, '0')}
             </span>

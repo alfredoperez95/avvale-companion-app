@@ -176,9 +176,9 @@ export default function MeddpiccNewPage() {
         subtitle="Datos básicos, contexto en texto y, si quieres, adjuntos (PDF, Excel, Word, .eml): al crear el deal se suben y el texto se extrae a Markdown para el análisis IA, igual que en la ficha."
       />
 
-      <div className={styles.dimCard} style={{ marginTop: 'var(--fiori-space-5)' }}>
+      <div className={`${styles.dimCard} ${styles.dimCardNewDeal}`}>
         <h2 className={styles.sectionHeading}>Datos del deal</h2>
-        <p className={styles.dealCardMeta} style={{ marginBottom: 'var(--fiori-space-4)' }}>
+        <p className={`${styles.dealCardMeta} ${styles.dealCardMetaIntro}`}>
           Los campos básicos, el contexto en texto y, opcionalmente, adjuntos en cola (se suben al pulsar Crear deal). La etiqueta
           de comercial se asigna sola según el perfil del propietario del deal (tú, o el usuario indicado si eres administrador).
         </p>
@@ -234,7 +234,7 @@ export default function MeddpiccNewPage() {
                   ))}
               </select>
               {usersError ? (
-                <p className={styles.dealCardMeta} style={{ marginTop: 'var(--fiori-space-2)' }}>
+                <p className={`${styles.dealCardMeta} ${styles.dealCardMetaTop}`}>
                   {usersError}. Puedes crear el deal para ti; el desplegable no incluye el resto de usuarios.
                 </p>
               ) : null}
@@ -332,7 +332,7 @@ export default function MeddpiccNewPage() {
         </div>
 
         {error && (
-          <p className={styles.inlineError} style={{ marginTop: 'var(--fiori-space-3)' }}>
+          <p className={`${styles.inlineError} ${styles.inlineErrorNewDeal}`}>
             {error}
           </p>
         )}

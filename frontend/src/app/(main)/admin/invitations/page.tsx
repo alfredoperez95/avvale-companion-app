@@ -274,7 +274,7 @@ export default function AdminInvitationsPage() {
             </table>
           </div>
         </div>
-        <p className={styles.cardDesc} style={{ marginTop: 'var(--fiori-space-3)', marginBottom: 0 }}>
+        <p className={`${styles.cardDesc} ${styles.cardDescFootnote}`}>
           <strong>Reenviar:</strong> nuevo enlace por correo y vigencia de <strong>24 horas</strong> desde el envío.
           Solo disponible si la invitación sigue pendiente (no registrada).
         </p>

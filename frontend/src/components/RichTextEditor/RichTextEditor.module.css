@@ -20,6 +20,10 @@
   margin-right: var(--fiori-space-2);
 }
 
+.toolbarGroupRelative {
+  position: relative;
+}
+
 .toolbarSelect {
   padding: var(--fiori-space-1) var(--fiori-space-2);
   font-size: 0.8125rem;
@@ -94,6 +98,42 @@
 .colorSwatch:hover {
   transform: scale(1.08);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.colorSwatchBlack {
+  background: #000000;
+}
+
+.colorSwatchCharcoal {
+  background: #333333;
+}
+
+.colorSwatchBlue {
+  background: #0066cc;
+}
+
+.colorSwatchGreen {
+  background: #008000;
+}
+
+.colorSwatchRed {
+  background: #cc0000;
+}
+
+.colorSwatchOrange {
+  background: #e67e00;
+}
+
+.colorSwatchPlum {
+  background: #6b2d5c;
+}
+
+.colorSwatchTeal {
+  background: #008080;
+}
+
+.colorSwatchBrown {
+  background: #795548;
 }
 
 .emojiDropdownScroll {
@@ -325,6 +365,42 @@
 
 .richTextEditorWrapper :global(.ProseMirror a:hover) {
   text-decoration: underline;
+}
+
+.richTextEditorWrapper :global(.rte-color-black) {
+  color: #000000;
+}
+
+.richTextEditorWrapper :global(.rte-color-charcoal) {
+  color: #333333;
+}
+
+.richTextEditorWrapper :global(.rte-color-blue) {
+  color: #0066cc;
+}
+
+.richTextEditorWrapper :global(.rte-color-green) {
+  color: #008000;
+}
+
+.richTextEditorWrapper :global(.rte-color-red) {
+  color: #cc0000;
+}
+
+.richTextEditorWrapper :global(.rte-color-orange) {
+  color: #e67e00;
+}
+
+.richTextEditorWrapper :global(.rte-color-plum) {
+  color: #6b2d5c;
+}
+
+.richTextEditorWrapper :global(.rte-color-teal) {
+  color: #008080;
+}
+
+.richTextEditorWrapper :global(.rte-color-brown) {
+  color: #795548;
 }
 
 .richTextEditorWrapper :global(.ProseMirror img) {

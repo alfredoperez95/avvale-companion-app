@@ -178,6 +178,30 @@
   animation: rfqSkeletonShimmer 1.2s ease-in-out infinite;
 }
 
+.skeletonLine55 {
+  width: 55%;
+}
+
+.skeletonLine63 {
+  width: 63%;
+}
+
+.skeletonLine71 {
+  width: 71%;
+}
+
+.skeletonLine88 {
+  width: 88%;
+}
+
+.kvDdPreWrap {
+  white-space: pre-wrap;
+}
+
+.errorBoxNoMargin {
+  margin: 0;
+}
+
 @keyframes rfqSkeletonShimmer {
   0% {
     background-position: 100% 0;

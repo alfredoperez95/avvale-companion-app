@@ -558,7 +558,7 @@ export default function AdminAreasPage() {
                             placeholder="Email"
                             size={20}
                           />
-                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <label className={styles.inlineCheckLabel}>
                             <input
                               type="checkbox"
                               checked={editContactIsProjectJp}
@@ -630,7 +630,7 @@ export default function AdminAreasPage() {
                       placeholder="Email"
                       required
                     />
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <label className={styles.inlineCheckLabel}>
                       <input
                         type="checkbox"
                         checked={newContactIsProjectJp}

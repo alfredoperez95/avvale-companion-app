@@ -106,7 +106,7 @@ export function KycRfqsPanel({ companyId, companyName, onBanner }: Props) {
             </p>
           ) : items.length === 0 ? (
             <div className={styles.kycRfqEmpty}>
-              <p className={styles.objectSectionEmpty} style={{ marginBottom: '0.75rem' }}>
+              <p className={`${styles.objectSectionEmpty} ${styles.objectSectionEmptyBottom}`}>
                 No hay análisis RFQ asociados a esta empresa. Crea el primero para adjuntar documentación y generar el
                 insight.
               </p>

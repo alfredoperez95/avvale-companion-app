@@ -43,6 +43,42 @@ button {
   cursor: pointer;
 }
 
+.rte-color-black {
+  color: #000000;
+}
+
+.rte-color-charcoal {
+  color: #333333;
+}
+
+.rte-color-blue {
+  color: #0066cc;
+}
+
+.rte-color-green {
+  color: #008000;
+}
+
+.rte-color-red {
+  color: #cc0000;
+}
+
+.rte-color-orange {
+  color: #e67e00;
+}
+
+.rte-color-plum {
+  color: #6b2d5c;
+}
+
+.rte-color-teal {
+  color: #008080;
+}
+
+.rte-color-brown {
+  color: #795548;
+}
+
 input,
 textarea,
 select {
