@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
@@ -35,6 +36,7 @@ export class MeddpiccController {
   }
 
   @Post(':id/attachments')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseInterceptors(
     FilesInterceptor('files', 15, {
       limits: { fileSize: 25 * 1024 * 1024 },
@@ -73,6 +75,7 @@ export class MeddpiccController {
   }
 
   @Post(':id/analyze')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   analyze(@CurrentUser() user: UserPayload, @Param('id') id: string, @Body() dto: AnalyzeMeddpiccDealDto) {
     return this.meddpicc.analyze(user, id, dto);
   }
@@ -90,6 +93,7 @@ export class MeddpiccController {
    * Guarda transcripción (y opcionalmente resumen) desde el navegador si el webhook post-llamada no llegó.
    */
   @Post(':id/convai/client-transcript')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   applyClientConvaiTranscript(
     @CurrentUser() user: UserPayload,
     @Param('id') id: string,
@@ -103,6 +107,7 @@ export class MeddpiccController {
    * Requiere `ELEVENLABS_API_KEY` en el backend (xi-api-key).
    */
   @Post(':id/convai/import-from-elevenlabs')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   importConvaiFromElevenLabs(
     @CurrentUser() user: UserPayload,
     @Param('id') id: string,

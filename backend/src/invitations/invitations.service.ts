@@ -6,6 +6,7 @@ import {
   Inject,
   forwardRef,
   Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'crypto';
@@ -36,12 +37,14 @@ export class InvitationsService {
   ) {}
 
   private resolveInviteSecret(): string {
-    return (
+    const secret =
       this.config.get<string>('INVITE_TOKEN_SECRET')?.trim() ||
       this.config.get<string>('MAGIC_LINK_SECRET')?.trim() ||
-      this.config.get<string>('JWT_SECRET')?.trim() ||
-      'change-me-in-production'
-    );
+      this.config.get<string>('JWT_SECRET')?.trim();
+    if (!secret) {
+      throw new ServiceUnavailableException('Invitaciones no configuradas');
+    }
+    return secret;
   }
 
   private hashToken(rawToken: string): string {

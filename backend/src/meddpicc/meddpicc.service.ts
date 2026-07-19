@@ -1010,6 +1010,7 @@ export class MeddpiccService {
     try {
       res = await fetch(url, {
         method: 'GET',
+        signal: AbortSignal.timeout(30_000),
         headers: { 'xi-api-key': apiKey },
       });
     } catch (e) {

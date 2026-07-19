@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -21,11 +22,12 @@ export class ExpensesController {
   ) {}
 
   @Get()
-  list(@CurrentUser() user: UserPayload) {
-    return this.expenses.list(user.userId);
+  list(@CurrentUser() user: UserPayload, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return this.expenses.list(user.userId, { page, pageSize });
   }
 
   @Post('extract')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: EXPENSE_DEFAULT_MAX_FILE_BYTES },
@@ -36,6 +38,7 @@ export class ExpensesController {
   }
 
   @Post('convert-heic')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: EXPENSE_DEFAULT_MAX_FILE_BYTES },
@@ -49,6 +52,7 @@ export class ExpensesController {
   }
 
   @Post('exports')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async exportMonth(@CurrentUser() user: UserPayload, @Body() dto: GenerateExpenseExportDto, @Res() res: Response) {
     const generated = await this.expenseExports.generateExport(user.userId, dto);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -73,6 +77,7 @@ export class ExpensesController {
   }
 
   @Post(':id/retry-extract')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   retryExtract(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.expenses.retryExtract(user.userId, id);
   }

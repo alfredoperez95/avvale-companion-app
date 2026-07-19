@@ -167,6 +167,12 @@ En la app, el mosaico KYC está en el launcher junto al resto de herramientas; h
 
 ## Desarrollo local
 
+Requisito de runtime:
+
+- Node.js `>=20 <23` y npm `>=10`.
+- Los Dockerfiles de frontend y backend usan `node:22-alpine`.
+- Puedes usar `nvm use` desde la raíz del repo (`.nvmrc` apunta a Node 22).
+
 ### 1. Base de datos
 
 Aplica migraciones desde `backend/`:

@@ -2,8 +2,10 @@ import { Controller, Get, Param, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { ExpenseExportService } from './expense-export.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('public/expense-exports')
+@Public()
 export class PublicExpenseExportsController {
   constructor(private readonly expenseExports: ExpenseExportService) {}
 

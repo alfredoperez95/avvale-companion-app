@@ -26,11 +26,16 @@ export class ActivationsController {
   }
 
   @Get()
-  async list(@CurrentUser() user: UserPayload, @Query('status') status?: ActivationStatus) {
+  async list(
+    @CurrentUser() user: UserPayload,
+    @Query('status') status?: ActivationStatus,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
     if (user.role === 'ADMIN') {
-      return this.activationsService.findAllForAdmin({ status });
+      return this.activationsService.findAllForAdmin({ status, page, pageSize });
     }
-    return this.activationsService.findAllByUser(user.userId, { status });
+    return this.activationsService.findAllByUser(user.userId, { status, page, pageSize });
   }
 
   @Get(':id/attachments')

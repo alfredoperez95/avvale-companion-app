@@ -2,8 +2,10 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { MakeService } from './make.service';
 import { MakeCallbackDto } from './dto/make-callback.dto';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('webhooks/make')
+@Public()
 export class MakeCallbackController {
   constructor(private readonly makeService: MakeService) {}
 

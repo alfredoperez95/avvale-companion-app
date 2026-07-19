@@ -9,11 +9,14 @@ function modelId(choice: AnthropicModelChoice): string {
   return 'claude-3-haiku-20240307';
 }
 
+const ANTHROPIC_TIMEOUT_MS = 120_000;
+
 @Injectable()
 export class AnthropicClientService {
   private async resolveAvailableModelId(apiKey: string, choice: AnthropicModelChoice): Promise<string> {
     const res = await fetch('https://api.anthropic.com/v1/models?limit=200', {
       method: 'GET',
+      signal: AbortSignal.timeout(ANTHROPIC_TIMEOUT_MS),
       headers: {
         'anthropic-version': '2023-06-01',
         'x-api-key': apiKey,
@@ -45,6 +48,7 @@ export class AnthropicClientService {
     }
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: AbortSignal.timeout(ANTHROPIC_TIMEOUT_MS),
       headers: {
         'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01',
@@ -88,6 +92,7 @@ export class AnthropicClientService {
     }
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: AbortSignal.timeout(ANTHROPIC_TIMEOUT_MS),
       headers: {
         'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01',
@@ -160,6 +165,7 @@ export class AnthropicClientService {
     }
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: AbortSignal.timeout(ANTHROPIC_TIMEOUT_MS),
       headers: {
         'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01',
@@ -213,6 +219,7 @@ export class AnthropicClientService {
     }
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: AbortSignal.timeout(ANTHROPIC_TIMEOUT_MS),
       headers: {
         'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01',

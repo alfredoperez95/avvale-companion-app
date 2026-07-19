@@ -39,6 +39,7 @@ import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-c
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { buildRfqChatSystemPrompt } from './prompts/rfq-chat-system-prompt';
 import { formatBytesHuman, truncateForContext } from './rfq-analysis.utils';
+import { isSameSecret } from '../security/constant-time-secret';
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
@@ -410,7 +411,7 @@ export class RfqAnalysisService {
       this.logger.warn('RFQ_EMAIL_WEBHOOK_SECRET no configurada');
       throw new ServiceUnavailableException('Webhook no disponible');
     }
-    if (dto.secret !== expected) {
+    if (!isSameSecret(dto.secret, expected)) {
       throw new UnauthorizedException('Secreto inválido');
     }
 

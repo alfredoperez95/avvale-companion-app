@@ -13,6 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
@@ -59,6 +60,7 @@ export class RfqAnalysisController {
   }
 
   @Post(':id/sources')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseInterceptors(
     FilesInterceptor('files', MAX_FILES_UPLOAD_BATCH, {
       limits: { fileSize: RFQ_DEFAULT_MAX_FILE_BYTES },
@@ -78,6 +80,7 @@ export class RfqAnalysisController {
   }
 
   @Post(':id/process')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async process(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.rfq.requestProcess(user.userId, id);
   }
@@ -92,6 +95,7 @@ export class RfqAnalysisController {
   }
 
   @Post(':id/messages')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async postMessage(
     @CurrentUser() user: UserPayload,
     @Param('id') id: string,

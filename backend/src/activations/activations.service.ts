@@ -27,6 +27,8 @@ function buildSubject(projectName: string, client: string | null, activationNumb
 }
 
 const PLACEHOLDER_RECIPIENT = 'sin-destinatarios@pendiente';
+const DEFAULT_ACTIVATIONS_PAGE_SIZE = 100;
+const MAX_ACTIVATIONS_PAGE_SIZE = 100;
 
 /** Misma semántica que el parse de `attachmentUrls` en frontend (`activation-attachment-urls`). */
 function parseActivationAttachmentUrlsField(raw: string | null): string[] {
@@ -348,13 +350,16 @@ export class ActivationsService {
   }
 
   /** Lista solo activaciones del usuario (filtrado server-side). */
-  async findAllByUser(userId: string, filters?: { status?: ActivationStatus }) {
+  async findAllByUser(userId: string, filters?: { status?: ActivationStatus; page?: string; pageSize?: string }) {
+    const { skip, take } = parsePagination(filters?.page, filters?.pageSize);
     return this.prisma.activation.findMany({
       where: {
         createdByUserId: userId,
         ...(filters?.status && { status: filters.status }),
       },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take,
       include: {
         createdByUser: { select: { name: true, lastName: true, email: true } },
       },
@@ -362,12 +367,15 @@ export class ActivationsService {
   }
 
   /** Lista todas las activaciones (solo para ADMIN). */
-  async findAllForAdmin(filters?: { status?: ActivationStatus }) {
+  async findAllForAdmin(filters?: { status?: ActivationStatus; page?: string; pageSize?: string }) {
+    const { skip, take } = parsePagination(filters?.page, filters?.pageSize);
     return this.prisma.activation.findMany({
       where: {
         ...(filters?.status && { status: filters.status }),
       },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take,
       include: {
         createdByUser: { select: { name: true, lastName: true, email: true } },
       },
@@ -586,4 +594,13 @@ export class ActivationsService {
     await this.attachmentsService.deleteAttachmentsForActivation(activationId);
     await this.prisma.activation.delete({ where: { id: activationId } });
   }
+}
+
+function parsePagination(pageRaw?: string, pageSizeRaw?: string): { skip: number; take: number } {
+  const page = Math.max(1, Number.parseInt(pageRaw ?? '1', 10) || 1);
+  const pageSize = Math.min(
+    MAX_ACTIVATIONS_PAGE_SIZE,
+    Math.max(1, Number.parseInt(pageSizeRaw ?? String(DEFAULT_ACTIVATIONS_PAGE_SIZE), 10) || DEFAULT_ACTIVATIONS_PAGE_SIZE),
+  );
+  return { skip: (page - 1) * pageSize, take: pageSize };
 }

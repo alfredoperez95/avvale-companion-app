@@ -2,6 +2,7 @@ import { Body, Controller, Post, ValidationPipe } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { RfqAnalysisService } from './rfq-analysis.service';
 import { RfqEmailInboundDto } from './dto/rfq-email-inbound.dto';
+import { Public } from '../auth/decorators/public.decorator';
 
 const inboundPipe = new ValidationPipe({
   whitelist: true,
@@ -10,6 +11,7 @@ const inboundPipe = new ValidationPipe({
 });
 
 @Controller('webhooks/rfq-email')
+@Public()
 export class RfqEmailWebhookController {
   constructor(private readonly rfq: RfqAnalysisService) {}
 

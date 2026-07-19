@@ -73,7 +73,8 @@ export class MailService {
 
     if (skip) {
       this.logger.warn(
-        `[MAIL_SKIP_SEND] No se envía correo real. Enlace mágico para ${to}: ${magicUrl} — En producción pon MAIL_SKIP_SEND=false y SMTP_*`,
+        `[MAIL_SKIP_SEND] No se envía correo real. Enlace mágico generado para ${to} (URL omitida por seguridad). ` +
+          'En producción pon MAIL_SKIP_SEND=false y SMTP_*',
       );
       return;
     }

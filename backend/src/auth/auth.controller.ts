@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  GoneException,
   HttpCode,
   Query,
 } from '@nestjs/common';
@@ -18,7 +19,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
@@ -27,6 +27,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { UserPayload } from './decorators/user-payload';
 import { InvitationsService } from '../invitations/invitations.service';
 import { AcceptInvitationDto } from '../invitations/dto/accept-invitation.dto';
+import { Public } from './decorators/public.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -36,18 +37,21 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register() {
+    throw new GoneException('El registro público está deshabilitado. Usa una invitación válida.');
   }
 
   @Post('login')
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
   @Post('magic-link/request')
+  @Public()
   @HttpCode(200)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async requestMagicLink(@Body() dto: MagicLinkRequestDto) {
@@ -55,18 +59,21 @@ export class AuthController {
   }
 
   @Post('magic-link/verify')
+  @Public()
   @Throttle({ default: { limit: 15, ttl: 60_000 } })
   async verifyMagicLink(@Body() dto: MagicLinkVerifyDto) {
     return this.authService.verifyMagicLink(dto.token);
   }
 
   @Get('invitations/preview')
+  @Public()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async previewInvitation(@Query('token') token: string) {
     return this.invitationsService.getPreviewByToken(token ?? '');
   }
 
   @Post('invitations/accept')
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async acceptInvitation(@Body() dto: AcceptInvitationDto) {
     const user = await this.invitationsService.acceptInvitation(dto);
@@ -74,6 +81,7 @@ export class AuthController {
   }
 
   @Get('branding')
+  @Public()
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   getBranding() {
     return this.authService.getLoginBranding();

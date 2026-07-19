@@ -42,7 +42,7 @@ export class MeddpiccExtractService {
     }
 
     if (isSpreadsheetOfficeMime(mt) || looksLikeSpreadsheetFileName(fileName)) {
-      const text = extractTextFromSpreadsheetBuffer(buffer);
+      const text = await extractTextFromSpreadsheetBuffer(buffer);
       return truncateMd(text);
     }
 

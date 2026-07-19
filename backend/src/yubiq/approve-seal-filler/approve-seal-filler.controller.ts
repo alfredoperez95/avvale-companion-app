@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { UserPayload } from '../../auth/decorators/user-payload';
@@ -13,7 +14,10 @@ import type { ClaudeOfferExtraction, ClaudeOfferExtractionInternal } from './off
 import { normalizeClaudeExtraction } from './offer-extraction-normalizer';
 import { mergeTranslatedExtraction } from './merge-translated-extraction';
 import { TranslateExtractionDto } from './translate-extraction.dto';
+import { AnalyzeOfferDto } from './analyze-offer.dto';
 import { validateSafeFile } from '../../files/safe-file-validation';
+
+const YUBIQ_APPROVE_SEAL_MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 type AnalyzeOfferResponse = {
   success: boolean;
@@ -38,11 +42,16 @@ export class ApproveSealFillerController {
   ) {}
 
   @Post('analyze')
-  @UseInterceptors(FileInterceptor('file'))
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: YUBIQ_APPROVE_SEAL_MAX_FILE_BYTES },
+    }),
+  )
   async analyze(
     @CurrentUser() user: UserPayload,
     @UploadedFile() file: Express.Multer.File | undefined,
-    @Body('model') modelRaw?: string,
+    @Body() body: AnalyzeOfferDto,
   ): Promise<AnalyzeOfferResponse> {
     const log: string[] = [];
     try {
@@ -60,8 +69,7 @@ export class ApproveSealFillerController {
       const extractedText = await this.pdf.extractTextFromPdfBuffer(safe.buffer);
       log.push('Text extracted');
 
-      const model: AnthropicModelChoice =
-        modelRaw === 'sonnet' || modelRaw === 'opus' || modelRaw === 'haiku' ? modelRaw : 'haiku';
+      const model: AnthropicModelChoice = body.model ?? 'haiku';
 
       const prompt = buildOfferExtractionPrompt({
         fileName,
@@ -106,6 +114,7 @@ export class ApproveSealFillerController {
   }
 
   @Post('translate')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async translate(
     @CurrentUser() user: UserPayload,
     @Body() body: TranslateExtractionDto,

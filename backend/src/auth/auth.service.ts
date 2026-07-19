@@ -1,4 +1,4 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
@@ -97,13 +97,15 @@ export class AuthService {
     return { appearance };
   }
 
-  /** `MAGIC_LINK_SECRET` → `JWT_SECRET` → fallback; misma cadena en request y verify. */
+  /** `MAGIC_LINK_SECRET` → `JWT_SECRET`; misma cadena en request y verify. */
   private resolveMagicLinkSecret(): string {
-    return (
+    const secret =
       this.config.get<string>('MAGIC_LINK_SECRET')?.trim() ||
-      this.config.get<string>('JWT_SECRET')?.trim() ||
-      'change-me-in-production'
-    );
+      this.config.get<string>('JWT_SECRET')?.trim();
+    if (!secret) {
+      throw new ServiceUnavailableException('Autenticación por enlace mágico no configurada');
+    }
+    return secret;
   }
 
   /**
@@ -181,10 +183,17 @@ export class AuthService {
       throw new UnauthorizedException('Usuario deshabilitado. Contacte al administrador.');
     }
 
-    await this.prisma.magicLoginToken.update({
-      where: { id: row.id },
+    const consumed = await this.prisma.magicLoginToken.updateMany({
+      where: {
+        id: row.id,
+        usedAt: null,
+        expiresAt: { gte: now },
+      },
       data: { usedAt: now },
     });
+    if (consumed.count !== 1) {
+      throw new UnauthorizedException('Enlace inválido o caducado');
+    }
 
     return this.buildTokenResponse(row.user.id, row.user.email);
   }

@@ -44,6 +44,10 @@ export class RfqStorageService {
     return fs.readFile(full);
   }
 
+  resolveStoredPath(relativePath: string): string {
+    return resolvePathWithinBase(this.baseDir, relativePath);
+  }
+
   /**
    * Elimina la carpeta del análisis bajo rfq-analyses/{analysisId} (adjuntos subidos).
    */

@@ -28,7 +28,7 @@ import { buildRfqEmailSourceRows } from './rfq-completion-email.helpers';
 import { recoverJsonObjectString, safeJsonParse, truncateForContext } from './rfq-analysis.utils';
 import { RfqStorageService } from './rfq-storage.service';
 import {
-  extractTextFromSpreadsheetBuffer,
+  extractTextFromSpreadsheetFile,
   isSpreadsheetOfficeMime,
   looksLikeSpreadsheetFileName,
 } from './rfq-spreadsheet-text';
@@ -293,33 +293,34 @@ export class RfqPipelineService {
     mimeType: string,
     fileName: string | null,
   ): Promise<void> {
-    const buf = await this.storage.readFile(storagePath);
-
     const mt = (mimeType || '').toLowerCase();
     try {
       let text = '';
-      if (mt === 'application/pdf') {
-        text = await this.pdf.extractTextFromPdfBuffer(buf);
-      } else if (
-        mt.startsWith('text/') ||
-        mt === 'application/json' ||
-        mt === 'application/xml'
-      ) {
-        text = buf.toString('utf8');
-      } else if (isSpreadsheetOfficeMime(mt) || looksLikeSpreadsheetFileName(fileName)) {
-        text = extractTextFromSpreadsheetBuffer(buf);
-      } else if (
-        mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        mt === 'application/msword' ||
-        mt.includes('presentation')
-      ) {
-        throw new Error(
-          'Formato Office no soportado (Word/PowerPoint); exporta a PDF o texto. Excel (.xlsx / .xls) está soportado.',
-        );
+      if (isSpreadsheetOfficeMime(mt) || looksLikeSpreadsheetFileName(fileName)) {
+        text = await extractTextFromSpreadsheetFile(this.storage.resolveStoredPath(storagePath));
       } else {
-        text = buf.toString('utf8');
-        if (/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(text.slice(0, 2000))) {
-          throw new Error(`Tipo de archivo no soportado para extracción (${mimeType || 'desconocido'})`);
+        const buf = await this.storage.readFile(storagePath);
+        if (mt === 'application/pdf') {
+          text = await this.pdf.extractTextFromPdfBuffer(buf);
+        } else if (
+          mt.startsWith('text/') ||
+          mt === 'application/json' ||
+          mt === 'application/xml'
+        ) {
+          text = buf.toString('utf8');
+        } else if (
+          mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          mt === 'application/msword' ||
+          mt.includes('presentation')
+        ) {
+          throw new Error(
+            'Formato Office no soportado (Word/PowerPoint); exporta a PDF o texto. Excel (.xlsx / .xls) está soportado.',
+          );
+        } else {
+          text = buf.toString('utf8');
+          if (/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(text.slice(0, 2000))) {
+            throw new Error(`Tipo de archivo no soportado para extracción (${mimeType || 'desconocido'})`);
+          }
         }
       }
       await this.prisma.rfqAnalysisSource.update({

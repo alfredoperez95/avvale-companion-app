@@ -12,12 +12,14 @@ import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { verifyElevenlabsWebhookPayload } from './elevenlabs-webhook-signature';
 import { MeddpiccService } from './meddpicc.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 /**
  * Webhook público ElevenLabs (post_call_transcription → MEDDPICC).
  * URL: `POST /webhooks/elevenlabs/meddpicc` con cabecera `elevenlabs-signature`.
  */
 @Controller('webhooks/elevenlabs')
+@Public()
 export class MeddpiccConvaiWebhookController {
   private readonly logger = new Logger(MeddpiccConvaiWebhookController.name);
 

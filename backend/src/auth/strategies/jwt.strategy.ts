@@ -15,10 +15,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     configService: ConfigService,
     private readonly usersService: UsersService,
   ) {
+    const secret = configService.get<string>('JWT_SECRET')?.trim();
+    if (!secret) {
+      throw new Error('JWT_SECRET debe estar definido');
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') ?? 'change-me-in-production',
+      secretOrKey: secret,
+      algorithms: ['HS256'],
+      issuer: configService.get<string>('JWT_ISSUER')?.trim() || 'avvale-companion-backend',
+      audience: configService.get<string>('JWT_AUDIENCE')?.trim() || 'avvale-companion',
     });
   }
 

@@ -2,8 +2,10 @@ import { Controller, Get, Param, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AttachmentsService } from './attachments.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('public/attachments')
+@Public()
 export class PublicAttachmentsController {
   constructor(private readonly attachmentsService: AttachmentsService) {}
 

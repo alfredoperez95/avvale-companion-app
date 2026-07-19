@@ -1216,6 +1216,7 @@ export class KycService {
     // RSS público de Google News. Nota: puede variar por región/idioma.
     const url = `https://news.google.com/rss/search?q=${q}&hl=es&gl=ES&ceid=ES:es`;
     const r = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
       headers: {
         // Algunos endpoints responden mejor con UA explícito.
         'User-Agent': 'AvvaleCompanionKYC/1.0 (+rss)',

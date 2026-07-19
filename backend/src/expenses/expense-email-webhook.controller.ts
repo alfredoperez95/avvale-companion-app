@@ -2,6 +2,7 @@ import { Body, Controller, Post, ValidationPipe } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ExpenseEmailInboundDto } from './dto/expense-email-inbound.dto';
 import { ExpensesService } from './expenses.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 const inboundPipe = new ValidationPipe({
   whitelist: true,
@@ -10,6 +11,7 @@ const inboundPipe = new ValidationPipe({
 });
 
 @Controller('webhooks/expense-email')
+@Public()
 export class ExpenseEmailWebhookController {
   constructor(private readonly expenses: ExpensesService) {}
 

@@ -23,6 +23,10 @@ import type { ExpenseEmailInboundDto } from './dto/expense-email-inbound.dto';
 import { isExpenseCategory } from './expense-categories';
 import { getExpenseMaxFileBytes } from './expenses.config';
 import { validateSafeFile } from '../files/safe-file-validation';
+import { isSameSecret } from '../security/constant-time-secret';
+
+const DEFAULT_EXPENSES_PAGE_SIZE = 100;
+const MAX_EXPENSES_PAGE_SIZE = 100;
 
 export type ExpenseFileDownload = {
   buffer: Buffer;
@@ -55,10 +59,13 @@ export class ExpensesService {
     private readonly producer: ExpenseExtractProducer,
   ) {}
 
-  async list(userId: string) {
+  async list(userId: string, pagination?: { page?: string; pageSize?: string }) {
+    const { skip, take } = parsePagination(pagination?.page, pagination?.pageSize);
     const items = await this.prisma.expense.findMany({
       where: { userId },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      skip,
+      take,
     });
     return { items: items.map(mapExpense) };
   }
@@ -144,7 +151,7 @@ export class ExpensesService {
       this.logger.warn('EXPENSE_EMAIL_WEBHOOK_SECRET no configurada');
       throw new ServiceUnavailableException('Webhook no disponible');
     }
-    if (dto.secret !== expected) {
+    if (!isSameSecret(dto.secret, expected)) {
       throw new UnauthorizedException('Secreto inválido');
     }
 
@@ -403,6 +410,15 @@ export class ExpensesService {
       return updated;
     }
   }
+}
+
+function parsePagination(pageRaw?: string, pageSizeRaw?: string): { skip: number; take: number } {
+  const page = Math.max(1, Number.parseInt(pageRaw ?? '1', 10) || 1);
+  const pageSize = Math.min(
+    MAX_EXPENSES_PAGE_SIZE,
+    Math.max(1, Number.parseInt(pageSizeRaw ?? String(DEFAULT_EXPENSES_PAGE_SIZE), 10) || DEFAULT_EXPENSES_PAGE_SIZE),
+  );
+  return { skip: (page - 1) * pageSize, take: pageSize };
 }
 
 function validateReceiptFile(file: { originalname: string; mimetype: string; buffer: Buffer; size?: number }): void {

@@ -13,6 +13,7 @@ const DOWNLOAD_TIMEOUT_MS = 30_000;
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 const PUBLIC_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_DOWNLOAD_REDIRECTS = 3;
+const DEFAULT_PUBLIC_ATTACHMENT_TTL_MINUTES = 60;
 
 export interface DownloadResult {
   saved: string[];
@@ -369,8 +370,14 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Publica todos los adjuntos de una activación con token no adivinable (sin expiración hasta que se programe). */
+  /** Publica adjuntos con token no adivinable y caducidad defensiva. */
   async publishForActivation(activationId: string): Promise<void> {
+    const ttlMinutes = parseInt(
+      this.config.get<string>('PUBLIC_ATTACHMENT_DEFAULT_TTL_MINUTES') ??
+        String(DEFAULT_PUBLIC_ATTACHMENT_TTL_MINUTES),
+      10,
+    );
+    const publicExpiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
     const attachments = await this.prisma.activationAttachment.findMany({
       where: { activationId },
       select: { id: true, publicToken: true },
@@ -381,6 +388,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
         data: {
           publicToken: a.publicToken ?? randomUUID(),
           publishedAt: new Date(),
+          publicExpiresAt,
         },
       });
     }
@@ -413,7 +421,7 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
     const attachment = await this.prisma.activationAttachment.findFirst({
       where: {
         publicToken: token,
-        OR: [{ publicExpiresAt: null }, { publicExpiresAt: { gt: now } }],
+        publicExpiresAt: { gt: now },
       },
       select: { storedPath: true, fileName: true, contentType: true },
     });

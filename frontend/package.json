@@ -3,11 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "preinstall": "node -e \"const major=Number(process.versions.node.split('.')[0]); if (major < 20) { console.error('Node.js >=20 requerido. Versión actual: '+process.version); process.exit(1); }\"",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20 <23",
+    "npm": ">=10"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -42,7 +47,7 @@
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.5.9",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.9"
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "postcss": "8.5.10"

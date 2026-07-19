@@ -4,8 +4,10 @@ import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('extensions')
+@Public()
 export class ExtensionsController {
   constructor(private readonly config: ConfigService) {}
 

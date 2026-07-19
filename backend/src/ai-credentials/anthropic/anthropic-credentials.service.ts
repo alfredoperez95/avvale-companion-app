@@ -91,6 +91,7 @@ export class AnthropicCredentialsService {
       try {
         const mres = await fetch('https://api.anthropic.com/v1/models?limit=200', {
           method: 'GET',
+          signal: AbortSignal.timeout(30_000),
           headers: {
             'anthropic-version': '2023-06-01',
             'x-api-key': apiKey,
@@ -107,6 +108,7 @@ export class AnthropicCredentialsService {
       }
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
+        signal: AbortSignal.timeout(30_000),
         headers: {
           'Content-Type': 'application/json',
           'anthropic-version': '2023-06-01',

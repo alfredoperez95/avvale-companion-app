@@ -12,12 +12,19 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
 import { KycService } from './kyc.service';
 import { KycLinkedInProfileDto } from './dto/kyc-linkedin-profile.dto';
+import {
+  BulkDeleteKycCompaniesDto,
+  CreateKycCompanyDto,
+  ImportKycCompaniesDto,
+} from './dto/kyc-company.dto';
+import { CreateKycChatSessionDto, StreamKycChatDto } from './dto/kyc-chat.dto';
 
 /**
  * Extensión LinkedIn → organigrama (JWT Bearer):
@@ -52,35 +59,23 @@ export class KycController {
   }
 
   @Post('companies')
-  create(@Body() body: Record<string, unknown>, @CurrentUser() user: UserPayload) {
+  create(@Body() body: CreateKycCompanyDto, @CurrentUser() user: UserPayload) {
     return this.kyc.createCompany(
-      body as {
-        name?: string;
-        company_id?: number;
-        strategic?: boolean;
-        sector?: string;
-        industry?: string;
-        city?: string;
-        country?: string;
-        website?: string;
-        revenue?: string;
-        employees?: string;
-        tech_stack?: string;
-        notes?: string;
-        source?: string;
-      },
+      body,
       user.userId,
     );
   }
 
   @Post('companies/bulk-delete')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
-  bulkDelete(@Body() body: { ids: number[] }) {
+  bulkDelete(@Body() body: BulkDeleteKycCompaniesDto) {
     return this.kyc.bulkDeleteCompanyProfiles(body?.ids ?? []);
   }
 
   @Post('companies/import')
-  importCo(@Body() body: { companies: Record<string, string>[] }) {
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  importCo(@Body() body: ImportKycCompaniesDto) {
     return this.kyc.importCompanies(body?.companies ?? []);
   }
 
@@ -118,6 +113,7 @@ export class KycController {
   }
 
   @Post('companies/:id/profile/synthesize-summary')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   synthesizeSummary(@Param('id') id: string, @CurrentUser() user: UserPayload) {
     return this.kyc.synthesizeExecutiveSummary(BigInt(id), user.userId);
@@ -125,6 +121,7 @@ export class KycController {
 
   /** Traducción EN del contenido del informe estático (Anthropic; misma clave que chat KYC). */
   @Post('companies/:id/report-translate-en')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   translateReportEn(@Param('id') id: string, @CurrentUser() user: UserPayload) {
     return this.kyc.translateReportToEnglish(BigInt(id), user.userId);
@@ -136,6 +133,7 @@ export class KycController {
   }
 
   @Post('companies/:id/enrich')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   enrich(@Param('id') id: string, @CurrentUser() user: UserPayload) {
     return this.kyc.enrichCompany(BigInt(id), user.userId);
@@ -187,12 +185,14 @@ export class KycController {
   }
 
   @Post('companies/:id/signals/fetch-news')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(200)
   fetchNews(@Param('id') id: string) {
     return this.kyc.fetchNewsSignals(BigInt(id));
   }
 
   @Post('companies/:id/signals/infer-hypotheses')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   inferSignalHypotheses(@Param('id') id: string, @CurrentUser() user: UserPayload) {
     return this.kyc.inferSignalHypotheses(BigInt(id), user.userId);
@@ -230,7 +230,7 @@ export class KycController {
   newSession(
     @Param('id') id: string,
     @CurrentUser() user: UserPayload,
-    @Body() body: { title?: string; type?: string },
+    @Body() body: CreateKycChatSessionDto,
   ) {
     return this.kyc.createChatSession(BigInt(id), user.userId, body ?? {});
   }
@@ -241,12 +241,13 @@ export class KycController {
   }
 
   @Post('chat/sessions/:sessionId/stream')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async stream(
     @Param('sessionId') sessionId: string,
     @CurrentUser() user: UserPayload,
-    @Body() body: { message?: string },
+    @Body() body: StreamKycChatDto,
     @Res() res: Response,
   ) {
-    return this.kyc.streamChat(BigInt(sessionId), user.userId, res, String(body?.message ?? ''));
+    return this.kyc.streamChat(BigInt(sessionId), user.userId, res, body.message);
   }
 }

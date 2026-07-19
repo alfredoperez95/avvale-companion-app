@@ -14,6 +14,7 @@ import { ActivationStatus } from '@prisma/client';
 import { MakeWebhookPayloadV1 } from './make-webhook-payload';
 import { MakeCallbackDto } from './dto/make-callback.dto';
 import { formatActivationCode } from '../activations/activation-code';
+import { isSameSecret } from '../security/constant-time-secret';
 
 const WEBHOOK_TIMEOUT_DEFAULT_MS = 30_000;
 const PENDING_CALLBACK_WATCHDOG_INTERVAL_MS = 5_000;
@@ -161,7 +162,7 @@ export class MakeService implements OnModuleInit, OnModuleDestroy {
     if (!expected) {
       throw new ServiceUnavailableException('MAKE_CALLBACK_SECRET no está configurada');
     }
-    if (dto.secret !== expected) {
+    if (!isSameSecret(dto.secret, expected)) {
       throw new UnauthorizedException('Secreto de callback inválido');
     }
 
