@@ -23,6 +23,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bodyParser: false,
   });
+  app.enableShutdownHooks();
 
   const isProd = process.env.NODE_ENV === 'production';
   const expressApp = app.getHttpAdapter().getInstance();

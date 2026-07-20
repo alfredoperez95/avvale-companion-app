@@ -92,7 +92,7 @@ npm -v
 └── README.md          # Este archivo
 ```
 
-Los **Dockerfiles operativos** del producto Node están en **`backend/`** y **`frontend/`**. El archivo `Dockerfile` en la **raíz** del repo no forma parte del flujo estándar de esta app Nest/Next.
+Los **Dockerfiles operativos** del producto Node están en **`backend/`** y **`frontend/`**.
 
 ---
 
