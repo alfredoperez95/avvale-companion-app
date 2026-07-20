@@ -66,7 +66,7 @@ No uses `--applied` a ciegas. Corrige el esquema manualmente (o elimina la tabla
 
 ## Nota sobre el aviso de Coolify (curl/wget)
 
-La imagen `backend/Dockerfile` ya instala `curl` y `wget` en la etapa final. Si Coolify sigue mostrando la advertencia genérica, puedes ignorarla si el healthcheck usa una URL que el proceso realmente sirve; el fallo que ves en los logs viene de **Prisma**, no del curl.
+La imagen `backend/Dockerfile` conserva `wget` mínimo de BusyBox en la etapa final porque Coolify lo usa para su healthcheck en despliegues basados en Dockerfile. Si Coolify sigue mostrando la advertencia genérica pero el contenedor responde al healthcheck, puedes ignorarla; si el healthcheck falla, revisa primero la URL configurada y los logs de arranque.
 
 ## Referencia
 

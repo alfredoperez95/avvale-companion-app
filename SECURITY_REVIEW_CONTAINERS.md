@@ -8,7 +8,7 @@ La Fase 3 queda iniciada con inventario y auditoría documental de Docker/conten
 
 El riesgo principal observado era que el backend de producción se ejecutaba como `root` implícito y copiaba al runtime dependencias completas instaladas con `npm ci`, incluyendo dependencias de desarrollo. Ambos puntos quedan mitigados en el repo: el backend ahora usa usuario `app` UID 1001 y una etapa de dependencias productivas con `npm ci --omit=dev`.
 
-El frontend ya utilizaba usuario no root y salida standalone de Next.js; además se han retirado `curl/wget` del runtime y añadido healthcheck Docker con Node.
+El frontend ya utilizaba usuario no root y salida standalone de Next.js; además se añadió healthcheck Docker con Node. Por compatibilidad con Coolify se mantiene el `wget` mínimo de BusyBox que trae Alpine, ya que Coolify ejecuta su propio healthcheck con `curl` o `wget`.
 
 Siguen pendientes los controles que dependen de runtime/Coolify: `read_only`, tmpfs `/tmp` con `noexec`, `cap_drop`, `no-new-privileges`, límites de CPU/mem/PIDs, redes internas y rotación de logs.
 
@@ -56,8 +56,8 @@ Inventario detallado: `docs/CONTAINER_SECURITY_INVENTORY.md`.
 | C-05 | High | No hay controles runtime versionados: `read_only`, `cap_drop`, `no-new-privileges`, `pids_limit` | Frontend / Backend | Una RCE puede escribir en filesystem completo, conservar herramientas temporales o abusar de recursos | Documentar/aplicar en Coolify o Compose compatible: `read_only`, tmpfs, `cap_drop: ALL`, `security_opt`, límites CPU/mem/PIDs | OPEN |
 | C-06 | High | `/tmp` no está declarado como tmpfs `noexec,nosuid,nodev` | Frontend / Backend | Repite el patrón del incidente previo, donde el payload se ejecutó desde `/tmp` | Configurar tmpfs `/tmp:rw,noexec,nosuid,nodev,size=256m`; validar Excel/Node/Next antes de producción | OPEN |
 | C-07 | High | No hay límites de CPU/memoria/PIDs documentados | Frontend / Backend / workers | Minería, fork bomb o fugas de memoria pueden degradar el host compartido | Definir límites iniciales conservadores en Coolify; separar worker si el consumo de documentos crece | OPEN |
-| C-08 | Medium | Runtime frontend instala `curl` y `wget` | Frontend | Herramientas útiles para post-explotación y movimiento lateral HTTP | Evitar instalarlas si el healthcheck usa Node; si Coolify las requiere, documentar excepción | MITIGATED |
-| C-09 | Medium | Runtime backend instala `curl` y `wget` | Backend | Herramientas útiles para post-explotación | Reemplazar healthcheck por script Node o mantener solo si Coolify lo exige y documentar | MITIGATED |
+| C-08 | Medium | Runtime frontend necesita `wget` por healthcheck de Coolify | Frontend | Herramienta de red mínima disponible en runtime | Mantener solo `wget` de BusyBox por compatibilidad con Coolify; no instalar `curl` | ACCEPTED |
+| C-09 | Medium | Runtime backend necesita `wget` por healthcheck de Coolify | Backend | Herramienta de red mínima disponible en runtime | Mantener solo `wget` de BusyBox por compatibilidad con Coolify; no instalar `curl` | ACCEPTED |
 | C-10 | Medium | No hay `HEALTHCHECK` Docker en imágenes | Frontend / Backend | Coolify puede depender de checks externos; menor portabilidad y señal de readiness menos explícita | Añadir healthchecks con Node sin credenciales: frontend `/`, backend `/health/live` o `/health/ready` según caso | MITIGATED |
 | C-11 | Medium | Backend ejecuta `npx prisma migrate deploy` en cada arranque | Backend | En múltiples réplicas puede haber carreras; falla el arranque si hay migración fallida | Mantener solo si Coolify usa una réplica; preferir comando manual/job de migración documentado | OPEN |
 | C-12 | Medium | Workers BullMQ comparten proceso y recursos con la API | Backend | Procesamiento pesado de RFQ/gastos puede competir con tráfico web | Recomendar contenedor worker separado con mismo build y comando dedicado, sin aplicarlo aún | OPEN |
@@ -105,7 +105,7 @@ Inventario detallado: `docs/CONTAINER_SECURITY_INVENTORY.md`.
 ### Bloque B - Alto
 
 1. Reducir runtime backend a dependencias productivas. Estado: mitigado.
-2. Quitar `curl/wget` o justificar su permanencia por healthcheck de Coolify. Estado: mitigado.
+2. Quitar `curl/wget` o justificar su permanencia por healthcheck de Coolify. Estado: aceptado; se mantiene `wget` mínimo de BusyBox porque Coolify lo requiere.
 3. Añadir healthchecks Docker con Node. Estado: mitigado.
 4. Preparar configuración Coolify para `read_only`, `/tmp` tmpfs, `cap_drop`, `no-new-privileges`, límites de CPU/mem/PIDs.
 
@@ -142,7 +142,7 @@ Resultados:
 - Frontend local: `npm audit`, `npm test`, `npm run build` OK.
 - Docker backend: build OK; usuario final `uid=1001(app) gid=1001(app)`.
 - Docker frontend: build OK; usuario final `uid=1001(nextjs) gid=1001(nodejs)`.
-- `curl`/`wget` no quedan disponibles como comandos en PATH en las imágenes finales.
+- `curl` no queda disponible como comando en PATH; `wget` de BusyBox se conserva por compatibilidad con el healthcheck de Coolify.
 - Healthchecks Docker declarados en backend y frontend.
 - Trivy: no ejecutado, herramienta no disponible localmente.
 

@@ -25,8 +25,7 @@ FROM base AS runner
 ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 app \
-    && adduser --system --uid 1001 --ingroup app app \
-    && rm -f /usr/bin/wget /bin/wget
+    && adduser --system --uid 1001 --ingroup app app
 
 COPY --from=build --chown=app:app /app/dist ./dist
 COPY --from=prod-deps --chown=app:app /app/node_modules ./node_modules

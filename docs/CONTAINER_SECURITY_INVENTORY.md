@@ -20,8 +20,8 @@ Este inventario refleja el estado observado en el repositorio. La configuración
 
 | Archivo | Uso observado | Observaciones |
 | ------- | ------------- | ------------- |
-| `frontend/Dockerfile` | Imagen de producción Next.js standalone | Multi-stage, usuario no root, copia standalone; sin `curl/wget`; `HEALTHCHECK` con Node; sin controles runtime |
-| `backend/Dockerfile` | Imagen de producción NestJS | Multi-stage, runtime con `npm ci --omit=dev`, usuario no root, sin `curl/wget`, `HEALTHCHECK` con Node; ejecuta migraciones en entrypoint |
+| `frontend/Dockerfile` | Imagen de producción Next.js standalone | Multi-stage, usuario no root, copia standalone; conserva `wget` mínimo de BusyBox por healthcheck Coolify; `HEALTHCHECK` con Node; sin controles runtime |
+| `backend/Dockerfile` | Imagen de producción NestJS | Multi-stage, runtime con `npm ci --omit=dev`, usuario no root, conserva `wget` mínimo de BusyBox por healthcheck Coolify, `HEALTHCHECK` con Node; ejecuta migraciones en entrypoint |
 | `Dockerfile` | Dockerfile raíz PHP/Apache | Documentado en `README.md` como no operativo para Nest/Next; copia todo el repo con `COPY . /var/www/html/` |
 | `backend/docker-compose.dev.yml` | Redis local de desarrollo | Publica `6379:6379`; aceptable en dev local, no apto como plantilla prod sin ajustes |
 | `backend/.dockerignore` | Build context backend | Excluye `.env`, `.git`, IDE, logs, coverage, backups, dumps, uploads, evidencias y temporales |
