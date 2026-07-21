@@ -25,7 +25,6 @@ import {
   CreateKycCompanyDto,
   ImportKycCompaniesDto,
 } from './dto/kyc-company.dto';
-import { KycAuditLogQueryDto } from './dto/kyc-audit-log-query.dto';
 import { CreateKycChatSessionDto, StreamKycChatDto } from './dto/kyc-chat.dto';
 
 /**
@@ -38,12 +37,6 @@ import { CreateKycChatSessionDto, StreamKycChatDto } from './dto/kyc-chat.dto';
 @UseGuards(JwtAuthGuard)
 export class KycController {
   constructor(private readonly kyc: KycService) {}
-
-  @Get('audit-logs')
-  @UseGuards(AdminGuard)
-  listAuditLogs(@Query() query: KycAuditLogQueryDto) {
-    return this.kyc.listAuditLogs(query);
-  }
 
   @Get('clients')
   listClientsForExtension(@Query('q') q?: string) {

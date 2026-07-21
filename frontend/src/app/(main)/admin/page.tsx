@@ -397,9 +397,6 @@ export default function AdminUsersPage() {
             <Link href="/admin/invitations" className={`${styles.btnSecondary} ${styles.cardIntroLinkEnd}`}>
               Invitaciones
             </Link>
-            <Link href="/admin/kyc-audit" className={styles.btnSecondary}>
-              Auditoría KYC
-            </Link>
             <Link href="/admin/audit" className={styles.btnSecondary}>
               Auditoría global
             </Link>

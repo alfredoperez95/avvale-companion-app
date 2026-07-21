@@ -481,6 +481,20 @@
   min-width: 0;
 }
 
+.auditFilters .auditCheckboxLabel {
+  flex-direction: row;
+  align-items: center;
+  align-self: end;
+  min-height: 2.5rem;
+  color: var(--fiori-text);
+}
+
+.auditCheckboxLabel input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--fiori-shell-bg);
+}
+
 .auditFilterActions,
 .auditPager {
   display: flex;
@@ -513,6 +527,21 @@
   font-size: 0.8125rem;
   line-height: 1.45;
   white-space: pre-wrap;
+}
+
+.auditDetailModal {
+  max-width: min(64rem, calc(100vw - 2rem));
+}
+
+.auditDetailModal .modalBody {
+  max-height: min(76vh, 44rem);
+}
+
+.auditModalSubtitle {
+  margin: 0.25rem 0 0;
+  color: var(--fiori-text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.35;
 }
 
 .scrollWrap {

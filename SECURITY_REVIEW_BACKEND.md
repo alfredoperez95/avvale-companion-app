@@ -123,7 +123,7 @@ El módulo KYC queda tratado como **catálogo corporativo compartido**, no como 
 - Cualquier usuario autenticado puede consultar empresas KYC con perfil activo.
 - Cualquier usuario autenticado puede operar sobre la ficha KYC, organigrama, señales, preguntas abiertas y sesiones asociadas, según los endpoints actuales.
 - `createdByUserId` se conserva como metadato de origen, no como límite de autorización.
-- `updatedByUserId` y `kyc_audit_logs` registran cambios relevantes sin almacenar prompts/documentos completos; la consulta está disponible para `ADMIN` en `/kyc/audit-logs` y UI `/admin/kyc-audit`.
+- `updatedByUserId` y `kyc_audit_logs` registran cambios relevantes sin almacenar prompts/documentos completos; la consulta operativa queda unificada en la auditoría global `GET /audit-logs` y UI `/admin/audit`.
 - Los RFQ vinculados a una empresa KYC siguen siendo privados por `userId`; la empresa KYC vinculada es el catálogo compartido.
 - `DELETE /kyc/companies/:id` y `POST /kyc/companies/bulk-delete` eliminan la empresa base `KycCompany` y sus datos KYC asociados. Solo pueden ejecutarlos `ADMIN` o el creador de la empresa; registros legacy sin `createdByUserId` solo pueden ser eliminados por `ADMIN`.
 - `POST /kyc/companies/import` queda restringido a `ADMIN` por ser una operación masiva sobre el catálogo corporativo compartido.
@@ -197,8 +197,8 @@ Actualización adicional aplicada el 2026-07-21:
 - `GET /expenses/:id/file` sirve recibos como `attachment` y mantiene `X-Content-Type-Options: nosniff`.
 - RFQ encapsula la validación de empresa KYC seleccionable y añade tests para el modelo KYC compartido con perfil activo.
 - Operaciones destructivas KYC: borrado restringido a `ADMIN` o creador; import masivo restringido a `ADMIN`.
-- Auditoría KYC backend: `updatedByUserId` y `kyc_audit_logs` con eventos minimizados para cambios manuales, importaciones, borrados, enriquecimiento IA y propuestas de chat.
-- Consulta de auditoría KYC: endpoint `GET /kyc/audit-logs` protegido por `AdminGuard`, paginado y con payloads redactados defensivamente; UI admin en `/admin/kyc-audit`.
+- Auditoría KYC backend: `updatedByUserId` y `kyc_audit_logs` se mantienen como histórico interno; los eventos nuevos se duplican en `audit_logs` global y los históricos se backfillearon.
+- Consulta de auditoría: endpoint global `GET /audit-logs` protegido por `AdminGuard`, paginado y con payloads redactados defensivamente; UI admin unificada en `/admin/audit`.
 - Operaciones destructivas de activaciones: `ADMIN` puede borrar activaciones ajenas; usuarios normales siguen limitados a sus propias activaciones.
 - `POST /expenses/bulk-delete` incorpora límite de 100 IDs y throttle específico.
 - El processor de envío de activaciones revalida que el `userId` del job coincide con `createdByUserId` antes de cambiar estado.

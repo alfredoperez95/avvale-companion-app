@@ -143,7 +143,7 @@ Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el fronten
 | POST | `/meddpicc/deals/:id/convai/client-transcript` | `MeddpiccController` | JWT | Propietario/admin | `ClientConvaiTranscriptDto` | Global | IA, datos sensibles |
 | POST | `/meddpicc/deals/:id/convai/import-from-elevenlabs` | `MeddpiccController` | JWT | Propietario/admin | `FetchElevenlabsConversationDto` | Global | Integración externa, abuso |
 | POST | `/webhooks/elevenlabs/meddpicc` | `MeddpiccConvaiWebhookController` | Pública + firma | HMAC ElevenLabs + `dynamic_variables.deal_id` | Body webhook | 120/min | Público, webhook, integración externa; no usa `data.user_id` como fallback de autorización |
-| GET | `/kyc/audit-logs` | `KycController` | JWT + Admin | `ADMIN` | `KycAuditLogQueryDto` | Global | Consulta admin de auditoría KYC, payload minimizado/redactado |
+| GET | `/audit-logs` | `AuditController` | JWT + Admin | `ADMIN` | `AuditLogQueryDto` | Global | Consulta admin de auditoría global, incluye eventos KYC migrados/duplicados |
 | GET | `/kyc/clients?q=` | `KycController` | JWT | Usuario autenticado | Query `q` sin DTO | Global | Datos compartidos KYC |
 | POST | `/kyc/linkedin-profile` | `KycController` | JWT | Usuario autenticado | `KycLinkedInProfileDto` | Global | Modificación auditada, extensión Chrome |
 | GET | `/kyc/companies` | `KycController` | JWT | Usuario autenticado | Query `q`, `strategic`, `all`, `industry` sin DTO | Global | Datos compartidos, abuso de recursos |

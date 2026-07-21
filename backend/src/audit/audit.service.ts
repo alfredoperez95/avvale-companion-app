@@ -70,6 +70,9 @@ export class AuditService {
     if (query.entity?.trim()) where.entity = query.entity.trim();
     if (query.entityId?.trim()) where.entityId = query.entityId.trim();
     if (query.requestId?.trim()) where.requestId = query.requestId.trim();
+    if (isFalseLike(query.includeHealth) && query.module?.trim() !== 'health') {
+      where.NOT = { module: 'health' };
+    }
 
     const [items, total] = await Promise.all([
       writer.auditLog?.findMany({
@@ -127,6 +130,11 @@ function clampInt(raw: string | undefined, min: number, max: number, fallback: n
   const n = Number.parseInt(String(raw ?? ''), 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, n));
+}
+
+function isFalseLike(raw: string | undefined): boolean {
+  const value = (raw ?? '').trim().toLowerCase();
+  return value === 'false' || value === '0' || value === 'no';
 }
 
 function serializeAuditLog(log: unknown): Record<string, unknown> {

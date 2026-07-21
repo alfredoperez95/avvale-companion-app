@@ -40,4 +40,9 @@ export class AuditLogQueryDto {
   @IsString()
   @MaxLength(64)
   requestId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  includeHealth?: string;
 }

@@ -244,10 +244,11 @@ Operación:
 
 Auditoría funcional principal:
 
-- `KycAuditLog` / `kyc_audit_logs`.
+- `AuditLog` / `audit_logs` como consulta operativa global.
+- `KycAuditLog` / `kyc_audit_logs` se conserva como histórico interno.
 - `updatedByUserId` en `KycCompany`.
-- Endpoint admin `GET /kyc/audit-logs`.
-- UI admin `/admin/kyc-audit`.
+- Endpoint admin `GET /audit-logs`.
+- UI admin `/admin/audit`.
 
 Eventos cubiertos:
 

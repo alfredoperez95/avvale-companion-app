@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "reset:activations": "node scripts/reset-activations.js",
-    "import:cc-contacts": "node scripts/import-cc-contacts.js"
+    "import:cc-contacts": "node scripts/import-cc-contacts.js",
+    "audit:backfill:kyc": "node scripts/backfill-kyc-audit-to-global.js"
   },
   "engines": {
     "node": ">=20 <23",

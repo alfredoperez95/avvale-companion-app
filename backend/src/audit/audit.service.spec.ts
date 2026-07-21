@@ -121,4 +121,20 @@ describe('AuditService', () => {
       pageSize: 25,
     });
   });
+
+  it('excluye healthchecks cuando includeHealth=false', async () => {
+    prisma.auditLog.findMany.mockResolvedValue([]);
+    prisma.auditLog.count.mockResolvedValue(0);
+
+    await service.list({ includeHealth: 'false' });
+
+    expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { NOT: { module: 'health' } },
+      }),
+    );
+    expect(prisma.auditLog.count).toHaveBeenCalledWith({
+      where: { NOT: { module: 'health' } },
+    });
+  });
 });

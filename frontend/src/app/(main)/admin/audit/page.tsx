@@ -5,6 +5,43 @@ import { apiFetch, redirectToLogin } from '@/lib/api';
 import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
 import styles from '../admin.module.css';
 
+const MODULE_OPTIONS = [
+  'auth',
+  'kyc',
+  'rfq',
+  'meddpicc',
+  'activations',
+  'expenses',
+  'yubiq',
+  'admin',
+  'areas',
+  'attachments',
+  'webhook',
+  'health',
+  'extension',
+  'users',
+  'invitations',
+  'ai-credentials',
+];
+
+const ACTION_OPTIONS = [
+  'read',
+  'create',
+  'update',
+  'delete',
+  'download',
+  'upload',
+  'export',
+  'import',
+  'login',
+  'magicLink',
+  'invitation',
+  'webhook',
+  'ai',
+  'worker',
+  'health',
+];
+
 type AuditLogItem = {
   id: string;
   actorUserId: string | null;
@@ -28,6 +65,13 @@ type AuditLogItem = {
   after: unknown;
   meta: unknown;
   createdAt: string;
+};
+
+type AdminUserOption = {
+  id: string;
+  email: string;
+  name?: string | null;
+  lastName?: string | null;
 };
 
 type AuditLogResponse = {
@@ -71,6 +115,8 @@ export default function GlobalAuditAdminPage() {
   const [entity, setEntity] = useState('');
   const [entityId, setEntityId] = useState('');
   const [requestId, setRequestId] = useState('');
+  const [hideHealth, setHideHealth] = useState(true);
+  const [users, setUsers] = useState<AdminUserOption[]>([]);
   const [selected, setSelected] = useState<AuditLogItem | null>(null);
 
   const loadAudit = useCallback(
@@ -86,6 +132,7 @@ export default function GlobalAuditAdminPage() {
       if (entity.trim()) params.set('entity', entity.trim());
       if (entityId.trim()) params.set('entityId', entityId.trim());
       if (requestId.trim()) params.set('requestId', requestId.trim());
+      params.set('includeHealth', hideHealth ? 'false' : 'true');
 
       const res = await apiFetch(`/api/audit-logs?${params.toString()}`);
       if (res.status === 401) {
@@ -106,8 +153,15 @@ export default function GlobalAuditAdminPage() {
       setPage(Number(data.page ?? nextPage));
       setPageSize(Number(data.pageSize ?? pageSize));
     },
-    [action, actorUserId, entity, entityId, moduleName, page, pageSize, requestId],
+    [action, actorUserId, entity, entityId, hideHealth, moduleName, page, pageSize, requestId],
   );
+
+  const loadUsers = useCallback(async () => {
+    const res = await apiFetch('/api/users');
+    if (!res.ok) return;
+    const data = (await res.json().catch(() => [])) as AdminUserOption[];
+    setUsers(Array.isArray(data) ? data : []);
+  }, []);
 
   useEffect(() => {
     apiFetch('/api/auth/me')
@@ -123,11 +177,20 @@ export default function GlobalAuditAdminPage() {
           setForbidden(true);
           return;
         }
-        return loadAudit(1);
+        return Promise.all([loadUsers(), loadAudit(1)]);
       })
       .catch(() => setError('No se pudo verificar la sesión.'))
       .finally(() => setLoading(false));
-  }, [loadAudit]);
+  }, [loadAudit, loadUsers]);
+
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelected(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selected]);
 
   const maxPage = Math.max(1, Math.ceil(total / pageSize));
 
@@ -198,15 +261,43 @@ export default function GlobalAuditAdminPage() {
         >
           <label>
             Módulo
-            <input className={styles.input} value={moduleName} onChange={(e) => setModuleName(e.target.value)} placeholder="kyc" />
+            <select
+              className={styles.select}
+              value={moduleName}
+              onChange={(e) => {
+                setModuleName(e.target.value);
+                if (e.target.value === 'health') setHideHealth(false);
+              }}
+            >
+              <option value="">Todos los módulos</option>
+              {MODULE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
-            Acción
-            <input className={styles.input} value={action} onChange={(e) => setAction(e.target.value)} placeholder="read" />
+            Evento
+            <select className={styles.select} value={action} onChange={(e) => setAction(e.target.value)}>
+              <option value="">Todos los eventos</option>
+              {ACTION_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
-            Actor user ID
-            <input className={styles.input} value={actorUserId} onChange={(e) => setActorUserId(e.target.value)} placeholder="uuid usuario" />
+            Usuario
+            <select className={styles.select} value={actorUserId} onChange={(e) => setActorUserId(e.target.value)}>
+              <option value="">Todos los usuarios / sistemas</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {[user.name, user.lastName].filter(Boolean).join(' ') || user.email} · {user.email}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Entidad
@@ -228,6 +319,15 @@ export default function GlobalAuditAdminPage() {
               <option value={100}>100</option>
             </select>
           </label>
+          <label className={styles.auditCheckboxLabel}>
+            <input
+              type="checkbox"
+              checked={hideHealth}
+              onChange={(e) => setHideHealth(e.target.checked)}
+              disabled={moduleName === 'health'}
+            />
+            Ocultar healthchecks
+          </label>
           <div className={styles.auditFilterActions}>
             <button type="submit" className={styles.btnPrimary}>
               Buscar
@@ -242,6 +342,7 @@ export default function GlobalAuditAdminPage() {
                 setEntity('');
                 setEntityId('');
                 setRequestId('');
+                setHideHealth(true);
                 setPageSize(50);
                 setPage(1);
               }}
@@ -325,22 +426,37 @@ export default function GlobalAuditAdminPage() {
       </section>
 
       {selected ? (
-        <section className={styles.card} aria-labelledby="audit-detail-heading">
-          <div className={styles.usersCardHead}>
-            <div className={styles.usersCardHeadText}>
-              <h2 id="audit-detail-heading" className={styles.cardTitle}>
-                Detalle evento {selected.id}
-              </h2>
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="audit-detail-heading"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setSelected(null);
+          }}
+        >
+          <div className={`${styles.modal} ${styles.auditDetailModal}`} onClick={(event) => event.stopPropagation()}>
+            <header className={styles.modalHeader}>
+              <div>
+                <h2 id="audit-detail-heading" className={styles.modalTitle}>
+                  Detalle evento {selected.id}
+                </h2>
+                <p className={styles.auditModalSubtitle}>
+                  {selected.module} · {selected.action} · {formatDateTime(selected.createdAt)}
+                </p>
+              </div>
+              <button type="button" className={styles.modalClose} onClick={() => setSelected(null)} aria-label="Cerrar">
+                <span aria-hidden>×</span>
+              </button>
+            </header>
+            <div className={styles.modalBody}>
               <p className={styles.cardDesc}>
-                Incluye metadatos técnicos minimizados. Tokens públicos se muestran solo como hash SHA-256.
+                Metadatos técnicos minimizados. Los tokens públicos se muestran solo como hash SHA-256.
               </p>
+              <pre className={styles.auditJson}>{JSON.stringify(selected, null, 2)}</pre>
             </div>
-            <button type="button" className={styles.btnSmall} onClick={() => setSelected(null)}>
-              Cerrar
-            </button>
           </div>
-          <pre className={styles.auditJson}>{JSON.stringify(selected, null, 2)}</pre>
-        </section>
+        </div>
       ) : null}
     </div>
   );

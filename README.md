@@ -318,6 +318,8 @@ Tabla completa de estados y transiciones: **[docs/ACTIVATION_STATE_MACHINE.md](d
 | `backend` | `npm run redis:dev` / `redis:dev:down` | Redis local (Docker) |
 | `backend` | `npm run reset:activations` | Borra todas las activaciones y reinicia `AUTO_INCREMENT` de numeración (ver script; MySQL) |
 | `backend` | `npm run import:cc-contacts` | Importación de contactos CC (script existente) |
+| `backend` | `DRY_RUN=1 npm run audit:backfill:kyc` | Simula el backfill histórico de `kyc_audit_logs` hacia `audit_logs` |
+| `backend` | `DRY_RUN=0 npm run audit:backfill:kyc` | Ejecuta el backfill histórico de KYC hacia auditoría global tras backup y dry-run |
 | `backend` | `npx prisma migrate deploy` | Migraciones (también en entrypoint Docker) |
 | `backend` | `npx prisma studio` | UI de datos |
 
