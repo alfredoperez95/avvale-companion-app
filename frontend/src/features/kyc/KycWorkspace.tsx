@@ -1472,7 +1472,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                       <span className={styles.detailToolbarBtnIcon} aria-hidden>
                         <KycToolbarTrashIcon />
                       </span>
-                      <span className={styles.detailToolbarDeleteLabel}>Eliminar KYC</span>
+                      <span className={styles.detailToolbarDeleteLabel}>Eliminar empresa</span>
                     </button>
                     <div className={styles.detailToolbarDangerOverflow}>
                       <button
@@ -1507,7 +1507,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
                             <span className={styles.detailToolbarBtnIcon} aria-hidden>
                               <KycToolbarTrashIcon />
                             </span>
-                            Eliminar KYC
+                            Eliminar empresa
                           </button>
                         </div>
                       ) : null}
@@ -1847,7 +1847,7 @@ export default function KycWorkspace({ className }: KycWorkspaceProps) {
       <ConfirmDialog
         open={!!confirm}
         title={confirm === 'delBulk' ? 'Eliminar selección' : 'Confirmar eliminación'}
-        message="Esta acción quita el perfil KYC. ¿Continuar?"
+        message="Esta acción elimina la empresa del catálogo KYC y sus datos asociados. ¿Continuar?"
         variant="danger"
         confirmVariant="danger"
         confirmLabel="Eliminar"
