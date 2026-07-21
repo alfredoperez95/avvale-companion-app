@@ -664,17 +664,28 @@
 .marginModalBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  z-index: 2147483000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--fiori-space-4);
+  overflow: hidden;
   background: rgb(0 0 0 / 45%);
 }
 
 .marginModalCard {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 22rem;
+  max-height: calc(100dvh - (var(--fiori-space-4) * 2));
+  overflow-y: auto;
   padding: var(--fiori-space-5);
   border-radius: 0.75rem;
   background: var(--fiori-surface);

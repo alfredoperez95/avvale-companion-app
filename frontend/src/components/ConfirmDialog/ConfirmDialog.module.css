@@ -10,6 +10,12 @@
 .overlay {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(2px);
   display: flex;
@@ -17,7 +23,7 @@
   justify-content: center;
   z-index: 1100;
   padding: var(--fiori-space-4);
-  box-sizing: border-box;
+  overflow: hidden;
   animation: app-overlay-enter 0.22s var(--app-ease-out, ease-out) both;
 }
 
@@ -32,6 +38,8 @@
 }
 
 .dialog {
+  display: flex;
+  flex-direction: column;
   background: var(--fiori-surface);
   border: 1px solid var(--fiori-border-light);
   border-radius: 0.75rem;
@@ -39,7 +47,7 @@
   width: 100%;
   margin: auto;
   flex-shrink: 0;
-  max-height: calc(100% - 2 * var(--fiori-space-4));
+  max-height: calc(100dvh - (var(--fiori-space-4) * 2));
   overflow: hidden;
   box-shadow: 0 8px 32px rgb(0 0 0 / 22%);
   animation: app-dialog-enter 0.32s var(--app-ease-out, ease-out) both;
@@ -71,7 +79,10 @@
 }
 
 .body {
+  flex: 1 1 auto;
+  min-height: 0;
   padding: var(--fiori-space-5);
+  overflow-y: auto;
 }
 
 .description {
@@ -82,6 +93,7 @@
 }
 
 .actions {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   gap: var(--fiori-space-2);

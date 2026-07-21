@@ -4,6 +4,12 @@
 .overlay {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(2px);
   display: flex;
@@ -11,6 +17,7 @@
   justify-content: center;
   z-index: 1100;
   padding: var(--fiori-space-4);
+  overflow: hidden;
   animation: infoOverlayIn 0.2s ease-out;
 }
 
@@ -29,7 +36,7 @@
   border-radius: 0.75rem;
   max-width: 32rem;
   width: 100%;
-  max-height: min(90vh, 36rem);
+  max-height: min(90dvh, 36rem);
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgb(0 0 0 / 22%);

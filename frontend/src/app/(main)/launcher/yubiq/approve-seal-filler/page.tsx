@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch, redirectToLogin } from '@/lib/api';
@@ -583,7 +584,7 @@ export default function YubiqApproveSealFillerPage() {
         </article>
       </section>
 
-      {yubiqMarginModal !== 'closed' && (
+      {yubiqMarginModal !== 'closed' ? createPortal(
         <div
           className={styles.marginModalBackdrop}
           role="presentation"
@@ -679,8 +680,9 @@ export default function YubiqApproveSealFillerPage() {
               </>
             )}
           </div>
-        </div>
-      )}
+        </div>,
+        document.body,
+      ) : null}
     </main>
   );
 }
