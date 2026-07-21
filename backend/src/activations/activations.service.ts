@@ -10,6 +10,7 @@ import { EmailSignatureService } from '../email-signature/email-signature.servic
 import { formatActivationCode } from './activation-code';
 import { ActivationSendProducer } from '../queue/producers/activation-send-producer.service';
 import { ActivationLookupService } from './activation-lookup.service';
+import { UserPayload } from '../auth/decorators/user-payload';
 
 /** Asunto provisional antes de conocer activationNumber (misma forma legacy sin código). */
 function buildSubjectWithoutCode(projectName: string, client: string | null): string {
@@ -588,9 +589,13 @@ export class ActivationsService {
     return this.attachmentsService.saveActivationAttachments(activationId, urls);
   }
 
-  /** Elimina una activación solo si pertenece al usuario. */
-  async remove(activationId: string, userId: string): Promise<void> {
-    await this.findOneByIdAndUser(activationId, userId);
+  /** Elimina una activación si pertenece al usuario, o si el actor es ADMIN. */
+  async remove(activationId: string, actor: UserPayload): Promise<void> {
+    if (actor.role === 'ADMIN') {
+      await this.findOneById(activationId);
+    } else {
+      await this.findOneByIdAndUser(activationId, actor.userId);
+    }
     await this.attachmentsService.deleteAttachmentsForActivation(activationId);
     await this.prisma.activation.delete({ where: { id: activationId } });
   }

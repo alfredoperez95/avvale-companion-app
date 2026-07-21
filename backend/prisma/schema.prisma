@@ -82,6 +82,7 @@ model User {
   sentInvitations    UserInvitation[] @relation("UserInvitedBy")
   kycChatSessions    KycChatSession[]
   kycFacts           KycFact[]
+  kycAuditLogs       KycAuditLog[]
 
   @@map("users")
 }
@@ -609,6 +610,7 @@ model KycCompany {
   notes     String?  @db.Text
   /** Usuario Companion que dio de alta la cuenta (POST /kyc/companies); null en importaciones o datos anteriores a este campo. */
   createdByUserId String?  @map("created_by_user_id")
+  updatedByUserId String?  @map("updated_by_user_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -621,12 +623,35 @@ model KycCompany {
   chatSessions      KycChatSession[]
   openQuestions     KycOpenQuestion[]
   rfqAnalyses       RfqAnalysis[]
+  auditLogs         KycAuditLog[]
 
   @@index([name])
   @@index([sector])
   @@index([industry])
   @@index([createdByUserId])
+  @@index([updatedByUserId])
   @@map("kyc_companies")
+}
+
+model KycAuditLog {
+  id          BigInt   @id @default(autoincrement())
+  companyId   BigInt?  @map("company_id")
+  actorUserId String?  @map("actor_user_id")
+  action      String   @db.VarChar(96)
+  entity      String   @db.VarChar(96)
+  entityId    String?  @map("entity_id") @db.VarChar(128)
+  before      Json?
+  after       Json?
+  meta        Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  company KycCompany? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  actor   User?       @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("kyc_audit_logs")
 }
 
 model KycContact {

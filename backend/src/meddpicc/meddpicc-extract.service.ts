@@ -1,12 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { simpleParser } from 'mailparser';
-import mammoth from 'mammoth';
 import { PdfExtractionService } from '../yubiq/approve-seal-filler/pdf-extraction.service';
 import {
   extractTextFromSpreadsheetBuffer,
   isSpreadsheetOfficeMime,
   looksLikeSpreadsheetFileName,
 } from '../rfq-analysis/rfq-spreadsheet-text';
+import { extractDocxToMarkdown, extractEmlToMarkdown } from './meddpicc-document-text';
 
 const MAX_MARKDOWN_CHARS = 300_000;
 
@@ -14,15 +13,6 @@ function truncateMd(s: string): string {
   const t = s.trim();
   if (t.length <= MAX_MARKDOWN_CHARS) return t;
   return `${t.slice(0, MAX_MARKDOWN_CHARS)}\n\n… *[contenido truncado por tamaño]*`;
-}
-
-function stripHtmlBasic(html: string): string {
-  return html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 @Injectable()
@@ -50,17 +40,7 @@ export class MeddpiccExtractService {
       mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       name.endsWith('.docx')
     ) {
-      const result = await mammoth.extractRawText({ buffer });
-      const warnings = result.messages?.map((m: { message: string }) => m.message).join('; ');
-      let md = String(result.value ?? '').trim();
-      if (!md) md = '(sin texto extraíble)';
-      md = md
-        .split(/\n\s*\n/)
-        .map((p) => p.trim())
-        .filter(Boolean)
-        .join('\n\n');
-      if (warnings) md += `\n\n<!-- mammoth: ${warnings} -->`;
-      return truncateMd(md);
+      return truncateMd(await extractDocxToMarkdown(buffer));
     }
 
     if (mt === 'application/msword' || name.endsWith('.doc')) {
@@ -74,15 +54,7 @@ export class MeddpiccExtractService {
       mt === 'application/vnd.ms-outlook' ||
       name.endsWith('.eml')
     ) {
-      const parsed = await simpleParser(buffer);
-      const subj = parsed.subject ? `**Asunto:** ${parsed.subject}\n\n` : '';
-      const from = parsed.from?.text ? `**De:** ${parsed.from.text}\n\n` : '';
-      let body = parsed.text?.trim();
-      if (!body && parsed.html) {
-        body = stripHtmlBasic(String(parsed.html));
-      }
-      if (!body) body = '(sin cuerpo de texto reconocible)';
-      return truncateMd(`${subj}${from}${body}`);
+      return truncateMd(await extractEmlToMarkdown(buffer));
     }
 
     throw new BadRequestException(

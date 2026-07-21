@@ -77,8 +77,13 @@ Inventario completo: `docs/BACKEND_ENDPOINT_INVENTORY.md`.
 | B-19 | Low | `$queryRawUnsafe` estático en processor | `backend/src/queue/activation-send.processor.ts` | Bajo al no usar input de usuario | Sustituir por consulta segura o documentar | ACCEPTED |
 | B-20 | Informational | Swagger ausente | Backend | Sin superficie Swagger pública | Mantener deshabilitado o proteger si se añade | NOT APPLICABLE |
 | B-21 | Informational | CSRF clásico no aplica al usar Bearer, no cookies de sesión | Auth | Riesgo mitigado por no usar cookies auth | Mantener CORS estricto y no mezclar cookies sin CSRF | NOT APPLICABLE |
-| B-22 | Informational | KYC compartido entre usuarios autenticados por diseño | `docs/KYC.md`, `backend/src/kyc` | Riesgo de confidencialidad aceptado si el catálogo es corporativo compartido | Documentar decisión; reabrir si cambia el modelo | ACCEPTED |
+| B-22 | Medium | KYC compartido entre usuarios autenticados por decisión de negocio | `backend/src/kyc` | Cualquier usuario autenticado puede leer y operar sobre el catálogo KYC corporativo; no hay aislamiento por usuario/tenant en este módulo | Documentar como excepción explícita; reabrir si KYC contiene datos segregados por equipo/cliente o aumenta sensibilidad | ACCEPTED |
 | B-23 | Informational | Validación de ficheros con magic bytes ya existe | `backend/src/files/safe-file-validation.ts` | Reduce riesgo de MIME/extensión falsa | Mantener allowlists y ampliar antivirus en infraestructura | MITIGATED |
+| B-24 | Medium | Parsers/conversores de adjuntos complejos podían ejecutarse en el proceso Nest principal | PDF, Excel, HEIC, DOCX, EML | DoS por CPU/memoria o fallo del proceso principal ante ficheros maliciosos | Aislar procesamiento en workers con timeout y memoria limitada | MITIGATED |
+| B-25 | Medium | Respuesta Yubiq exponía el prompt completo con texto extraído del PDF | `backend/src/yubiq/approve-seal-filler/approve-seal-filler.controller.ts` | Exposición de contenido sensible de documentos en respuesta API/logs cliente | Devolver huella (`promptHash`) en vez de prompt completo | MITIGATED |
+| B-26 | Medium | Export CSV de gastos susceptible a formula injection | `backend/src/expenses/expense-export.service.ts` | Ejecución de fórmulas al abrir CSV en hojas de cálculo | Neutralizar celdas que empiezan por `=`, `+`, `-`, `@`, tab o CR | MITIGATED |
+| B-27 | Low | Recibos de gastos se servían inline | `backend/src/expenses/expenses.controller.ts` | Renderizado accidental de contenido subido por usuario en navegador | Servir como `attachment` y mantener `nosniff` | MITIGATED |
+| B-28 | Low | Regla de selección `kycCompanyId` en RFQ estaba implícita | `backend/src/rfq-analysis/rfq-analysis.service.ts` | Riesgo de cambios futuros que rompan el modelo compartido o acepten empresas no activas | Helper explícito y tests de empresa inexistente/sin perfil/compartida activa | MITIGATED |
 
 ## Evidencias técnicas
 
@@ -99,7 +104,23 @@ Inventario completo: `docs/BACKEND_ENDPOINT_INVENTORY.md`.
 
 - Áreas administrativas usan `AdminGuard`.
 - Activations, RFQ, MEDDPICC y expenses aplican ownership por `userId` en servicios.
-- KYC está documentado como catálogo compartido entre usuarios autenticados; se deja aceptado por negocio.
+- KYC se acepta como catálogo corporativo compartido entre usuarios autenticados. En este módulo no se aplica aislamiento por `createdByUserId`, tenant ni equipo: lectura, edición y operaciones sobre empresas KYC se consideran colaborativas por decisión funcional. Esta excepción debe reabrirse si se introducen datos segregados por comercial/equipo, clientes con confidencialidad diferenciada o roles KYC específicos.
+
+### Decisión aceptada: KYC compartido
+
+Fecha de confirmación: 2026-07-21.
+
+El módulo KYC queda tratado como **catálogo corporativo compartido**, no como recurso privado del usuario que crea o edita una empresa. Por tanto:
+
+- Cualquier usuario autenticado puede consultar empresas KYC con perfil activo.
+- Cualquier usuario autenticado puede operar sobre la ficha KYC, organigrama, señales, preguntas abiertas y sesiones asociadas, según los endpoints actuales.
+- `createdByUserId` se conserva como metadato de origen, no como límite de autorización.
+- `updatedByUserId` y `kyc_audit_logs` registran cambios relevantes sin almacenar prompts/documentos completos.
+- Los RFQ vinculados a una empresa KYC siguen siendo privados por `userId`; la empresa KYC vinculada es el catálogo compartido.
+- `DELETE /kyc/companies/:id` y `POST /kyc/companies/bulk-delete` eliminan la empresa base `KycCompany` y sus datos KYC asociados. Solo pueden ejecutarlos `ADMIN` o el creador de la empresa; registros legacy sin `createdByUserId` solo pueden ser eliminados por `ADMIN`.
+- `POST /kyc/companies/import` queda restringido a `ADMIN` por ser una operación masiva sobre el catálogo corporativo compartido.
+
+Riesgo aceptado: bajo este modelo, un usuario autenticado puede modificar datos KYC usados por otros usuarios. Se acepta como comportamiento colaborativo corporativo. Mitigación operativa aplicada: historial backend con `updatedByUserId` y `KycAuditLog` para creación, edición, importación, borrado, organigrama, señales, preguntas abiertas, enriquecimiento IA y propuestas aplicadas desde chat. Recomendación futura no bloqueante: exponer consulta de historial en UI/admin si se necesita operación diaria o investigación desde producto.
 
 ### Uploads
 
@@ -157,6 +178,22 @@ No se listan valores de secretos.
 - Timeouts explícitos añadidos a Anthropic, ElevenLabs y Google News RSS.
 - `docs/BACKEND_SECURITY_BASELINE.md` creado.
 
+Actualización adicional aplicada el 2026-07-21:
+
+- Procesamiento de PDF aislado en `pdf-extraction-worker` con timeout, límite de memoria y truncado de salida.
+- Procesamiento de Excel aislado en `rfq-spreadsheet-worker` con timeout, límite de memoria y truncado de salida.
+- Conversión HEIC/HEIF aislada en `expense-heic-worker`.
+- Parsing DOCX/EML de MEDDPICC aislado en `meddpicc-document-worker`.
+- Yubiq deja de devolver `promptPreview`; devuelve `promptHash`.
+- Export CSV de gastos neutraliza formula injection.
+- `GET /expenses/:id/file` sirve recibos como `attachment` y mantiene `X-Content-Type-Options: nosniff`.
+- RFQ encapsula la validación de empresa KYC seleccionable y añade tests para el modelo KYC compartido con perfil activo.
+- Operaciones destructivas KYC: borrado restringido a `ADMIN` o creador; import masivo restringido a `ADMIN`.
+- Auditoría KYC backend: `updatedByUserId` y `kyc_audit_logs` con eventos minimizados para cambios manuales, importaciones, borrados, enriquecimiento IA y propuestas de chat.
+- Operaciones destructivas de activaciones: `ADMIN` puede borrar activaciones ajenas; usuarios normales siguen limitados a sus propias activaciones.
+- `POST /expenses/bulk-delete` incorpora límite de 100 IDs y throttle específico.
+- El processor de envío de activaciones revalida que el `userId` del job coincide con `createdByUserId` antes de cambiar estado.
+
 ## Dependencias
 
 Se ejecutó `npm audit fix` sin `--force`. Se actualizó `backend/package-lock.json` con parches compatibles.
@@ -172,13 +209,16 @@ Actualización adicional aplicada el 2026-07-19:
 
 Residual:
 
-- Sin vulnerabilidades conocidas reportadas por `npm audit`. El procesamiento de Excel mantiene riesgo residual operativo por tratar ficheros no confiables, mitigado mediante aislamiento del proceso parser.
+- Sin vulnerabilidades conocidas reportadas por `npm audit` en la última validación documentada. El procesamiento de documentos mantiene riesgo residual operativo por tratar ficheros no confiables, mitigado mediante aislamiento de workers, límites de tiempo/memoria y validación previa de tipo/tamaño.
 
 ## Estado de pruebas
 
-- Lints IDE: sin errores.
-- `npm test`: 6 archivos, 30 tests, todos pasan.
-- `npm run build`: OK.
-- `npm audit`: 0 vulnerabilidades.
-- Smoke de extracción Excel aislada: OK.
+- Lints IDE: sin errores en archivos modificados.
+- Backend `npm test`: 7 archivos, 33 tests, todos pasan.
+- Backend `npm run build`: OK.
+- Backend `npm audit`: 0 vulnerabilidades.
+- Frontend `npm audit`: 0 vulnerabilidades.
+- Frontend `npm test`: 7 archivos, 43 tests, todos pasan.
+- Frontend `npm run build`: OK. Aviso local no bloqueante: `INTERNAL_API_URL` no definido, por lo que los rewrites `/api` usan `http://localhost:4000`; en Coolify debe configurarse con la URL interna del backend.
+- Smoke de extracción Excel/PDF/EML/HEIC workers: OK.
 - `npm outdated`: quedan actualizaciones no aplicadas en Prisma, BullMQ, Helmet, tipos y majors de tooling; no están reportadas por `npm audit`.

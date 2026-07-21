@@ -15,6 +15,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserPayload } from '../auth/decorators/user-payload';
 import { KycService } from './kyc.service';
@@ -44,8 +45,8 @@ export class KycController {
 
   @Post('linkedin-profile')
   @HttpCode(201)
-  ingestLinkedInProfile(@Body() body: KycLinkedInProfileDto) {
-    return this.kyc.ingestLinkedInOrgProfile(body);
+  ingestLinkedInProfile(@Body() body: KycLinkedInProfileDto, @CurrentUser() user: UserPayload) {
+    return this.kyc.ingestLinkedInOrgProfile(body, user.userId);
   }
 
   @Get('companies')
@@ -69,14 +70,15 @@ export class KycController {
   @Post('companies/bulk-delete')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
-  bulkDelete(@Body() body: BulkDeleteKycCompaniesDto) {
-    return this.kyc.bulkDeleteCompanyProfiles(body?.ids ?? []);
+  bulkDelete(@Body() body: BulkDeleteKycCompaniesDto, @CurrentUser() user: UserPayload) {
+    return this.kyc.bulkDeleteCompanyProfiles(body?.ids ?? [], user);
   }
 
   @Post('companies/import')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  importCo(@Body() body: ImportKycCompaniesDto) {
-    return this.kyc.importCompanies(body?.companies ?? []);
+  @UseGuards(AdminGuard)
+  importCo(@Body() body: ImportKycCompaniesDto, @CurrentUser() user: UserPayload) {
+    return this.kyc.importCompanies(body?.companies ?? [], user.userId);
   }
 
   @Get('companies/:id')
@@ -85,31 +87,32 @@ export class KycController {
   }
 
   @Patch('companies/:id')
-  patchCompany(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.kyc.patchCompany(BigInt(id), body);
+  patchCompany(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user: UserPayload) {
+    return this.kyc.patchCompany(BigInt(id), body, user.userId);
   }
 
   @Delete('companies/:id')
   @HttpCode(200)
-  delOne(@Param('id') id: string) {
-    return this.kyc.deleteKycDataForCompany(BigInt(id));
+  delOne(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.deleteKycDataForCompany(BigInt(id), user);
   }
 
   @Post('companies/:id/activate')
   @HttpCode(201)
-  activate(@Param('id') id: string) {
-    return this.kyc.ensureActivate(BigInt(id));
+  activate(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.ensureActivate(BigInt(id), user.userId);
   }
 
   @Patch('companies/:id/profile')
   async patchProfile(
     @Param('id') id: string,
     @Body() body: Record<string, unknown>,
+    @CurrentUser() user: UserPayload,
     @Headers('x-kyc-avvale-projects-explicit') projectsExplicit?: string,
   ) {
     const pe = (projectsExplicit ?? '').trim().toLowerCase();
     const explicit = pe === '1' || pe === 'true' || pe === 'yes';
-    return this.kyc.patchProfile(BigInt(id), body, { avvaleProjectsExplicit: explicit });
+    return this.kyc.patchProfile(BigInt(id), body, user.userId, { avvaleProjectsExplicit: explicit });
   }
 
   @Post('companies/:id/profile/synthesize-summary')
@@ -146,31 +149,31 @@ export class KycController {
 
   @Post('companies/:id/org/members')
   @HttpCode(201)
-  addMem(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.kyc.addOrgMember(BigInt(id), body);
+  addMem(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user: UserPayload) {
+    return this.kyc.addOrgMember(BigInt(id), body, user.userId);
   }
 
   @Patch('org/members/:id')
-  patchMem(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.kyc.patchMember(BigInt(id), body);
+  patchMem(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user: UserPayload) {
+    return this.kyc.patchMember(BigInt(id), body, user.userId);
   }
 
   @Delete('org/members/:id')
   @HttpCode(200)
-  delMem(@Param('id') id: string) {
-    return this.kyc.deleteMember(BigInt(id));
+  delMem(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.deleteMember(BigInt(id), user);
   }
 
   @Post('companies/:id/org/relationships')
   @HttpCode(201)
-  addRel(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.kyc.addRelationship(BigInt(id), body);
+  addRel(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user: UserPayload) {
+    return this.kyc.addRelationship(BigInt(id), body, user.userId);
   }
 
   @Delete('org/relationships/:id')
   @HttpCode(200)
-  delRel(@Param('id') id: string) {
-    return this.kyc.deleteRel(BigInt(id));
+  delRel(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.deleteRel(BigInt(id), user);
   }
 
   @Get('companies/:id/signals')
@@ -180,15 +183,15 @@ export class KycController {
 
   @Post('companies/:id/signals')
   @HttpCode(201)
-  addSig(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.kyc.addSignal(BigInt(id), body);
+  addSig(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user: UserPayload) {
+    return this.kyc.addSignal(BigInt(id), body, user.userId);
   }
 
   @Post('companies/:id/signals/fetch-news')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(200)
-  fetchNews(@Param('id') id: string) {
-    return this.kyc.fetchNewsSignals(BigInt(id));
+  fetchNews(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.fetchNewsSignals(BigInt(id), user.userId);
   }
 
   @Post('companies/:id/signals/infer-hypotheses')
@@ -205,19 +208,19 @@ export class KycController {
 
   @Post('companies/:id/open-questions')
   @HttpCode(201)
-  openAdd(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.kyc.addOpenQuestion(BigInt(id), body);
+  openAdd(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user: UserPayload) {
+    return this.kyc.addOpenQuestion(BigInt(id), body, user.userId);
   }
 
   @Patch('open-questions/:id')
-  openPatch(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.kyc.patchOpenQuestion(BigInt(id), body);
+  openPatch(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user: UserPayload) {
+    return this.kyc.patchOpenQuestion(BigInt(id), body, user.userId);
   }
 
   @Delete('open-questions/:id')
   @HttpCode(200)
-  openDel(@Param('id') id: string) {
-    return this.kyc.deleteOpenQuestion(BigInt(id));
+  openDel(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.deleteOpenQuestion(BigInt(id), user);
   }
 
   @Get('companies/:id/chat/sessions')

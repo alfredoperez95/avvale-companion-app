@@ -145,6 +145,6 @@ export class ActivationsController {
 
   @Delete(':id')
   async remove(@CurrentUser() user: UserPayload, @Param('id') id: string) {
-    await this.activationsService.remove(id, user.userId);
+    await this.activationsService.remove(id, user);
   }
 }

@@ -77,15 +77,7 @@ export class RfqAnalysisService {
 
   async create(userId: string, dto: CreateRfqAnalysisDto) {
     const kycCompanyId = BigInt(dto.kycCompanyId);
-    const kycOk = await this.prisma.kycCompany.findFirst({
-      where: { id: kycCompanyId, profile: { isNot: null } },
-      select: { id: true },
-    });
-    if (!kycOk) {
-      throw new BadRequestException(
-        'Empresa no encontrada o sin perfil KYC activo. Crea o activa el perfil en KYC y vuelve a intentarlo.',
-      );
-    }
+    await this.assertKycCompanySelectableForRfq(kycCompanyId);
     const created = await this.prisma.rfqAnalysis.create({
       data: {
         userId,
@@ -98,6 +90,18 @@ export class RfqAnalysisService {
       select: { id: true },
     });
     return created;
+  }
+
+  private async assertKycCompanySelectableForRfq(kycCompanyId: bigint): Promise<void> {
+    const kycOk = await this.prisma.kycCompany.findFirst({
+      where: { id: kycCompanyId, profile: { isNot: null } },
+      select: { id: true },
+    });
+    if (!kycOk) {
+      throw new BadRequestException(
+        'Empresa no encontrada o sin perfil KYC activo. Crea o activa el perfil en KYC y vuelve a intentarlo.',
+      );
+    }
   }
 
   async list(userId: string, query: { page?: string; pageSize?: string; kycCompanyId?: string }) {

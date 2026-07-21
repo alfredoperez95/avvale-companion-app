@@ -6,6 +6,8 @@ Este baseline aplica a todo cambio futuro en el backend NestJS de Avvale Compani
 
 - Todo endpoint debe declarar si es público con `@Public()`; el modelo por defecto es autenticado.
 - Los endpoints autenticados deben validar autorización además de autenticación: owner, rol, tenant/organización o catálogo compartido documentado.
+- Un catálogo compartido solo es aceptable si está documentado como decisión funcional explícita, indicando quién puede leer, quién puede modificar, qué datos contiene y qué evento obligaría a reabrir el modelo de autorización.
+- Los catálogos compartidos modificables deben mantener auditoría de cambios con actor, acción, entidad y metadatos minimizados; no guardar prompts, documentos completos ni textos largos en el log.
 - Todo body, query y params debe usar DTO con `class-validator` cuando acepte entrada de usuario.
 - No pasar DTOs completos a Prisma si contienen campos no editables por el usuario.
 - Todo endpoint de IA, upload, exportación o procesamiento costoso debe tener rate limit específico.
@@ -13,6 +15,7 @@ Este baseline aplica a todo cambio futuro en el backend NestJS de Avvale Compani
 - Los errores de API deben pasar por el filtro global y devolver `requestId`.
 - Las respuestas deben usar `select` o mappers cuando exista riesgo de exponer campos internos.
 - Los uploads se validan en backend con allowlist, tamaño, MIME y magic bytes.
+- El procesamiento de ficheros complejos no confiables (PDF, Office, Excel, HEIC/HEIF, EML u otros parsers nativos/pesados) debe ejecutarse fuera del proceso Nest principal, con timeout, límite de memoria y limpieza de temporales.
 - Ningún endpoint debe descargar URLs de usuario sin controles SSRF.
 - Swagger, si se añade, debe estar deshabilitado en producción o protegido.
 - Los healthchecks deben separar vida del proceso y disponibilidad de dependencias.
@@ -23,7 +26,7 @@ Este baseline aplica a todo cambio futuro en el backend NestJS de Avvale Compani
 ```text
 [ ] Autenticación definida
 [ ] Autorización definida
-[ ] Ownership/tenant verificado
+[ ] Ownership/tenant verificado o catálogo compartido documentado
 [ ] DTO de body
 [ ] DTO de query
 [ ] DTO de params
@@ -60,6 +63,8 @@ Este baseline aplica a todo cambio futuro en el backend NestJS de Avvale Compani
 [ ] Ejecutables/SVG/HTML/JS bloqueados salvo excepción aprobada
 [ ] Descarga autorizada o token público con expiración
 [ ] `X-Content-Type-Options: nosniff`
+[ ] Parsers/conversores complejos aislados en worker o cola dedicada
+[ ] Timeout, límite de memoria y truncado de salida definidos para extracción de texto
 [ ] Preparado para antivirus/estado de escaneo si el flujo lo requiere
 ```
 

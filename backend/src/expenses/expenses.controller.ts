@@ -72,6 +72,7 @@ export class ExpensesController {
   }
 
   @Post('bulk-delete')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   bulkDelete(@CurrentUser() user: UserPayload, @Body() dto: BulkDeleteExpensesDto) {
     return this.expenses.bulkDelete(user.userId, dto.ids);
   }
@@ -103,14 +104,9 @@ export class ExpensesController {
     const download = await this.expenses.getFile(user.userId, id);
     res.setHeader('Content-Type', download.mimeType || 'application/octet-stream');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Disposition', contentDisposition(download.fileName));
+    res.setHeader('Content-Disposition', attachmentDisposition(download.fileName));
     res.send(download.buffer);
   }
-}
-
-function contentDisposition(fileName: string): string {
-  const fallback = fileName.replace(/[^\w.\- ]+/g, '_').replace(/"/g, '');
-  return `inline; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
 function attachmentDisposition(fileName: string): string {

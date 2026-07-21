@@ -387,6 +387,13 @@ export async function applyProposedItems(
       log.warn((e as Error).message, up);
     }
   }
+  if (applied > 0) {
+    await recordApplyProposedAudit(prisma, companyId, userId, {
+      applied,
+      chatMessageId: chatMessageId != null ? String(chatMessageId) : null,
+      fieldPaths: items.map((item) => item.field_path).filter((fieldPath): fieldPath is string => Boolean(fieldPath)),
+    });
+  }
   return applied;
 }
 
@@ -515,6 +522,38 @@ function toJson(v: unknown): Prisma.InputJsonValue {
   }
   if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
   return JSON.parse(JSON.stringify(v, (_, x) => (typeof x === 'bigint' ? Number(x) : x))) as Prisma.InputJsonValue;
+}
+
+async function recordApplyProposedAudit(
+  prismaLike: unknown,
+  companyId: bigint,
+  userId: string | null,
+  meta: { applied: number; chatMessageId: string | null; fieldPaths: string[] },
+) {
+  const prisma = prismaLike as {
+    kycAuditLog?: { create: (args: { data: Record<string, unknown> }) => Promise<unknown> };
+    kycCompany?: { updateMany: (args: { where: { id: bigint }; data: { updatedByUserId: string | null } }) => Promise<unknown> };
+  };
+  if (!prisma.kycAuditLog?.create) return;
+  await prisma.kycAuditLog.create({
+    data: {
+      companyId,
+      actorUserId: userId?.trim() || null,
+      action: 'chat.applyProposal',
+      entity: 'kycProfile',
+      entityId: String(companyId),
+      meta: {
+        ...meta,
+        fieldPaths: meta.fieldPaths.slice(0, 100),
+      },
+    },
+  });
+  if (userId?.trim()) {
+    await prisma.kycCompany?.updateMany({
+      where: { id: companyId },
+      data: { updatedByUserId: userId.trim() },
+    });
+  }
 }
 
 export function isValidRelType(s: string): s is KycOrgRelationType {

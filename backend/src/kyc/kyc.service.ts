@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -12,6 +13,7 @@ import { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
+import { UserPayload } from '../auth/decorators/user-payload';
 import { getKycChatModel, getKycReportTranslateModel, getKycSummaryModel } from './kyc.config';
 import { normalizeKycCompanyIndustry, KYC_COMPANY_INDUSTRY_SET } from './kyc-industry.util';
 import { normalizeTechStack } from './kyc-tech-stack-normalize.util';
@@ -60,6 +62,17 @@ import {
   truncateEnvelopeIfNeeded,
   type KycFullCompanyApi,
 } from './kyc-report-translate.util';
+
+type KycAuditEntry = {
+  companyId?: bigint | null;
+  actorUserId?: string | null;
+  action: string;
+  entity: string;
+  entityId?: string | number | bigint | null;
+  before?: unknown;
+  after?: unknown;
+  meta?: Record<string, unknown>;
+};
 
 /** JSON del modelo o texto plano (compatibilidad con respuestas antiguas). */
 function parseExecutiveSynthesisResponse(raw: string): {
@@ -537,6 +550,7 @@ export class KycService {
    */
   async ingestLinkedInOrgProfile(
     dto: KycLinkedInProfileDto,
+    actorUserId?: string | null,
   ): Promise<{ orgMemberId: number; contactId: number | null }> {
     const companyId = BigInt(dto.clientId);
     const company = await this.prisma.kycCompany.findUnique({
@@ -618,7 +632,7 @@ export class KycService {
       notes: notesBlob,
       contact_id: Number(contact.id),
       source: 'linkedin',
-    });
+    }, actorUserId ?? null);
 
     return { orgMemberId: member.id, contactId: Number(contact.id) };
   }
@@ -641,6 +655,7 @@ export class KycService {
     },
     createdByUserId?: string | null,
   ) {
+    const actorUserId = createdByUserId?.trim() || null;
     if (body.company_id != null) {
       const companyId = BigInt(body.company_id);
       const exists = await this.prisma.kycCompany.findUnique({ where: { id: companyId } });
@@ -661,6 +676,14 @@ export class KycService {
           signalIntel: {},
         },
         update: { strategic: body.strategic ?? undefined },
+      });
+      await this.recordKycAudit(this.prisma, {
+        companyId,
+        actorUserId,
+        action: 'profile.activate',
+        entity: 'kycProfile',
+        entityId: companyId,
+        meta: { mode: 'existing_company' },
       });
       return { id: Number(companyId), ok: true };
     }
@@ -692,8 +715,17 @@ export class KycService {
       setStr(body.tech_stack, 'techStack');
       setStr(body.notes, 'notes');
       setStr(body.source, 'source');
+      if (actorUserId) data.updatedByUserId = actorUserId;
       if (Object.keys(data).length) {
         await this.prisma.kycCompany.update({ where: { id: coId }, data });
+        await this.recordKycAudit(this.prisma, {
+          companyId: coId,
+          actorUserId,
+          action: 'company.update',
+          entity: 'kycCompany',
+          entityId: coId,
+          meta: { reason: 'create_deduplicated_by_name', fields: Object.keys(data) },
+        });
       }
     } else {
       const c = await this.prisma.kycCompany.create({
@@ -709,10 +741,19 @@ export class KycService {
           techStack: body.tech_stack ?? null,
           notes: body.notes ?? null,
           source: body.source ?? 'kyc',
-          createdByUserId: createdByUserId?.trim() || null,
+          createdByUserId: actorUserId,
+          updatedByUserId: actorUserId,
         },
       });
       coId = c.id;
+      await this.recordKycAudit(this.prisma, {
+        companyId: coId,
+        actorUserId,
+        action: 'company.create',
+        entity: 'kycCompany',
+        entityId: coId,
+        after: { name, source: c.source },
+      });
     }
     await this.prisma.kycProfile.upsert({
       where: { companyId: coId },
@@ -731,9 +772,17 @@ export class KycService {
       },
       update: { strategic: body.strategic ?? undefined },
     });
+    await this.recordKycAudit(this.prisma, {
+      companyId: coId,
+      actorUserId,
+      action: 'profile.activate',
+      entity: 'kycProfile',
+      entityId: coId,
+      meta: { strategic: body.strategic ?? false },
+    });
 
     try {
-      await this.fetchNewsSignals(coId);
+      await this.fetchNewsSignals(coId, actorUserId);
     } catch (e) {
       this.log.warn('createCompany fetchNewsSignals', (e as Error).message);
     }
@@ -741,11 +790,27 @@ export class KycService {
     return { id: Number(coId), ok: true };
   }
 
-  async bulkDeleteCompanyProfiles(ids: number[]) {
+  async bulkDeleteCompanyProfiles(ids: number[], actor: UserPayload) {
     const b = ids.map((i) => BigInt(i)).filter((x) => x > 0n);
     if (!b.length) throw new BadRequestException('ids array required');
+    for (const companyId of b) {
+      await this.assertCanDeleteKycCompany(actor, companyId);
+    }
     await this.prisma.$transaction(async (tx) => {
       for (const companyId of b) {
+        const company = await tx.kycCompany.findUnique({
+          where: { id: companyId },
+          select: { id: true, name: true, createdByUserId: true },
+        });
+        await this.recordKycAudit(tx, {
+          companyId,
+          actorUserId: actor.userId,
+          action: 'company.delete',
+          entity: 'kycCompany',
+          entityId: companyId,
+          before: company,
+          meta: { deletedCompanyId: String(companyId), bulk: true },
+        });
         await tx.kycFact.deleteMany({ where: { companyId } });
         await tx.kycOpenQuestion.deleteMany({ where: { companyId } });
         await tx.kycChatSession.deleteMany({ where: { companyId } });
@@ -753,12 +818,13 @@ export class KycService {
         await tx.kycOrgMember.deleteMany({ where: { companyId } });
         await tx.kycSignal.deleteMany({ where: { companyId } });
         await tx.kycProfile.deleteMany({ where: { companyId } });
+        await tx.kycCompany.delete({ where: { id: companyId } });
       }
     });
     return { deleted: b.length };
   }
 
-  async importCompanies(rows: Record<string, string>[]) {
+  async importCompanies(rows: Record<string, string>[], actorUserId?: string | null) {
     if (!Array.isArray(rows) || !rows.length) {
       throw new BadRequestException('companies array required');
     }
@@ -795,10 +861,19 @@ export class KycService {
               revenue: row.revenue || null,
               employees: row.employees || null,
               source: 'kyc-import',
+              updatedByUserId: actorUserId?.trim() || null,
             },
           });
           coId = c.id;
           result.imported += 1;
+          await this.recordKycAudit(this.prisma, {
+            companyId: coId,
+            actorUserId,
+            action: 'company.import',
+            entity: 'kycCompany',
+            entityId: coId,
+            after: { name, source: 'kyc-import' },
+          });
         }
         const had = await this.prisma.kycProfile.findUnique({ where: { companyId: coId } });
         if (!had) {
@@ -817,6 +892,14 @@ export class KycService {
             },
           });
           result.activated += 1;
+          await this.recordKycAudit(this.prisma, {
+            companyId: coId,
+            actorUserId,
+            action: 'profile.activate',
+            entity: 'kycProfile',
+            entityId: coId,
+            meta: { source: 'kyc-import' },
+          });
         }
       } catch (e) {
         result.errors.push({ name, error: (e as Error).message });
@@ -867,7 +950,7 @@ export class KycService {
     return data;
   }
 
-  async patchCompany(companyId: bigint, body: Record<string, unknown>) {
+  async patchCompany(companyId: bigint, body: Record<string, unknown>, actorUserId?: string | null) {
     const exists = await this.prisma.kycCompany.findUnique({ where: { id: companyId } });
     if (!exists) throw new NotFoundException('Company not found');
     const data: Prisma.KycCompanyUpdateInput = {};
@@ -895,7 +978,18 @@ export class KycService {
     setStr('source', 'source');
     setStr('notes', 'notes');
     if (Object.keys(data).length === 0) throw new BadRequestException('No fields');
+    if (actorUserId?.trim()) data.updatedByUserId = actorUserId.trim();
     const u = await this.prisma.kycCompany.update({ where: { id: companyId }, data });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId,
+      action: 'company.update',
+      entity: 'kycCompany',
+      entityId: companyId,
+      before: companyAuditSnapshot(exists),
+      after: companyAuditSnapshot(u),
+      meta: { fields: Object.keys(data) },
+    });
     return companyToApi(u);
   }
 
@@ -907,20 +1001,46 @@ export class KycService {
     }
   }
 
-  async deleteKycDataForCompany(companyId: bigint) {
-    const r = await this.prisma.kycProfile.findUnique({ where: { companyId } });
-    if (!r) throw new NotFoundException('Not in KYC');
-    await this.prisma.kycFact.deleteMany({ where: { companyId } });
-    await this.prisma.kycOpenQuestion.deleteMany({ where: { companyId } });
-    await this.prisma.kycChatSession.deleteMany({ where: { companyId } });
-    await this.prisma.kycOrgRelationship.deleteMany({ where: { companyId } });
-    await this.prisma.kycOrgMember.deleteMany({ where: { companyId } });
-    await this.prisma.kycSignal.deleteMany({ where: { companyId } });
-    await this.prisma.kycProfile.delete({ where: { companyId } });
+  async deleteKycDataForCompany(companyId: bigint, actor: UserPayload) {
+    await this.assertCanDeleteKycCompany(actor, companyId);
+    await this.prisma.$transaction(async (tx) => {
+      const company = await tx.kycCompany.findUnique({
+        where: { id: companyId },
+        select: { id: true, name: true, createdByUserId: true },
+      });
+      await this.recordKycAudit(tx, {
+        companyId,
+        actorUserId: actor.userId,
+        action: 'company.delete',
+        entity: 'kycCompany',
+        entityId: companyId,
+        before: company,
+        meta: { deletedCompanyId: String(companyId), bulk: false },
+      });
+      await tx.kycFact.deleteMany({ where: { companyId } });
+      await tx.kycOpenQuestion.deleteMany({ where: { companyId } });
+      await tx.kycChatSession.deleteMany({ where: { companyId } });
+      await tx.kycOrgRelationship.deleteMany({ where: { companyId } });
+      await tx.kycOrgMember.deleteMany({ where: { companyId } });
+      await tx.kycSignal.deleteMany({ where: { companyId } });
+      await tx.kycProfile.deleteMany({ where: { companyId } });
+      await tx.kycCompany.delete({ where: { id: companyId } });
+    });
     return { ok: true };
   }
 
-  async ensureActivate(companyId: bigint) {
+  private async assertCanDeleteKycCompany(actor: UserPayload, companyId: bigint): Promise<void> {
+    const company = await this.prisma.kycCompany.findUnique({
+      where: { id: companyId },
+      select: { id: true, createdByUserId: true },
+    });
+    if (!company) throw new NotFoundException('Company not found');
+    if (actor.role === 'ADMIN') return;
+    if (company.createdByUserId && company.createdByUserId === actor.userId) return;
+    throw new ForbiddenException('Solo un administrador o el usuario que creó la empresa puede borrar datos KYC');
+  }
+
+  async ensureActivate(companyId: bigint, actorUserId?: string | null) {
     const co = await this.prisma.kycCompany.findUnique({ where: { id: companyId } });
     if (!co) throw new NotFoundException('Company not found');
     await this.prisma.kycProfile.upsert({
@@ -939,12 +1059,20 @@ export class KycService {
       },
       update: {},
     });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId,
+      action: 'profile.activate',
+      entity: 'kycProfile',
+      entityId: companyId,
+    });
     return { ok: true, company_id: Number(companyId) };
   }
 
   async patchProfile(
     companyId: bigint,
     body: Record<string, unknown>,
+    actorUserId?: string | null,
     opts?: { avvaleProjectsExplicit?: boolean },
   ) {
     const exists = await this.prisma.kycCompany.findUnique({ where: { id: companyId } });
@@ -1009,7 +1137,18 @@ export class KycService {
     if (body.strategic !== undefined) data.strategic = Boolean(body.strategic);
     if (body.confidence_score !== undefined) data.confidenceScore = Number(body.confidence_score);
     if (Object.keys(data).length === 0) throw new BadRequestException('No fields');
+    const before = await this.prisma.kycProfile.findUnique({ where: { companyId } });
     const updated = await this.prisma.kycProfile.update({ where: { companyId }, data });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId,
+      action: 'profile.update',
+      entity: 'kycProfile',
+      entityId: companyId,
+      before: profileAuditSnapshot(before),
+      after: profileAuditSnapshot(updated),
+      meta: { fields: Object.keys(data) },
+    });
     return profileToApi(updated);
   }
 
@@ -1055,7 +1194,7 @@ export class KycService {
       warning?: string;
     } = { ok: true };
     try {
-      const n = await this.fetchNewsSignals(companyId);
+      const n = await this.fetchNewsSignals(companyId, userId);
       out.news = { created: Number(n?.created ?? 0), total: Number(n?.total ?? 0) };
     } catch (e) {
       out.ok = false;
@@ -1073,6 +1212,14 @@ export class KycService {
         await this.prisma.kycProfile.update({
           where: { companyId },
           data: { techStack: normalized as unknown as Prisma.InputJsonValue },
+        });
+        await this.recordKycAudit(this.prisma, {
+          companyId,
+          actorUserId: userId,
+          action: 'profile.update',
+          entity: 'kycProfile',
+          entityId: companyId,
+          meta: { source: 'enrich.normalizeTechStack', fields: ['techStack'] },
         });
       }
     } catch (e) {
@@ -1110,7 +1257,7 @@ export class KycService {
     return { members: members.map(orgMemberToApi), relationships: rels.map(orgRelToApi) };
   }
 
-  async addOrgMember(companyId: bigint, body: Record<string, unknown>) {
+  async addOrgMember(companyId: bigint, body: Record<string, unknown>, actorUserId?: string | null) {
     if (!body.name) throw new BadRequestException('name required');
     const m = await this.prisma.kycOrgMember.create({
       data: {
@@ -1126,10 +1273,20 @@ export class KycService {
         source: (body.source as string) || 'manual',
       },
     });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId,
+      action: 'org.member.create',
+      entity: 'kycOrgMember',
+      entityId: m.id,
+      after: orgMemberAuditSnapshot(m),
+    });
     return orgMemberToApi(m);
   }
 
-  async patchMember(memberId: bigint, body: Record<string, unknown>) {
+  async patchMember(memberId: bigint, body: Record<string, unknown>, actorUserId?: string | null) {
+    const before = await this.prisma.kycOrgMember.findUnique({ where: { id: memberId } });
+    if (!before) throw new NotFoundException('Not found');
     const d: Prisma.KycOrgMemberUpdateInput = {};
     for (const k of ['name', 'role', 'area', 'level', 'linkedin', 'notes'] as const) {
       if (body[k] !== undefined) (d as Record<string, unknown>)[k] = body[k];
@@ -1148,16 +1305,39 @@ export class KycService {
     }
     if (Object.keys(d).length === 0) throw new BadRequestException('No fields');
     const m = await this.prisma.kycOrgMember.update({ where: { id: memberId }, data: d });
+    await this.recordKycAudit(this.prisma, {
+      companyId: m.companyId,
+      actorUserId,
+      action: 'org.member.update',
+      entity: 'kycOrgMember',
+      entityId: memberId,
+      before: orgMemberAuditSnapshot(before),
+      after: orgMemberAuditSnapshot(m),
+      meta: { fields: Object.keys(d) },
+    });
     return orgMemberToApi(m);
   }
 
-  async deleteMember(memberId: bigint) {
-    const r = await this.prisma.kycOrgMember.delete({ where: { id: memberId } });
-    if (!r) throw new NotFoundException('Not found');
+  async deleteMember(memberId: bigint, actor: UserPayload) {
+    const member = await this.prisma.kycOrgMember.findUnique({
+      where: { id: memberId },
+      select: { companyId: true },
+    });
+    if (!member) throw new NotFoundException('Not found');
+    await this.assertCanDeleteKycCompany(actor, member.companyId);
+    await this.recordKycAudit(this.prisma, {
+      companyId: member.companyId,
+      actorUserId: actor.userId,
+      action: 'org.member.delete',
+      entity: 'kycOrgMember',
+      entityId: memberId,
+      meta: { deletedMemberId: String(memberId) },
+    });
+    await this.prisma.kycOrgMember.delete({ where: { id: memberId } });
     return { ok: true };
   }
 
-  async addRelationship(companyId: bigint, body: Record<string, unknown>) {
+  async addRelationship(companyId: bigint, body: Record<string, unknown>, actorUserId?: string | null) {
     if (!body.from_member_id || !body.to_member_id || !body.type) {
       throw new BadRequestException('from_member_id, to_member_id, type required');
     }
@@ -1173,10 +1353,32 @@ export class KycService {
         notes: (body.notes as string) || null,
       },
     });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId,
+      action: 'org.relationship.create',
+      entity: 'kycOrgRelationship',
+      entityId: r.id,
+      after: { fromMemberId: r.fromMemberId, toMemberId: r.toMemberId, type: r.type },
+    });
     return orgRelToApi(r);
   }
 
-  async deleteRel(relId: bigint) {
+  async deleteRel(relId: bigint, actor: UserPayload) {
+    const relationship = await this.prisma.kycOrgRelationship.findUnique({
+      where: { id: relId },
+      select: { companyId: true },
+    });
+    if (!relationship) throw new NotFoundException('Not found');
+    await this.assertCanDeleteKycCompany(actor, relationship.companyId);
+    await this.recordKycAudit(this.prisma, {
+      companyId: relationship.companyId,
+      actorUserId: actor.userId,
+      action: 'org.relationship.delete',
+      entity: 'kycOrgRelationship',
+      entityId: relId,
+      meta: { deletedRelationshipId: String(relId) },
+    });
     await this.prisma.kycOrgRelationship.delete({ where: { id: relId } });
     return { ok: true };
   }
@@ -1190,7 +1392,7 @@ export class KycService {
     return rows.map(signalToApi);
   }
 
-  async addSignal(companyId: bigint, body: Record<string, unknown>) {
+  async addSignal(companyId: bigint, body: Record<string, unknown>, actorUserId?: string | null) {
     const s = await this.prisma.kycSignal.create({
       data: {
         companyId,
@@ -1204,10 +1406,18 @@ export class KycService {
         publishedAt: body.published_at ? new Date(String(body.published_at)) : null,
       },
     });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId,
+      action: 'signal.create',
+      entity: 'kycSignal',
+      entityId: s.id,
+      after: signalAuditSnapshot(s),
+    });
     return signalToApi(s);
   }
 
-  async fetchNewsSignals(companyId: bigint) {
+  async fetchNewsSignals(companyId: bigint, actorUserId?: string | null) {
     const co = await this.prisma.kycCompany.findUnique({ where: { id: companyId } });
     if (!co) throw new NotFoundException('Company not found');
     const q = encodeURIComponent(String(co.name || '').trim());
@@ -1268,6 +1478,15 @@ export class KycService {
       where: { companyId },
       data: { lastEnrichedAt: new Date() },
     });
+    if (created > 0) {
+      await this.recordKycAudit(this.prisma, {
+        companyId,
+        actorUserId,
+        action: 'signal.fetchNews',
+        entity: 'kycSignal',
+        meta: { source: 'google_news', created, total: items.length },
+      });
+    }
 
     return { ok: true, created, total: items.length, url };
   }
@@ -1283,7 +1502,7 @@ export class KycService {
       .then((r) => r.map(openQToApi));
   }
 
-  async addOpenQuestion(companyId: bigint, body: Record<string, unknown>) {
+  async addOpenQuestion(companyId: bigint, body: Record<string, unknown>, actorUserId?: string | null) {
     if (!body.question) throw new BadRequestException('question required');
     const qText = String(body.question).trim();
     const dedupe = normalizeOpenQuestionDedupeKey(qText);
@@ -1306,10 +1525,18 @@ export class KycService {
         source: (body.source as string) || 'manual',
       },
     });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId,
+      action: 'openQuestion.create',
+      entity: 'kycOpenQuestion',
+      entityId: r.id,
+      after: openQuestionAuditSnapshot(r),
+    });
     return openQToApi(r);
   }
 
-  async patchOpenQuestion(oid: bigint, body: Record<string, unknown>) {
+  async patchOpenQuestion(oid: bigint, body: Record<string, unknown>, actorUserId?: string | null) {
     const existing = await this.prisma.kycOpenQuestion.findUnique({ where: { id: oid } });
     if (!existing) throw new NotFoundException('Open question not found');
     const d: Prisma.KycOpenQuestionUpdateInput = {};
@@ -1327,6 +1554,16 @@ export class KycService {
     }
     if (Object.keys(d).length === 0) throw new BadRequestException('No fields');
     const u = await this.prisma.kycOpenQuestion.update({ where: { id: oid }, data: d });
+    await this.recordKycAudit(this.prisma, {
+      companyId: existing.companyId,
+      actorUserId,
+      action: 'openQuestion.update',
+      entity: 'kycOpenQuestion',
+      entityId: oid,
+      before: openQuestionAuditSnapshot(existing),
+      after: openQuestionAuditSnapshot(u),
+      meta: { fields: Object.keys(d) },
+    });
 
     const resolved = u.status === 'resolved';
     const applyToProfile = body.apply_to_profile === true || body.apply_to_profile === 'true';
@@ -1349,7 +1586,7 @@ export class KycService {
         if (fp) {
           const val = body.apply_value !== undefined ? body.apply_value : ans;
           try {
-            await applyProposedItems(this.prisma, existing.companyId, null, [
+            await applyProposedItems(this.prisma, existing.companyId, actorUserId ?? null, [
               { field_path: fp, value: val as unknown, source: 'manual_resolve' },
             ]);
           } catch (e) {
@@ -1362,7 +1599,21 @@ export class KycService {
     return openQToApi(u);
   }
 
-  async deleteOpenQuestion(oid: bigint) {
+  async deleteOpenQuestion(oid: bigint, actor: UserPayload) {
+    const existing = await this.prisma.kycOpenQuestion.findUnique({
+      where: { id: oid },
+      select: { companyId: true },
+    });
+    if (!existing) throw new NotFoundException('Open question not found');
+    await this.assertCanDeleteKycCompany(actor, existing.companyId);
+    await this.recordKycAudit(this.prisma, {
+      companyId: existing.companyId,
+      actorUserId: actor.userId,
+      action: 'openQuestion.delete',
+      entity: 'kycOpenQuestion',
+      entityId: oid,
+      meta: { deletedOpenQuestionId: String(oid) },
+    });
     await this.prisma.kycOpenQuestion.delete({ where: { id: oid } });
     return { ok: true };
   }
@@ -1608,12 +1859,28 @@ Reglas:
     if (!curRev && parsed.revenue) companyPatch.revenue = parsed.revenue;
     if (!curEmp && parsed.employees) companyPatch.employees = parsed.employees;
     if (Object.keys(companyPatch).length > 0) {
-      await this.prisma.kycCompany.update({ where: { id: companyId }, data: companyPatch });
+      await this.prisma.kycCompany.update({
+        where: { id: companyId },
+        data: { ...companyPatch, updatedByUserId: userId },
+      });
     }
 
     await this.prisma.kycProfile.update({
       where: { companyId },
       data: { lastEnrichedAt: new Date() },
+    });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId: userId,
+      action: 'ai.summary',
+      entity: 'kycProfile',
+      entityId: companyId,
+      meta: {
+        modelId,
+        revenueFilled: Boolean(companyPatch.revenue),
+        employeesFilled: Boolean(companyPatch.employees),
+        summaryLength: parsed.summary.length,
+      },
     });
 
     return {
@@ -1879,6 +2146,14 @@ Reglas de fusión con el perfil guardado:
       where: { companyId },
       data: { avvale: nextAv, lastEnrichedAt: new Date() },
     });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId: userId,
+      action: 'ai.avvaleSynthesis',
+      entity: 'kycProfile',
+      entityId: companyId,
+      meta: { fields: ['avvale', 'lastEnrichedAt'] },
+    });
     return { ok: true, updated: true };
   }
 
@@ -1972,6 +2247,14 @@ Entre 1 y 8 elementos en "hypotheses". No dupliques títulos casi idénticos.`;
       where: { companyId },
       data: { signalIntel: nextIntel, lastEnrichedAt: new Date() },
     });
+    await this.recordKycAudit(this.prisma, {
+      companyId,
+      actorUserId: userId,
+      action: 'ai.signalHypotheses',
+      entity: 'kycProfile',
+      entityId: companyId,
+      meta: { count: parsed.hypotheses.length, fields: ['signalIntel', 'lastEnrichedAt'] },
+    });
     return { ok: true, updated: true, count: parsed.hypotheses.length };
   }
 
@@ -2059,6 +2342,137 @@ Entre 1 y 8 elementos en "hypotheses". No dupliques títulos casi idénticos.`;
     sse('done', { exit_code: 0, updates_applied: applied });
     res.end();
   }
+
+  private async recordKycAudit(prismaLike: unknown, entry: KycAuditEntry): Promise<void> {
+    const writer = prismaLike as {
+      kycAuditLog?: {
+        create: (args: { data: Record<string, unknown> }) => Promise<unknown>;
+      };
+      kycCompany?: {
+        updateMany: (args: { where: { id: bigint }; data: { updatedByUserId: string | null } }) => Promise<unknown>;
+      };
+    };
+    if (!writer.kycAuditLog?.create) return;
+    const actorUserId = entry.actorUserId?.trim() || null;
+    const data: Record<string, unknown> = {
+      companyId: entry.companyId ?? null,
+      actorUserId,
+      action: entry.action,
+      entity: entry.entity,
+      entityId: entry.entityId == null ? null : String(entry.entityId),
+    };
+    if (entry.before !== undefined) data.before = toAuditJson(entry.before);
+    if (entry.after !== undefined) data.after = toAuditJson(entry.after);
+    if (entry.meta !== undefined) data.meta = toAuditJson(entry.meta);
+    await writer.kycAuditLog.create({ data });
+    if (entry.companyId && actorUserId && entry.action !== 'company.delete') {
+      await writer.kycCompany?.updateMany({
+        where: { id: entry.companyId },
+        data: { updatedByUserId: actorUserId },
+      });
+    }
+  }
+}
+
+function companyAuditSnapshot(company: unknown): Record<string, unknown> | null {
+  if (!company || typeof company !== 'object') return null;
+  const c = company as Record<string, unknown>;
+  return {
+    id: c.id,
+    name: c.name,
+    sector: c.sector,
+    industry: c.industry,
+    city: c.city,
+    website: c.website,
+    source: c.source,
+    createdByUserId: c.createdByUserId,
+    updatedByUserId: c.updatedByUserId,
+  };
+}
+
+function profileAuditSnapshot(profile: unknown): Record<string, unknown> | null {
+  if (!profile || typeof profile !== 'object') return null;
+  const p = profile as Record<string, unknown>;
+  return {
+    companyId: p.companyId,
+    strategic: p.strategic,
+    confidenceScore: p.confidenceScore,
+    summaryLength: typeof p.summary === 'string' ? p.summary.length : 0,
+    blocks: {
+      economics: jsonShape(p.economics),
+      businessModel: jsonShape(p.businessModel),
+      customers: jsonShape(p.customers),
+      techStack: jsonShape(p.techStack),
+      criticalProcesses: jsonShape(p.criticalProcesses),
+      sectorContext: jsonShape(p.sectorContext),
+      competencia: jsonShape(p.competencia),
+      avvale: jsonShape(p.avvale),
+      signalIntel: jsonShape(p.signalIntel),
+    },
+  };
+}
+
+function orgMemberAuditSnapshot(member: unknown): Record<string, unknown> | null {
+  if (!member || typeof member !== 'object') return null;
+  const m = member as Record<string, unknown>;
+  return {
+    id: m.id,
+    companyId: m.companyId,
+    name: m.name,
+    role: m.role,
+    area: m.area,
+    level: m.level,
+    reportsToId: m.reportsToId,
+    source: m.source,
+  };
+}
+
+function signalAuditSnapshot(signal: unknown): Record<string, unknown> | null {
+  if (!signal || typeof signal !== 'object') return null;
+  const s = signal as Record<string, unknown>;
+  return {
+    id: s.id,
+    companyId: s.companyId,
+    source: s.source,
+    signalType: s.signalType,
+    sentiment: s.sentiment,
+    titleLength: typeof s.title === 'string' ? s.title.length : 0,
+    textLength: typeof s.text === 'string' ? s.text.length : 0,
+  };
+}
+
+function openQuestionAuditSnapshot(question: unknown): Record<string, unknown> | null {
+  if (!question || typeof question !== 'object') return null;
+  const q = question as Record<string, unknown>;
+  return {
+    id: q.id,
+    companyId: q.companyId,
+    topic: q.topic,
+    priority: q.priority,
+    status: q.status,
+    questionLength: typeof q.question === 'string' ? q.question.length : 0,
+    answerLength: typeof q.answer === 'string' ? q.answer.length : 0,
+  };
+}
+
+function jsonShape(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object') return { type: typeof value };
+  if (Array.isArray(value)) return { type: 'array', length: value.length };
+  return { type: 'object', keys: Object.keys(value as Record<string, unknown>).slice(0, 30) };
+}
+
+function toAuditJson(value: unknown): Prisma.InputJsonValue {
+  const normalized = JSON.parse(
+    JSON.stringify(value, (_key, v) => {
+      if (typeof v === 'bigint') return v.toString();
+      if (v instanceof Prisma.Decimal) return v.toString();
+      if (v instanceof Date) return v.toISOString();
+      if (typeof v === 'string') return v.length > 1000 ? `${v.slice(0, 1000)}…(truncado)` : v;
+      return v;
+    }),
+  ) as unknown;
+  if (normalized === undefined) return null as unknown as Prisma.InputJsonValue;
+  return normalized as Prisma.InputJsonValue;
 }
 
 function parseRssItems(xml: string): { title: string; link: string; pubDate: string; description: string }[] {

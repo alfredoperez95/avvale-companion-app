@@ -297,7 +297,8 @@ function buildCsv(expenses: Expense[], receipts: ExportReceipt[], expiresAt: Dat
 }
 
 function csvCell(value: string): string {
-  const escaped = value.replace(/"/g, '""');
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  const escaped = safe.replace(/"/g, '""');
   return /[;"\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
 }
 

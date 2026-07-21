@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
+import { createHash } from 'crypto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { UserPayload } from '../../auth/decorators/user-payload';
@@ -24,8 +25,8 @@ type AnalyzeOfferResponse = {
   fileName: string;
   cleanTitleFromFilename: string;
   extractedTextLength: number;
-  /** Prompt completo enviado a Claude (incluye texto extraído del PDF). */
-  promptPreview: string;
+  /** Huella del prompt enviado, sin exponer texto extraído del PDF. */
+  promptHash: string;
   result: unknown;
   rawClaudeJson: string;
   modelUsed: string;
@@ -76,6 +77,7 @@ export class ApproveSealFillerController {
         cleanTitleFromFilename,
         extractedText,
       });
+      const promptHash = createHash('sha256').update(prompt).digest('hex');
       log.push('Prompt created');
 
       const apiKey = await this.creds.getApiKeyPlainOrThrow(user.userId);
@@ -102,7 +104,7 @@ export class ApproveSealFillerController {
         fileName,
         cleanTitleFromFilename,
         extractedTextLength: extractedText.length,
-        promptPreview: prompt,
+        promptHash,
         result: normalized,
         rawClaudeJson: recoveredJson,
         modelUsed: modelId,

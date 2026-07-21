@@ -27,11 +27,14 @@ export class ActivationSendProcessor extends WorkerHost {
 
     const activation = await this.prisma.activation.findUnique({
       where: { id: activationId },
-      select: { processingStartedAt: true, status: true },
+      select: { createdByUserId: true, processingStartedAt: true, status: true },
     });
 
     if (!activation) {
       throw new UnrecoverableError(`Activación ${activationId} no existe`);
+    }
+    if (activation.createdByUserId !== userId) {
+      throw new UnrecoverableError('userId no coincide con la activación');
     }
 
     const updateProcessing: Prisma.ActivationUpdateInput = {

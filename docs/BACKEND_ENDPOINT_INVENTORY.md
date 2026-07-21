@@ -2,6 +2,8 @@
 
 Fecha: 2026-07-18
 
+Actualizado: 2026-07-21 (auth fail-closed, hardening de adjuntos, límites destructivos y permisos KYC/Activations).
+
 Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el frontend reescribe `/api/*` hacia estas rutas.
 
 ## Resumen de arquitectura
@@ -83,7 +85,7 @@ Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el fronten
 | GET | `/activations/:id` | `ActivationsController` | JWT | Propietario; `ADMIN` ve todo | Param `id` | Global | Datos sensibles, posible IDOR |
 | POST | `/activations/:id/send` | `ActivationsController` | JWT | Propietario | Param `id` | Global | Integración externa Make/SMTP, abuso de recursos |
 | PATCH | `/activations/:id` | `ActivationsController` | JWT | Propietario | `UpdateActivationDto`; param `id` | Global | Modificación de datos, posible IDOR |
-| DELETE | `/activations/:id` | `ActivationsController` | JWT | Propietario | Param `id` | Global | Eliminación de datos |
+| DELETE | `/activations/:id` | `ActivationsController` | JWT | Propietario o `ADMIN` | Param `id` | Global | Eliminación de datos; admin puede borrar activaciones ajenas |
 | GET | `/areas` | `AreasController` | JWT | Usuario; detalles admin restringidos por servicio | Query `admin`, `withSubareas` sin DTO | Global | Datos internos |
 | POST | `/areas` | `AreasController` | JWT + Admin | `ADMIN` | `CreateAreaDto` | Global | Operación administrativa, modificación |
 | GET | `/areas/subareas/:subAreaId/contacts` | `AreasController` | JWT + Admin | `ADMIN` | Param `subAreaId` | Global | Operación administrativa, datos personales |
@@ -142,45 +144,45 @@ Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el fronten
 | POST | `/meddpicc/deals/:id/convai/import-from-elevenlabs` | `MeddpiccController` | JWT | Propietario/admin | `FetchElevenlabsConversationDto` | Global | Integración externa, abuso |
 | POST | `/webhooks/elevenlabs/meddpicc` | `MeddpiccConvaiWebhookController` | Pública + firma | Firma ElevenLabs | Body webhook | 120/min | Público, webhook, integración externa |
 | GET | `/kyc/clients?q=` | `KycController` | JWT | Usuario autenticado | Query `q` sin DTO | Global | Datos compartidos KYC |
-| POST | `/kyc/linkedin-profile` | `KycController` | JWT | Usuario autenticado | `KycLinkedInProfileDto` | Global | Modificación, extensión Chrome |
+| POST | `/kyc/linkedin-profile` | `KycController` | JWT | Usuario autenticado | `KycLinkedInProfileDto` | Global | Modificación auditada, extensión Chrome |
 | GET | `/kyc/companies` | `KycController` | JWT | Usuario autenticado | Query `q`, `strategic`, `all`, `industry` sin DTO | Global | Datos compartidos, abuso de recursos |
-| POST | `/kyc/companies` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación, validación débil |
-| POST | `/kyc/companies/bulk-delete` | `KycController` | JWT | Usuario autenticado | Inline `{ ids: number[] }` | Global | Eliminación masiva, catálogo compartido |
-| POST | `/kyc/companies/import` | `KycController` | JWT | Usuario autenticado | Inline `{ companies: Record<string,string>[] }` | Global | Modificación masiva, abuso |
+| POST | `/kyc/companies` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación auditada, validación débil |
+| POST | `/kyc/companies/bulk-delete` | `KycController` | JWT | `ADMIN` o creador por empresa; legacy solo `ADMIN` | `BulkDeleteKycCompaniesDto` | 10/min | Eliminación masiva auditada de empresas KYC y datos asociados |
+| POST | `/kyc/companies/import` | `KycController` | JWT + Admin | `ADMIN` | `ImportKycCompaniesDto` | 5/min | Modificación masiva auditada de catálogo corporativo |
 | GET | `/kyc/companies/:id` | `KycController` | JWT | Usuario autenticado | Param `id` sin DTO | Global | Datos compartidos |
-| PATCH | `/kyc/companies/:id` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación, validación débil |
-| DELETE | `/kyc/companies/:id` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Eliminación, catálogo compartido |
-| POST | `/kyc/companies/:id/activate` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Modificación |
-| PATCH | `/kyc/companies/:id/profile` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` + header | Global | Modificación, validación débil |
-| POST | `/kyc/companies/:id/profile/synthesize-summary` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | IA, abuso de recursos |
+| PATCH | `/kyc/companies/:id` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación auditada, validación débil |
+| DELETE | `/kyc/companies/:id` | `KycController` | JWT | `ADMIN` o creador; legacy solo `ADMIN` | Param `id` | Global | Eliminación auditada de empresa KYC y datos asociados |
+| POST | `/kyc/companies/:id/activate` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Modificación auditada |
+| PATCH | `/kyc/companies/:id/profile` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` + header | Global | Modificación auditada, validación débil |
+| POST | `/kyc/companies/:id/profile/synthesize-summary` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | IA auditada, abuso de recursos |
 | POST | `/kyc/companies/:id/report-translate-en` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | IA, abuso de recursos |
 | GET | `/kyc/companies/:id/timeline` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Datos compartidos |
-| POST | `/kyc/companies/:id/enrich` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | IA, integración externa |
+| POST | `/kyc/companies/:id/enrich` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | IA auditada, integración externa |
 | GET | `/kyc/companies/:id/org` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Datos personales compartidos |
-| POST | `/kyc/companies/:id/org/members` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación, validación débil |
-| PATCH | `/kyc/org/members/:id` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación, validación débil |
-| DELETE | `/kyc/org/members/:id` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Eliminación |
-| POST | `/kyc/companies/:id/org/relationships` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación |
-| DELETE | `/kyc/org/relationships/:id` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Eliminación |
+| POST | `/kyc/companies/:id/org/members` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación auditada, validación débil |
+| PATCH | `/kyc/org/members/:id` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación auditada, validación débil |
+| DELETE | `/kyc/org/members/:id` | `KycController` | JWT | `ADMIN` o creador de la empresa; legacy solo `ADMIN` | Param `id` | Global | Eliminación auditada de recurso hijo KYC |
+| POST | `/kyc/companies/:id/org/relationships` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación auditada |
+| DELETE | `/kyc/org/relationships/:id` | `KycController` | JWT | `ADMIN` o creador de la empresa; legacy solo `ADMIN` | Param `id` | Global | Eliminación auditada de relación KYC |
 | GET | `/kyc/companies/:id/signals` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Datos compartidos |
-| POST | `/kyc/companies/:id/signals` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación, validación débil |
-| POST | `/kyc/companies/:id/signals/fetch-news` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Integración externa, SSRF limitado por URL fija |
-| POST | `/kyc/companies/:id/signals/infer-hypotheses` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | IA, abuso de recursos |
+| POST | `/kyc/companies/:id/signals` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación auditada, validación débil |
+| POST | `/kyc/companies/:id/signals/fetch-news` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Integración externa auditada, SSRF limitado por URL fija |
+| POST | `/kyc/companies/:id/signals/infer-hypotheses` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | IA auditada, abuso de recursos |
 | GET | `/kyc/companies/:id/open-questions` | `KycController` | JWT | Usuario autenticado | Query `status`; param `id` | Global | Datos compartidos |
-| POST | `/kyc/companies/:id/open-questions` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación |
-| PATCH | `/kyc/open-questions/:id` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación |
-| DELETE | `/kyc/open-questions/:id` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | Eliminación |
+| POST | `/kyc/companies/:id/open-questions` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación auditada |
+| PATCH | `/kyc/open-questions/:id` | `KycController` | JWT | Usuario autenticado | `Record<string, unknown>` | Global | Modificación auditada |
+| DELETE | `/kyc/open-questions/:id` | `KycController` | JWT | `ADMIN` o creador de la empresa; legacy solo `ADMIN` | Param `id` | Global | Eliminación auditada de pregunta KYC |
 | GET | `/kyc/companies/:id/chat/sessions` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | IA, datos compartidos |
 | POST | `/kyc/companies/:id/chat/sessions` | `KycController` | JWT | Usuario autenticado | Inline `{ title?, type? }` | Global | IA, modificación |
 | GET | `/kyc/chat/sessions/:sessionId/messages` | `KycController` | JWT | Usuario autenticado | Param `sessionId` | Global | IA, datos sensibles |
-| POST | `/kyc/chat/sessions/:sessionId/stream` | `KycController` | JWT | Usuario autenticado | Inline `{ message? }` | Global | IA, SSE, abuso de recursos |
+| POST | `/kyc/chat/sessions/:sessionId/stream` | `KycController` | JWT | Usuario autenticado | Inline `{ message? }` | Global | IA, SSE, propuestas aplicadas auditadas |
 | GET | `/expenses` | `ExpensesController` | JWT | Propietario | Ninguno | Global | Datos sensibles, listado sin paginación |
 | POST | `/expenses/extract` | `ExpensesController` | JWT | Propietario | Upload `file` | Global | Upload, IA, abuso de recursos |
 | POST | `/expenses/convert-heic` | `ExpensesController` | JWT | Propietario | Upload `file` | Global | Upload, procesamiento costoso |
 | POST | `/expenses/exports` | `ExpensesController` | JWT | Propietario | `GenerateExpenseExportDto` | Global | Exportación, operación costosa |
 | POST | `/expenses/import-payload` | `ExpensesController` | JWT | Propietario | `GenerateExpenseExportDto` | Global | Datos sensibles |
 | POST | `/expenses/import-status` | `ExpensesController` | JWT | Propietario | `SyncExpenseImportStatusDto` | Global | Modificación |
-| POST | `/expenses/bulk-delete` | `ExpensesController` | JWT | Propietario | `BulkDeleteExpensesDto` | Global | Eliminación masiva |
+| POST | `/expenses/bulk-delete` | `ExpensesController` | JWT | Propietario | `BulkDeleteExpensesDto` (máx. 100 IDs) | 10/min | Eliminación masiva acotada por `userId` |
 | POST | `/expenses/:id/retry-extract` | `ExpensesController` | JWT | Propietario | Param `id` | Global | IA, operación costosa |
 | PATCH | `/expenses/:id` | `ExpensesController` | JWT | Propietario | `UpdateExpenseDto` | Global | Modificación |
 | GET | `/expenses/:id` | `ExpensesController` | JWT | Propietario | Param `id` | Global | Datos sensibles |
@@ -202,13 +204,13 @@ Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el fronten
 | `/auth/me/avatar` | Upload/descarga avatar | Multer 2 MB en módulo, validación `validateSafeFile('avatar')` | Verificar límites tras JWT global |
 | `/activations/:id/attachments/upload` | Upload adjunto | Multer 20 MB, `validateActivationAttachmentFile`, magic bytes | Rate limit específico pendiente |
 | `/activations/:id/attachments/import-scanned-urls` | Descarga URL remota | Bloqueo de IPs privadas/metadata, redirects limitados, timeout | DNS rebinding residual |
-| `/rfq-analyses/:id/sources` | Upload documentos | 20 files, límite por fichero, `validateSafeFile('rfq')` | Rate limit IA/upload pendiente |
-| `/meddpicc/deals/:id/attachments` | Upload documentos | 15 files, 25 MB, `validateSafeFile('meddpicc')` | Rate limit pendiente |
+| `/rfq-analyses/:id/sources` | Upload documentos | 20 files, límite por fichero, `validateSafeFile('rfq')` | Rate limit específico aplicado |
+| `/meddpicc/deals/:id/attachments` | Upload documentos | 15 files, 25 MB, `validateSafeFile('meddpicc')` | Rate limit global; revisar específico si aumenta volumen |
 | `/expenses/extract` | Upload recibo | Límite de fichero, `validateReceiptFile` | Rate limit IA/upload pendiente |
 | `/expenses/convert-heic` | Upload imagen | Límite de fichero | Operación costosa |
 | `/yubiq/approve-seal-filler/analyze` | Upload PDF | Límite Multer 20 MB + validación post-buffer | Rate limit específico aplicado |
-| `/webhooks/rfq-email/inbound` | Adjuntos base64 | Validación segura por fichero | Body JSON 50 MB, rate limit específico pendiente |
-| `/webhooks/expense-email/inbound` | Adjuntos base64 | Validación segura por fichero | Body JSON 50 MB, rate limit específico pendiente |
+| `/webhooks/rfq-email/inbound` | Adjuntos base64 | Validación segura por fichero | Body JSON 50 MB, rate limit específico aplicado |
+| `/webhooks/expense-email/inbound` | Adjuntos base64 | Validación segura por fichero | Body JSON 50 MB, rate limit específico aplicado |
 
 ## Endpoints IA
 
@@ -266,11 +268,11 @@ No se encontró `ScheduleModule` ni `@Cron`.
 - RFQ analyses, sources, insights, messages y job events.
 - MEDDPICC deals, attachments e historial.
 - Expenses y exports.
-- KYC companies, profiles, contacts, org members, signals, questions, chat sessions/messages, facts.
+- KYC companies, profiles, contacts, org members, signals, questions, chat sessions/messages, facts y `kyc_audit_logs`.
 
 Riesgos transversales detectados:
 
-- Endpoints KYC compartidos entre usuarios autenticados por diseño documentado.
-- Listados `activations` y `expenses` sin paginación.
+- KYC es catálogo corporativo compartido por diseño; lectura/edición colaborativa, borrado restringido a `ADMIN` o creador y cambios persistidos en `kyc_audit_logs`.
+- Listados `activations` y `expenses` paginados con límites máximos.
 - Uso puntual de `$queryRawUnsafe` con SQL estático en processor.
 - Falta de DTOs estrictos en varias rutas KYC y algunas queries/params.
