@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicCredentialsService } from '../ai-credentials/anthropic/anthropic-credentials.service';
 import { AnthropicClientService } from '../yubiq/approve-seal-filler/anthropic-client.service';
 import { UserPayload } from '../auth/decorators/user-payload';
+import { redactSensitive } from '../security/sensitive-redaction';
 import { getKycChatModel, getKycReportTranslateModel, getKycSummaryModel } from './kyc.config';
 import { normalizeKycCompanyIndustry, KYC_COMPANY_INDUSTRY_SET } from './kyc-industry.util';
 import { normalizeTechStack } from './kyc-tech-stack-normalize.util';
@@ -62,6 +63,7 @@ import {
   truncateEnvelopeIfNeeded,
   type KycFullCompanyApi,
 } from './kyc-report-translate.util';
+import { KycAuditLogQueryDto } from './dto/kyc-audit-log-query.dto';
 
 type KycAuditEntry = {
   companyId?: bigint | null;
@@ -73,6 +75,13 @@ type KycAuditEntry = {
   after?: unknown;
   meta?: Record<string, unknown>;
 };
+
+type KycAuditLogWithRelations = Prisma.KycAuditLogGetPayload<{
+  include: {
+    actor: { select: { id: true; email: true; name: true; lastName: true } };
+    company: { select: { id: true; name: true } };
+  };
+}>;
 
 /** JSON del modelo o texto plano (compatibilidad con respuestas antiguas). */
 function parseExecutiveSynthesisResponse(raw: string): {
@@ -503,6 +512,41 @@ export class KycService {
     private readonly creds: AnthropicCredentialsService,
     private readonly anthropic: AnthropicClientService,
   ) {}
+
+  async listAuditLogs(query: KycAuditLogQueryDto = {}) {
+    const { page, pageSize, skip, take } = parseAuditPagination(query.page, query.pageSize);
+    const where: Prisma.KycAuditLogWhereInput = {};
+    if (query.companyId?.trim()) {
+      where.companyId = parseAuditBigInt(query.companyId, 'companyId');
+    }
+    if (query.actorUserId?.trim()) {
+      where.actorUserId = query.actorUserId.trim();
+    }
+    if (query.action?.trim()) {
+      where.action = query.action.trim();
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.kycAuditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+        include: {
+          actor: { select: { id: true, email: true, name: true, lastName: true } },
+          company: { select: { id: true, name: true } },
+        },
+      }),
+      this.prisma.kycAuditLog.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => auditLogToApi(item)),
+      total,
+      page,
+      pageSize,
+    };
+  }
 
   async listCompanies(
     q: { q?: string; strategic?: string; all?: string; industry?: string } = {},
@@ -2473,6 +2517,56 @@ function toAuditJson(value: unknown): Prisma.InputJsonValue {
   ) as unknown;
   if (normalized === undefined) return null as unknown as Prisma.InputJsonValue;
   return normalized as Prisma.InputJsonValue;
+}
+
+function parseAuditPagination(pageRaw?: string, pageSizeRaw?: string): { page: number; pageSize: number; skip: number; take: number } {
+  const page = Math.max(1, Number.parseInt(pageRaw ?? '1', 10) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number.parseInt(pageSizeRaw ?? '50', 10) || 50));
+  return { page, pageSize, skip: (page - 1) * pageSize, take: pageSize };
+}
+
+function parseAuditBigInt(raw: string, label: string): bigint {
+  try {
+    const value = BigInt(raw.trim());
+    if (value <= 0n) throw new Error('positive required');
+    return value;
+  } catch {
+    throw new BadRequestException(`${label} inválido`);
+  }
+}
+
+function auditLogToApi(item: KycAuditLogWithRelations) {
+  return {
+    id: item.id.toString(),
+    companyId: item.companyId?.toString() ?? null,
+    company: item.company
+      ? {
+          id: item.company.id.toString(),
+          name: item.company.name,
+        }
+      : null,
+    actorUserId: item.actorUserId,
+    actor: item.actor
+      ? {
+          id: item.actor.id,
+          email: item.actor.email,
+          name: item.actor.name,
+          lastName: item.actor.lastName,
+        }
+      : null,
+    action: item.action,
+    entity: item.entity,
+    entityId: item.entityId,
+    before: safeAuditPayload(item.before),
+    after: safeAuditPayload(item.after),
+    meta: safeAuditPayload(item.meta),
+    createdAt: item.createdAt.toISOString(),
+  };
+}
+
+function safeAuditPayload(value: Prisma.JsonValue | null): unknown {
+  if (value == null) return null;
+  return redactSensitive(value);
 }
 
 function parseRssItems(xml: string): { title: string; link: string; pubDate: string; description: string }[] {

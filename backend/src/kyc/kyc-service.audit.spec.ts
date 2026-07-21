@@ -21,6 +21,8 @@ describe('KycService audit trail', () => {
     },
     kycAuditLog: {
       create: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
     },
   };
 
@@ -140,5 +142,57 @@ describe('KycService audit trail', () => {
         }),
       }),
     );
+  });
+
+  it('lista logs de auditoría con filtros y serializa ids para API admin', async () => {
+    prisma.kycAuditLog.findMany.mockResolvedValue([
+      {
+        id: 50n,
+        companyId: 10n,
+        actorUserId: 'user-2',
+        action: 'company.update',
+        entity: 'kycCompany',
+        entityId: '10',
+        before: { city: 'Madrid' },
+        after: { city: 'Barcelona' },
+        meta: { fields: ['city'] },
+        createdAt: now,
+        company: { id: 10n, name: 'Acme España' },
+        actor: { id: 'user-2', email: 'user@example.com', name: 'User', lastName: 'Two' },
+      },
+    ]);
+    prisma.kycAuditLog.count.mockResolvedValue(1);
+
+    const out = await service.listAuditLogs({
+      page: '2',
+      pageSize: '25',
+      companyId: '10',
+      actorUserId: 'user-2',
+      action: 'company.update',
+    });
+
+    expect(prisma.kycAuditLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { companyId: 10n, actorUserId: 'user-2', action: 'company.update' },
+        skip: 25,
+        take: 25,
+      }),
+    );
+    expect(out).toEqual({
+      items: [
+        expect.objectContaining({
+          id: '50',
+          companyId: '10',
+          company: { id: '10', name: 'Acme España' },
+          actorUserId: 'user-2',
+          action: 'company.update',
+          before: { city: 'Madrid' },
+          after: { city: 'Barcelona' },
+        }),
+      ],
+      total: 1,
+      page: 2,
+      pageSize: 25,
+    });
   });
 });
