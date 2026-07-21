@@ -101,6 +101,54 @@ function payloadSummary(value: unknown): string {
   return String(value).slice(0, 80);
 }
 
+function valueLabel(value: unknown): string {
+  if (value == null || value === '') return '—';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+  if (typeof value === 'number' || typeof value === 'bigint') return String(value);
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return `Array (${value.length})`;
+  if (typeof value === 'object') return `Objeto (${Object.keys(value as Record<string, unknown>).length} claves)`;
+  return String(value);
+}
+
+function payloadEntries(value: unknown): Array<[string, unknown]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  return Object.entries(value as Record<string, unknown>);
+}
+
+function DetailField({ label, value, mono = false }: { label: string; value: unknown; mono?: boolean }) {
+  return (
+    <div className={styles.auditDetailField}>
+      <dt>{label}</dt>
+      <dd className={mono ? styles.auditDetailMono : undefined}>{valueLabel(value)}</dd>
+    </div>
+  );
+}
+
+function PayloadPanel({ title, value }: { title: string; value: unknown }) {
+  const entries = payloadEntries(value);
+  return (
+    <section className={styles.auditPayloadPanel} aria-label={title}>
+      <h3>{title}</h3>
+      {value == null ? (
+        <p className={styles.auditPayloadEmpty}>Sin datos.</p>
+      ) : entries.length > 0 ? (
+        <dl className={styles.auditPayloadList}>
+          {entries.map(([key, item]) => (
+            <div key={key} className={styles.auditPayloadRow}>
+              <dt>{key}</dt>
+              <dd>{valueLabel(item)}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className={styles.auditPayloadValue}>{valueLabel(value)}</p>
+      )}
+    </section>
+  );
+}
+
 export default function GlobalAuditAdminPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
@@ -453,7 +501,50 @@ export default function GlobalAuditAdminPage() {
               <p className={styles.cardDesc}>
                 Metadatos técnicos minimizados. Los tokens públicos se muestran solo como hash SHA-256.
               </p>
-              <pre className={styles.auditJson}>{JSON.stringify(selected, null, 2)}</pre>
+              <div className={styles.auditDetailSummary}>
+                <span className={styles.auditPill}>{selected.module}</span>
+                <span className={styles.auditPill}>{selected.action}</span>
+                <span className={styles.auditPill}>{selected.actorType}</span>
+                {selected.statusCode ? <span className={styles.auditPill}>HTTP {selected.statusCode}</span> : null}
+              </div>
+              <section className={styles.auditDetailSection} aria-labelledby="audit-detail-actor">
+                <h3 id="audit-detail-actor">Actor</h3>
+                <dl className={styles.auditDetailGrid}>
+                  <DetailField label="Usuario" value={actorLabel(selected)} />
+                  <DetailField label="Nombre" value={[selected.actor?.name, selected.actor?.lastName].filter(Boolean).join(' ')} />
+                  <DetailField label="Rol" value={selected.actorRole} />
+                  <DetailField label="Tipo" value={selected.actorType} />
+                  <DetailField label="User ID" value={selected.actorUserId} mono />
+                </dl>
+              </section>
+              <section className={styles.auditDetailSection} aria-labelledby="audit-detail-event">
+                <h3 id="audit-detail-event">Evento</h3>
+                <dl className={styles.auditDetailGrid}>
+                  <DetailField label="Fecha" value={formatDateTime(selected.createdAt)} />
+                  <DetailField label="Módulo" value={selected.module} />
+                  <DetailField label="Acción" value={selected.action} />
+                  <DetailField label="Entidad" value={selected.entity} />
+                  <DetailField label="Entity ID" value={selected.entityId} mono />
+                </dl>
+              </section>
+              <section className={styles.auditDetailSection} aria-labelledby="audit-detail-request">
+                <h3 id="audit-detail-request">Petición</h3>
+                <dl className={styles.auditDetailGrid}>
+                  <DetailField label="Método" value={selected.method} />
+                  <DetailField label="Ruta" value={selected.path} mono />
+                  <DetailField label="Route" value={selected.route} mono />
+                  <DetailField label="Estado" value={selected.statusCode} />
+                  <DetailField label="Request ID" value={selected.requestId} mono />
+                  <DetailField label="IP" value={selected.ip} mono />
+                  <DetailField label="User-Agent" value={selected.userAgent} />
+                  <DetailField label="Token hash" value={selected.tokenHash} mono />
+                </dl>
+              </section>
+              <div className={styles.auditPayloadGrid}>
+                <PayloadPanel title="Antes" value={selected.before} />
+                <PayloadPanel title="Después" value={selected.after} />
+                <PayloadPanel title="Metadatos" value={selected.meta} />
+              </div>
             </div>
           </div>
         </div>

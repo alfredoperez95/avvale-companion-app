@@ -529,12 +529,127 @@
   white-space: pre-wrap;
 }
 
-.auditDetailModal {
-  max-width: min(64rem, calc(100vw - 2rem));
+.auditDetailSummary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--fiori-space-2);
+  margin-bottom: var(--fiori-space-4);
 }
 
-.auditDetailModal .modalBody {
-  max-height: min(76vh, 44rem);
+.auditPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.625rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--fiori-border-light);
+  background: color-mix(in srgb, var(--fiori-nav-bg) 65%, var(--fiori-surface));
+  color: var(--fiori-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.auditDetailSection {
+  margin-bottom: var(--fiori-space-4);
+  padding: var(--fiori-space-4);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--fiori-nav-bg) 30%, var(--fiori-surface));
+}
+
+.auditDetailSection h3,
+.auditPayloadPanel h3 {
+  margin: 0 0 var(--fiori-space-3);
+  color: var(--fiori-text);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.auditDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--fiori-space-3);
+  margin: 0;
+}
+
+.auditDetailField {
+  min-width: 0;
+}
+
+.auditDetailField dt {
+  margin-bottom: 0.25rem;
+  color: var(--fiori-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.auditDetailField dd {
+  margin: 0;
+  color: var(--fiori-text);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.auditDetailMono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.8125rem !important;
+}
+
+.auditPayloadGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--fiori-space-3);
+}
+
+.auditPayloadPanel {
+  min-width: 0;
+  padding: var(--fiori-space-4);
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+  background: var(--fiori-surface);
+}
+
+.auditPayloadList {
+  display: grid;
+  gap: var(--fiori-space-2);
+  margin: 0;
+}
+
+.auditPayloadRow {
+  min-width: 0;
+  padding-bottom: var(--fiori-space-2);
+  border-bottom: 1px solid color-mix(in srgb, var(--fiori-border-light) 65%, transparent);
+}
+
+.auditPayloadRow:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.auditPayloadRow dt {
+  margin-bottom: 0.2rem;
+  color: var(--fiori-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.auditPayloadRow dd,
+.auditPayloadEmpty,
+.auditPayloadValue {
+  margin: 0;
+  color: var(--fiori-text);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.auditPayloadEmpty {
+  color: var(--fiori-text-secondary);
 }
 
 .auditModalSubtitle {
@@ -666,6 +781,12 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(2px);
   display: flex;
@@ -673,6 +794,7 @@
   justify-content: center;
   z-index: 1000;
   padding: var(--fiori-space-4);
+  overflow: hidden;
   animation: modalOverlayIn 0.2s ease-out;
 }
 
@@ -686,14 +808,27 @@
 }
 
 .modal {
+  display: flex;
+  flex-direction: column;
   background: var(--fiori-surface);
   border: 1px solid var(--fiori-border-light);
   border-radius: 0.75rem;
   max-width: 28rem;
   width: 100%;
+  max-height: calc(100dvh - (var(--fiori-space-4) * 2));
   box-shadow: 0 8px 32px rgb(0 0 0 / 18%);
   overflow: hidden;
   animation: modalIn 0.25s ease-out;
+}
+
+.modal.auditDetailModal {
+  max-width: min(82rem, calc(100vw - 2rem));
+  width: min(82rem, calc(100vw - 2rem));
+  max-height: min(72dvh, 40rem);
+}
+
+.auditDetailModal .modalBody {
+  max-height: none;
 }
 
 @keyframes modalIn {
@@ -718,6 +853,7 @@
 }
 
 .modalHeader {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -773,6 +909,8 @@
 }
 
 .modalBody {
+  flex: 1 1 auto;
+  min-height: 0;
   padding: var(--fiori-space-5);
   max-height: min(70vh, 28rem);
   overflow-y: auto;
@@ -937,6 +1075,7 @@
 }
 
 .modalActions {
+  flex: 0 0 auto;
   display: flex;
   gap: var(--fiori-space-3);
   justify-content: space-between;
