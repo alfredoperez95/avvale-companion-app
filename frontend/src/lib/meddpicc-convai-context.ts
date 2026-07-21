@@ -2,9 +2,7 @@
  * Contexto para ElevenLabs ConvAI (`dynamic-variables` en el widget).
  *
  * Variables string que envía la companion (definirlas en el agente ElevenLabs como "Dynamic variables"):
- * - `deal_id` — UUID del deal (para webhooks / APIs).
- *   En la página del deal también se envía el atributo del widget `user-id` = mismo UUID; ElevenLabs lo reenvía como
- *   `user_id` en el webhook y el backend lo usa si `dynamic-variables` falla por tamaño o parseo.
+ * - `deal_id` — UUID del deal. Es obligatorio para que el backend acepte el webhook post-llamada.
  * - `nombre_deal` — Nombre de la oportunidad.
  * - `cliente` — Empresa / cliente.
  * - `importe_deal` — Valor en € formateado (es-ES) o "No indicado".

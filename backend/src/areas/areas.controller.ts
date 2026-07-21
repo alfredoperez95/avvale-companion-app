@@ -9,6 +9,7 @@ import {
   Body,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AreasService } from './areas.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -57,6 +58,7 @@ export class AreasController {
   }
 
   @Get('subareas/by-contact-email')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async findSubAreasByContactEmail(@Query('email') email?: string) {
     return this.areasService.findSubAreasByContactEmail(email ?? '');
   }

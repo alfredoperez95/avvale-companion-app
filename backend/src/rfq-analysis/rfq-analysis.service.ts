@@ -189,9 +189,11 @@ export class RfqAnalysisService {
       },
     });
     if (!row) throw new NotFoundException('Análisis no encontrado');
-    const { kycCompanyId, kycCompany, ...rest } = row;
+    const { kycCompanyId, kycCompany, sources, ...rest } = row;
+    const safeSources = sources.map(({ storagePath: _storagePath, ...source }) => source);
     return {
       ...rest,
+      sources: safeSources,
       kycCompanyId: kycCompanyId != null ? Number(kycCompanyId) : null,
       kycCompany: kycCompany ? { id: Number(kycCompany.id), name: kycCompany.name } : null,
     };
@@ -297,14 +299,17 @@ export class RfqAnalysisService {
 
     const jobId = await this.producer.enqueueRfqAnalysis({ analysisId, userId });
 
-    await this.prisma.rfqAnalysis.update({
-      where: { id: analysisId },
+    const result = await this.prisma.rfqAnalysis.updateMany({
+      where: { id: analysisId, userId },
       data: {
         status: RfqAnalysisStatus.QUEUED,
         failureReason: null,
         bullJobId: jobId,
       },
     });
+    if (result.count === 0) {
+      throw new NotFoundException('Análisis no encontrado');
+    }
 
     return { jobId };
   }

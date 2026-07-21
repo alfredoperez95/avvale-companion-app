@@ -905,6 +905,7 @@ export class KycService {
               revenue: row.revenue || null,
               employees: row.employees || null,
               source: 'kyc-import',
+              createdByUserId: actorUserId?.trim() || null,
               updatedByUserId: actorUserId?.trim() || null,
             },
           });
@@ -1683,7 +1684,14 @@ export class KycService {
     return chatSessionToApi(s);
   }
 
-  async getChatMessages(sessionId: bigint) {
+  private async getOwnedChatSessionOrThrow(sessionId: bigint, userId: string) {
+    const s = await this.prisma.kycChatSession.findFirst({ where: { id: sessionId, userId } });
+    if (!s) throw new NotFoundException('Session not found');
+    return s;
+  }
+
+  async getChatMessages(sessionId: bigint, userId: string) {
+    await this.getOwnedChatSessionOrThrow(sessionId, userId);
     const rows = await this.prisma.kycChatMessage.findMany({ where: { sessionId }, orderBy: { id: 'asc' } });
     return rows.map((m) => {
       const o = chatMessageToApi(m);
@@ -2303,21 +2311,21 @@ Entre 1 y 8 elementos en "hypotheses". No dupliques títulos casi idénticos.`;
   }
 
   async streamChat(sessionId: bigint, userId: string, res: Response, userMessage: string) {
+    const msg = userMessage.trim();
+    if (!msg) {
+      res.status(400).json({ error: 'message required' });
+      return;
+    }
+    const s = await this.getOwnedChatSessionOrThrow(sessionId, userId).catch(() => null);
+    if (!s) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
     let apiKey: string;
     try {
       apiKey = await this.creds.getApiKeyPlainOrThrow(userId);
     } catch {
       res.status(400).json({ error: 'Falta la clave de API de Anthropic. Configúrala en el perfil.' });
-      return;
-    }
-    const s = await this.prisma.kycChatSession.findUnique({ where: { id: sessionId } });
-    if (!s) {
-      res.status(404).json({ error: 'Session not found' });
-      return;
-    }
-    const msg = userMessage.trim();
-    if (!msg) {
-      res.status(400).json({ error: 'message required' });
       return;
     }
     const uRow = await this.prisma.kycChatMessage.create({
@@ -2392,6 +2400,9 @@ Entre 1 y 8 elementos en "hypotheses". No dupliques títulos casi idénticos.`;
       kycAuditLog?: {
         create: (args: { data: Record<string, unknown> }) => Promise<unknown>;
       };
+      auditLog?: {
+        create: (args: { data: Record<string, unknown> }) => Promise<unknown>;
+      };
       kycCompany?: {
         updateMany: (args: { where: { id: bigint }; data: { updatedByUserId: string | null } }) => Promise<unknown>;
       };
@@ -2409,6 +2420,32 @@ Entre 1 y 8 elementos en "hypotheses". No dupliques títulos casi idénticos.`;
     if (entry.after !== undefined) data.after = toAuditJson(entry.after);
     if (entry.meta !== undefined) data.meta = toAuditJson(entry.meta);
     await writer.kycAuditLog.create({ data });
+    try {
+      await writer.auditLog?.create({
+        data: {
+          actorUserId,
+          actorType: actorUserId ? 'user' : 'system',
+          module: 'kyc',
+          action: entry.action.startsWith('ai.') ? 'ai' : entry.action,
+          entity: entry.entity,
+          entityId: entry.entityId == null ? null : String(entry.entityId),
+          method: null,
+          path: `/kyc/${entry.entity}`,
+          route: null,
+          statusCode: null,
+          requestId: null,
+          before: data.before,
+          after: data.after,
+          meta: toAuditJson({
+            ...(entry.meta ?? {}),
+            kycAction: entry.action,
+            kycCompanyId: entry.companyId?.toString() ?? null,
+          }),
+        },
+      });
+    } catch (err) {
+      this.log.warn(`No se pudo duplicar evento KYC en audit_logs: ${err instanceof Error ? err.message : String(err)}`);
+    }
     if (entry.companyId && actorUserId && entry.action !== 'company.delete') {
       await writer.kycCompany?.updateMany({
         where: { id: entry.companyId },

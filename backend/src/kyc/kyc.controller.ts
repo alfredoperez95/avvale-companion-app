@@ -246,8 +246,8 @@ export class KycController {
   }
 
   @Get('chat/sessions/:sessionId/messages')
-  msgs(@Param('sessionId') sessionId: string) {
-    return this.kyc.getChatMessages(BigInt(sessionId));
+  msgs(@Param('sessionId') sessionId: string, @CurrentUser() user: UserPayload) {
+    return this.kyc.getChatMessages(BigInt(sessionId), user.userId);
   }
 
   @Post('chat/sessions/:sessionId/stream')

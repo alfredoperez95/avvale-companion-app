@@ -77,7 +77,10 @@ export class ExpensesService {
 
   async remove(userId: string, id: string): Promise<{ ok: true }> {
     const expense = await this.ensureOwned(userId, id);
-    await this.prisma.expense.delete({ where: { id: expense.id } });
+    const result = await this.prisma.expense.deleteMany({ where: { id: expense.id, userId } });
+    if (result.count === 0) {
+      throw new NotFoundException('Gasto no encontrado');
+    }
     try {
       await this.storage.deleteExpenseFolder(expense.id);
     } catch (err) {
@@ -287,12 +290,11 @@ export class ExpensesService {
   }
 
   async update(userId: string, id: string, dto: UpdateExpenseDto) {
-    await this.ensureOwned(userId, id);
     if (!isExpenseCategory(dto.type)) {
       throw new BadRequestException('Tipo de gasto no válido');
     }
-    const updated = await this.prisma.expense.update({
-      where: { id },
+    const result = await this.prisma.expense.updateMany({
+      where: { id, userId },
       data: {
         amount: new Prisma.Decimal(dto.amount),
         type: dto.type,
@@ -303,6 +305,10 @@ export class ExpensesService {
         extractionError: null,
       },
     });
+    if (result.count === 0) {
+      throw new NotFoundException('Gasto no encontrado');
+    }
+    const updated = await this.ensureOwned(userId, id);
     return mapExpense(updated);
   }
 

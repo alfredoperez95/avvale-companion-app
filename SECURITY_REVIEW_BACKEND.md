@@ -84,6 +84,12 @@ Inventario completo: `docs/BACKEND_ENDPOINT_INVENTORY.md`.
 | B-26 | Medium | Export CSV de gastos susceptible a formula injection | `backend/src/expenses/expense-export.service.ts` | Ejecución de fórmulas al abrir CSV en hojas de cálculo | Neutralizar celdas que empiezan por `=`, `+`, `-`, `@`, tab o CR | MITIGATED |
 | B-27 | Low | Recibos de gastos se servían inline | `backend/src/expenses/expenses.controller.ts` | Renderizado accidental de contenido subido por usuario en navegador | Servir como `attachment` y mantener `nosniff` | MITIGATED |
 | B-28 | Low | Regla de selección `kycCompanyId` en RFQ estaba implícita | `backend/src/rfq-analysis/rfq-analysis.service.ts` | Riesgo de cambios futuros que rompan el modelo compartido o acepten empresas no activas | Helper explícito y tests de empresa inexistente/sin perfil/compartida activa | MITIGATED |
+| B-29 | High | IDOR en sesiones KYC chat por `sessionId` | `backend/src/kyc/kyc.service.ts`, `backend/src/kyc/kyc.controller.ts` | Usuario autenticado con un `sessionId` ajeno podía leer mensajes y ejecutar stream/propuestas sobre esa sesión | Validar sesión con `id + userId` antes de leer/escribir | MITIGATED |
+| B-30 | Medium | Webhook ConvAI MEDDPICC aceptaba `data.user_id` como fallback de deal | `backend/src/meddpicc/meddpicc.service.ts` | Payload firmado pero con identificador demasiado genérico podía mutar un deal si se inyectaba UUID | Exigir `dynamic_variables.deal_id` y mantener HMAC | MITIGATED |
+| B-31 | Medium | Mutaciones post-ownership con `where: { id }` | `expenses`, `rfq-analysis` | TOCTOU teórico si un recurso cambia de dueño entre check y mutación | Mutar con `id + userId` mediante `updateMany/deleteMany` | MITIGATED |
+| B-32 | Medium | Export público de gastos no validaba `fileName` contra el lote | `backend/src/expenses/expense-export.service.ts` | Con token válido, posible acceso a otros ficheros presentes en el directorio del export | Validar prefijo `expenseId` contra `expenseIds` persistido | MITIGATED |
+| B-33 | Low | Descarga pública de adjuntos sin validación temprana de token/cache no-store | `backend/src/attachments/*` | Más consultas innecesarias y cache local/proxy de ficheros sensibles por token | Exigir UUID, TTL existente y `Cache-Control: no-store` | MITIGATED |
+| B-34 | Low | Lookup de subáreas por email podía facilitar enumeración | `backend/src/areas/areas.controller.ts` | Usuario autenticado podía probar emails del catálogo global | Mantener funcionalidad de activaciones y añadir throttle específico | MITIGATED |
 
 ## Evidencias técnicas
 
@@ -105,6 +111,8 @@ Inventario completo: `docs/BACKEND_ENDPOINT_INVENTORY.md`.
 - Áreas administrativas usan `AdminGuard`.
 - Activations, RFQ, MEDDPICC y expenses aplican ownership por `userId` en servicios.
 - KYC se acepta como catálogo corporativo compartido entre usuarios autenticados. En este módulo no se aplica aislamiento por `createdByUserId`, tenant ni equipo: lectura, edición y operaciones sobre empresas KYC se consideran colaborativas por decisión funcional. Esta excepción debe reabrirse si se introducen datos segregados por comercial/equipo, clientes con confidencialidad diferenciada o roles KYC específicos.
+- Las sesiones de chat KYC se tratan como recurso personal: `GET /kyc/chat/sessions/:sessionId/messages` y `POST /kyc/chat/sessions/:sessionId/stream` validan `id + userId`.
+- RFQ, expenses y workers revisados para que las mutaciones críticas no dependan solo de una comprobación previa de ownership.
 
 ### Decisión aceptada: KYC compartido
 
@@ -194,6 +202,7 @@ Actualización adicional aplicada el 2026-07-21:
 - Operaciones destructivas de activaciones: `ADMIN` puede borrar activaciones ajenas; usuarios normales siguen limitados a sus propias activaciones.
 - `POST /expenses/bulk-delete` incorpora límite de 100 IDs y throttle específico.
 - El processor de envío de activaciones revalida que el `userId` del job coincide con `createdByUserId` antes de cambiar estado.
+- Remediación BOLA/IDOR: KYC chat valida ownership de sesión; RFQ omite `storagePath` en respuestas; MEDDPICC ConvAI exige `dynamic_variables.deal_id`; expenses/RFQ mutan con `id + userId`; exports públicos de gastos validan `fileName` contra `expenseIds`; adjuntos públicos exigen token UUID y `Cache-Control: no-store`; lookup de subáreas por email tiene throttle específico.
 
 ## Dependencias
 

@@ -176,6 +176,7 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
       },
       select: {
         storagePath: true,
+        expenseIds: true,
       },
     });
     if (!exportRecord) {
@@ -184,6 +185,10 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
 
     const safeName = sanitizeFileName(fileName);
     if (!safeName) {
+      throw new NotFoundException('Archivo no encontrado');
+    }
+    const allowedExpenseIds = expenseIdsFromJson(exportRecord.expenseIds);
+    if (!isExportFileAllowed(safeName, allowedExpenseIds)) {
       throw new NotFoundException('Archivo no encontrado');
     }
 
@@ -309,6 +314,16 @@ function dateOnly(value: Date | null): string {
 function sanitizeFileName(fileName: string): string {
   const safe = path.basename(String(fileName ?? '')).replace(/[^\w.\- ()\[\]]+/g, '_');
   return safe.length > 220 ? safe.slice(0, 220) : safe;
+}
+
+function expenseIdsFromJson(raw: unknown): Set<string> {
+  if (!Array.isArray(raw)) return new Set();
+  return new Set(raw.filter((id): id is string => typeof id === 'string' && id.trim().length > 0));
+}
+
+function isExportFileAllowed(fileName: string, expenseIds: Set<string>): boolean {
+  if (expenseIds.size === 0) return false;
+  return [...expenseIds].some((expenseId) => fileName.startsWith(`${expenseId}_`));
 }
 
 function contentTypeForFileName(fileName: string): string {

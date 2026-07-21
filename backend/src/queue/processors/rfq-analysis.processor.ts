@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RfqPipelineService } from '../../rfq-analysis/rfq-pipeline.service';
 import { RFQ_ANALYSIS_JOB_NAME, RFQ_ANALYSIS_QUEUE } from '../queue.constants';
 import type { RfqAnalysisJobPayload } from '../types/rfq-analysis-job.payload';
+import { recordWorkerAudit } from './worker-audit.util';
 
 @Processor(RFQ_ANALYSIS_QUEUE)
 @Injectable()
@@ -24,6 +25,18 @@ export class RfqAnalysisProcessor extends WorkerHost {
   ): Promise<void> {
     const { analysisId, userId } = job.data;
     this.logger.log(`Procesando RFQ analysis=${analysisId} job=${job.id}`);
+    await recordWorkerAudit(this.prisma, this.logger, {
+      module: 'rfq',
+      entity: 'rfqAnalysis',
+      entityId: analysisId,
+      actorUserId: userId,
+      queue: RFQ_ANALYSIS_QUEUE,
+      jobName: RFQ_ANALYSIS_JOB_NAME,
+      jobId: job.id,
+      phase: 'started',
+      attemptsMade: job.attemptsMade,
+      attempts: job.opts.attempts,
+    });
 
     const row = await this.prisma.rfqAnalysis.findUnique({
       where: { id: analysisId },
@@ -46,6 +59,18 @@ export class RfqAnalysisProcessor extends WorkerHost {
 
     try {
       await this.pipeline.runPipeline(analysisId, userId);
+      await recordWorkerAudit(this.prisma, this.logger, {
+        module: 'rfq',
+        entity: 'rfqAnalysis',
+        entityId: analysisId,
+        actorUserId: userId,
+        queue: RFQ_ANALYSIS_QUEUE,
+        jobName: RFQ_ANALYSIS_JOB_NAME,
+        jobId: job.id,
+        phase: 'completed',
+        attemptsMade: job.attemptsMade,
+        attempts: job.opts.attempts,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Fallo pipeline RFQ analysis=${analysisId}: ${msg}`);
@@ -59,10 +84,23 @@ export class RfqAnalysisProcessor extends WorkerHost {
     err: Error,
   ): Promise<void> {
     if (!job) return;
-    const { analysisId } = job.data;
+    const { analysisId, userId } = job.data;
     const maxAttempts = job.opts.attempts ?? 1;
     const attemptsMade = job.attemptsMade;
     const msg = err?.message ?? String(err);
+    await recordWorkerAudit(this.prisma, this.logger, {
+      module: 'rfq',
+      entity: 'rfqAnalysis',
+      entityId: analysisId,
+      actorUserId: userId,
+      queue: RFQ_ANALYSIS_QUEUE,
+      jobName: RFQ_ANALYSIS_JOB_NAME,
+      jobId: job.id,
+      phase: 'failed',
+      attemptsMade,
+      attempts: maxAttempts,
+      error: msg,
+    });
 
     if (err instanceof UnrecoverableError || err?.name === 'UnrecoverableError') {
       this.logger.error(`RFQ ${analysisId} no recuperable: ${msg}`);

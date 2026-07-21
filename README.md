@@ -313,6 +313,8 @@ Tabla completa de estados y transiciones: **[docs/ACTIVATION_STATE_MACHINE.md](d
 | Dónde | Comando | Descripción |
 |-------|---------|-------------|
 | Raíz | `./scripts/prepare-env.sh` | Propaga `.env` a backend y frontend |
+| Raíz | `./scripts/security-check.sh` | Validación local: Prisma validate/generate, audit, tests y builds |
+| Raíz | `./scripts/security-check.sh --trivy` | Validación local ampliada con build y escaneo Trivy de imágenes Docker |
 | `backend` | `npm run redis:dev` / `redis:dev:down` | Redis local (Docker) |
 | `backend` | `npm run reset:activations` | Borra todas las activaciones y reinicia `AUTO_INCREMENT` de numeración (ver script; MySQL) |
 | `backend` | `npm run import:cc-contacts` | Importación de contactos CC (script existente) |
@@ -325,6 +327,7 @@ Tabla completa de estados y transiciones: **[docs/ACTIVATION_STATE_MACHINE.md](d
 
 | Archivo | Contenido |
 |---------|-----------|
+| [docs/SECURITY_ARCHITECTURE.md](docs/SECURITY_ARCHITECTURE.md) | Arquitectura de seguridad global: auth, autorización, adjuntos, IA, workers, webhooks, auditoría, logs, backups y despliegue |
 | [docs/MAKE.md](docs/MAKE.md) | Webhook Make, variables, payload v4, callback, adjuntos públicos |
 | [docs/ACTIVATION_STATE_MACHINE.md](docs/ACTIVATION_STATE_MACHINE.md) | Estados, BullMQ, orquestador, watchdog |
 | [docs/VERIFICACION.md](docs/VERIFICACION.md) | Health, auth, comprobaciones locales y checklist producción (dominio HTTPS) |

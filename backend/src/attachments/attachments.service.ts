@@ -14,6 +14,7 @@ const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 const PUBLIC_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_DOWNLOAD_REDIRECTS = 3;
 const DEFAULT_PUBLIC_ATTACHMENT_TTL_MINUTES = 60;
+const UUID_TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface DownloadResult {
   saved: string[];
@@ -417,10 +418,14 @@ export class AttachmentsService implements OnModuleInit, OnModuleDestroy {
   async getPublicAttachmentFileByToken(
     token: string,
   ): Promise<{ buffer: Buffer; fileName: string; contentType: string | null }> {
+    const normalizedToken = token.trim();
+    if (!UUID_TOKEN_RE.test(normalizedToken)) {
+      throw new NotFoundException('Adjunto público no encontrado o expirado');
+    }
     const now = new Date();
     const attachment = await this.prisma.activationAttachment.findFirst({
       where: {
-        publicToken: token,
+        publicToken: normalizedToken,
         publicExpiresAt: { gt: now },
       },
       select: { storedPath: true, fileName: true, contentType: true },

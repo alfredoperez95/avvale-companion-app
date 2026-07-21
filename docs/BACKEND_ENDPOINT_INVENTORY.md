@@ -2,7 +2,7 @@
 
 Fecha: 2026-07-18
 
-Actualizado: 2026-07-21 (auth fail-closed, hardening de adjuntos, límites destructivos y permisos KYC/Activations).
+Actualizado: 2026-07-21 (auth fail-closed, hardening de adjuntos, límites destructivos, permisos KYC/Activations y remediación BOLA/IDOR).
 
 Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el frontend reescribe `/api/*` hacia estas rutas.
 
@@ -89,7 +89,7 @@ Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el fronten
 | GET | `/areas` | `AreasController` | JWT | Usuario; detalles admin restringidos por servicio | Query `admin`, `withSubareas` sin DTO | Global | Datos internos |
 | POST | `/areas` | `AreasController` | JWT + Admin | `ADMIN` | `CreateAreaDto` | Global | Operación administrativa, modificación |
 | GET | `/areas/subareas/:subAreaId/contacts` | `AreasController` | JWT + Admin | `ADMIN` | Param `subAreaId` | Global | Operación administrativa, datos personales |
-| GET | `/areas/subareas/by-contact-email?email=` | `AreasController` | JWT | Usuario | Query `email` sin DTO | Global | Datos internos, posible enumeración |
+| GET | `/areas/subareas/by-contact-email?email=` | `AreasController` | JWT | Usuario | Query `email` sin DTO | 30/min | Datos internos, enumeración mitigada con throttle específico |
 | POST | `/areas/subareas/:subAreaId/contacts` | `AreasController` | JWT + Admin | `ADMIN` | `CreateSubAreaContactDto`; param | Global | Operación administrativa, modificación |
 | PATCH | `/areas/subareas/contacts/:contactId` | `AreasController` | JWT + Admin | `ADMIN` | `UpdateSubAreaContactDto`; param | Global | Operación administrativa, modificación |
 | DELETE | `/areas/subareas/contacts/:contactId` | `AreasController` | JWT + Admin | `ADMIN` | Param `contactId` | Global | Operación administrativa, eliminación |
@@ -142,7 +142,7 @@ Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el fronten
 | POST | `/meddpicc/deals/:id/convai/simulate-post-call` | `MeddpiccController` | JWT | Propietario/admin + env | Param `id` | Global | Debug protegido, integración externa |
 | POST | `/meddpicc/deals/:id/convai/client-transcript` | `MeddpiccController` | JWT | Propietario/admin | `ClientConvaiTranscriptDto` | Global | IA, datos sensibles |
 | POST | `/meddpicc/deals/:id/convai/import-from-elevenlabs` | `MeddpiccController` | JWT | Propietario/admin | `FetchElevenlabsConversationDto` | Global | Integración externa, abuso |
-| POST | `/webhooks/elevenlabs/meddpicc` | `MeddpiccConvaiWebhookController` | Pública + firma | Firma ElevenLabs | Body webhook | 120/min | Público, webhook, integración externa |
+| POST | `/webhooks/elevenlabs/meddpicc` | `MeddpiccConvaiWebhookController` | Pública + firma | HMAC ElevenLabs + `dynamic_variables.deal_id` | Body webhook | 120/min | Público, webhook, integración externa; no usa `data.user_id` como fallback de autorización |
 | GET | `/kyc/audit-logs` | `KycController` | JWT + Admin | `ADMIN` | `KycAuditLogQueryDto` | Global | Consulta admin de auditoría KYC, payload minimizado/redactado |
 | GET | `/kyc/clients?q=` | `KycController` | JWT | Usuario autenticado | Query `q` sin DTO | Global | Datos compartidos KYC |
 | POST | `/kyc/linkedin-profile` | `KycController` | JWT | Usuario autenticado | `KycLinkedInProfileDto` | Global | Modificación auditada, extensión Chrome |
@@ -175,24 +175,24 @@ Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el fronten
 | DELETE | `/kyc/open-questions/:id` | `KycController` | JWT | `ADMIN` o creador de la empresa; legacy solo `ADMIN` | Param `id` | Global | Eliminación auditada de pregunta KYC |
 | GET | `/kyc/companies/:id/chat/sessions` | `KycController` | JWT | Usuario autenticado | Param `id` | Global | IA, datos compartidos |
 | POST | `/kyc/companies/:id/chat/sessions` | `KycController` | JWT | Usuario autenticado | Inline `{ title?, type? }` | Global | IA, modificación |
-| GET | `/kyc/chat/sessions/:sessionId/messages` | `KycController` | JWT | Usuario autenticado | Param `sessionId` | Global | IA, datos sensibles |
-| POST | `/kyc/chat/sessions/:sessionId/stream` | `KycController` | JWT | Usuario autenticado | Inline `{ message? }` | Global | IA, SSE, propuestas aplicadas auditadas |
+| GET | `/kyc/chat/sessions/:sessionId/messages` | `KycController` | JWT | Propietario de la sesión | Param `sessionId` | Global | IA, datos sensibles; `sessionId` validado contra `userId` |
+| POST | `/kyc/chat/sessions/:sessionId/stream` | `KycController` | JWT | Propietario de la sesión | Inline `{ message? }` | 30/min | IA, SSE, propuestas aplicadas auditadas; `sessionId` validado contra `userId` |
 | GET | `/expenses` | `ExpensesController` | JWT | Propietario | Ninguno | Global | Datos sensibles, listado sin paginación |
 | POST | `/expenses/extract` | `ExpensesController` | JWT | Propietario | Upload `file` | Global | Upload, IA, abuso de recursos |
 | POST | `/expenses/convert-heic` | `ExpensesController` | JWT | Propietario | Upload `file` | Global | Upload, procesamiento costoso |
-| POST | `/expenses/exports` | `ExpensesController` | JWT | Propietario | `GenerateExpenseExportDto` | Global | Exportación, operación costosa |
+| POST | `/expenses/exports` | `ExpensesController` | JWT | Propietario | `GenerateExpenseExportDto` | 10/min | Exportación, operación costosa |
 | POST | `/expenses/import-payload` | `ExpensesController` | JWT | Propietario | `GenerateExpenseExportDto` | Global | Datos sensibles |
 | POST | `/expenses/import-status` | `ExpensesController` | JWT | Propietario | `SyncExpenseImportStatusDto` | Global | Modificación |
 | POST | `/expenses/bulk-delete` | `ExpensesController` | JWT | Propietario | `BulkDeleteExpensesDto` (máx. 100 IDs) | 10/min | Eliminación masiva acotada por `userId` |
 | POST | `/expenses/:id/retry-extract` | `ExpensesController` | JWT | Propietario | Param `id` | Global | IA, operación costosa |
-| PATCH | `/expenses/:id` | `ExpensesController` | JWT | Propietario | `UpdateExpenseDto` | Global | Modificación |
+| PATCH | `/expenses/:id` | `ExpensesController` | JWT | Propietario | `UpdateExpenseDto` | Global | Modificación con mutación acotada por `id + userId` |
 | GET | `/expenses/:id` | `ExpensesController` | JWT | Propietario | Param `id` | Global | Datos sensibles |
-| DELETE | `/expenses/:id` | `ExpensesController` | JWT | Propietario | Param `id` | Global | Eliminación |
+| DELETE | `/expenses/:id` | `ExpensesController` | JWT | Propietario | Param `id` | Global | Eliminación con mutación acotada por `id + userId` |
 | GET | `/expenses/:id/file` | `ExpensesController` | JWT | Propietario | Param `id` | Global | Descarga, datos sensibles |
-| GET | `/public/expense-exports/:token/:fileName` | `PublicExpenseExportsController` | Pública + token | Token export | Params `token`, `fileName` | 60/min | Público, descarga por token |
+| GET | `/public/expense-exports/:token/:fileName` | `PublicExpenseExportsController` | Pública + token | Token export + fichero perteneciente al lote | Params `token`, `fileName` | 60/min | Público, descarga por token; valida `fileName` contra `expenseIds` |
 | POST | `/webhooks/expense-email/inbound` | `ExpenseEmailWebhookController` | Pública + secreto | `EXPENSE_EMAIL_WEBHOOK_SECRET` | Body webhook flexible | 60/min | Público, webhook, upload base64, IA |
 | POST | `/webhooks/make/callback` | `MakeCallbackController` | Pública + secreto | `MAKE_CALLBACK_SECRET` | Body callback flexible | 120/min | Público, webhook, modificación estado |
-| GET | `/public/attachments/:token` | `PublicAttachmentsController` | Pública + token | Token público | Param `token` | 60/min | Público, descarga por token |
+| GET | `/public/attachments/:token` | `PublicAttachmentsController` | Pública + token | Token público UUID + TTL | Param `token` | 60/min | Público, descarga por token; token UUID y `Cache-Control: no-store` |
 | GET | `/extensions/avvale-companion-extension.zip` | `ExtensionsController` | Pública | Ninguno | Ninguno | 60/min | Público, descarga artefacto |
 | GET | `/health` | `HealthController` (`src/health.controller.ts`) | Pública | Ninguno | Ninguno | SkipThrottle | Healthcheck legacy live |
 | GET | `/health/live` | `HealthController` (`src/health.controller.ts`) | Pública | Ninguno | Ninguno | SkipThrottle | Healthcheck live |
@@ -212,6 +212,8 @@ Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el fronten
 | `/yubiq/approve-seal-filler/analyze` | Upload PDF | Límite Multer 20 MB + validación post-buffer | Rate limit específico aplicado |
 | `/webhooks/rfq-email/inbound` | Adjuntos base64 | Validación segura por fichero | Body JSON 50 MB, rate limit específico aplicado |
 | `/webhooks/expense-email/inbound` | Adjuntos base64 | Validación segura por fichero | Body JSON 50 MB, rate limit específico aplicado |
+| `/public/attachments/:token` | Descarga pública temporal | Token UUID no adivinable, TTL, `no-store`, `nosniff`, attachment | Capability URL: quien tenga el enlace descarga hasta expirar |
+| `/public/expense-exports/:token/:fileName` | Descarga pública temporal | Token + TTL + `fileName` validado contra lote `expenseIds` | Capability URL: quien tenga token y nombre del fichero descarga hasta expirar |
 
 ## Endpoints IA
 
@@ -239,7 +241,7 @@ Alcance: backend NestJS en `backend/`. No hay prefijo global en Nest; el fronten
 | `POST /webhooks/make/callback` | Secreto compartido en body | Comparación no timing-safe en revisión inicial |
 | `POST /webhooks/rfq-email/inbound` | Secreto compartido en body | Comparación no timing-safe en revisión inicial |
 | `POST /webhooks/expense-email/inbound` | Secreto compartido en body | Comparación no timing-safe en revisión inicial |
-| `POST /webhooks/elevenlabs/meddpicc` | HMAC + `timingSafeEqual` | Mejor patrón actual |
+| `POST /webhooks/elevenlabs/meddpicc` | HMAC + `timingSafeEqual` | Exige `conversation_initiation_client_data.dynamic_variables.deal_id`; no usa `data.user_id` como fallback |
 
 ## Tareas, workers y colas
 
@@ -274,6 +276,8 @@ No se encontró `ScheduleModule` ni `@Cron`.
 Riesgos transversales detectados:
 
 - KYC es catálogo corporativo compartido por diseño; lectura/edición colaborativa, borrado restringido a `ADMIN` o creador y cambios persistidos en `kyc_audit_logs`.
+- Excepción KYC chat: aunque el catálogo sea compartido, las sesiones de chat son personales y `sessionId` se valida contra `userId`.
 - Listados `activations` y `expenses` paginados con límites máximos.
+- Mutaciones sensibles revisadas para acotar por ownership en la propia operación (`id + userId`) cuando Prisma no dispone de `where` único compuesto.
 - Uso puntual de `$queryRawUnsafe` con SQL estático en processor.
 - Falta de DTOs estrictos en varias rutas KYC y algunas queries/params.

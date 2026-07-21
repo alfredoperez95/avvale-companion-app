@@ -400,6 +400,9 @@ export default function AdminUsersPage() {
             <Link href="/admin/kyc-audit" className={styles.btnSecondary}>
               Auditoría KYC
             </Link>
+            <Link href="/admin/audit" className={styles.btnSecondary}>
+              Auditoría global
+            </Link>
           </div>
         ) : (
           <form onSubmit={handleCreate} className={styles.createForm}>

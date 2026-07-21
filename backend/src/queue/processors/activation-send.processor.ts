@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ActivationSendOrchestrator } from '../../activations/activation-send.orchestrator';
 import { ACTIVATION_SEND_JOB_NAME, ACTIVATION_SEND_QUEUE } from '../queue.constants';
 import type { SendActivationJobPayload } from '../types/send-activation-job.payload';
+import { recordWorkerAudit } from './worker-audit.util';
 
 @Processor(ACTIVATION_SEND_QUEUE)
 @Injectable()
@@ -24,6 +25,18 @@ export class ActivationSendProcessor extends WorkerHost {
     this.logger.log(
       `Procesando envío Make activación=${activationId} job=${job.id} intento=${job.attemptsMade}/${job.opts.attempts}`,
     );
+    await recordWorkerAudit(this.prisma, this.logger, {
+      module: 'activations',
+      entity: 'activation',
+      entityId: activationId,
+      actorUserId: userId,
+      queue: ACTIVATION_SEND_QUEUE,
+      jobName: ACTIVATION_SEND_JOB_NAME,
+      jobId: job.id,
+      phase: 'started',
+      attemptsMade: job.attemptsMade,
+      attempts: job.opts.attempts,
+    });
 
     const activation = await this.prisma.activation.findUnique({
       where: { id: activationId },
@@ -53,6 +66,18 @@ export class ActivationSendProcessor extends WorkerHost {
 
     try {
       await this.orchestrator.deliverActivationToMake(activationId, userId);
+      await recordWorkerAudit(this.prisma, this.logger, {
+        module: 'activations',
+        entity: 'activation',
+        entityId: activationId,
+        actorUserId: userId,
+        queue: ACTIVATION_SEND_QUEUE,
+        jobName: ACTIVATION_SEND_JOB_NAME,
+        jobId: job.id,
+        phase: 'completed',
+        attemptsMade: job.attemptsMade,
+        attempts: job.opts.attempts,
+      });
       this.logger.log(`Envío Make completado para activación ${activationId} (job ${job.id})`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -69,10 +94,36 @@ export class ActivationSendProcessor extends WorkerHost {
     err: Error,
   ): Promise<void> {
     if (!job) return;
-    const { activationId } = job.data;
+    const { activationId, userId } = job.data;
     const maxAttempts = job.opts.attempts ?? 1;
     const attemptsMade = job.attemptsMade;
     const rawMessage = err?.message ?? String(err);
+    await recordWorkerAudit(this.prisma, this.logger, {
+      module: 'activations',
+      entity: 'activation',
+      entityId: activationId,
+      actorUserId: userId,
+      queue: ACTIVATION_SEND_QUEUE,
+      jobName: ACTIVATION_SEND_JOB_NAME,
+      jobId: job.id,
+      phase: 'failed',
+      attemptsMade,
+      attempts: maxAttempts,
+      error: rawMessage,
+    });
+
+    const activation = await this.prisma.activation.findUnique({
+      where: { id: activationId },
+      select: { createdByUserId: true },
+    });
+    if (!activation) {
+      this.logger.error(`Job ${job.id} falló para activación inexistente ${activationId}: ${rawMessage}`);
+      return;
+    }
+    if (activation.createdByUserId !== userId) {
+      this.logger.error(`Job ${job.id} rechazado en onFailed: userId no coincide con activación ${activationId}`);
+      return;
+    }
 
     // Para MariaDB: error_message probablemente es VARCHAR(n) y P2000 ocurre si superamos n.
     // Priorizamos el límite real de la columna (information_schema) y aplicamos truncado.

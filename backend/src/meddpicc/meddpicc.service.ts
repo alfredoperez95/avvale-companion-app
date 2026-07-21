@@ -158,8 +158,8 @@ function convaiTranscriptToMarkdown(transcript: unknown): string {
 
 /**
  * Identifica el deal MEDDPICC en el payload post-llamada.
- * 1) `conversation_initiation_client_data.dynamic_variables.deal_id` (si el JSON del widget llegó bien).
- * 2) `data.user_id` — el widget envía el atributo `user-id` como `user_id` (recomendado: UUID corto, no depende del tamaño de dynamic-variables).
+ * Requiere `conversation_initiation_client_data.dynamic_variables.deal_id`.
+ * No usa `data.user_id` como fallback: es demasiado genérico para autorizar una mutación sobre un deal.
  */
 function extractMeddpiccDealIdFromConvaiData(data: Record<string, unknown>): string {
   const normalizeUuid = (s: string): string => {
@@ -176,18 +176,7 @@ function extractMeddpiccDealIdFromConvaiData(data: Record<string, unknown>): str
     return typeof idRaw === 'string' ? normalizeUuid(idRaw) : '';
   };
 
-  const fromUserId = (): string => {
-    const uid = data.user_id;
-    return typeof uid === 'string' ? normalizeUuid(uid) : '';
-  };
-
-  const a = fromDyn();
-  if (a) return a;
-
-  const b = fromUserId();
-  if (b) return b;
-
-  return '';
+  return fromDyn();
 }
 
 @Injectable()
@@ -765,7 +754,7 @@ export class MeddpiccService {
     const dealId = extractMeddpiccDealIdFromConvaiData(data);
     if (!dealId || !MEDDPICC_DEAL_UUID_RE.test(dealId)) {
       this.logger.warn(
-        `ConvAI webhook: no se pudo resolver deal (dynamic_variables.deal_id o data.user_id UUID). user_id recibido=${typeof data.user_id === 'string' ? `${String(data.user_id).slice(0, 8)}…` : '—'}`,
+        `ConvAI webhook: no se pudo resolver deal desde dynamic_variables.deal_id. user_id recibido=${typeof data.user_id === 'string' ? `${String(data.user_id).slice(0, 8)}…` : '—'}`,
       );
       return { duplicate: false };
     }
@@ -1035,7 +1024,7 @@ export class MeddpiccService {
     const resolvedDealId = extractMeddpiccDealIdFromConvaiData(data);
     if (!resolvedDealId || !MEDDPICC_DEAL_UUID_RE.test(resolvedDealId)) {
       throw new BadRequestException(
-        'Esta conversación no incluye user_id ni deal_id en variables dinámicas vinculables a un deal (la llamada debe iniciarse desde este deal con user-id / dynamic-variables).',
+        'Esta conversación no incluye dynamic_variables.deal_id vinculable a un deal (la llamada debe iniciarse desde este deal con dynamic-variables).',
       );
     }
     if (resolvedDealId !== dealId) {

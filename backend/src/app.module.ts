@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -22,6 +22,8 @@ import { RfqAnalysisModule } from './rfq-analysis/rfq-analysis.module';
 import { MeddpiccModule } from './meddpicc/meddpicc.module';
 import { KycModule } from './kyc/kyc.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { AuditModule } from './audit/audit.module';
+import { AuditInterceptor } from './audit/audit.interceptor';
 import * as path from 'path';
 
 @Module({
@@ -63,6 +65,7 @@ import * as path from 'path';
     MeddpiccModule,
     KycModule,
     ExpensesModule,
+    AuditModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -73,6 +76,10 @@ import * as path from 'path';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
     },
   ],
 })

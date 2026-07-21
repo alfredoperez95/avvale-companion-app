@@ -5,6 +5,7 @@ import { ExpensesService } from '../../expenses/expenses.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EXPENSE_EXTRACT_JOB_NAME, EXPENSE_EXTRACT_QUEUE } from '../queue.constants';
 import type { ExpenseExtractJobPayload } from '../types/expense-extract-job.payload';
+import { recordWorkerAudit } from './worker-audit.util';
 
 @Processor(EXPENSE_EXTRACT_QUEUE)
 @Injectable()
@@ -23,6 +24,18 @@ export class ExpenseExtractProcessor extends WorkerHost {
   ): Promise<void> {
     const { expenseId, userId } = job.data;
     this.logger.log(`Procesando expense=${expenseId} job=${job.id}`);
+    await recordWorkerAudit(this.prisma, this.logger, {
+      module: 'expenses',
+      entity: 'expense',
+      entityId: expenseId,
+      actorUserId: userId,
+      queue: EXPENSE_EXTRACT_QUEUE,
+      jobName: EXPENSE_EXTRACT_JOB_NAME,
+      jobId: job.id,
+      phase: 'started',
+      attemptsMade: job.attemptsMade,
+      attempts: job.opts.attempts,
+    });
 
     const row = await this.prisma.expense.findUnique({
       where: { id: expenseId },
@@ -36,6 +49,18 @@ export class ExpenseExtractProcessor extends WorkerHost {
     }
 
     await this.expenses.processQueuedExtraction(userId, expenseId);
+    await recordWorkerAudit(this.prisma, this.logger, {
+      module: 'expenses',
+      entity: 'expense',
+      entityId: expenseId,
+      actorUserId: userId,
+      queue: EXPENSE_EXTRACT_QUEUE,
+      jobName: EXPENSE_EXTRACT_JOB_NAME,
+      jobId: job.id,
+      phase: 'completed',
+      attemptsMade: job.attemptsMade,
+      attempts: job.opts.attempts,
+    });
   }
 
   @OnWorkerEvent('failed')
@@ -44,10 +69,23 @@ export class ExpenseExtractProcessor extends WorkerHost {
     err: Error,
   ): Promise<void> {
     if (!job) return;
-    const { expenseId } = job.data;
+    const { expenseId, userId } = job.data;
     const maxAttempts = job.opts.attempts ?? 1;
     const attemptsMade = job.attemptsMade;
     const msg = err?.message ?? String(err);
+    await recordWorkerAudit(this.prisma, this.logger, {
+      module: 'expenses',
+      entity: 'expense',
+      entityId: expenseId,
+      actorUserId: userId,
+      queue: EXPENSE_EXTRACT_QUEUE,
+      jobName: EXPENSE_EXTRACT_JOB_NAME,
+      jobId: job.id,
+      phase: 'failed',
+      attemptsMade,
+      attempts: maxAttempts,
+      error: msg,
+    });
 
     if (err instanceof UnrecoverableError || err?.name === 'UnrecoverableError') {
       this.logger.error(`Expense ${expenseId} no recuperable: ${msg}`);
