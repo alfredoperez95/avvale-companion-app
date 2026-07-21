@@ -792,7 +792,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2147483000;
   padding: var(--fiori-space-4);
   overflow: hidden;
   animation: modalOverlayIn 0.2s ease-out;

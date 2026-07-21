@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiFetch, redirectToLogin } from '@/lib/api';
 import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
 import styles from '../admin.module.css';
@@ -473,7 +474,7 @@ export default function GlobalAuditAdminPage() {
         </div>
       </section>
 
-      {selected ? (
+      {selected ? createPortal(
         <div
           className={styles.modalOverlay}
           role="dialog"
@@ -547,7 +548,8 @@ export default function GlobalAuditAdminPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );
