@@ -10,13 +10,19 @@ function modelId(choice: AnthropicModelChoice): string {
 }
 
 const ANTHROPIC_TIMEOUT_MS = 120_000;
+const ANTHROPIC_MODEL_LIST_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class AnthropicClientService {
+  private readonly modelCache = new Map<AnthropicModelChoice, string>();
+
   private async resolveAvailableModelId(apiKey: string, choice: AnthropicModelChoice): Promise<string> {
+    const cached = this.modelCache.get(choice);
+    if (cached) return cached;
+
     const res = await fetch('https://api.anthropic.com/v1/models?limit=200', {
       method: 'GET',
-      signal: AbortSignal.timeout(ANTHROPIC_TIMEOUT_MS),
+      signal: AbortSignal.timeout(ANTHROPIC_MODEL_LIST_TIMEOUT_MS),
       headers: {
         'anthropic-version': '2023-06-01',
         'x-api-key': apiKey,
@@ -29,9 +35,15 @@ export class AnthropicClientService {
     const models = (data.data ?? []).map((m) => String(m.id ?? '')).filter(Boolean);
     const want = choice;
     const match = models.find((id) => id.toLowerCase().includes(want));
-    if (match) return match;
+    if (match) {
+      this.modelCache.set(choice, match);
+      return match;
+    }
+
     // Último recurso: usar fallback fijo
-    return modelId(choice);
+    const fallback = modelId(choice);
+    this.modelCache.set(choice, fallback);
+    return fallback;
   }
 
   async extractJson(params: {

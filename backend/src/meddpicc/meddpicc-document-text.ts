@@ -1,9 +1,9 @@
 import { fork } from 'child_process';
 import { randomUUID } from 'crypto';
-import * as fs from 'fs';
 import * as fsp from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+import { resolveIsolatedWorkerPath } from '../workers/isolated-worker-path';
 
 const DOCUMENT_PARSE_TIMEOUT_MS = 20_000;
 const DOCUMENT_WORKER_MEMORY_MB = 192;
@@ -94,9 +94,5 @@ function extractDocumentFileToMarkdown(filePath: string, kind: DocumentKind): Pr
 }
 
 function resolveWorkerPath(): string {
-  const compiled = path.join(__dirname, 'meddpicc-document-worker.js');
-  if (fs.existsSync(compiled)) return compiled;
-
-  // Fallback para ejecución directa en TypeScript durante desarrollo con Nest CLI.
-  return path.join(__dirname, 'meddpicc-document-worker.ts');
+  return resolveIsolatedWorkerPath(__dirname, 'meddpicc-document-worker');
 }

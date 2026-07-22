@@ -14,10 +14,10 @@ process.on('message', async (message: PdfWorkerRequest) => {
     const maxChars = Math.max(1, Math.min(Number(message.maxChars) || 1_000_000, 1_000_000));
     const buffer = fs.readFileSync(message.filePath);
     const text = await extractTextFromPdfBuffer(buffer, maxChars);
-    process.send?.({ ok: true, text });
+    await sendToParent({ ok: true, text });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    process.send?.({ ok: false, error: message });
+    const error = err instanceof Error ? err.message : String(err);
+    await sendToParent({ ok: false, error }).catch(() => undefined);
   } finally {
     process.exit(0);
   }
@@ -39,4 +39,20 @@ async function extractTextFromPdfBuffer(buffer: Buffer, maxChars: number): Promi
   const text = String(result?.text ?? '').trim();
   if (text.length <= maxChars) return text;
   return `${text.slice(0, maxChars)}\n… [contenido truncado por tamaño]`;
+}
+
+function sendToParent(payload: { ok: true; text: string } | { ok: false; error: string }): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!process.send) {
+      reject(new Error('Canal IPC no disponible'));
+      return;
+    }
+    process.send(payload, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
 }

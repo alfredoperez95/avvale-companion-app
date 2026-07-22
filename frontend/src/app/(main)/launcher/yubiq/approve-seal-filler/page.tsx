@@ -201,36 +201,52 @@ export default function YubiqApproveSealFillerPage() {
     setPhase('uploading');
     setLog((prev) => [...prev, 'Uploading PDF…']);
     try {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 150_000);
       const fd = new FormData();
       fd.append('file', file);
       fd.append('model', model);
       setPhase('analyzing');
-      setLog((prev) => [...prev, `Analyzing with Claude (${modelLabel})…`]);
-      const res = await apiFetch('/api/yubiq/approve-seal-filler/analyze', {
-        method: 'POST',
-        body: fd,
-      });
-      const data = (await res.json().catch(() => null)) as AnalyzeOfferResponse | null;
-      if (res.status === 401) {
-        redirectToLogin();
-        return;
+      setLog((prev) => [
+        ...prev,
+        `Enviando PDF (${Math.round(file.size / 1024)} KB)…`,
+        `Analyzing with Claude (${modelLabel})…`,
+      ]);
+      try {
+        const res = await apiFetch('/api/yubiq/approve-seal-filler/analyze', {
+          method: 'POST',
+          body: fd,
+          signal: controller.signal,
+        });
+        const data = (await res.json().catch(() => null)) as AnalyzeOfferResponse | null;
+        if (res.status === 401) {
+          redirectToLogin();
+          return;
+        }
+        if (!res.ok || !data) {
+          setError((data as { message?: string })?.message ?? 'No se pudo analizar el PDF.');
+          setPhase('error');
+          return;
+        }
+        setLog(data.log ?? []);
+        setResult(data.result);
+        setRawClaudeJson(data.rawClaudeJson ?? '');
+        setTranslatedExtraction(null);
+        setTranslatedRawClaudeJson('');
+        setTranslateError('');
+        setLastFileName(data.fileName ?? file?.name ?? 'document.pdf');
+        setPromptPreview(data.promptPreview ?? '');
+        setPhase('done');
+      } finally {
+        window.clearTimeout(timeout);
       }
-      if (!res.ok || !data) {
-        setError((data as { message?: string })?.message ?? 'No se pudo analizar el PDF.');
-        setPhase('error');
-        return;
-      }
-      setLog(data.log ?? []);
-      setResult(data.result);
-      setRawClaudeJson(data.rawClaudeJson ?? '');
-      setTranslatedExtraction(null);
-      setTranslatedRawClaudeJson('');
-      setTranslateError('');
-      setLastFileName(data.fileName ?? file?.name ?? 'document.pdf');
-      setPromptPreview(data.promptPreview ?? '');
-      setPhase('done');
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg =
+        e instanceof DOMException && e.name === 'AbortError'
+          ? 'El análisis ha superado el tiempo máximo local.'
+          : e instanceof Error
+            ? e.message
+            : String(e);
       setError(msg);
       setPhase('error');
     }

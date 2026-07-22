@@ -1,9 +1,9 @@
 import { fork } from 'child_process';
 import { randomUUID } from 'crypto';
-import * as fs from 'fs';
 import * as fsp from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+import { resolveIsolatedWorkerPath } from '../workers/isolated-worker-path';
 
 const HEIC_EXTENSIONS = new Set(['heic', 'heif']);
 const HEIC_CONVERT_TIMEOUT_MS = 20_000;
@@ -108,9 +108,5 @@ function clampQuality(quality: number): number {
 }
 
 function resolveWorkerPath(): string {
-  const compiled = path.join(__dirname, 'expense-heic-worker.js');
-  if (fs.existsSync(compiled)) return compiled;
-
-  // Fallback para ejecución directa en TypeScript durante desarrollo con Nest CLI.
-  return path.join(__dirname, 'expense-heic-worker.ts');
+  return resolveIsolatedWorkerPath(__dirname, 'expense-heic-worker');
 }

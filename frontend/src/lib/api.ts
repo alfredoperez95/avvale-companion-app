@@ -68,7 +68,8 @@ export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
     ...(init?.headers as Record<string, string>),
   };
   if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-  return fetch(resolveApiUrl(path), { ...init, headers });
+  const url = resolveApiUrl(path);
+  return fetch(url, { ...init, headers });
 }
 
 export function apiUpload(

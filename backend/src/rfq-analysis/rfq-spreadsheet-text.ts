@@ -1,9 +1,9 @@
 import { fork } from 'child_process';
-import * as fs from 'fs';
 import * as fsp from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
+import { resolveIsolatedWorkerPath } from '../workers/isolated-worker-path';
 
 /** Límite aproximado de caracteres extraídos por fichero (evita cargas enormes en contexto). */
 const MAX_SPREADSHEET_OUTPUT_CHARS = 500_000;
@@ -96,9 +96,5 @@ export function looksLikeSpreadsheetFileName(fileName: string | null | undefined
 }
 
 function resolveWorkerPath(): string {
-  const compiled = path.join(__dirname, 'rfq-spreadsheet-worker.js');
-  if (fs.existsSync(compiled)) return compiled;
-
-  // Fallback para ejecución directa en TypeScript durante desarrollo con Nest CLI.
-  return path.join(__dirname, 'rfq-spreadsheet-worker.ts');
+  return resolveIsolatedWorkerPath(__dirname, 'rfq-spreadsheet-worker');
 }
