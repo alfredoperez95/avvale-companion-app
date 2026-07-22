@@ -1,7 +1,7 @@
 import type { AreaCompania } from '@/types/yubiq';
 
 /** Valores permitidos para `prefill.segment` en Yubiq (mayúsculas). */
-export const ALLOWED_YUBIQ_SEGMENTS: readonly AreaCompania[] = ['YUBIQ', 'RUN', 'GROW', 'SAIBORG', 'WISE'] as const;
+export const ALLOWED_YUBIQ_SEGMENTS: readonly AreaCompania[] = ['YUBIQ', 'RUN', 'GROW', 'SAIBORG', 'WISE', 'AXAZURE'] as const;
 
 const ALLOWED_SET = new Set<string>(ALLOWED_YUBIQ_SEGMENTS);
 

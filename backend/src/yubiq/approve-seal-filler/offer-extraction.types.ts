@@ -1,4 +1,4 @@
-export type AreaCompania = 'RUN' | 'GROW' | 'SAIBORG' | 'WISE' | 'YUBIQ';
+export type AreaCompania = 'RUN' | 'GROW' | 'SAIBORG' | 'WISE' | 'YUBIQ' | 'AXAZURE';
 export type DealType = 'New Opportunity' | 'Renovación' | 'Upsell';
 
 export type ConfidenceMap = {

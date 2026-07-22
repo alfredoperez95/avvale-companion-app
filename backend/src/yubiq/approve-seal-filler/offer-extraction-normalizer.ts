@@ -6,7 +6,7 @@ import {
   NOTA_INTERPRETACION_IMPORTE_TM_SIN_JORNADAS,
 } from './nota-interpretacion-importe.constant';
 
-const AREA_VALUES: AreaCompania[] = ['RUN', 'GROW', 'SAIBORG', 'WISE', 'YUBIQ'];
+const AREA_VALUES: AreaCompania[] = ['RUN', 'GROW', 'SAIBORG', 'WISE', 'YUBIQ', 'AXAZURE'];
 
 /** Convierte número o texto tipo "2.990" / "390,50" a euros (float). */
 export function parseEuroAmountToNumber(raw: unknown): number | null {

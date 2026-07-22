@@ -40,7 +40,7 @@ Resumen de intención (detalle en el propio prompt):
 
 **Comportamiento:**
 
-1. **Área compañía** — Normalización a `RUN` \| `GROW` \| `SAIBORG` \| `WISE` \| `YUBIQ`; recuperación desde observaciones si hace falta (warnings en log de análisis).
+1. **Área compañía** — Normalización a `RUN` \| `GROW` \| `SAIBORG` \| `WISE` \| `YUBIQ` \| `AXAZURE`; recuperación desde observaciones si hace falta (warnings en log de análisis). `AXAZURE` cubre ofertas Axazure / Microsoft Business Applications donde el núcleo sea Dynamics 365, CRM Dynamics, Business Central, F&O / ERP Microsoft o Power Platform de negocio; Azure infraestructura genérica sigue siendo `RUN`.
 
 2. **Total periodo de compromiso** — Si constan datos suficientes (`importeProyectoEuros`, `importeMensualEuros`, `periodoCompromisoMeses` parseados):
    - Fórmula: **proyecto (una vez) + mensual × meses** (si solo hay mensual sin proyecto, **mensual × meses**).
@@ -83,6 +83,7 @@ El resto del payload (título prefill, segmento, `companionMeta`, etc.) sigue la
 | Elemento | Comportamiento |
 |----------|----------------|
 | **Importe** | Muestra `importeOferta` y, si aplica, bloque “Múltiples importes” (details) con aviso compacto, icono de advertencia y texto desplegable. |
+| **Área (Avvale)** | Selector editable (`RUN` \| `GROW` \| `SAIBORG` \| `WISE` \| `YUBIQ` \| `AXAZURE`) para corregir si el análisis falla; el valor elegido alimenta el payload Yubiq (`segment` / `regulatedArea`). |
 | **Total importe comprometido** | Etiqueta + valor; la nota larga de cálculo (`notaImporteCompromiso`) va en **tooltip** (botón info azul, panel en portal `position: fixed` para no recortar). |
 | **Total importe computable** | Si hay proyecto + licencia anual y no hay total de compromiso mensual: muestra `importeTotalDealComputablesTexto` y tooltip con `notaImporteTotalDealComputables`. |
 | **T&M** | Nota bajo importe cuando viene `notaInterpretacionImporte`. |

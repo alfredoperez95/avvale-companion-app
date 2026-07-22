@@ -4,8 +4,11 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CssStyled } from '@/components/CssStyled/CssStyled';
-import type { ClaudeOfferExtraction } from '@/types/yubiq';
+import { ALLOWED_YUBIQ_SEGMENTS } from '@/lib/yubiq';
+import type { AreaCompania, ClaudeOfferExtraction } from '@/types/yubiq';
 import styles from './ExtractionResultCard.module.css';
+
+const AREA_OPTIONS: readonly AreaCompania[] = ALLOWED_YUBIQ_SEGMENTS;
 
 function valueOrDash(v: string | null | undefined): string {
   const s = (v ?? '').trim();
@@ -181,11 +184,16 @@ function CompromisoInfoTooltip({ text }: { text: string }) {
 export function ExtractionResultCard({
   result,
   rawClaudeJson,
+  onAreaChange,
 }: {
   result: ClaudeOfferExtraction | null;
   rawClaudeJson: string;
+  /** Permite corregir el área detectada si el escaneo falla. */
+  onAreaChange?: (area: AreaCompania | null) => void;
 }) {
   if (!result) return null;
+
+  const areaValue = result.areaCompania ?? '';
 
   return (
     <>
@@ -272,14 +280,35 @@ export function ExtractionResultCard({
           ) : null}
         </div>
         <div className={styles.card}>
-          <p className={styles.label}>Área (Avvale)</p>
-          {result.areaCompania ? (
-            <span className={styles.areaBadge} data-area={result.areaCompania}>
-              {result.areaCompania}
-            </span>
-          ) : (
-            <p className={styles.value}>—</p>
-          )}
+          <p className={styles.label} id="extraction-area-label">
+            Área (Avvale)
+          </p>
+          <div className={styles.areaSelectWrap}>
+            <select
+              className={styles.areaSelect}
+              data-area={areaValue || undefined}
+              value={areaValue}
+              aria-labelledby="extraction-area-label"
+              aria-describedby="extraction-area-hint"
+              disabled={!onAreaChange}
+              onChange={(e) => {
+                if (!onAreaChange) return;
+                const next = e.target.value;
+                onAreaChange(next === '' ? null : (next as AreaCompania));
+              }}
+            >
+              <option value="">—</option>
+              {AREA_OPTIONS.map((area) => (
+                <option key={area} value={area}>
+                  {area}
+                </option>
+              ))}
+            </select>
+            <ChevronIcon className={styles.areaSelectChevron} />
+          </div>
+          <p id="extraction-area-hint" className={styles.areaHint}>
+            Puedes corregirla si el análisis no acierta.
+          </p>
         </div>
         <div className={`${styles.card} ${styles.wide}`}>
           <p className={styles.label}>Resumen</p>

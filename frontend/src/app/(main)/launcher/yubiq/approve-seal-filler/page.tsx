@@ -11,6 +11,7 @@ import { ExtractionResultCard } from '@/components/yubiq/ExtractionResultCard/Ex
 import type {
   AnalyzeOfferResponse,
   AnthropicModelChoice,
+  AreaCompania,
   ClaudeOfferExtraction,
   TranslateOfferResponse,
   UserAnthropicCredentialStatus,
@@ -138,6 +139,11 @@ export default function YubiqApproveSealFillerPage() {
 
   const displayResult = translatedExtraction ?? result;
   const displayRawClaudeJson = translatedExtraction ? translatedRawClaudeJson : rawClaudeJson;
+
+  const handleAreaChange = (area: AreaCompania | null) => {
+    setResult((prev) => (prev ? { ...prev, areaCompania: area } : prev));
+    setTranslatedExtraction((prev) => (prev ? { ...prev, areaCompania: area } : prev));
+  };
 
   const canAnalyze = Boolean(file) && Boolean(credentialStatus?.configured) && phase !== 'uploading' && phase !== 'extracting' && phase !== 'analyzing';
 
@@ -550,7 +556,11 @@ export default function YubiqApproveSealFillerPage() {
           </div>
           {translateError ? <p className={styles.translateError}>{translateError}</p> : null}
           {result ? (
-            <ExtractionResultCard result={displayResult} rawClaudeJson={displayRawClaudeJson} />
+            <ExtractionResultCard
+              result={displayResult}
+              rawClaudeJson={displayRawClaudeJson}
+              onAreaChange={handleAreaChange}
+            />
           ) : (
             <div className={styles.empty}>
               Aquí verás título, cliente, importe, área Avvale, resumen y observaciones cuando completes un análisis correctamente.

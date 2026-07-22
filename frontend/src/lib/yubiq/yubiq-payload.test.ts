@@ -42,6 +42,10 @@ describe('normalizeSegment', () => {
     expect(normalizeSegment('run').segment).toBe('RUN');
   });
 
+  it('acepta AXAZURE como segmento Yubiq', () => {
+    expect(normalizeSegment('AXAZURE').segment).toBe('AXAZURE');
+  });
+
   it('devuelve vacío y warning si no mapea', () => {
     const r = normalizeSegment('OTRO');
     expect(r.segment).toBe('');
@@ -112,6 +116,26 @@ describe('buildYubiqPayload', () => {
     expect(payload.prefill.title).toBe('New Be2bar integration - Estrella Galicia');
     expect(payload.prefill.description).toBe('MuleSoft implementation project.');
     expect(payload.prefill.customerName).toBe('Estrella Galicia');
+  });
+
+  it('envía AXAZURE en segment y regulatedArea', () => {
+    const extraction: ClaudeOfferExtraction = {
+      ...sampleExtraction,
+      titulo: 'Assessment Dynamics 365 CRM',
+      nombreCliente: 'Grupo Oesía',
+      areaCompania: 'AXAZURE',
+      resumen: 'Assessment para migrar y optimizar CRM en Dynamics 365.',
+    };
+    const { payload, isValid, validationErrors } = buildYubiqPayload({
+      extraction,
+      fileName: '[AXAZURE] Propuesta de Assessment - Grupo Oesía.pdf',
+      now: new Date('2026-04-02T14:32:01.234Z'),
+    });
+
+    expect(isValid).toBe(true);
+    expect(validationErrors).toEqual([]);
+    expect(payload.document.regulatedArea).toBe('AXAZURE');
+    expect(payload.prefill.segment).toBe('AXAZURE');
   });
 
   it('incluye manualMargin como entero 0–100 (quita %, redondea y acota)', () => {
