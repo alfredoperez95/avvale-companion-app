@@ -9,6 +9,7 @@ import type { AreaCompania, ClaudeOfferExtraction } from '@/types/yubiq';
 import styles from './ExtractionResultCard.module.css';
 
 const AREA_OPTIONS: readonly AreaCompania[] = ALLOWED_YUBIQ_SEGMENTS;
+const AREA_SELECT_OPTIONS: readonly (AreaCompania | '')[] = ['', ...AREA_OPTIONS];
 
 function valueOrDash(v: string | null | undefined): string {
   const s = (v ?? '').trim();
@@ -181,6 +182,96 @@ function CompromisoInfoTooltip({ text }: { text: string }) {
   );
 }
 
+function AreaDropdown({
+  value,
+  labelId,
+  hintId,
+  disabled,
+  onChange,
+}: {
+  value: AreaCompania | '';
+  labelId: string;
+  hintId: string;
+  disabled: boolean;
+  onChange?: (area: AreaCompania | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
+  const selectedValueId = useId();
+  const currentLabel = value || '—';
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const commit = (next: AreaCompania | '') => {
+    onChange?.(next === '' ? null : next);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={wrapRef} className={styles.areaSelectWrap}>
+      <button
+        type="button"
+        className={styles.areaSelectButton}
+        data-area={value || undefined}
+        aria-labelledby={`${labelId} ${selectedValueId}`}
+        aria-describedby={hintId}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        <span id={selectedValueId}>{currentLabel}</span>
+        <ChevronIcon className={styles.areaSelectChevron} />
+      </button>
+      {open ? (
+        <div id={listboxId} className={styles.areaSelectPopover} role="listbox" aria-labelledby={labelId}>
+          {AREA_SELECT_OPTIONS.map((area) => {
+            const label = area || '—';
+            const selected = area === value;
+            return (
+              <button
+                key={area || 'empty'}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                className={`${styles.areaSelectOption} ${selected ? styles.areaSelectOptionActive : ''}`}
+                data-area={area || undefined}
+                onClick={() => commit(area)}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function ExtractionResultCard({
   result,
   rawClaudeJson,
@@ -283,29 +374,13 @@ export function ExtractionResultCard({
           <p className={styles.label} id="extraction-area-label">
             Área (Avvale)
           </p>
-          <div className={styles.areaSelectWrap}>
-            <select
-              className={styles.areaSelect}
-              data-area={areaValue || undefined}
-              value={areaValue}
-              aria-labelledby="extraction-area-label"
-              aria-describedby="extraction-area-hint"
-              disabled={!onAreaChange}
-              onChange={(e) => {
-                if (!onAreaChange) return;
-                const next = e.target.value;
-                onAreaChange(next === '' ? null : (next as AreaCompania));
-              }}
-            >
-              <option value="">—</option>
-              {AREA_OPTIONS.map((area) => (
-                <option key={area} value={area}>
-                  {area}
-                </option>
-              ))}
-            </select>
-            <ChevronIcon className={styles.areaSelectChevron} />
-          </div>
+          <AreaDropdown
+            value={areaValue}
+            labelId="extraction-area-label"
+            hintId="extraction-area-hint"
+            disabled={!onAreaChange}
+            onChange={onAreaChange}
+          />
           <p id="extraction-area-hint" className={styles.areaHint}>
             Puedes corregirla si el análisis no acierta.
           </p>
