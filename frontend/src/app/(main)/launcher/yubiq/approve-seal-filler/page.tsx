@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch, redirectToLogin } from '@/lib/api';
-import { DropzoneUploader } from '@/components/yubiq/DropzoneUploader/DropzoneUploader';
+import { ApproveSealFilesUploader } from '@/components/yubiq/DropzoneUploader/ApproveSealFilesUploader';
 import { AnalysisLogPanel } from '@/components/yubiq/AnalysisLogPanel/AnalysisLogPanel';
 import { ExtractionResultCard } from '@/components/yubiq/ExtractionResultCard/ExtractionResultCard';
 import type {
@@ -18,7 +18,9 @@ import type {
 } from '@/types/yubiq';
 import { isDialogEnterTargetInteractive } from '@/lib/dialog-keyboard';
 import { buildYubiqPayload, dispatchYubiqToExtensionAndWait } from '@/lib/yubiq';
+import { fileToBase64Payload, storeLocalFilesInExtension } from '@/lib/browser-extension';
 import { PageBreadcrumb, PageBackLink, PageHero, ChevronBackIcon } from '@/components/page-hero';
+import type { YubiqExtensionFilesBlock } from '@/types/yubiq-payload';
 import styles from './page.module.css';
 
 function analysisBusyLabel(phase: 'uploading' | 'extracting' | 'analyzing'): string {
@@ -30,6 +32,13 @@ function analysisBusyLabel(phase: 'uploading' | 'extracting' | 'analyzing'): str
     default:
       return 'Analizando con Claude…';
   }
+}
+
+function createClientBatchId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 /** Icono de idioma / traducción (trazo Fiori, coherente con el panel). */
@@ -118,6 +127,7 @@ export default function YubiqApproveSealFillerPage() {
   const [credentialStatus, setCredentialStatus] = useState<UserAnthropicCredentialStatus | null>(null);
   const [credLoading, setCredLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
+  const [pfeFile, setPfeFile] = useState<File | null>(null);
   const [model, setModel] = useState<AnthropicModelChoice>('haiku');
   const [phase, setPhase] = useState<'idle' | 'uploading' | 'extracting' | 'analyzing' | 'done' | 'error'>('idle');
   const [log, setLog] = useState<string[]>([]);
@@ -211,11 +221,13 @@ export default function YubiqApproveSealFillerPage() {
       const timeout = window.setTimeout(() => controller.abort(), 150_000);
       const fd = new FormData();
       fd.append('file', file);
+      if (pfeFile) fd.append('pfe', pfeFile);
       fd.append('model', model);
       setPhase('analyzing');
       setLog((prev) => [
         ...prev,
         `Enviando PDF (${Math.round(file.size / 1024)} KB)…`,
+        ...(pfeFile ? [`Enviando PFE (${Math.round(pfeFile.size / 1024)} KB)…`] : []),
         `Analyzing with Claude (${modelLabel})…`,
       ]);
       try {
@@ -290,14 +302,41 @@ export default function YubiqApproveSealFillerPage() {
 
   const sendToYubiq = async (manualMargin?: string) => {
     if (!result) return;
+    if (!file) {
+      setYubiqBridge('error');
+      setYubiqBridgeMessage('Falta el PDF de la oferta para enviarlo a Yubiq.');
+      return;
+    }
     const extractionForYubiq = translatedExtraction ?? result;
     setYubiqMarginModal('closed');
     setYubiqBridge('pending');
     setYubiqBridgeMessage('');
     try {
+      const batchId = createClientBatchId();
+      const localFiles = [
+        await fileToBase64Payload(file, 'offer_pdf'),
+        ...(pfeFile ? [await fileToBase64Payload(pfeFile, 'pfe_excel')] : []),
+      ];
+      const stored = await storeLocalFilesInExtension({ batchId, files: localFiles });
+      if (!stored.ok) {
+        setYubiqBridge(stored.timedOut ? 'no_extension' : 'error');
+        setYubiqBridgeMessage(
+          stored.error === 'payload_too_large'
+            ? 'La extensión no pudo almacenar los archivos: alguno supera el tamaño máximo permitido.'
+            : stored.timedOut
+              ? 'La extensión no respondió al almacenamiento de archivos. Actualiza o activa Avvale Companion y recarga esta página.'
+              : 'La extensión no pudo almacenar los archivos para Yubiq. Actualiza Avvale Companion e inténtalo de nuevo.',
+        );
+        return;
+      }
+      const extensionFiles: YubiqExtensionFilesBlock = {
+        batchId,
+        files: localFiles.map(({ role, name, mimeType, size }) => ({ role, name, mimeType, size })),
+      };
       const { payload } = buildYubiqPayload({
         extraction: extractionForYubiq,
         fileName: lastFileName || file?.name || 'document.pdf',
+        extensionFiles,
         ...(manualMargin !== undefined ? { manualMargin } : {}),
       });
       const detail = await dispatchYubiqToExtensionAndWait(payload, { timeoutMs: 8000 });
@@ -317,7 +356,12 @@ export default function YubiqApproveSealFillerPage() {
       setYubiqBridgeMessage(detail.error ?? 'No se pudo completar el envío.');
     } catch (e) {
       setYubiqBridge('error');
-      setYubiqBridgeMessage(e instanceof Error ? e.message : String(e));
+      const message = e instanceof Error ? e.message : String(e);
+      setYubiqBridgeMessage(
+        message === 'payload_too_large'
+          ? 'La extensión no pudo almacenar los archivos: alguno supera el tamaño máximo permitido.'
+          : message,
+      );
     }
   };
 
@@ -367,19 +411,20 @@ export default function YubiqApproveSealFillerPage() {
               </span>
               <div>
                 <h2 className={styles.sectionTitle}>Documento</h2>
-                <p className={styles.sectionDesc}>Arrastra un PDF o elige un archivo desde tu equipo (máx. 20&nbsp;MB).</p>
+                <p className={styles.sectionDesc}>Sube el PDF de la oferta y, si lo tienes, el Excel PFE para calcular el margen.</p>
               </div>
             </div>
-            <DropzoneUploader
-              file={file}
+            <ApproveSealFilesUploader
+              pdfFile={file}
+              pfeFile={pfeFile}
               disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
-              onFileSelected={(f) => {
-                if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
-                  setError('Selecciona un archivo PDF.');
-                  setPhase('error');
-                  return;
-                }
+              onPdfFileSelected={(f) => {
                 setFile(f);
+                setError('');
+                setPhase('idle');
+              }}
+              onPfeFileSelected={(f) => {
+                setPfeFile(f);
                 setError('');
                 setPhase('idle');
               }}
@@ -440,6 +485,7 @@ export default function YubiqApproveSealFillerPage() {
                     className={styles.btnSecondary}
                     onClick={() => {
                       setFile(null);
+                      setPfeFile(null);
                       setResult(null);
                       setRawClaudeJson('');
                       setLastFileName('');
@@ -586,6 +632,11 @@ export default function YubiqApproveSealFillerPage() {
               data-avvale-action="send-yubiq"
               disabled={!result || yubiqBridge === 'pending'}
               onClick={() => {
+                const extractedMargin = (translatedExtraction ?? result)?.margenPorcentaje;
+                if (extractedMargin != null) {
+                  void sendToYubiq(String(extractedMargin));
+                  return;
+                }
                 setYubiqManualMarginInput('');
                 setYubiqMarginModal('ask');
               }}

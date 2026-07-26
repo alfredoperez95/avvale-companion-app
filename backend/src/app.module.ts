@@ -24,6 +24,7 @@ import { KycModule } from './kyc/kyc.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { AuditModule } from './audit/audit.module';
 import { AuditInterceptor } from './audit/audit.interceptor';
+import { SwFormsModule } from './sw-forms/sw-forms.module';
 import * as path from 'path';
 
 @Module({
@@ -65,6 +66,7 @@ import * as path from 'path';
     MeddpiccModule,
     KycModule,
     ExpensesModule,
+    SwFormsModule,
     AuditModule,
   ],
   controllers: [HealthController],

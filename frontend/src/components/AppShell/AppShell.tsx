@@ -146,25 +146,52 @@ const fioriTabsKyc: {
   },
 ];
 
-const fioriTabsAdministrativeProcesses: {
+const fioriTabsExpenses: {
   href: string;
   label: string;
   icon?: IconName;
   iconOnly?: boolean;
   isActive: (pathname: string | null) => boolean;
 }[] = [
+  fioriTabHome,
   {
-    href: '/launcher/expenses-process/expenses',
+    href: '/launcher/expenses',
     label: 'Gastos',
     isActive: (p) =>
       p != null &&
-      p.startsWith('/launcher/expenses-process/expenses') &&
-      !p.startsWith('/launcher/expenses-process/expenses/new'),
+      p.startsWith('/launcher/expenses') &&
+      !p.startsWith('/launcher/expenses/new') &&
+      !p.startsWith('/launcher/expenses/email'),
   },
   {
-    href: '/launcher/expenses-process/expenses/new',
+    href: '/launcher/expenses/new',
     label: 'Nuevo gasto',
-    isActive: (p) => p != null && p.startsWith('/launcher/expenses-process/expenses/new'),
+    isActive: (p) => p != null && p.startsWith('/launcher/expenses/new'),
+  },
+  {
+    href: '/launcher/expenses/email',
+    label: 'Gastos por email',
+    isActive: (p) => p != null && p.startsWith('/launcher/expenses/email'),
+  },
+];
+
+const fioriTabsSwForms: {
+  href: string;
+  label: string;
+  icon?: IconName;
+  iconOnly?: boolean;
+  isActive: (pathname: string | null) => boolean;
+}[] = [
+  fioriTabHome,
+  {
+    href: '/launcher/formularios-sw',
+    label: 'Crear formulario',
+    isActive: (p) => p != null && p.startsWith('/launcher/formularios-sw') && !p.startsWith('/launcher/formularios-sw/configuracion'),
+  },
+  {
+    href: '/launcher/formularios-sw/configuracion',
+    label: 'Configuración',
+    isActive: (p) => p != null && p.startsWith('/launcher/formularios-sw/configuracion'),
   },
 ];
 
@@ -193,8 +220,9 @@ function getPageHeader(pathname: string | null): { title: string } {
   if (pathname.startsWith('/launcher/rfq-analysis')) return { title: 'Análisis RFQs' };
   if (pathname.startsWith('/launcher/kyc')) return { title: 'KYC' };
   if (pathname.startsWith('/launcher/meddpicc')) return { title: 'MEDDPICC' };
-  if (pathname.startsWith('/launcher/expenses-process/expenses')) return { title: 'Gastos' };
-  if (pathname.startsWith('/launcher/expenses-process')) return { title: 'Gastos' };
+  if (pathname.startsWith('/launcher/formularios-sw/configuracion')) return { title: 'Configuración SW' };
+  if (pathname.startsWith('/launcher/formularios-sw')) return { title: 'Formularios de SW' };
+  if (pathname.startsWith('/launcher/expenses')) return { title: 'Gastos' };
   if (pathname.startsWith('/launcher/activations/activate')) return { title: 'Activaciones' };
   if (pathname.startsWith('/launcher/activations/configuration')) return { title: 'Configuración' };
   if (pathname.startsWith('/admin')) return { title: 'Administración' };
@@ -224,11 +252,13 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
             ? fioriTabsKyc
             : pathname?.startsWith('/launcher/meddpicc')
               ? fioriTabsMeddpicc
-              : pathname?.startsWith('/launcher/expenses-process')
-                ? fioriTabsAdministrativeProcesses
-                : pathname?.startsWith('/launcher/yubiq')
-                  ? fioriTabsYubiq
-                  : fioriTabsActivations;
+              : pathname?.startsWith('/launcher/expenses')
+                ? fioriTabsExpenses
+                : pathname?.startsWith('/launcher/formularios-sw')
+                  ? fioriTabsSwForms
+                  : pathname?.startsWith('/launcher/yubiq')
+                    ? fioriTabsYubiq
+                    : fioriTabsActivations;
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
 

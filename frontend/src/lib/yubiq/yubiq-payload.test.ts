@@ -26,6 +26,7 @@ const sampleExtraction: ClaudeOfferExtraction = {
     areaCompania: 0.98,
     resumen: 0.92,
   },
+  margenPorcentaje: null,
 };
 
 describe('parseAmountAndCurrency', () => {
@@ -146,6 +147,36 @@ describe('buildYubiqPayload', () => {
       manualMargin: '  15 % ',
     });
     expect(payload.manualMargin).toBe(15);
+  });
+
+  it('incluye metadatos de archivos locales almacenados en la extensión', () => {
+    const { payload, isValid, validationErrors } = buildYubiqPayload({
+      extraction: sampleExtraction,
+      fileName: 'oferta.pdf',
+      now: new Date('2026-01-01T00:00:00.000Z'),
+      extensionFiles: {
+        batchId: 'batch-123',
+        files: [
+          {
+            role: 'offer_pdf',
+            name: 'oferta.pdf',
+            mimeType: 'application/pdf',
+            size: 12_345,
+          },
+          {
+            role: 'pfe_excel',
+            name: 'PFE.xlsx',
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            size: 23_456,
+          },
+        ],
+      },
+    });
+
+    expect(isValid).toBe(true);
+    expect(validationErrors).toEqual([]);
+    expect(payload.extensionFiles?.batchId).toBe('batch-123');
+    expect(payload.extensionFiles?.files.map((file) => file.role)).toEqual(['offer_pdf', 'pfe_excel']);
   });
 
   it('redondea decimales y acota', () => {

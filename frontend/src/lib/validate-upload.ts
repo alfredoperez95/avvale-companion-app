@@ -1,4 +1,4 @@
-export type UploadKind = 'activation' | 'avatar' | 'expense' | 'rfq' | 'meddpicc' | 'yubiq';
+export type UploadKind = 'activation' | 'avatar' | 'expense' | 'rfq' | 'meddpicc' | 'yubiq' | 'yubiqPfe';
 
 type Rule = {
   maxBytes: number;
@@ -48,6 +48,11 @@ export const UPLOAD_RULES: Record<UploadKind, Rule> = {
     maxBytes: 20 * MiB,
     allowedExtensions: new Set(['pdf']),
     label: 'PDF',
+  },
+  yubiqPfe: {
+    maxBytes: 20 * MiB,
+    allowedExtensions: new Set(['xlsx', 'xls']),
+    label: 'Excel .xlsx o .xls',
   },
   activation: {
     maxBytes: 20 * MiB,

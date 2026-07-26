@@ -10,8 +10,8 @@ import {
   EXPENSE_CATEGORIES,
   ExpenseCategoryIcon,
   expenseCategoryLabel,
-} from '../../expense-categories';
-import styles from '../../expenses-process.module.css';
+} from '../expense-categories';
+import styles from '../expenses.module.css';
 
 type Expense = {
   id: string;
@@ -257,7 +257,7 @@ export default function ExpenseDetailPage() {
         const text = await res.text();
         throw new Error(text || 'No se pudo eliminar el gasto.');
       }
-      router.push('/launcher/expenses-process/expenses');
+      router.push('/launcher/expenses');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el gasto.');
     } finally {
@@ -279,7 +279,7 @@ export default function ExpenseDetailPage() {
     <div className={styles.page}>
       <div className={styles.pageIntro}>
         <PageBreadcrumb>
-          <PageBackLink href="/launcher/expenses-process/expenses">← Gastos</PageBackLink>
+          <PageBackLink href="/launcher/expenses">← Gastos</PageBackLink>
         </PageBreadcrumb>
         <PageHero
           animateEnter={false}

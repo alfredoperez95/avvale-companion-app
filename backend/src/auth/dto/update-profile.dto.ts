@@ -24,6 +24,7 @@ export const LAUNCHER_TILE_IDS = [
   'meddpicc',
   'kyc',
   'administrativeProcesses',
+  'swForms',
 ] as const;
 export type LauncherTileId = (typeof LAUNCHER_TILE_IDS)[number];
 
@@ -60,14 +61,14 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMinSize(7)
-  @ArrayMaxSize(7)
+  @ArrayMinSize(8)
+  @ArrayMaxSize(8)
   @ArrayUnique()
   @IsString({ each: true })
   @IsIn(LAUNCHER_TILE_IDS, {
     each: true,
     message:
-      'Cada id de mosaico debe ser activations, pipeline, yubiq, rfqAnalysis, meddpicc, kyc o administrativeProcesses',
+      'Cada id de mosaico debe ser activations, pipeline, yubiq, rfqAnalysis, meddpicc, kyc, administrativeProcesses o swForms',
   })
   launcherTileOrder?: LauncherTileId[];
 }

@@ -23,8 +23,8 @@ import {
   ExpenseCategoryIcon,
   ExpenseDeleteIcon,
   isExpenseCategory,
-} from '../expense-categories';
-import styles from '../expenses-process.module.css';
+} from './expense-categories';
+import styles from './expenses.module.css';
 
 type Expense = {
   id: string;
@@ -513,7 +513,7 @@ export default function ExpensesPage() {
           title="Gastos"
           subtitle="Gastos guardados por mes, con recibo persistente disponible para revisión y futura automatización."
           actions={
-            <Link href="/launcher/expenses-process/expenses/new" className={styles.toolbarLink}>
+            <Link href="/launcher/expenses/new" className={styles.toolbarLink}>
               Nuevo gasto
             </Link>
           }
@@ -814,7 +814,7 @@ export default function ExpensesPage() {
                       </label>
                     ) : null}
                     <Link
-                      href={`/launcher/expenses-process/expenses/${expense.id}`}
+                      href={`/launcher/expenses/${expense.id}`}
                       className={styles.expenseRowLink}
                       aria-label={`Ver gasto del ${formatDate(expense.date)}`}
                     >
@@ -884,7 +884,7 @@ export default function ExpensesPage() {
                     </Link>
                     <div className={styles.expenseActions}>
                       <Link
-                        href={`/launcher/expenses-process/expenses/${expense.id}`}
+                        href={`/launcher/expenses/${expense.id}`}
                         className={styles.iconAction}
                         title={expense.originalFileName}
                         aria-label={`Ver recibo ${expense.originalFileName}`}

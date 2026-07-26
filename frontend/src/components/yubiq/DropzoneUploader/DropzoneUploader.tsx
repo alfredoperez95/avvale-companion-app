@@ -2,9 +2,11 @@
 
 import { useRef, useState } from 'react';
 import { uploadAccept, validateUploadFile } from '@/lib/validate-upload';
+import type { UploadKind } from '@/lib/validate-upload';
 import styles from './DropzoneUploader.module.css';
+import { truncateFileNameMiddle } from './truncate-file-name';
 
-function PdfIcon() {
+function FileIcon() {
   return (
     <div className={styles.iconWrap} aria-hidden>
       <svg className={styles.pdfIcon} width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -26,20 +28,33 @@ export function DropzoneUploader({
   file,
   disabled,
   onFileSelected,
+  kind = 'yubiq',
+  title = 'Arrastra y suelta tu PDF aquí',
+  hint = 'o elige un archivo desde el equipo',
+  buttonLabel = 'Seleccionar PDF',
+  meta = 'Solo PDF · Máx. 20 MB',
+  ariaLabel = 'Carga de PDF',
 }: {
   file: File | null;
   disabled?: boolean;
   onFileSelected: (file: File) => void;
+  kind?: UploadKind;
+  title?: string;
+  hint?: string;
+  buttonLabel?: string;
+  meta?: string;
+  ariaLabel?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(false);
   const [error, setError] = useState('');
+  const displayFileName = file ? truncateFileNameMiddle(file.name) : '';
 
   const pick = () => inputRef.current?.click();
 
   const acceptFile = (f: File | null | undefined) => {
     if (!f) return;
-    const validationError = validateUploadFile('yubiq', f);
+    const validationError = validateUploadFile(kind, f);
     if (validationError) {
       setError(validationError);
       return;
@@ -77,25 +92,25 @@ export function DropzoneUploader({
         acceptFile(f);
       }}
       role="group"
-      aria-label="Carga de PDF"
+      aria-label={ariaLabel}
     >
       <input
         ref={inputRef}
         type="file"
-        accept={uploadAccept('yubiq')}
+        accept={uploadAccept(kind)}
         className={styles.hiddenInput}
         onChange={(e) => {
           acceptFile(e.target.files?.[0]);
           e.target.value = '';
         }}
       />
-      <PdfIcon />
-      <div className={styles.title}>Arrastra y suelta tu PDF aquí</div>
-      <div className={styles.hint}>o elige un archivo desde el equipo</div>
+      <FileIcon />
+      <div className={styles.title}>{title}</div>
+      <div className={styles.hint}>{hint}</div>
       <button type="button" className={styles.btnPrimary} onClick={pick} disabled={disabled}>
-        Seleccionar PDF
+        {buttonLabel}
       </button>
-      <div className={styles.meta}>Solo PDF · Máx. 20&nbsp;MB</div>
+      <div className={styles.meta}>{meta}</div>
       {error ? <div className={styles.fileNote} role="alert">{error}</div> : null}
 
       {file && (
@@ -107,7 +122,7 @@ export function DropzoneUploader({
             </svg>
           </span>
           <div className={styles.fileMeta}>
-            <div className={styles.fileName}>{file.name}</div>
+            <div className={styles.fileName} title={file.name}>{displayFileName}</div>
             <div className={styles.fileNote}>{(file.size / (1024 * 1024)).toFixed(2)} MB</div>
           </div>
         </div>

@@ -3,11 +3,11 @@ import {
   Body,
   Controller,
   Post,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { createHash } from 'crypto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -25,6 +25,7 @@ import { mergeTranslatedExtraction } from './merge-translated-extraction';
 import { TranslateExtractionDto } from './translate-extraction.dto';
 import { AnalyzeOfferDto } from './analyze-offer.dto';
 import { validateSafeFile } from '../../files/safe-file-validation';
+import { PfeMarginExtractionService } from './pfe-margin-extraction.service';
 
 const YUBIQ_APPROVE_SEAL_MAX_FILE_BYTES = 20 * 1024 * 1024;
 
@@ -41,6 +42,11 @@ type AnalyzeOfferResponse = {
   log: string[];
 };
 
+type AnalyzeOfferFiles = {
+  file?: Express.Multer.File[];
+  pfe?: Express.Multer.File[];
+};
+
 @Controller('yubiq/approve-seal-filler')
 @UseGuards(JwtAuthGuard)
 export class ApproveSealFillerController {
@@ -48,22 +54,24 @@ export class ApproveSealFillerController {
     private readonly pdf: PdfExtractionService,
     private readonly creds: AnthropicCredentialsService,
     private readonly anthropic: AnthropicClientService,
+    private readonly pfeMargin: PfeMarginExtractionService,
   ) {}
 
   @Post('analyze')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseInterceptors(
-    FileInterceptor('file', {
+    FileFieldsInterceptor([{ name: 'file', maxCount: 1 }, { name: 'pfe', maxCount: 1 }], {
       limits: { fileSize: YUBIQ_APPROVE_SEAL_MAX_FILE_BYTES },
     }),
   )
   async analyze(
     @CurrentUser() user: UserPayload,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFiles() files: AnalyzeOfferFiles | undefined,
     @Body() body: AnalyzeOfferDto,
   ): Promise<AnalyzeOfferResponse> {
     const log: string[] = [];
     try {
+      const file = files?.file?.[0];
       if (!file?.buffer) throw new BadRequestException('Falta el archivo');
       const safe = validateSafeFile('yubiq', {
         buffer: file.buffer,
@@ -72,6 +80,25 @@ export class ApproveSealFillerController {
         size: file.size,
       });
       log.push('PDF received');
+
+      let margenPorcentaje: number | null = null;
+      const pfeFile = files?.pfe?.[0];
+      if (pfeFile?.buffer) {
+        const safePfe = validateSafeFile('yubiqPfe', {
+          buffer: pfeFile.buffer,
+          originalname: pfeFile.originalname || 'pfe.xlsx',
+          mimetype: pfeFile.mimetype,
+          size: pfeFile.size,
+        });
+        log.push('PFE Excel received');
+        try {
+          margenPorcentaje = await this.pfeMargin.extractMarginPercentageFromBuffer(safePfe.buffer);
+          log.push(margenPorcentaje == null ? 'PFE margin not found' : `PFE margin: ${margenPorcentaje}%`);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          log.push(`WARN: PFE margin extraction failed: ${message}`);
+        }
+      }
 
       const fileName = safe.displayName;
       const cleanTitleFromFilename = cleanOfferTitleFromFilename(fileName);
@@ -107,13 +134,18 @@ export class ApproveSealFillerController {
       for (const w of warnings) log.push(`WARN: ${w}`);
       log.push('Result normalized');
 
+      const result: ClaudeOfferExtraction = {
+        ...normalized,
+        margenPorcentaje,
+      };
+
       return {
         success: true,
         fileName,
         cleanTitleFromFilename,
         extractedTextLength: extractedText.length,
         promptHash,
-        result: normalized,
+        result,
         rawClaudeJson: recoveredJson,
         modelUsed: modelId,
         log,

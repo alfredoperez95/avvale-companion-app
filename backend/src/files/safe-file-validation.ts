@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 
-export type UploadContext = 'activation' | 'avatar' | 'expense' | 'rfq' | 'meddpicc' | 'yubiq';
+export type UploadContext = 'activation' | 'avatar' | 'expense' | 'rfq' | 'meddpicc' | 'yubiq' | 'yubiqPfe';
 
 export type SafeFile = {
   buffer: Buffer;
@@ -70,6 +70,11 @@ const RULES: Record<UploadContext, FileRule> = {
     maxBytes: 20 * MiB,
     allowedExtensions: new Set(['pdf']),
     label: 'PDF',
+  },
+  yubiqPfe: {
+    maxBytes: 20 * MiB,
+    allowedExtensions: new Set(['xlsx', 'xls']),
+    label: 'Excel .xlsx o .xls',
   },
   activation: {
     maxBytes: 20 * MiB,

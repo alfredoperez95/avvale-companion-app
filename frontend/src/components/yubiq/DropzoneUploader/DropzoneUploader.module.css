@@ -83,6 +83,18 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
+.fileChipGrid {
+  display: grid;
+  gap: var(--fiori-space-3);
+  margin-top: var(--fiori-space-5);
+}
+
+@media (min-width: 36rem) {
+  .fileChipGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .fileIcon {
   flex-shrink: 0;
   margin-top: 0.1rem;
@@ -98,7 +110,18 @@
   font-weight: 600;
   font-size: 0.875rem;
   color: var(--fiori-text);
-  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileRole {
+  margin-bottom: 0.125rem;
+  color: var(--fiori-text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .fileNote {

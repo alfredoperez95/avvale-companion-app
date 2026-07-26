@@ -60,6 +60,8 @@ export type ClaudeOfferExtraction = {
   resumen: string;
   observaciones: string;
   confidence: ConfidenceMap;
+  /** Margen PFE extraído desde Excel, en porcentaje entero 0–100. */
+  margenPorcentaje: number | null;
   /** Texto fijo si solo importe tarifa T&M sin jornadas (ver normalizer). */
   notaInterpretacionImporte?: string;
   /**

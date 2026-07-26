@@ -11,7 +11,7 @@ export const AVVALE_EXTENSION_RESPONSE_EVENT = 'avvale-extension-response' as co
 export const MESSAGE_SOURCE_WEB = 'avvale-companion-web' as const;
 export const MESSAGE_SOURCE_EXTENSION = 'avvale-companion-extension' as const;
 
-export type ExtensionOpType = 'DOWNLOAD_FILES' | 'GET_TEMP_FILES' | 'CLEAR_TEMP_FILES';
+export type ExtensionOpType = 'DOWNLOAD_FILES' | 'GET_TEMP_FILES' | 'CLEAR_TEMP_FILES' | 'STORE_LOCAL_FILES';
 
 /** Códigos de error estables para la extensión y el cliente web. */
 export type ExtensionErrorCode =
@@ -19,7 +19,10 @@ export type ExtensionErrorCode =
   | 'invalid_payload'
   | 'download_failed'
   | 'batch_not_found'
+  | 'payload_too_large'
   | 'unknown';
+
+export type LocalFileRole = 'offer_pdf' | 'pfe_excel';
 
 export type DownloadFileItem = {
   url: string;
@@ -39,12 +42,25 @@ export type ClearTempFilesPayload = {
   batchId: string;
 };
 
+export type StoreLocalFileDescriptor = {
+  role: LocalFileRole;
+  name: string;
+  mimeType: string;
+  size: number;
+  dataBase64: string;
+};
+
+export type StoreLocalFilesPayload = {
+  batchId: string;
+  files: StoreLocalFileDescriptor[];
+};
+
 export type ExtensionRequestDetail = {
   schemaVersion: typeof EXTENSION_BRIDGE_SCHEMA_VERSION;
   requestId: string;
   source: typeof MESSAGE_SOURCE_WEB;
   type: ExtensionOpType;
-  payload: DownloadFilesPayload | GetTempFilesPayload | ClearTempFilesPayload;
+  payload: DownloadFilesPayload | GetTempFilesPayload | ClearTempFilesPayload | StoreLocalFilesPayload;
 };
 
 /**
@@ -54,6 +70,7 @@ export type ExtensionRequestDetail = {
  */
 export type TempFileDescriptor = {
   originalUrl?: string;
+  role?: LocalFileRole;
   name: string;
   mimeType: string;
   arrayBuffer?: ArrayBuffer;

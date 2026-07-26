@@ -17,6 +17,8 @@ export type ClaudeOfferExtraction = {
   resumen: string;
   observaciones: string;
   confidence: ConfidenceMap;
+  /** Margen PFE extraído desde Excel, en porcentaje entero 0–100. */
+  margenPorcentaje: number | null;
   /** Nota fija bajo el importe si solo tarifa T&M sin jornadas (viene del backend). */
   notaInterpretacionImporte?: string;
   /** 10.000 cuando aplica la nota T&M sin jornadas; usar como revenue en Yubiq. */

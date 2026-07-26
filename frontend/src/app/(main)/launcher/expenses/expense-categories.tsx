@@ -18,7 +18,7 @@ import {
   VehicleCarRegular,
   WrenchRegular,
 } from '@fluentui/react-icons';
-import styles from './expenses-process.module.css';
+import styles from './expenses.module.css';
 
 export const EXPENSE_CATEGORIES = [
   'Travel Lodging',

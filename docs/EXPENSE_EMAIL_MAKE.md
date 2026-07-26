@@ -80,7 +80,7 @@ Formatos válidos para gastos: PDF, JPG/JPEG, PNG y HEIC/HEIF. Si un correo trae
 
 ## Interfaz en la app
 
-En el frontend autenticado: **Gastos → Gastos por email** (`/launcher/expenses-process/email`) muestra la URL del webhook para el origen actual y un resumen de requisitos.
+En el frontend autenticado: **Gastos → Gastos por email** (`/launcher/expenses/email`) muestra la URL del webhook para el origen actual y un resumen de requisitos.
 
 ## Prueba local con `curl`
 

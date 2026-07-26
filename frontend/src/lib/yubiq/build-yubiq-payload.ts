@@ -119,6 +119,7 @@ export function buildYubiqPayload(input: BuildYubiqPayloadInput): BuildYubiqPayl
     document: documentBlock,
     prefill,
     ...(marginNum !== undefined ? { manualMargin: marginNum } : {}),
+    ...(input.extensionFiles ? { extensionFiles: input.extensionFiles } : {}),
   };
 
   const { isValid, errors: validationErrors } = validateYubiqPayload(basePayload);

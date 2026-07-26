@@ -15,8 +15,8 @@ import {
   CheckmarkCircleRegular,
   CircleRegular,
 } from '@fluentui/react-icons';
-import styles from '../../expenses-process.module.css';
-import { EXPENSE_CATEGORIES } from '../../expense-categories';
+import styles from '../expenses.module.css';
+import { EXPENSE_CATEGORIES } from '../expense-categories';
 import { convertHeicToJpeg, isHeicFile } from '@/lib/heic';
 import { uploadAccept, validateUploadFile } from '@/lib/validate-upload';
 
@@ -240,7 +240,7 @@ export default function NewExpensePage() {
         return;
       }
       if (!res.ok) throw new Error(await errorMessage(res));
-      router.push('/launcher/expenses-process/expenses');
+      router.push('/launcher/expenses');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el gasto.');
     } finally {
@@ -252,7 +252,7 @@ export default function NewExpensePage() {
     <div className={styles.page}>
       <div className={styles.pageIntro}>
         <PageBreadcrumb>
-          <PageBackLink href="/launcher/expenses-process/expenses">← Gastos</PageBackLink>
+          <PageBackLink href="/launcher/expenses">← Gastos</PageBackLink>
         </PageBreadcrumb>
         <PageHero
           animateEnter={false}
@@ -543,7 +543,7 @@ export default function NewExpensePage() {
             No se enviará a ninguna plataforma externa en esta versión. Solo se guarda en Companion.
           </p>
           <div className={styles.formFooterActions}>
-            <Link href="/launcher/expenses-process/expenses" className={styles.btnSecondary}>
+            <Link href="/launcher/expenses" className={styles.btnSecondary}>
               Cancelar
             </Link>
             <button type="submit" className={styles.btnPrimary} disabled={!expense || saving || processing}>

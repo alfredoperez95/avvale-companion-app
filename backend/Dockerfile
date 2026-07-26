@@ -31,6 +31,7 @@ COPY --from=build --chown=app:app /app/dist ./dist
 COPY --from=prod-deps --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/package.json ./
 COPY --from=build --chown=app:app /app/prisma ./prisma
+COPY --from=build --chown=app:app /app/assets ./assets
 COPY --from=build --chown=app:app /app/scripts/entrypoint.sh ./entrypoint.sh
 
 RUN chmod +x entrypoint.sh

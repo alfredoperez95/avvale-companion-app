@@ -53,6 +53,7 @@ export function mergeTranslatedExtraction(
     importeRevenueTmSinJornadasNumerico: original.importeRevenueTmSinJornadasNumerico,
     importeTotalConCompromisoNumerico: original.importeTotalConCompromisoNumerico,
     importeTotalDealComputablesNumerico: original.importeTotalDealComputablesNumerico,
+    margenPorcentaje: original.margenPorcentaje,
     numeroOpcionesPrecioEstimado: original.numeroOpcionesPrecioEstimado,
     dealType: original.dealType,
     areaAvvale: original.areaAvvale,

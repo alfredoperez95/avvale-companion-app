@@ -9,7 +9,8 @@ export type LauncherTileId =
   | 'rfqAnalysis'
   | 'meddpicc'
   | 'kyc'
-  | 'administrativeProcesses';
+  | 'administrativeProcesses'
+  | 'swForms';
 
 export type User = {
   id: string;

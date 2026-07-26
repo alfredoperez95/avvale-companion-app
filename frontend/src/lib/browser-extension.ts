@@ -15,6 +15,9 @@ import {
   type GetTempFilesPayload,
   type GetTempFilesResponseData,
   isExtensionResponseDetail,
+  type LocalFileRole,
+  type StoreLocalFileDescriptor,
+  type StoreLocalFilesPayload,
   type TempFileDescriptor,
 } from '@/types/browser-extension-protocol';
 
@@ -23,6 +26,7 @@ export { AVVALE_EXTENSION_REQUEST_EVENT, AVVALE_EXTENSION_RESPONSE_EVENT };
 /** Exportados para mostrar en UI «máx. X min» y pruebas. */
 export const DOWNLOAD_TIMEOUT_MS = 120_000;
 export const GET_CLEAR_TIMEOUT_MS = 30_000;
+export const STORE_LOCAL_FILES_TIMEOUT_MS = 30_000;
 
 function bridgeDevLog(message: string, extra?: Record<string, unknown>): void {
   if (process.env.NODE_ENV !== 'development') return;
@@ -52,10 +56,29 @@ function validateDownloadPayload(payload: DownloadFilesPayload): string | null {
   return null;
 }
 
+function validateStoreLocalFilesPayload(payload: StoreLocalFilesPayload): string | null {
+  if (!payload.batchId?.trim()) return 'batchId requerido';
+  if (!Array.isArray(payload.files) || payload.files.length === 0) return 'files vacío';
+  if (payload.files.length > 2) return 'máximo dos archivos';
+  const roles = new Set<LocalFileRole>();
+  for (const file of payload.files) {
+    if (file.role !== 'offer_pdf' && file.role !== 'pfe_excel') return 'role inválido';
+    if (roles.has(file.role)) return 'role duplicado';
+    roles.add(file.role);
+    if (!file.name?.trim()) return 'nombre de archivo requerido';
+    if (!file.mimeType?.trim()) return 'mimeType requerido';
+    if (!Number.isFinite(file.size) || file.size <= 0) return 'size inválido';
+    if (file.size > MAX_CLIENT_ATTACHMENT_BYTES) return 'payload_too_large';
+    if (!file.dataBase64?.trim()) return 'dataBase64 requerido';
+  }
+  if (!roles.has('offer_pdf')) return 'offer_pdf requerido';
+  return null;
+}
+
 function buildRequest(
   type: ExtensionOpType,
   requestId: string,
-  payload: DownloadFilesPayload | GetTempFilesPayload | ClearTempFilesPayload,
+  payload: DownloadFilesPayload | GetTempFilesPayload | ClearTempFilesPayload | StoreLocalFilesPayload,
 ): ExtensionRequestDetail {
   return {
     schemaVersion: EXTENSION_BRIDGE_SCHEMA_VERSION,
@@ -68,7 +91,7 @@ function buildRequest(
 
 export function sendExtensionRequest(
   type: ExtensionOpType,
-  payload: DownloadFilesPayload | GetTempFilesPayload | ClearTempFilesPayload,
+  payload: DownloadFilesPayload | GetTempFilesPayload | ClearTempFilesPayload | StoreLocalFilesPayload,
   timeoutMs: number,
 ): Promise<ExtensionResponseDetail> {
   if (typeof document === 'undefined') {
@@ -158,6 +181,11 @@ export function sendExtensionRequest(
             batchId: (detail.payload as DownloadFilesPayload).batchId,
             numItems: (detail.payload as DownloadFilesPayload).items.length,
           }
+        : type === 'STORE_LOCAL_FILES' && 'files' in detail.payload
+          ? {
+              batchId: (detail.payload as StoreLocalFilesPayload).batchId,
+              numFiles: (detail.payload as StoreLocalFilesPayload).files.length,
+            }
         : type === 'GET_TEMP_FILES' || type === 'CLEAR_TEMP_FILES'
           ? { batchId: (detail.payload as { batchId: string }).batchId }
           : {}),
@@ -186,6 +214,58 @@ export async function downloadFilesWithExtension(payload: DownloadFilesPayload):
     return { ok: false, error: 'invalid_payload', timedOut: false };
   }
   const res = await sendExtensionRequest('DOWNLOAD_FILES', payload, DOWNLOAD_TIMEOUT_MS);
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: res.error ?? 'unknown',
+      timedOut: res.error === 'extension_timeout',
+    };
+  }
+  return { ok: true };
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+export async function fileToBase64Payload(
+  file: File,
+  role: LocalFileRole,
+): Promise<StoreLocalFileDescriptor> {
+  if (file.size > MAX_CLIENT_ATTACHMENT_BYTES) {
+    throw new Error('payload_too_large');
+  }
+  const buffer = await file.arrayBuffer();
+  return {
+    role,
+    name: file.name,
+    mimeType: file.type || 'application/octet-stream',
+    size: file.size,
+    dataBase64: arrayBufferToBase64(buffer),
+  };
+}
+
+export type StoreLocalFilesResult =
+  | { ok: true }
+  | { ok: false; error: ExtensionErrorCode; timedOut: boolean };
+
+export async function storeLocalFilesInExtension(payload: StoreLocalFilesPayload): Promise<StoreLocalFilesResult> {
+  const err = validateStoreLocalFilesPayload(payload);
+  if (err) {
+    return {
+      ok: false,
+      error: err === 'payload_too_large' ? 'payload_too_large' : 'invalid_payload',
+      timedOut: false,
+    };
+  }
+  const res = await sendExtensionRequest('STORE_LOCAL_FILES', payload, STORE_LOCAL_FILES_TIMEOUT_MS);
   if (!res.ok) {
     return {
       ok: false,

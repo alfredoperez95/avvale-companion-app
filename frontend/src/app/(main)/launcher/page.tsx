@@ -33,7 +33,7 @@ import { probeCompanionExtension } from '@/lib/yubiq';
 import styles from './launcher.module.css';
 
 const COMMERCIAL_TILE_IDS = ['kyc', 'pipeline', 'rfqAnalysis', 'meddpicc'] as const satisfies readonly LauncherTileId[];
-const ADMIN_TILE_IDS = ['activations', 'yubiq', 'administrativeProcesses'] as const satisfies readonly LauncherTileId[];
+const ADMIN_TILE_IDS = ['activations', 'yubiq', 'administrativeProcesses', 'swForms'] as const satisfies readonly LauncherTileId[];
 
 const COMMERCIAL_TILE_ID_SET = new Set<LauncherTileId>(COMMERCIAL_TILE_IDS);
 const ADMIN_TILE_ID_SET = new Set<LauncherTileId>(ADMIN_TILE_IDS);
@@ -73,6 +73,7 @@ const PREVIOUS_DEFAULT_KYC_FIRST: readonly LauncherTileId[] = [
 
 const LEGACY_SIX_TILES = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc', 'kyc'] as const;
 const LEGACY_FIVE_TILES = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis', 'meddpicc'] as const;
+const LEGACY_SEVEN_TILES = [...LEGACY_SIX_TILES, 'administrativeProcesses'] as const;
 
 function isLegacyDefaultTileOrder(order: LauncherTileId[]): boolean {
   return (
@@ -161,14 +162,21 @@ function normalizeTileOrder(raw: unknown): LauncherTileId[] {
     new Set(unique).size === 5 &&
     LEGACY_FIVE_TILES.every((id) => unique.includes(id));
   if (legacyFiveOk) {
-    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'kyc', 'administrativeProcesses']);
+    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'kyc', 'administrativeProcesses', 'swForms']);
   }
   const legacySixOk =
     unique.length === 6 &&
     new Set(unique).size === 6 &&
     LEGACY_SIX_TILES.every((id) => unique.includes(id));
   if (legacySixOk) {
-    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'administrativeProcesses']);
+    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'administrativeProcesses', 'swForms']);
+  }
+  const legacySevenOk =
+    unique.length === 7 &&
+    new Set(unique).size === 7 &&
+    LEGACY_SEVEN_TILES.every((id) => unique.includes(id));
+  if (legacySevenOk) {
+    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'swForms']);
   }
   const legacyFour = ['activations', 'pipeline', 'yubiq', 'rfqAnalysis'] as const;
   if (
@@ -176,7 +184,7 @@ function normalizeTileOrder(raw: unknown): LauncherTileId[] {
     new Set(unique).size === 4 &&
     unique.every((id) => legacyFour.includes(id as (typeof legacyFour)[number]))
   ) {
-    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'meddpicc', 'kyc', 'administrativeProcesses']);
+    return canonicalizeLauncherOrder([...(unique as LauncherTileId[]), 'meddpicc', 'kyc', 'administrativeProcesses', 'swForms']);
   }
   return [...DEFAULT_TILE_ORDER];
 }
@@ -189,6 +197,7 @@ const TILE_ACCENT: Record<LauncherTileId, string> = {
   meddpicc: styles.tileAccentMeddpicc,
   kyc: styles.tileAccentKyc,
   administrativeProcesses: styles.tileAccentAdministrativeProcesses,
+  swForms: styles.tileAccentAdministrativeProcesses,
 };
 
 function TileLink({
@@ -418,18 +427,37 @@ function TileLink({
     case 'administrativeProcesses':
       return (
         <Link
-          href="/launcher/expenses-process/expenses"
+          href="/launcher/expenses"
           className={styles.tileLink}
-          aria-labelledby="tile-expenses-process-heading"
+          aria-labelledby="tile-expenses-heading"
         >
           <article className={tile}>
-            <h3 id="tile-expenses-process-heading" className={styles.tileTitle}>
+            <h3 id="tile-expenses-heading" className={styles.tileTitle}>
               Gastos
             </h3>
             <p className={styles.tileDesc}>
               Sube recibos, extrae los datos con IA y conserva el archivo para futuras automatizaciones.
             </p>
             <span className={styles.tileCta}>Abrir Gastos →</span>
+            <span className={`${styles.tileIcon} ${styles.tileIconAdministrativeProcesses}`} aria-hidden="true" />
+          </article>
+        </Link>
+      );
+    case 'swForms':
+      return (
+        <Link
+          href="/launcher/formularios-sw"
+          className={styles.tileLink}
+          aria-labelledby="tile-sw-forms-heading"
+        >
+          <article className={tile}>
+            <h3 id="tile-sw-forms-heading" className={styles.tileTitle}>
+              Formularios de SW
+            </h3>
+            <p className={styles.tileDesc}>
+              Rellena los datos comerciales y genera el Excel oficial de pre-contabilización de software.
+            </p>
+            <span className={styles.tileCta}>Generar Excel →</span>
             <span className={`${styles.tileIcon} ${styles.tileIconAdministrativeProcesses}`} aria-hidden="true" />
           </article>
         </Link>

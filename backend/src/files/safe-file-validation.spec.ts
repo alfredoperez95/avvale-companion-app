@@ -3,6 +3,7 @@ import { validateSafeFile } from './safe-file-validation';
 import { resolvePathWithinBase } from './safe-path';
 
 const validPdf = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\nstartxref\n0\n%%EOF\n', 'utf8');
+const xlsxZip = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00]);
 const png = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
   0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
@@ -30,6 +31,24 @@ describe('validateSafeFile', () => {
         mimetype: 'application/pdf',
       }),
     ).toThrow(/PDF/);
+  });
+
+  it('acepta Excel PFE en contexto separado sin ampliar yubiq PDF', () => {
+    const result = validateSafeFile('yubiqPfe', {
+      buffer: xlsxZip,
+      originalname: 'PFE oferta.xlsx',
+      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+    expect(result.contentType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(result.displayName).toBe('PFE oferta.xlsx');
+    expect(() =>
+      validateSafeFile('yubiq', {
+        buffer: xlsxZip,
+        originalname: 'PFE oferta.xlsx',
+        mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+    ).toThrow(/Formato/);
   });
 
   it('bloquea extensiones peligrosas aunque aparezcan como doble extensión', () => {

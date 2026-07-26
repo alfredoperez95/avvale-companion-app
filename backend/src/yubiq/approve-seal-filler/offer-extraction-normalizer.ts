@@ -228,6 +228,7 @@ export function normalizeClaudeExtraction(
         areaCompania: clamp01(confidenceRaw.areaCompania),
         resumen: clamp01(confidenceRaw.resumen),
       },
+      margenPorcentaje: null,
       ...(soloTmSinJornadas
         ? {
             notaInterpretacionImporte: NOTA_INTERPRETACION_IMPORTE_TM_SIN_JORNADAS,

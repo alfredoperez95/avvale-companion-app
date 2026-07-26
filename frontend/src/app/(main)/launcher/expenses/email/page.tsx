@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
-import styles from '../expenses-process.module.css';
+import styles from '../expenses.module.css';
 
 export default function ExpenseEmailFlowPage() {
   const [webhookUrl, setWebhookUrl] = useState('');
@@ -37,7 +37,7 @@ export default function ExpenseEmailFlowPage() {
     <main className={styles.page}>
       <div className={styles.pageIntro}>
         <PageBreadcrumb>
-          <PageBackLink href="/launcher/expenses-process">← Gastos</PageBackLink>
+          <PageBackLink href="/launcher/expenses">← Gastos</PageBackLink>
         </PageBreadcrumb>
         <PageHero
           animateEnter={false}
@@ -96,10 +96,10 @@ export default function ExpenseEmailFlowPage() {
       </section>
 
       <p className={styles.emailFlowActions}>
-        <Link href="/launcher/expenses-process/expenses" className={styles.btnPrimary}>
+        <Link href="/launcher/expenses" className={styles.btnPrimary}>
           Ver gastos
         </Link>
-        <Link href="/launcher/expenses-process" className={styles.btnSecondary}>
+        <Link href="/launcher" className={styles.btnSecondary}>
           Volver
         </Link>
       </p>

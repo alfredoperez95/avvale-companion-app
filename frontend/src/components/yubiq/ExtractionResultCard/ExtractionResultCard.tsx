@@ -16,6 +16,11 @@ function valueOrDash(v: string | null | undefined): string {
   return s ? s : '—';
 }
 
+function marginOrDash(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return '—';
+  return `${Math.round(v)} %`;
+}
+
 function WarningIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -369,6 +374,10 @@ export function ExtractionResultCard({
           {result.notaInterpretacionImporte ? (
             <p className={styles.importeNota}>{result.notaInterpretacionImporte}</p>
           ) : null}
+        </div>
+        <div className={styles.card}>
+          <p className={styles.label}>Margen</p>
+          <p className={styles.value}>{marginOrDash(result.margenPorcentaje)}</p>
         </div>
         <div className={styles.card}>
           <p className={styles.label} id="extraction-area-label">
