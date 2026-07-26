@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import styles from './AnalysisLogPanel.module.css';
 
 type Phase = 'idle' | 'uploading' | 'extracting' | 'analyzing' | 'done' | 'error';
@@ -11,9 +12,18 @@ export function AnalysisLogPanel({
   log: string[];
   phase?: Phase;
 }) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const busy = phase === 'uploading' || phase === 'extracting' || phase === 'analyzing';
+
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el || !log.length) return;
+    el.scrollTop = el.scrollHeight;
+  }, [log]);
+
   const emptyHint =
-    phase === 'analyzing' || phase === 'uploading'
-      ? 'Iniciando pasos…'
+    phase === 'analyzing' || phase === 'uploading' || phase === 'extracting'
+      ? 'Ejecutando pipeline…'
       : 'Aún no hay pasos. Sube un PDF y pulsa «Analizar PDF» para ver el progreso aquí.';
 
   return (
@@ -25,9 +35,11 @@ export function AnalysisLogPanel({
           <span className={styles.dot} />
         </span>
         <span className={styles.consoleTitle}>stdout — pipeline</span>
-        <span className={styles.consoleBadge}>bash</span>
+        <span className={`${styles.consoleBadge} ${busy ? styles.consoleBadgeLive : ''}`}>
+          {busy ? 'live' : 'bash'}
+        </span>
       </div>
-      <div className={styles.consoleBody}>
+      <div ref={bodyRef} className={styles.consoleBody}>
         {!log.length ? (
           <div className={styles.emptyLine} role="status">
             <span className={styles.lineNo}>··</span>
@@ -47,6 +59,13 @@ export function AnalysisLogPanel({
             </div>
           ))
         )}
+        {busy ? (
+          <div className={styles.consoleLine} aria-hidden>
+            <span className={styles.lineNo}>··</span>
+            <span className={styles.prompt}>›</span>
+            <span className={styles.cursorBlink} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { validateUploadFile } from '@/lib/validate-upload';
-import styles from './DropzoneUploader.module.css';
+import styles from './ApproveSealFilesUploader.module.css';
 import { truncateFileNameMiddle } from './truncate-file-name';
 
 const ACCEPT_APPROVE_SEAL_FILES = '.pdf,.xlsx,.xls';
@@ -10,7 +10,7 @@ const ACCEPT_APPROVE_SEAL_FILES = '.pdf,.xlsx,.xls';
 function FileIcon() {
   return (
     <div className={styles.iconWrap} aria-hidden>
-      <svg className={styles.pdfIcon} width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg className={styles.pdfIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path
           d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"
           stroke="currentColor"
@@ -25,21 +25,52 @@ function FileIcon() {
   );
 }
 
-function FileChip({ label, file }: { label: string; file: File }) {
-  const displayName = truncateFileNameMiddle(file.name);
+function FileChip({
+  label,
+  kind,
+  file,
+  onRemove,
+  disabled,
+}: {
+  label: string;
+  kind: 'pdf' | 'pfe';
+  file: File;
+  onRemove?: () => void;
+  disabled?: boolean;
+}) {
+  const displayName = truncateFileNameMiddle(file.name, 36);
+  const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
   return (
-    <div className={styles.fileChip} aria-label={`${label}: ${file.name}`}>
-      <span className={styles.fileIcon} aria-hidden>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-        </svg>
+    <div
+      className={`${styles.fileChip} ${kind === 'pdf' ? styles.fileChipPdf : styles.fileChipPfe}`}
+      aria-label={`${label}: ${file.name}`}
+    >
+      <span className={styles.fileKindBadge}>{kind === 'pdf' ? 'PDF' : 'XLS'}</span>
+      <span className={styles.fileName} title={file.name}>
+        {displayName}
       </span>
-      <div className={styles.fileMeta}>
-        <div className={styles.fileRole}>{label}</div>
-        <div className={styles.fileName} title={file.name}>{displayName}</div>
-        <div className={styles.fileNote}>{(file.size / (1024 * 1024)).toFixed(2)} MB</div>
-      </div>
+      <span className={styles.fileNote}>{sizeMb} MB</span>
+      {onRemove ? (
+        <button
+          type="button"
+          className={styles.fileRemove}
+          onClick={onRemove}
+          disabled={disabled}
+          aria-label={`Quitar ${label}`}
+          title={`Quitar ${label}`}
+        >
+          ×
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function EmptySlot({ label, required }: { label: string; required?: boolean }) {
+  return (
+    <div className={`${styles.fileSlotEmpty} ${required ? styles.fileSlotRequired : ''}`} aria-hidden>
+      <span className={styles.fileSlotLabel}>{label}</span>
+      <span className={styles.fileSlotHint}>{required ? 'Obligatorio' : 'Opcional'}</span>
     </div>
   );
 }
@@ -50,18 +81,23 @@ export function ApproveSealFilesUploader({
   disabled,
   onPdfFileSelected,
   onPfeFileSelected,
+  onPdfFileCleared,
+  onPfeFileCleared,
 }: {
   pdfFile: File | null;
   pfeFile: File | null;
   disabled?: boolean;
   onPdfFileSelected: (file: File) => void;
   onPfeFileSelected: (file: File) => void;
+  onPdfFileCleared?: () => void;
+  onPfeFileCleared?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(false);
   const [error, setError] = useState('');
 
   const pick = () => inputRef.current?.click();
+  const hasFiles = Boolean(pdfFile || pfeFile);
 
   const acceptFiles = (list: FileList | File[] | null | undefined) => {
     if (!list) return;
@@ -112,7 +148,7 @@ export function ApproveSealFilesUploader({
 
   return (
     <div
-      className={active ? `${styles.dropzone} ${styles.dropzoneActive}` : styles.dropzone}
+      className={`${styles.dropzone} ${active ? styles.dropzoneActive : ''} ${hasFiles ? styles.dropzoneFilled : ''} ${disabled ? styles.dropzoneDisabled : ''}`}
       onDragEnter={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -146,27 +182,65 @@ export function ApproveSealFilesUploader({
         multiple
         accept={ACCEPT_APPROVE_SEAL_FILES}
         className={styles.hiddenInput}
+        disabled={disabled}
         onChange={(e) => {
           acceptFiles(e.target.files);
           e.target.value = '';
         }}
       />
-      <FileIcon />
-      <div className={styles.title}>Arrastra el PDF y el Excel PFE aquí</div>
-      <div className={styles.hint}>El PDF es obligatorio; el Excel PFE es opcional y se usa solo para extraer el margen.</div>
-      <button type="button" className={styles.btnPrimary} onClick={pick} disabled={disabled}>
-        Seleccionar archivos
-      </button>
-      <div className={styles.meta}>PDF + Excel .xlsx/.xls · Máx. 20 MB por archivo</div>
-      {error ? <div className={styles.fileNote} role="alert">{error}</div> : null}
 
-      {pdfFile || pfeFile ? (
+      {!hasFiles ? (
+        <div className={styles.dropzoneIdle}>
+          <FileIcon />
+          <div className={styles.idleCopy}>
+            <div className={styles.title}>Arrastra el PDF de oferta y, si aplica, el Excel PFE</div>
+            <div className={styles.hint}>O usa el botón para elegir los archivos desde tu equipo</div>
+          </div>
+          <button type="button" className={styles.btnPrimary} onClick={pick} disabled={disabled}>
+            Seleccionar archivos
+          </button>
+        </div>
+      ) : (
+        <div className={styles.dropzoneToolbar}>
+          <button type="button" className={styles.btnGhost} onClick={pick} disabled={disabled}>
+            Añadir o sustituir
+          </button>
+          <span className={styles.metaInline}>máx. 20 MB</span>
+        </div>
+      )}
+
+      {error ? (
+        <div className={styles.uploadError} role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      {hasFiles ? (
         <div className={styles.fileChipGrid}>
-          {pdfFile ? <FileChip label="PDF de oferta" file={pdfFile} /> : null}
-          {pfeFile ? <FileChip label="Excel PFE" file={pfeFile} /> : null}
+          {pdfFile ? (
+            <FileChip
+              label="PDF"
+              kind="pdf"
+              file={pdfFile}
+              disabled={disabled}
+              onRemove={onPdfFileCleared}
+            />
+          ) : (
+            <EmptySlot label="PDF oferta" required />
+          )}
+          {pfeFile ? (
+            <FileChip
+              label="PFE"
+              kind="pfe"
+              file={pfeFile}
+              disabled={disabled}
+              onRemove={onPfeFileCleared}
+            />
+          ) : (
+            <EmptySlot label="Excel PFE" />
+          )}
         </div>
       ) : null}
     </div>
   );
 }
-

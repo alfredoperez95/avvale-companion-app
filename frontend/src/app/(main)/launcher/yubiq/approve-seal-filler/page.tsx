@@ -122,6 +122,115 @@ function StatusBadge({
   );
 }
 
+type FlowStepState = 'todo' | 'current' | 'done';
+
+function FlowStepper({
+  hasPdf,
+  phase,
+  hasResult,
+  yubiqBridge,
+}: {
+  hasPdf: boolean;
+  phase: 'idle' | 'uploading' | 'extracting' | 'analyzing' | 'done' | 'error';
+  hasResult: boolean;
+  yubiqBridge: 'idle' | 'pending' | 'success' | 'error' | 'no_extension';
+}) {
+  const analyzing = phase === 'uploading' || phase === 'extracting' || phase === 'analyzing';
+  const step1: FlowStepState = hasPdf || hasResult || analyzing || phase === 'done' ? 'done' : 'current';
+  const step2: FlowStepState = hasResult || phase === 'done'
+    ? 'done'
+    : analyzing
+      ? 'current'
+      : hasPdf
+        ? 'current'
+        : 'todo';
+  const step3: FlowStepState =
+    yubiqBridge === 'success' ? 'done' : hasResult ? 'current' : 'todo';
+
+  const steps: { id: string; label: string; hint: string; state: FlowStepState }[] = [
+    { id: '1', label: 'Documento', hint: 'PDF y PFE', state: step1 },
+    { id: '2', label: 'Análisis', hint: 'Claude', state: step2 },
+    { id: '3', label: 'Yubiq', hint: 'Approve & Seal', state: step3 },
+  ];
+
+  return (
+    <ol className={styles.flowStepper} aria-label="Progreso del flujo">
+      {steps.map((step, index) => (
+        <li
+          key={step.id}
+          className={`${styles.flowStep} ${
+            step.state === 'done'
+              ? styles.flowStepDone
+              : step.state === 'current'
+                ? styles.flowStepCurrent
+                : styles.flowStepTodo
+          }`}
+          aria-current={step.state === 'current' ? 'step' : undefined}
+        >
+          <span className={styles.flowStepIndex} aria-hidden>
+            {step.state === 'done' ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              step.id
+            )}
+          </span>
+          <span className={styles.flowStepText}>
+            <span className={styles.flowStepLabel}>{step.label}</span>
+            <span className={styles.flowStepHint}>{step.hint}</span>
+          </span>
+          {index < steps.length - 1 ? (
+            <span
+              className={`${styles.flowStepConnector} ${
+                step.state === 'done' ? styles.flowStepConnectorDone : ''
+              }`}
+              aria-hidden
+            />
+          ) : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function AnalysisPhaseTrack({
+  phase,
+}: {
+  phase: 'uploading' | 'extracting' | 'analyzing';
+}) {
+  const items: { id: typeof phase; label: string }[] = [
+    { id: 'uploading', label: 'Subida' },
+    { id: 'extracting', label: 'Extracción' },
+    { id: 'analyzing', label: 'Claude' },
+  ];
+  const order = { uploading: 0, extracting: 1, analyzing: 2 } as const;
+  const current = order[phase];
+
+  return (
+    <ol className={styles.phaseTrack} aria-label="Fases del análisis">
+      {items.map((item, index) => {
+        const state = index < current ? 'done' : index === current ? 'current' : 'todo';
+        return (
+          <li
+            key={item.id}
+            className={`${styles.phaseTrackItem} ${
+              state === 'done'
+                ? styles.phaseTrackDone
+                : state === 'current'
+                  ? styles.phaseTrackCurrent
+                  : styles.phaseTrackTodo
+            }`}
+          >
+            <span className={styles.phaseTrackDot} aria-hidden />
+            <span className={styles.phaseTrackLabel}>{item.label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export default function YubiqApproveSealFillerPage() {
   const router = useRouter();
   const [credentialStatus, setCredentialStatus] = useState<UserAnthropicCredentialStatus | null>(null);
@@ -144,6 +253,7 @@ export default function YubiqApproveSealFillerPage() {
   const [translatedRawClaudeJson, setTranslatedRawClaudeJson] = useState('');
   const [translateLoading, setTranslateLoading] = useState(false);
   const [translateError, setTranslateError] = useState('');
+  const [secondaryAreas, setSecondaryAreas] = useState<AreaCompania[]>([]);
   const resultsSectionRef = useRef<HTMLElement | null>(null);
   const yubiqMarginInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -153,6 +263,13 @@ export default function YubiqApproveSealFillerPage() {
   const handleAreaChange = (area: AreaCompania | null) => {
     setResult((prev) => (prev ? { ...prev, areaCompania: area } : prev));
     setTranslatedExtraction((prev) => (prev ? { ...prev, areaCompania: area } : prev));
+    if (area) {
+      setSecondaryAreas((prev) => prev.filter((item) => item !== area));
+    }
+  };
+
+  const handleSecondaryAreasChange = (areas: AreaCompania[]) => {
+    setSecondaryAreas(areas);
   };
 
   const canAnalyze = Boolean(file) && Boolean(credentialStatus?.configured) && phase !== 'uploading' && phase !== 'extracting' && phase !== 'analyzing';
@@ -205,6 +322,7 @@ export default function YubiqApproveSealFillerPage() {
     setTranslatedExtraction(null);
     setTranslatedRawClaudeJson('');
     setTranslateError('');
+    setSecondaryAreas([]);
     setLastFileName('');
     setPromptPreview('');
     setLog([]);
@@ -395,171 +513,191 @@ export default function YubiqApproveSealFillerPage() {
 
       <PageHero
         title="Yubiq Approve & Seal Filler"
-        subtitle="Sube una oferta comercial en PDF, extráe texto y obtén con Claude un resumen estructurado: cliente, importe, área Avvale y más."
+        subtitle="De la oferta PDF a Yubiq en tres pasos: carga el documento, deja que Claude estructure los datos y envíalos a Approve & Seal."
       />
 
-      <div className={styles.statusRow}>
-        <StatusBadge credLoading={credLoading} configured={Boolean(credentialStatus?.configured)} phase={phase} />
+      <div className={styles.toolbarRow}>
+        <div className={styles.progressRail}>
+          <FlowStepper
+            hasPdf={Boolean(file)}
+            phase={phase}
+            hasResult={Boolean(result)}
+            yubiqBridge={yubiqBridge}
+          />
+          <StatusBadge
+            credLoading={credLoading}
+            configured={Boolean(credentialStatus?.configured)}
+            phase={phase}
+          />
+        </div>
       </div>
 
       <section className={styles.primaryCard} aria-label="Carga y análisis">
-        <div className={styles.primaryCardRow}>
-          <div className={styles.cardSection}>
-            <div className={styles.sectionHead}>
-              <span className={styles.stepBadge} aria-hidden>
-                1
-              </span>
-              <div>
-                <h2 className={styles.sectionTitle}>Documento</h2>
-                <p className={styles.sectionDesc}>Sube el PDF de la oferta y, si lo tienes, el Excel PFE para calcular el margen.</p>
-              </div>
+        <div className={styles.cardSection}>
+          <div className={styles.sectionHeadInline}>
+            <h2 className={styles.sectionTitle}>Documento</h2>
+            <span className={styles.sectionMeta}>PDF obligatorio · PFE opcional · máx. 20 MB</span>
+          </div>
+          <ApproveSealFilesUploader
+            pdfFile={file}
+            pfeFile={pfeFile}
+            disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
+            onPdfFileSelected={(f) => {
+              setFile(f);
+              setError('');
+              setPhase('idle');
+            }}
+            onPfeFileSelected={(f) => {
+              setPfeFile(f);
+              setError('');
+              setPhase('idle');
+            }}
+            onPdfFileCleared={() => {
+              setFile(null);
+              setError('');
+              setPhase('idle');
+            }}
+            onPfeFileCleared={() => {
+              setPfeFile(null);
+              setError('');
+              setPhase('idle');
+            }}
+          />
+        </div>
+
+        <div className={styles.analysisToolbar}>
+          <div className={styles.modelField}>
+            <span className={styles.modelFieldLabel} id="yubiq-model-label">
+              Modelo
+            </span>
+            <div
+              className={styles.modelSeg}
+              role="radiogroup"
+              aria-labelledby="yubiq-model-label"
+            >
+              {(
+                [
+                  { value: 'haiku', label: 'Haiku' },
+                  { value: 'sonnet', label: 'Sonnet' },
+                  { value: 'opus', label: 'Opus' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={model === opt.value}
+                  className={`${styles.modelSegBtn} ${model === opt.value ? styles.modelSegBtnActive : ''}`}
+                  disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
+                  onClick={() => setModel(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-            <ApproveSealFilesUploader
-              pdfFile={file}
-              pfeFile={pfeFile}
-              disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
-              onPdfFileSelected={(f) => {
-                setFile(f);
-                setError('');
-                setPhase('idle');
-              }}
-              onPfeFileSelected={(f) => {
-                setPfeFile(f);
-                setError('');
-                setPhase('idle');
-              }}
-            />
           </div>
 
-          <div className={`${styles.cardSection} ${styles.cardSectionMuted}`}>
-            <div className={styles.sectionHead}>
-              <span className={styles.stepBadge} aria-hidden>
-                2
+          <div className={styles.actionsBar}>
+            <button type="button" className={styles.btnPrimary} onClick={runAnalyze} disabled={!canAnalyze}>
+              <span>
+                {phase === 'uploading'
+                  ? 'Subiendo…'
+                  : phase === 'extracting' || phase === 'analyzing'
+                    ? 'Analizando…'
+                    : 'Analizar PDF'}
               </span>
-              <div>
-                <h2 className={styles.sectionTitle}>Modelo y ejecución</h2>
-                <p className={styles.sectionDesc}>Elige la variante de Claude y ejecuta el análisis.</p>
-              </div>
-            </div>
+              <img
+                src="/img/Claude_AI_symbol.svg"
+                alt=""
+                width={16}
+                height={16}
+                className={styles.primaryBtnClaudeIcon}
+                aria-hidden
+              />
+            </button>
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={() => {
+                setFile(null);
+                setPfeFile(null);
+                setResult(null);
+                setRawClaudeJson('');
+                setLastFileName('');
+                setPromptPreview('');
+                setLog([]);
+                setError('');
+                setYubiqBridge('idle');
+                setYubiqBridgeMessage('');
+                setYubiqMarginModal('closed');
+                setYubiqManualMarginInput('');
+                setTranslatedExtraction(null);
+                setTranslatedRawClaudeJson('');
+                setTranslateError('');
+                setSecondaryAreas([]);
+                setPhase('idle');
+              }}
+              disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
+            >
+              Limpiar
+            </button>
+          </div>
+        </div>
 
-            <div className={styles.actionStrip}>
-              <div className={styles.field}>
-                <label htmlFor="yubiq-model" className={styles.fieldLabel}>
-                  Modelo
-                </label>
-                <select
-                  id="yubiq-model"
-                  className={styles.select}
-                  value={model}
-                  onChange={(e) => setModel(e.target.value as AnthropicModelChoice)}
-                  disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
-                  aria-label="Seleccionar modelo de Claude"
-                >
-                  <option value="haiku">Haiku (rápido, recomendado)</option>
-                  <option value="sonnet">Sonnet</option>
-                  <option value="opus">Opus</option>
-                </select>
-              </div>
+        {!credLoading && !credentialStatus?.configured && (
+          <div className={styles.cardAlerts}>
+            <p className={styles.notice}>
+              No hay API key de Anthropic. Configúrala en{' '}
+              <strong>
+                <Link href="/profile">Perfil → AI Credentials</Link>
+              </strong>
+              .
+            </p>
+          </div>
+        )}
 
-              <div className={styles.actionsToolbar}>
-                <div className={styles.actionsMain}>
-                  <button type="button" className={styles.btnPrimary} onClick={runAnalyze} disabled={!canAnalyze}>
-                    <span>
-                      {phase === 'uploading'
-                        ? 'Subiendo…'
-                        : phase === 'extracting' || phase === 'analyzing'
-                          ? 'Analizando…'
-                          : 'Analizar PDF'}
-                    </span>
-                    <img
-                      src="/img/Claude_AI_symbol.svg"
-                      alt=""
-                      width={18}
-                      height={18}
-                      className={styles.primaryBtnClaudeIcon}
-                      aria-hidden
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnSecondary}
-                    onClick={() => {
-                      setFile(null);
-                      setPfeFile(null);
-                      setResult(null);
-                      setRawClaudeJson('');
-                      setLastFileName('');
-                      setPromptPreview('');
-                      setLog([]);
-                      setError('');
-                      setYubiqBridge('idle');
-                      setYubiqBridgeMessage('');
-                      setYubiqMarginModal('closed');
-                      setYubiqManualMarginInput('');
-                      setTranslatedExtraction(null);
-                      setTranslatedRawClaudeJson('');
-                      setTranslateError('');
-                      setPhase('idle');
-                    }}
-                    disabled={phase === 'uploading' || phase === 'extracting' || phase === 'analyzing'}
-                  >
-                    Limpiar
-                  </button>
-                </div>
-                <div className={styles.credentialsCell}>
-                  <button
-                    type="button"
-                    className={styles.profileLink}
-                    onClick={() => router.push('/profile')}
-                    aria-label="Abrir perfil: credenciales API"
-                  >
-                    Credenciales API
-                  </button>
-                </div>
-              </div>
-            </div>
+        {error ? (
+          <div className={styles.cardAlerts}>
+            <p className={styles.error}>{error}</p>
+          </div>
+        ) : null}
 
-            {!credLoading && !credentialStatus?.configured && (
-              <p className={styles.notice}>
-                No hay API key de Anthropic guardada. Configúrala en{' '}
-                <strong>
-                  <Link href="/profile">Perfil → AI Credentials</Link>
-                </strong>
-                .
+        {isAnalysisBusy ? (
+          <div className={styles.analysisLoading} role="status" aria-live="polite">
+            <span className={styles.analysisSpinner} aria-hidden />
+            <span className={styles.analysisLoadingText}>
+              {analysisBusyLabel(phase as 'uploading' | 'extracting' | 'analyzing')}
+            </span>
+            <AnalysisPhaseTrack phase={phase as 'uploading' | 'extracting' | 'analyzing'} />
+          </div>
+        ) : null}
+
+        <div className={styles.primaryCardFooter}>
+          <details className={styles.promptPreview}>
+            <summary className={styles.promptSummary}>Vista previa del prompt (Claude)</summary>
+            {promptPreview ? (
+              <pre className={styles.promptPre} tabIndex={0}>
+                {promptPreview}
+              </pre>
+            ) : (
+              <p className={styles.promptEmpty}>
+                Tras un análisis correcto, aquí verás el prompt enviado al modelo.
               </p>
             )}
-
-            {error && <p className={styles.error}>{error}</p>}
-
-            <div className={styles.analysisMiddle}>
-              {isAnalysisBusy && (
-                <div className={styles.analysisLoading} role="status" aria-live="polite">
-                  <span className={styles.analysisSpinner} aria-hidden />
-                  <span className={styles.analysisLoadingText}>
-                    {analysisBusyLabel(phase as 'uploading' | 'extracting' | 'analyzing')}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className={styles.promptPreviewFooter}>
-              <p className={styles.promptPreviewLead}>
-                Los datos sensibles usan tu API key guardada en el perfil.
-              </p>
-              <details className={styles.promptPreview}>
-                <summary className={styles.promptSummary}>Vista previa del prompt (Claude)</summary>
-                {promptPreview ? (
-                  <pre className={styles.promptPre} tabIndex={0}>
-                    {promptPreview}
-                  </pre>
-                ) : (
-                  <p className={styles.promptEmpty}>
-                    Tras un análisis correcto, aquí verás el prompt completo enviado al modelo (incluye el texto extraído del
-                    PDF).
-                  </p>
-                )}
-              </details>
-            </div>
+          </details>
+          <div className={styles.footerMeta}>
+            <button
+              type="button"
+              className={styles.credentialsLink}
+              onClick={() => router.push('/profile')}
+              aria-label="Abrir perfil: credenciales API"
+            >
+              Credenciales
+            </button>
+            <span className={styles.footerMetaSep} aria-hidden>
+              ·
+            </span>
+            <p className={styles.promptPreviewLead}>API key del perfil · datos sensibles no se reutilizan</p>
           </div>
         </div>
       </section>
@@ -567,97 +705,130 @@ export default function YubiqApproveSealFillerPage() {
       <section
         ref={resultsSectionRef}
         id="yubiq-approve-seal-results"
-        className={styles.grid}
+        className={`${styles.grid} ${result ? styles.gridReady : ''}`}
         aria-label="Resultados y registro"
       >
-        <article className={styles.panel}>
+        <article className={`${styles.panel} ${styles.panelPrimary}`}>
           <div className={styles.panelHeader}>
             <div className={styles.panelHeaderMain}>
-              <span className={styles.panelIcon} aria-hidden>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <div className={styles.panelTitleBlock}>
+                <div className={styles.panelTitleRow}>
+                  <h2 className={styles.panelTitle}>Datos extraídos</h2>
+                  {result ? (
+                    <span className={styles.panelStatusPill}>Listo para enviar</span>
+                  ) : null}
+                </div>
+                {result && lastFileName ? (
+                  <p className={styles.panelSubtitle} title={lastFileName}>
+                    {lastFileName}
+                  </p>
+                ) : (
+                  <p className={styles.panelSubtitle}>
+                    {result
+                      ? 'Revisa los campos y envía a Yubiq'
+                      : 'Aparecerán aquí tras un análisis correcto'}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className={styles.panelHeaderActions}>
+              <button
+                type="button"
+                className={styles.translateBtn}
+                aria-label="Traducir datos extraídos al inglés"
+                title="Traducir al inglés"
+                disabled={!result || translateLoading}
+                aria-busy={translateLoading}
+                aria-pressed={Boolean(translatedExtraction)}
+                onClick={() => void runTranslate()}
+              >
+                {translateLoading ? (
+                  <span className={styles.translateBtnSpinner} aria-hidden />
+                ) : (
+                  <TranslateToEnglishGlyph />
+                )}
+              </button>
+            </div>
+          </div>
+          {translateError ? <p className={styles.translateError}>{translateError}</p> : null}
+          {result ? (
+            <>
+              <ExtractionResultCard
+                result={displayResult}
+                rawClaudeJson={displayRawClaudeJson}
+                onAreaChange={handleAreaChange}
+                secondaryAreas={secondaryAreas}
+                onSecondaryAreasChange={handleSecondaryAreasChange}
+              />
+              <div className={styles.sendToYubiqWrap}>
+                <button
+                  type="button"
+                  className={styles.btnSendYubiq}
+                  data-avvale-action="send-yubiq"
+                  disabled={!result || yubiqBridge === 'pending'}
+                  onClick={() => {
+                    const extractedMargin = (translatedExtraction ?? result)?.margenPorcentaje;
+                    if (extractedMargin != null) {
+                      void sendToYubiq(String(extractedMargin));
+                      return;
+                    }
+                    setYubiqManualMarginInput('');
+                    setYubiqMarginModal('ask');
+                  }}
+                >
+                  {yubiqBridge === 'pending' ? 'Enviando a Yubiq…' : 'Enviar a Yubiq Approve & Seal'}
+                </button>
+                {yubiqBridgeMessage && (
+                  <p
+                    className={
+                      yubiqBridge === 'success'
+                        ? styles.bridgeOk
+                        : yubiqBridge === 'no_extension'
+                          ? styles.bridgeWarn
+                          : styles.bridgeErr
+                    }
+                    role="status"
+                  >
+                    {yubiqBridgeMessage}
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className={styles.empty}>
+              <span className={styles.emptyIcon} aria-hidden>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                   <line x1="16" y1="13" x2="8" y2="13" />
                   <line x1="16" y1="17" x2="8" y2="17" />
                 </svg>
               </span>
-              <h2 className={styles.panelTitle}>Datos extraídos</h2>
-            </div>
-            <button
-              type="button"
-              className={styles.translateBtn}
-              aria-label="Traducir datos extraídos al inglés"
-              title="Traducir al inglés"
-              disabled={!result || translateLoading}
-              aria-busy={translateLoading}
-              aria-pressed={Boolean(translatedExtraction)}
-              onClick={() => void runTranslate()}
-            >
-              {translateLoading ? (
-                <span className={styles.translateBtnSpinner} aria-hidden />
-              ) : (
-                <TranslateToEnglishGlyph />
-              )}
-            </button>
-          </div>
-          {translateError ? <p className={styles.translateError}>{translateError}</p> : null}
-          {result ? (
-            <ExtractionResultCard
-              result={displayResult}
-              rawClaudeJson={displayRawClaudeJson}
-              onAreaChange={handleAreaChange}
-            />
-          ) : (
-            <div className={styles.empty}>
-              Aquí verás título, cliente, importe, área Avvale, resumen y observaciones cuando completes un análisis correctamente.
+              <p className={styles.emptyTitle}>Aún no hay extracción</p>
+              <p className={styles.emptyBody}>
+                Sube un PDF, elige el modelo y pulsa <strong>Analizar PDF</strong>. Verás título, cliente, importe, área
+                Avvale, resumen y observaciones.
+              </p>
             </div>
           )}
         </article>
 
         <article className={styles.panel}>
           <div className={styles.panelHeader}>
-            <span className={styles.panelIcon} aria-hidden>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="4 17 10 11 4 5" />
-                <line x1="12" y1="19" x2="20" y2="19" />
-              </svg>
-            </span>
-            <h2 className={styles.panelTitle}>Registro</h2>
+            <div className={styles.panelHeaderMain}>
+              <span className={styles.panelIcon} aria-hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="4 17 10 11 4 5" />
+                  <line x1="12" y1="19" x2="20" y2="19" />
+                </svg>
+              </span>
+              <div className={styles.panelTitleBlock}>
+                <h2 className={styles.panelTitle}>Registro</h2>
+                <p className={styles.panelSubtitle}>Traza del proceso y mensajes de la extensión</p>
+              </div>
+            </div>
           </div>
           <AnalysisLogPanel log={log} phase={phase} />
-          <div className={styles.sendToYubiqWrap}>
-            <button
-              type="button"
-              className={styles.btnSendYubiq}
-              data-avvale-action="send-yubiq"
-              disabled={!result || yubiqBridge === 'pending'}
-              onClick={() => {
-                const extractedMargin = (translatedExtraction ?? result)?.margenPorcentaje;
-                if (extractedMargin != null) {
-                  void sendToYubiq(String(extractedMargin));
-                  return;
-                }
-                setYubiqManualMarginInput('');
-                setYubiqMarginModal('ask');
-              }}
-            >
-              {yubiqBridge === 'pending' ? 'Enviando…' : 'Enviar a Yubiq'}
-            </button>
-            {yubiqBridgeMessage && (
-              <p
-                className={
-                  yubiqBridge === 'success'
-                    ? styles.bridgeOk
-                    : yubiqBridge === 'no_extension'
-                      ? styles.bridgeWarn
-                      : styles.bridgeErr
-                }
-                role="status"
-              >
-                {yubiqBridgeMessage}
-              </p>
-            )}
-          </div>
         </article>
       </section>
 
