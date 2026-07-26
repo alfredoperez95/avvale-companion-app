@@ -314,6 +314,10 @@ export class ActivationsService {
           projectAmount: dto.projectAmount.trim() || null,
           projectType: dto.projectType,
           hubspotUrl: dto.hubspotUrl ?? null,
+          pfe: dto.pfe ?? null,
+          pedido: dto.pedido ?? null,
+          yubiqAsUrl: dto.yubiqAsUrl?.trim() || null,
+          yubiqAsId: dto.yubiqAsId?.trim() || null,
           projectJpName: projectJp?.name ?? null,
           projectJpEmail: projectJp?.email ?? null,
           projectJpSource: projectJp?.source ?? null,
@@ -440,10 +444,13 @@ export class ActivationsService {
     if (dto.projectAmount !== undefined) data.projectAmount = dto.projectAmount.trim() || null;
     if (dto.projectType !== undefined) data.projectType = dto.projectType;
     if (dto.hubspotUrl !== undefined) data.hubspotUrl = dto.hubspotUrl || null;
+    if (dto.pfe !== undefined) data.pfe = dto.pfe || null;
+    if (dto.pedido !== undefined) data.pedido = dto.pedido || null;
+    if (dto.yubiqAsUrl !== undefined) data.yubiqAsUrl = dto.yubiqAsUrl?.trim() || null;
+    if (dto.yubiqAsId !== undefined) data.yubiqAsId = dto.yubiqAsId?.trim() || null;
     const projectName = (dto.projectName !== undefined ? dto.projectName : activation.projectName) ?? '';
     const client = dto.client !== undefined ? dto.client : activation.client;
     data.subject = buildSubject(projectName, client, activation.activationNumber);
-    const manualCcRaw = dto.recipientCc !== undefined ? dto.recipientCc : activation.recipientCc;
     if (dto.body !== undefined) data.body = dto.body || null;
     if (dto.attachmentUrls !== undefined) {
       data.attachmentUrls = dto.attachmentUrls?.length ? JSON.stringify(dto.attachmentUrls) : null;
@@ -459,8 +466,7 @@ export class ActivationsService {
       dto.areaIds !== undefined ||
       dto.subAreaIds !== undefined ||
       dto.projectJpContactId !== undefined ||
-      dto.projectJpAutoSubAreaContactId !== undefined ||
-      dto.recipientCc !== undefined
+      dto.projectJpAutoSubAreaContactId !== undefined
     ) {
       const areaIds = dto.areaIds ?? activation.activationAreas?.map((a) => a.areaId) ?? [];
       const subAreaIds = dto.subAreaIds ?? activation.activationSubAreas?.map((a) => a.subAreaId) ?? [];
@@ -487,6 +493,7 @@ export class ActivationsService {
         dto.projectJpContactId,
         dto.projectJpAutoSubAreaContactId,
       );
+      const manualCcRaw = dto.recipientCc !== undefined ? dto.recipientCc : activation.recipientCc;
       const { recipientTo, recipientCc } = await this.buildRecipients(
         areaIds,
         subAreaIds,
@@ -499,6 +506,16 @@ export class ActivationsService {
       data.projectJpName = projectJp?.name ?? null;
       data.projectJpEmail = projectJp?.email ?? null;
       data.projectJpSource = projectJp?.source ?? null;
+    } else if (dto.recipientTo !== undefined || dto.recipientCc !== undefined) {
+      // Ajuste fino desde ficha (quitar emails): guardar listas tal cual, sin reconstruir desde áreas.
+      if (dto.recipientTo !== undefined) {
+        const to = dto.recipientTo.trim();
+        data.recipientTo = to || PLACEHOLDER_RECIPIENT;
+      }
+      if (dto.recipientCc !== undefined) {
+        const cc = dto.recipientCc?.trim() || '';
+        data.recipientCc = cc || null;
+      }
     }
     await this.prisma.activation.update({ where: { id: activationId }, data });
     return this.findOneByIdAndUser(activationId, userId);

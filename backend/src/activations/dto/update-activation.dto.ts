@@ -30,6 +30,24 @@ export class UpdateActivationDto {
   hubspotUrl?: string;
 
   @IsOptional()
+  @IsString()
+  @IsIn(['SI', 'NO'], { message: 'PFE debe ser Sí o No' })
+  pfe?: 'SI' | 'NO' | null;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['SI', 'NO', 'PENDIENTE'], { message: 'Pedido debe ser Sí, No o Pendiente' })
+  pedido?: 'SI' | 'NO' | 'PENDIENTE' | null;
+
+  @IsOptional()
+  @IsString()
+  yubiqAsUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  yubiqAsId?: string | null;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   areaIds?: string[];
@@ -38,6 +56,10 @@ export class UpdateActivationDto {
   @IsArray()
   @IsString({ each: true })
   subAreaIds?: string[];
+
+  @IsOptional()
+  @IsString()
+  recipientTo?: string;
 
   @IsOptional()
   @IsString()

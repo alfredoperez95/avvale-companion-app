@@ -26,6 +26,24 @@ export class CreateActivationDto {
   @IsString()
   hubspotUrl?: string;
 
+  @IsOptional()
+  @IsString()
+  @IsIn(['SI', 'NO'], { message: 'PFE debe ser Sí o No' })
+  pfe?: 'SI' | 'NO';
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['SI', 'NO', 'PENDIENTE'], { message: 'Pedido debe ser Sí, No o Pendiente' })
+  pedido?: 'SI' | 'NO' | 'PENDIENTE';
+
+  @IsOptional()
+  @IsString()
+  yubiqAsUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  yubiqAsId?: string;
+
   @IsArray()
   @IsString({ each: true })
   areaIds: string[];

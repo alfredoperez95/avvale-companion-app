@@ -31,6 +31,18 @@ function isHtmlBody(body: string | null | undefined): boolean {
   return Boolean(body?.trim().startsWith('<'));
 }
 
+function splitRecipientEmails(raw: string | null | undefined): string[] {
+  return (raw ?? '')
+    .split(/[,;\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .filter((e) => e.toLowerCase() !== 'sin-destinatarios@pendiente');
+}
+
+function joinRecipientEmails(emails: string[]): string {
+  return emails.join(', ');
+}
+
 function extensionBridgeStatusText(
   phase: ExtensionDownloadPhase,
   errorMessage: string | null,
@@ -63,6 +75,7 @@ export default function ActivationDetailPage() {
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [removingRecipient, setRemovingRecipient] = useState(false);
   const [showSendAttachmentWarning, setShowSendAttachmentWarning] = useState(false);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -166,6 +179,80 @@ export default function ActivationDetailPage() {
     apiFetch(`/api/activations/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then(setActivation);
+  };
+
+  const canEditRecipients = activation?.status === 'DRAFT';
+
+  const removeRecipient = async (field: 'to' | 'cc', email: string) => {
+    if (!id || !activation || !canEditRecipients || removingRecipient) return;
+    const emailLower = email.trim().toLowerCase();
+    const toList = splitRecipientEmails(activation.recipientTo).filter(
+      (e) => !(field === 'to' && e.toLowerCase() === emailLower),
+    );
+    const ccList = splitRecipientEmails(activation.recipientCc).filter(
+      (e) => !(field === 'cc' && e.toLowerCase() === emailLower),
+    );
+    setRemovingRecipient(true);
+    setError('');
+    try {
+      const res = await apiFetch(`/api/activations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientTo: joinRecipientEmails(toList),
+          recipientCc: joinRecipientEmails(ccList),
+        }),
+      });
+      if (res.status === 401) {
+        redirectToLogin();
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(
+          Array.isArray(data.message) ? data.message.join(', ') : data.message ?? 'No se pudo quitar el destinatario',
+        );
+        return;
+      }
+      const updated = await res.json();
+      setActivation(updated);
+    } catch {
+      setError('Error de conexión al quitar el destinatario');
+    } finally {
+      setRemovingRecipient(false);
+    }
+  };
+
+  const renderRecipientChips = (field: 'to' | 'cc', raw: string | null | undefined) => {
+    const emails = splitRecipientEmails(raw);
+    if (emails.length === 0) {
+      return <span className={styles.emptyHint}>Ninguno</span>;
+    }
+    return (
+      <ul className={styles.recipientChipList}>
+        {emails.map((email) => (
+          <li key={`${field}-${email}`}>
+            {canEditRecipients ? (
+              <button
+                type="button"
+                className={styles.recipientChip}
+                title={`Quitar ${email}`}
+                aria-label={`Quitar ${email} de ${field === 'to' ? 'Para' : 'CC'}`}
+                disabled={removingRecipient}
+                onClick={() => void removeRecipient(field, email)}
+              >
+                <span className={styles.recipientChipEmail}>{email}</span>
+                <span className={styles.recipientChipRemove} aria-hidden>
+                  ×
+                </span>
+              </button>
+            ) : (
+              <span className={styles.recipientChipReadonly}>{email}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
   };
 
   useEffect(() => {
@@ -466,20 +553,61 @@ export default function ActivationDetailPage() {
           ) : null}
         </dl>,
       )}
+      {(activation.pfe || activation.pedido || activation.yubiqAsUrl || activation.yubiqAsId) &&
+        section(
+          'Detalles administrativos',
+          <dl className={styles.kvList}>
+            {activation.pfe ? (
+              <div className={styles.kvRow}>
+                <dt className={styles.kvDt}>PFE</dt>
+                <dd className={styles.kvDd}>{activation.pfe === 'SI' ? 'Sí' : 'No'}</dd>
+              </div>
+            ) : null}
+            {activation.pedido ? (
+              <div className={styles.kvRow}>
+                <dt className={styles.kvDt}>Pedido</dt>
+                <dd className={styles.kvDd}>
+                  {activation.pedido === 'SI' ? 'Sí' : activation.pedido === 'NO' ? 'No' : 'Pendiente'}
+                </dd>
+              </div>
+            ) : null}
+            {activation.yubiqAsUrl ? (
+              <div className={styles.kvRow}>
+                <dt className={styles.kvDt}>Yubiq A&amp;S URL</dt>
+                <dd className={styles.kvDd}>
+                  <a href={activation.yubiqAsUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                    {activation.yubiqAsUrl}
+                  </a>
+                </dd>
+              </div>
+            ) : null}
+            {activation.yubiqAsId ? (
+              <div className={styles.kvRow}>
+                <dt className={styles.kvDt}>ID</dt>
+                <dd className={styles.kvDd}>{activation.yubiqAsId}</dd>
+              </div>
+            ) : null}
+          </dl>,
+        )}
       {section(
         'Destinatarios',
-        <dl className={styles.kvList}>
-          <div className={styles.kvRow}>
-            <dt className={styles.kvDt}>Para</dt>
-            <dd className={styles.kvDd}>{activation.recipientTo}</dd>
-          </div>
-          {activation.recipientCc ? (
+        <>
+          <dl className={styles.kvList}>
+            <div className={styles.kvRow}>
+              <dt className={styles.kvDt}>Para</dt>
+              <dd className={styles.kvDd}>{renderRecipientChips('to', activation.recipientTo)}</dd>
+            </div>
             <div className={styles.kvRow}>
               <dt className={styles.kvDt}>CC</dt>
-              <dd className={styles.kvDd}>{activation.recipientCc}</dd>
+              <dd className={styles.kvDd}>{renderRecipientChips('cc', activation.recipientCc)}</dd>
             </div>
+          </dl>
+          {canEditRecipients ? (
+            <p className={styles.hint}>
+              Pulsa un email para quitarlo del borrador y reducir el ruido de destinatarios.
+            </p>
           ) : null}
-        </dl>,
+        </>,
       )}
       {section(
         'Asunto',

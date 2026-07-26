@@ -42,6 +42,17 @@ enum ProjectType {
   SW
 }
 
+enum ActivationPfe {
+  SI
+  NO
+}
+
+enum ActivationPedido {
+  SI
+  NO
+  PENDIENTE
+}
+
 enum ExpenseStatus {
   PENDING_REVIEW @map("pending_review")
   PROCESSED      @map("processed")
@@ -304,6 +315,18 @@ model ExpenseMonthExport {
   @@map("expense_month_exports")
 }
 
+model SwFormCatalogItem {
+  id        String   @id @default(uuid())
+  tipoSw    String   @unique @map("tipo_sw") @db.VarChar(180)
+  practica  String   @db.VarChar(80)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([sortOrder])
+  @@map("sw_form_catalog_items")
+}
+
 /** Tokens de un solo uso para login por enlace mágico (hash almacenado, no el token en claro). */
 model MagicLoginToken {
   id        String    @id @default(uuid())
@@ -449,6 +472,10 @@ model Activation {
   projectAmount    String?          @map("project_amount")
   projectType      ProjectType?     @map("project_type")
   hubspotUrl       String?          @map("hubspot_url")
+  pfe              ActivationPfe?   @map("pfe")
+  pedido           ActivationPedido? @map("pedido")
+  yubiqAsUrl       String?          @map("yubiq_as_url") @db.Text
+  yubiqAsId        String?          @map("yubiq_as_id")
   projectJpName    String?          @map("project_jp_name")
   projectJpEmail   String?          @map("project_jp_email")
   projectJpSource  String?          @map("project_jp_source")

@@ -4,16 +4,26 @@ import type { ClaudeOfferExtraction } from './yubiq';
 export type YubiqPayloadSchemaVersion = '1.0.0';
 
 /** Identificador de destino (extensible a más pantallas Yubiq u otros sistemas). */
-export type YubiqTargetId = 'yubiq_addnew';
+export type YubiqTargetId = 'yubiq_addnew' | 'yubiq_home';
 
 export type YubiqTargetConfig = {
   targetUrl: string;
 };
 
+/**
+ * Home de Yubiq Approve & Seal (tenant Avvale).
+ * Usado por el botón «Explorar» en activaciones y por el content script
+ * que inyecta «Recopilar información» en esa página.
+ */
+export const YUBIQ_AS_HOME_URL = 'https://avvale-aes-y5ui.yubiq.app/YUBIK/home?' as const;
+
 /** Registro de URLs por target; añadir aquí nuevas entradas en el futuro. */
 export const YUBIQ_TARGETS: Record<YubiqTargetId, YubiqTargetConfig> = {
   yubiq_addnew: {
     targetUrl: 'https://avvale-aes-y5ui.yubiq.app/YUBIK/home#addnew',
+  },
+  yubiq_home: {
+    targetUrl: YUBIQ_AS_HOME_URL,
   },
 };
 
@@ -47,6 +57,20 @@ export type PrefillReviewFlags = {
   revenue?: boolean;
 };
 
+export type YubiqExtensionFileRole = 'offer_pdf' | 'pfe_excel';
+
+export type YubiqExtensionFileMeta = {
+  role: YubiqExtensionFileRole;
+  name: string;
+  mimeType: string;
+  size: number;
+};
+
+export type YubiqExtensionFilesBlock = {
+  batchId: string;
+  files: YubiqExtensionFileMeta[];
+};
+
 /**
  * Metadatos para depuración y trazabilidad (p. ej. `yubiqAutofillLastResult` en la extensión).
  * No se usan para rellenar el formulario; `target` / `prefill` son el contrato de automatización.
@@ -71,6 +95,8 @@ export type YubiqChromePayload = {
   prefill: YubiqPrefillBlock;
   /** Opcional: margen manual entero 0–100 (la app ya redondea y acota antes de enviar). */
   manualMargin?: number;
+  /** Opcional: archivos locales ya almacenados en la extensión, referenciados por batchId. */
+  extensionFiles?: YubiqExtensionFilesBlock;
   /** Opcional: la extensión Chrome lo conserva para logs/storage; la automatización del formulario ignora estos campos. */
   companionMeta?: YubiqCompanionMeta;
 };
@@ -80,6 +106,8 @@ export type BuildYubiqPayloadInput = {
   fileName: string;
   /** Texto del usuario; se normaliza a entero 0–100 en `buildYubiqPayload` (`parseManualMarginToNumber`). */
   manualMargin?: string;
+  /** Metadatos de archivos locales previamente almacenados en la extensión. */
+  extensionFiles?: YubiqExtensionFilesBlock;
   target?: YubiqTargetId;
   /** Para tests; por defecto `new Date()`. */
   now?: Date;

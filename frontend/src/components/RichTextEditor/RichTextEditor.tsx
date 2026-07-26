@@ -199,7 +199,7 @@ function Toolbar({
             onChange={(e) => {
               const v = e.target.value;
               if (v) {
-                editor.chain().focus().insertContent(v).run();
+                editor.chain().focus().insertContent({ type: 'text', text: v }).run();
                 e.target.value = '';
               }
             }}
@@ -620,7 +620,7 @@ export function RichTextEditor({
         .chain()
         .focus()
         .deleteRange({ from: variablePicker.from, to: variablePicker.to })
-        .insertContentAt(variablePicker.from, newValue)
+        .insertContentAt(variablePicker.from, { type: 'text', text: newValue })
         .run();
       setVariablePicker(null);
     },

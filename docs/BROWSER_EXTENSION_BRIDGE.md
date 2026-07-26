@@ -85,6 +85,43 @@ Ejemplo orientativo (el transporte real es `CustomEvent.detail`, **no** `JSON.st
 
 `originalUrl` permite que la web envíe `originalUrl` en el `multipart` de subida al API. Tamaño máximo por fichero en cliente: **20 MiB** (constante compartida con el fetch en memoria).
 
+#### `STORE_LOCAL_FILES`
+
+Guarda en la extensión archivos ya seleccionados localmente por el usuario en Companion. Se usa en Yubiq Approve & Seal antes de abrir `#addnew`: la web envía los bytes del PDF de oferta y, si existe, el Excel PFE; la extensión responde `ok: true` solo cuando el lote está disponible para uso posterior en la pestaña Yubiq.
+
+**Payload:**
+
+```json
+{
+  "batchId": "<uuid>",
+  "files": [
+    {
+      "role": "offer_pdf",
+      "name": "oferta.pdf",
+      "mimeType": "application/pdf",
+      "size": 12345,
+      "dataBase64": "JVBERi0xLjQK..."
+    },
+    {
+      "role": "pfe_excel",
+      "name": "PFE.xlsx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "size": 23456,
+      "dataBase64": "UEsDB..."
+    }
+  ]
+}
+```
+
+Roles permitidos:
+
+- `offer_pdf`: PDF de oferta, obligatorio.
+- `pfe_excel`: Excel PFE, opcional.
+
+La extensión debe almacenar los bytes por `batchId` en IndexedDB o almacenamiento equivalente accesible desde el service worker/content script. `dataBase64` no lleva prefijo `data:...;base64,`.
+
+**Respuesta:** `ok: true` si todos los archivos quedaron almacenados y recuperables por `batchId`. Si la extensión no soporta todavía esta operación, Companion no debe abrir Yubiq y mostrará un mensaje para actualizar/activar la extensión.
+
 #### `CLEAR_TEMP_FILES`
 
 **Payload:** `{ "batchId": "<uuid>" }`
@@ -99,12 +136,13 @@ Elimina del almacenamiento temporal de la extensión todo lo asociado a ese `bat
 | `invalid_payload` | Payload inválido o fichero demasiado grande |
 | `download_failed` | Fallo al descargar una o más URLs |
 | `batch_not_found` | `batchId` desconocido o ya limpiado |
+| `payload_too_large` | Algún fichero supera el tamaño máximo admitido |
 | `unknown` | Error no clasificado |
 
 ## Timeouts en la web (orientativos)
 
 - `DOWNLOAD_FILES`: 120 s  
-- `GET_TEMP_FILES` / `CLEAR_TEMP_FILES`: 30 s  
+- `STORE_LOCAL_FILES` / `GET_TEMP_FILES` / `CLEAR_TEMP_FILES`: 30 s  
 
 ## Comportamiento esperado en la extensión
 
@@ -112,9 +150,72 @@ Elimina del almacenamiento temporal de la extensión todo lo asociado a ese `bat
 2. Responder siempre con `avvale-extension-response` y el mismo `requestId` y `type`.
 3. Mantener datos por `batchId` hasta `CLEAR_TEMP_FILES` o hasta que la web indique limpieza tras subida correcta.
 4. Implementar la descarga autenticada con los permisos/host que correspondan (fuera del alcance de este repo).
+5. Para `STORE_LOCAL_FILES`, aplicar un TTL defensivo a lotes temporales no consumidos.
 
 ## Archivos de referencia en el frontend
 
 - `frontend/src/types/browser-extension-protocol.ts` — constantes y tipos
 - `frontend/src/lib/browser-extension.ts` — cliente (`sendExtensionRequest`, helpers)
 - `frontend/src/hooks/useActivationExtensionDownloads.ts` — estado de UI y subida al API
+
+---
+
+## Yubiq Approve & Seal — home + «Recopilar información»
+
+Complementa el flujo de **prefill** (`avvale-companion-yubiq-start` → `#addnew`). Aquí Companion pide a la extensión **abrir** la home de Approve & Seal (sesión del navegador) y, en esa pestaña, la extensión muestra «Recopilar información».
+
+### URL canónica
+
+```
+https://avvale-aes-y5ui.yubiq.app/YUBIK/home?
+```
+
+Constante: `YUBIQ_AS_HOME_URL` / target `yubiq_home` (`frontend/src/types/yubiq-payload.ts`).
+
+### Abrir desde Companion («Explorar»)
+
+Transporte: `CustomEvent` en `document` (`bubbles: true`, `composed: true`). **Sin** `chrome.runtime` ni `window.open` / `<a target=_blank>` desde la página.
+
+| Dirección | Evento | Detail |
+|-----------|--------|--------|
+| Web → extensión | `avvale-companion-yubiq-as-open` (`AVVALE_YUBIQ_AS_EVENT_OPEN`) | `{ targetUrl?: string }` (default: `YUBIQ_AS_HOME_URL`) |
+| Extensión → web | `avvale-companion-yubiq-as-open-result` (`AVVALE_YUBIQ_AS_EVENT_OPEN_RESULT`) | `{ ok: boolean, tabId?: number, error?: string }` |
+
+Helpers: `dispatchYubiqAsOpenToExtension`, `onYubiqAsOpenResult`, `dispatchYubiqAsOpenToExtensionAndWait`, `messageForYubiqAsOpenResult` en `frontend/src/lib/yubiq/companion-app-dispatch.ts`.
+
+En activaciones, el botón **Explorar** (Yubiq A&S) usa ese puente. Si `ok: false` o timeout → mensaje para instalar/activar la extensión.
+
+### Content script en Yubiq (tras OPEN)
+
+1. `matches` / `host_permissions`: `https://avvale-aes-y5ui.yubiq.app/*`
+2. Inyectar botón idempotente:
+   - `id`: `avvale-companion-yubiq-as-collect`
+   - Texto: `Recopilar información`
+3. Al hacer clic en «Recopilar información»:
+   1. `pageUrl` = `location.href` (http/https).
+   2. `yubiqAsId` = texto del código AES en el encabezado del documento, p. ej.:
+      ```html
+      <span class="fw-bold fs-5 mx-3">AES0003108</span>
+      ```
+      Selector orientativo: `span.fw-bold.fs-5.mx-3` (trim; validar patrón tipo `/^AES\d+$/i` si hay varios spans).
+   3. Enviar a la **pestaña Companion** que originó el OPEN (`openerTabId`).
+   4. Content script en Companion:
+      ```js
+      document.dispatchEvent(new CustomEvent('avvale-companion-yubiq-as-collect-result', {
+        bubbles: true,
+        composed: true,
+        detail: { ok: true, pageUrl, yubiqAsId }
+      }));
+      ```
+   5. **Cerrar** la pestaña Yubiq (`chrome.tabs.remove`).
+4. Companion rellena `#yubiqAsUrl` y `#yubiqAsId`. Helpers: `onYubiqAsCollectResult`, `resolveYubiqAsCollectResult`.
+
+### Relación con el prefill existente
+
+| Flujo | URL | Evento Companion ↔ extensión |
+|--------|-----|------------------------------|
+| Prefill oferta (PDF) | `#addnew` | `STORE_LOCAL_FILES` + `avvale-companion-yubiq-start` + `YubiqChromePayload.extensionFiles` |
+| Explorar A&S | `/YUBIK/home?` | OPEN → OPEN_RESULT |
+| Recopilar | pestaña Yubiq | COLLECT_RESULT → `#yubiqAsUrl` + `#yubiqAsId` + cierre pestaña |
+
+No mezclar con el pipeline de prefill en el mismo click handler.

@@ -26,6 +26,10 @@ export interface Activation {
   projectAmount: string | null;
   projectType: 'CONSULTORIA' | 'SW' | null;
   hubspotUrl: string | null;
+  pfe: 'SI' | 'NO' | null;
+  pedido: 'SI' | 'NO' | 'PENDIENTE' | null;
+  yubiqAsUrl: string | null;
+  yubiqAsId: string | null;
   body: string | null;
   attachmentUrls: string | null;
   attachmentNames: string | null;

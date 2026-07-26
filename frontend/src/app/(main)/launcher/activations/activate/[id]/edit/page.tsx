@@ -9,17 +9,25 @@ import { AttachmentGrid } from '@/components/AttachmentGrid/AttachmentGrid';
 import { RichTextEditor } from '@/components/RichTextEditor/RichTextEditor';
 import { CssStyled } from '@/components/CssStyled/CssStyled';
 import { replaceTemplateVariables, replaceUrlsEscaneadasPlaceholder } from '@/lib/replace-template-variables';
+import { fetchActivationEmailTemplates, type EmailTemplateItem } from '@/lib/email-templates';
 import { formatActivationCode } from '@/lib/activation-code';
 import { getActivationPayloadFromHash } from '@/lib/activation-payload';
 import { uploadAccept, validateUploadFiles } from '@/lib/validate-upload';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
+import {
+  YUBIQ_AS_HOME_URL,
+  dispatchYubiqAsOpenToExtensionAndWait,
+  messageForYubiqAsCollectResult,
+  messageForYubiqAsOpenResult,
+  onYubiqAsCollectResult,
+  resolveYubiqAsCollectResult,
+} from '@/lib/yubiq';
 import styles from '../../new/form.module.css';
 
 type SubAreaOption = { id: string; name: string };
 type AreaWithSubareas = { id: string; name: string; subAreas?: SubAreaOption[] };
 type CcContact = { id: string; name: string; email: string; isProjectJp: boolean };
 type ProjectJpAutoCandidate = { id: string; name: string; email: string };
-type EmailTemplateItem = { id: string; name: string; content: string };
 type SelectedArea = { type: 'area'; areaId: string; areaName: string };
 type SelectedSubarea = { type: 'subarea'; subAreaId: string; subAreaName: string; areaId: string; areaName: string };
 type SelectedItem = SelectedArea | SelectedSubarea;
@@ -95,6 +103,10 @@ export default function EditActivationPage() {
     projectAmount: '',
     projectType: '' as '' | 'CONSULTORIA' | 'SW',
     hubspotUrl: '',
+    pfe: '' as '' | 'SI' | 'NO',
+    pedido: '' as '' | 'SI' | 'NO' | 'PENDIENTE',
+    yubiqAsUrl: '',
+    yubiqAsId: '',
     body: '',
     projectJpName: '',
     projectJpEmail: '',
@@ -109,6 +121,10 @@ export default function EditActivationPage() {
   const [newUrl, setNewUrl] = useState('');
   const [newUrlName, setNewUrlName] = useState('');
   const [activationNumber, setActivationNumber] = useState<number | null>(null);
+  const [yubiqAsExploreBusy, setYubiqAsExploreBusy] = useState(false);
+  const [yubiqAsExploreFeedback, setYubiqAsExploreFeedback] = useState<null | { kind: 'ok' | 'error'; message: string }>(
+    null,
+  );
 
   const computedSubject =
     activationNumber != null
@@ -199,9 +215,8 @@ export default function EditActivationPage() {
     });
   }, [ccContacts, manualCcHydrateKey]);
   useEffect(() => {
-    apiFetch('/api/email-templates')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setEmailTemplates(Array.isArray(data) ? data : []))
+    fetchActivationEmailTemplates()
+      .then(setEmailTemplates)
       .catch(() => setEmailTemplates([]));
   }, []);
 
@@ -236,6 +251,10 @@ export default function EditActivationPage() {
     form.projectAmount,
     form.projectType,
     form.hubspotUrl,
+    form.pfe,
+    form.pedido,
+    form.yubiqAsUrl,
+    form.yubiqAsId,
     form.projectJpName,
     form.projectJpEmail,
     form.attachmentUrlsText,
@@ -291,6 +310,10 @@ export default function EditActivationPage() {
           projectAmount: data.projectAmount ?? '',
           projectType: (data.projectType === 'CONSULTORIA' || data.projectType === 'SW' ? data.projectType : '') as '' | 'CONSULTORIA' | 'SW',
           hubspotUrl: data.hubspotUrl ?? '',
+          pfe: data.pfe === 'SI' || data.pfe === 'NO' ? data.pfe : '',
+          pedido: data.pedido === 'SI' || data.pedido === 'NO' || data.pedido === 'PENDIENTE' ? data.pedido : '',
+          yubiqAsUrl: data.yubiqAsUrl ?? '',
+          yubiqAsId: data.yubiqAsId ?? '',
           body: data.body ?? '',
           projectJpName: data.projectJpName ?? '',
           projectJpEmail: data.projectJpEmail ?? '',
@@ -426,6 +449,37 @@ export default function EditActivationPage() {
     }));
   };
 
+  const handleExploreYubiqAs = async () => {
+    setYubiqAsExploreBusy(true);
+    setYubiqAsExploreFeedback(null);
+    try {
+      const detail = await dispatchYubiqAsOpenToExtensionAndWait({
+        targetUrl: YUBIQ_AS_HOME_URL,
+        timeoutMs: 8000,
+      });
+      const message = messageForYubiqAsOpenResult(detail);
+      setYubiqAsExploreFeedback({ kind: detail.ok ? 'ok' : 'error', message });
+    } finally {
+      setYubiqAsExploreBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    return onYubiqAsCollectResult((detail) => {
+      const resolved = resolveYubiqAsCollectResult(detail);
+      if (resolved.ok) {
+        setForm((prev) => ({
+          ...prev,
+          yubiqAsUrl: resolved.pageUrl,
+          ...(resolved.yubiqAsId ? { yubiqAsId: resolved.yubiqAsId } : {}),
+        }));
+        setYubiqAsExploreFeedback({ kind: 'ok', message: messageForYubiqAsCollectResult(detail) });
+        return;
+      }
+      setYubiqAsExploreFeedback({ kind: 'error', message: resolved.error });
+    });
+  }, []);
+
   const isAreaSelected = (areaId: string) => selected.some((s) => s.type === 'area' && s.areaId === areaId);
   const isSubareaSelected = (subAreaId: string) => selected.some((s) => s.type === 'subarea' && s.subAreaId === subAreaId);
 
@@ -491,6 +545,10 @@ export default function EditActivationPage() {
         projectAmount: form.projectAmount.trim(),
         projectType: form.projectType,
         hubspotUrl: form.hubspotUrl.trim() || undefined,
+        pfe: form.pfe || null,
+        pedido: form.pedido || null,
+        yubiqAsUrl: form.yubiqAsUrl.trim() || null,
+        yubiqAsId: form.yubiqAsId.trim() || null,
         areaIds,
         subAreaIds: subAreaIds.length ? subAreaIds : undefined,
         recipientCc:
@@ -881,6 +939,101 @@ export default function EditActivationPage() {
             </div>
           </div>
         </section>
+        <section className={styles.section} aria-labelledby="edit-act-section-admin">
+          <header className={styles.sectionHeader}>
+            <h2 id="edit-act-section-admin" className={styles.sectionTitle}>
+              Detalles administrativos
+            </h2>
+            <p className={styles.sectionLead}>PFE, estado del pedido y enlace a Yubiq Approve &amp; Seal.</p>
+          </header>
+          <div className={styles.sectionInnerGrid}>
+            <div id="form-group-pfe" className={styles.formGroup}>
+              <label className={styles.label} htmlFor="pfe">
+                <span className={styles.labelText}>PFE</span>
+              </label>
+              <select
+                id="pfe"
+                name="pfe"
+                value={form.pfe}
+                onChange={handleChange}
+                className={styles.input}
+                aria-label="PFE"
+                autoComplete="off"
+              >
+                <option value="">— Seleccionar —</option>
+                <option value="SI">Sí</option>
+                <option value="NO">No</option>
+              </select>
+            </div>
+            <div id="form-group-pedido" className={styles.formGroup}>
+              <label className={styles.label} htmlFor="pedido">
+                <span className={styles.labelText}>Pedido</span>
+              </label>
+              <select
+                id="pedido"
+                name="pedido"
+                value={form.pedido}
+                onChange={handleChange}
+                className={styles.input}
+                aria-label="Pedido"
+                autoComplete="off"
+              >
+                <option value="">— Seleccionar —</option>
+                <option value="SI">Sí</option>
+                <option value="NO">No</option>
+                <option value="PENDIENTE">Pendiente</option>
+              </select>
+            </div>
+            <div id="form-group-yubiq-as" className={styles.formGroup}>
+              <div className={styles.label} id="yubiq-as-group-label-edit">
+                <span className={styles.labelText}>Yubiq A&amp;S</span>
+              </div>
+              <div className={styles.yubiqAsControls} role="group" aria-labelledby="yubiq-as-group-label-edit">
+                <input
+                  id="yubiqAsUrl"
+                  name="yubiqAsUrl"
+                  type="url"
+                  value={form.yubiqAsUrl}
+                  onChange={handleChange}
+                  className={styles.input}
+                  placeholder="URL"
+                  aria-label="Yubiq A&S URL"
+                  autoComplete="off"
+                />
+                <input
+                  id="yubiqAsId"
+                  name="yubiqAsId"
+                  type="text"
+                  value={form.yubiqAsId}
+                  onChange={handleChange}
+                  className={styles.input}
+                  placeholder="ID"
+                  aria-label="Yubiq A&S ID"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  className={styles.btnLabelAction}
+                  onClick={() => void handleExploreYubiqAs()}
+                  disabled={yubiqAsExploreBusy}
+                  aria-busy={yubiqAsExploreBusy}
+                >
+                  {yubiqAsExploreBusy ? 'Abriendo…' : 'Explorar'}
+                </button>
+              </div>
+              {yubiqAsExploreFeedback ? (
+                <p
+                  className={
+                    yubiqAsExploreFeedback.kind === 'ok' ? styles.exploreFeedbackOk : styles.exploreFeedbackError
+                  }
+                  role={yubiqAsExploreFeedback.kind === 'error' ? 'alert' : 'status'}
+                >
+                  {yubiqAsExploreFeedback.message}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </section>
         <section className={styles.section} aria-labelledby="edit-act-section-template">
           <header className={styles.sectionHeader}>
             <h2 id="edit-act-section-template" className={styles.sectionTitle}>
@@ -901,14 +1054,30 @@ export default function EditActivationPage() {
                   className={`${styles.input} ${styles.templateSelect}`}
                   value=""
                   autoComplete="off"
+                  onFocus={() => {
+                    fetchActivationEmailTemplates()
+                      .then(setEmailTemplates)
+                      .catch(() => {});
+                  }}
                   onChange={(e) => {
                     const templateId = e.target.value;
                     if (!templateId) return;
-                    const t = emailTemplates.find((x) => x.id === templateId);
-                    if (t) {
-                      setAppliedTemplateId(templateId);
-                      setAppliedTemplateName(t.name);
-                    }
+                    void fetchActivationEmailTemplates()
+                      .then((list) => {
+                        setEmailTemplates(list);
+                        const t = list.find((x) => x.id === templateId);
+                        if (t) {
+                          setAppliedTemplateId(templateId);
+                          setAppliedTemplateName(t.name);
+                        }
+                      })
+                      .catch(() => {
+                        const t = emailTemplates.find((x) => x.id === templateId);
+                        if (t) {
+                          setAppliedTemplateId(templateId);
+                          setAppliedTemplateName(t.name);
+                        }
+                      });
                     e.target.value = '';
                   }}
                 >
