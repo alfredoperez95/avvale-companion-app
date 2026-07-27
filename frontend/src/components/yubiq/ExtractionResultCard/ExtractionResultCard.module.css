@@ -1,15 +1,19 @@
 .grid {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0;
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.5rem;
+  background: var(--fiori-surface);
+  overflow: hidden;
 }
 
 .field {
   min-width: 0;
-  padding: 0.75rem 0.85rem;
-  border: 1px solid var(--fiori-border-light);
-  border-radius: 0.45rem;
-  background: var(--fiori-surface);
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .fieldWide {
@@ -18,35 +22,85 @@
 
 .fieldText .value {
   font-size: 0.875rem;
-  line-height: 1.5;
-  color: color-mix(in srgb, var(--fiori-text) 92%, var(--fiori-text-secondary));
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--fiori-text) 90%, var(--fiori-text-secondary));
 }
 
-.identityRow {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-}
-
+.identityRow,
 .areasRow {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.75rem;
+  gap: 0;
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.identityRow > .field,
+.areasRow > .field {
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.identityRow > .field:last-child,
+.areasRow > .field:last-child {
+  border-bottom: none;
+}
+
+.grid > .field {
+  border-bottom: 1px solid var(--fiori-border-light);
+}
+
+.grid > .field:last-of-type {
+  border-bottom: none;
 }
 
 @media (min-width: 40rem) {
   .identityRow {
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.9fr);
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 0.95fr);
   }
 
   .areasRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .identityRow > .field,
+  .areasRow > .field {
+    border-bottom: none;
+  }
+
+  .identityRow > .field + .field,
+  .areasRow > .field + .field {
+    border-left: 1px solid var(--fiori-border-light);
+  }
 }
 
 .fieldMetric {
-  border-color: color-mix(in srgb, var(--fiori-shell-bg) 26%, var(--fiori-border-light));
-  background: color-mix(in srgb, var(--fiori-shell-bg) 4%, var(--fiori-surface));
+  background: color-mix(in srgb, var(--fiori-surface) 97%, var(--fiori-shell-bg));
+  box-shadow: inset 3px 0 0 var(--fiori-shell-bg);
+}
+
+.label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--fiori-text-secondary);
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.value {
+  margin: 0;
+  color: var(--fiori-text);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.valueStrong {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.valuePre {
+  white-space: pre-line;
 }
 
 .importeMargenHead {
@@ -119,10 +173,10 @@
   gap: 0.3rem 0.55rem;
   min-width: 0;
   flex: 1;
-  padding: 0.4rem 0.55rem;
-  border-radius: 0.35rem;
-  background: var(--fiori-surface);
-  border: 1px solid color-mix(in srgb, var(--fiori-border-light) 88%, var(--fiori-shell-bg));
+  padding: 0.35rem 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
 }
 
 .importePartAmount {
@@ -187,10 +241,10 @@
   gap: 0.2rem;
   flex: 1 1 10rem;
   min-width: 0;
-  padding: 0.55rem 0.7rem;
-  border-radius: 0.4rem;
-  background: color-mix(in srgb, var(--fiori-shell-bg) 8%, var(--fiori-surface));
-  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 18%, var(--fiori-border-light));
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.35rem;
+  background: var(--fiori-surface);
+  border: 1px solid var(--fiori-border-light);
 }
 
 .importeSummaryLabel {
@@ -223,10 +277,10 @@
   gap: 0.15rem;
   flex: 0 0 auto;
   min-width: 5.5rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: 0.4rem;
-  border: 1px solid color-mix(in srgb, #188918 32%, var(--fiori-border-light));
-  background: color-mix(in srgb, #188918 9%, var(--fiori-surface));
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.35rem;
+  border: 1px solid color-mix(in srgb, #188918 28%, var(--fiori-border-light));
+  background: color-mix(in srgb, #188918 7%, var(--fiori-surface));
 }
 
 .margenBadgeSolo {
@@ -247,32 +301,6 @@
   letter-spacing: -0.02em;
   color: #0f6b0f;
   line-height: 1.1;
-}
-
-.valueStrong {
-  font-weight: 700;
-  font-size: 1rem;
-}
-
-.valuePre {
-  white-space: pre-line;
-}
-
-.label {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--fiori-text-secondary);
-  margin: 0 0 0.4rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.value {
-  margin: 0;
-  color: var(--fiori-text);
-  font-size: 0.9375rem;
-  line-height: 1.4;
-  word-break: break-word;
 }
 
 .importeAvisoOpciones {
@@ -528,19 +556,21 @@
 .areaSelectPopover {
   position: absolute;
   z-index: 30;
-  top: calc(100% + 0.55rem);
+  top: calc(100% + 0.3rem);
   left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  min-width: 12rem;
-  padding: 0.65rem;
+  gap: 0.2rem;
+  min-width: 8.5rem;
+  width: 100%;
+  padding: 0.25rem;
   border: 1px solid color-mix(in srgb, var(--fiori-text-secondary) 16%, var(--fiori-border-light));
-  border-radius: 0.875rem;
+  border-radius: 0.5rem;
   background: color-mix(in srgb, var(--fiori-surface) 96%, var(--fiori-shell-bg));
   box-shadow:
-    0 1.25rem 2.5rem rgb(15 23 42 / 14%),
-    0 0.25rem 0.75rem rgb(15 23 42 / 8%);
+    0 0.5rem 1.25rem rgb(15 23 42 / 12%),
+    0 0.125rem 0.35rem rgb(15 23 42 / 6%);
 }
 
 .areaSelectOption {
@@ -549,31 +579,27 @@
   width: 100%;
   align-items: center;
   justify-content: flex-start;
-  min-height: 2.35rem;
-  padding: 0.45rem 2rem 0.45rem 0.75rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 1.9rem 0.35rem 0.75rem;
   border: 1px solid transparent;
-  border-radius: 0.625rem;
+  border-radius: 0.5rem;
   background: transparent;
   color: var(--fiori-text);
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  line-height: 1.35;
+  line-height: 1.4;
   cursor: pointer;
   text-align: left;
   transition:
     border-color 0.15s ease,
-    background 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
+    background 0.15s ease;
 }
 
 .areaSelectOption:hover,
 .areaSelectOption:focus-visible {
   border-color: color-mix(in srgb, var(--fiori-shell-bg) 35%, var(--fiori-border-light));
   background: color-mix(in srgb, var(--fiori-shell-bg) 8%, var(--fiori-surface));
-  box-shadow: 0 0.25rem 0.75rem rgb(15 23 42 / 8%);
-  transform: translateY(-1px);
   outline: none;
 }
 
@@ -584,9 +610,9 @@
 .areaSelectOptionActive::after {
   content: '';
   position: absolute;
-  right: 0.75rem;
-  width: 0.45rem;
-  height: 0.75rem;
+  right: 0.7rem;
+  width: 0.4rem;
+  height: 0.65rem;
   border: solid currentColor;
   border-width: 0 0.12rem 0.12rem 0;
   transform: rotate(45deg);
@@ -635,8 +661,8 @@
 }
 
 .areaHint {
-  margin: 0.35rem 0 0;
-  font-size: 0.75rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.6875rem;
   line-height: 1.35;
   color: var(--fiori-text-secondary);
 }
@@ -679,15 +705,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
-  min-height: 2.5rem;
-  padding: 0.4rem 0.45rem;
-  border-radius: 0.45rem;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 0.35rem;
   border: 1px solid var(--fiori-border-light);
-  background: color-mix(in srgb, var(--fiori-surface) 94%, var(--fiori-shell-bg));
+  background: var(--fiori-surface);
 }
 
 .secondaryAreaBoxEmpty {
   border-style: dashed;
+  background: transparent;
 }
 
 .secondaryAreaEmptyText {
@@ -795,6 +822,13 @@
   margin-left: auto;
 }
 
+.secondaryAreaAddWrap .areaSelectPopover {
+  left: auto;
+  right: 0;
+  width: max-content;
+  min-width: 8.5rem;
+}
+
 .secondaryAreaAddButton {
   display: inline-flex;
   align-items: center;
@@ -831,18 +865,16 @@
 }
 
 .raw {
-  margin-top: var(--fiori-space-4);
+  margin-top: 0.85rem;
   padding: 0;
   border: 1px solid var(--fiori-border-light);
   border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--fiori-shell-bg) 6%, var(--fiori-surface));
+  background: var(--fiori-surface);
   overflow: hidden;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .raw[open] {
-  border-color: color-mix(in srgb, var(--fiori-text-secondary) 25%, var(--fiori-border-light));
-  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 22%, var(--fiori-border-light));
 }
 
 .rawSummary {
@@ -853,9 +885,9 @@
   cursor: pointer;
   list-style: none;
   margin: 0;
-  padding: var(--fiori-space-3) var(--fiori-space-4);
+  padding: 0.7rem 1rem;
   user-select: none;
-  color: var(--fiori-link);
+  color: var(--fiori-text);
   transition: background-color 0.12s ease;
 }
 
@@ -868,7 +900,7 @@
 }
 
 .rawSummary:hover {
-  background: color-mix(in srgb, var(--fiori-link) 6%, transparent);
+  background: color-mix(in srgb, var(--fiori-shell-bg) 5%, transparent);
 }
 
 .rawSummary:focus {
@@ -889,16 +921,10 @@
 }
 
 .rawSummaryTitle {
-  font-weight: 600;
-  font-size: 0.875rem;
+  font-weight: 700;
+  font-size: 0.8125rem;
   line-height: 1.35;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--fiori-link) 35%, transparent);
-  text-underline-offset: 0.15em;
-}
-
-.rawSummary:hover .rawSummaryTitle {
-  text-decoration-color: var(--fiori-link);
+  color: var(--fiori-text);
 }
 
 .rawSummaryHint {
@@ -910,8 +936,8 @@
 
 .rawSummaryChevron {
   flex-shrink: 0;
-  color: var(--fiori-link);
-  opacity: 0.85;
+  color: var(--fiori-text-secondary);
+  opacity: 0.9;
   transition: transform 0.2s ease, opacity 0.15s ease;
 }
 

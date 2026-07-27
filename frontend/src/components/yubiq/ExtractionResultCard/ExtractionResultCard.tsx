@@ -514,7 +514,7 @@ export function ExtractionResultCard({
     <>
       <div className={styles.grid} aria-label="Campos extraídos">
         <div className={styles.identityRow}>
-          <div className={`${styles.field} ${styles.fieldTitle}`}>
+          <div className={styles.field}>
             <p className={styles.label}>Título</p>
             <p className={styles.value}>{valueOrDash(result.titulo)}</p>
           </div>

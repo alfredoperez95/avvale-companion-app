@@ -26,11 +26,22 @@ import styles from './page.module.css';
 function analysisBusyLabel(phase: 'uploading' | 'extracting' | 'analyzing'): string {
   switch (phase) {
     case 'uploading':
-      return 'Subiendo PDF…';
+      return 'Subiendo documento';
     case 'extracting':
-      return 'Extrayendo texto…';
+      return 'Extrayendo texto del PDF';
     default:
-      return 'Analizando con Claude…';
+      return 'Analizando con Claude';
+  }
+}
+
+function analysisBusyHint(phase: 'uploading' | 'extracting' | 'analyzing'): string {
+  switch (phase) {
+    case 'uploading':
+      return 'Enviando archivos de forma segura…';
+    case 'extracting':
+      return 'Preparando el contenido para el modelo…';
+    default:
+      return 'Estructurando título, cliente, importe y área…';
   }
 }
 
@@ -221,9 +232,24 @@ function AnalysisPhaseTrack({
                   ? styles.phaseTrackCurrent
                   : styles.phaseTrackTodo
             }`}
+            aria-current={state === 'current' ? 'step' : undefined}
           >
-            <span className={styles.phaseTrackDot} aria-hidden />
+            <span className={styles.phaseTrackIndex} aria-hidden>
+              {state === 'done' ? (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                index + 1
+              )}
+            </span>
             <span className={styles.phaseTrackLabel}>{item.label}</span>
+            {index < items.length - 1 ? (
+              <span
+                className={`${styles.phaseTrackConnector} ${state === 'done' ? styles.phaseTrackConnectorDone : ''}`}
+                aria-hidden
+              />
+            ) : null}
           </li>
         );
       })}
@@ -664,10 +690,17 @@ export default function YubiqApproveSealFillerPage() {
 
         {isAnalysisBusy ? (
           <div className={styles.analysisLoading} role="status" aria-live="polite">
-            <span className={styles.analysisSpinner} aria-hidden />
-            <span className={styles.analysisLoadingText}>
-              {analysisBusyLabel(phase as 'uploading' | 'extracting' | 'analyzing')}
-            </span>
+            <div className={styles.analysisLoadingMain}>
+              <span className={styles.analysisSpinner} aria-hidden />
+              <div className={styles.analysisLoadingCopy}>
+                <span className={styles.analysisLoadingText}>
+                  {analysisBusyLabel(phase as 'uploading' | 'extracting' | 'analyzing')}
+                </span>
+                <span className={styles.analysisLoadingHint}>
+                  {analysisBusyHint(phase as 'uploading' | 'extracting' | 'analyzing')}
+                </span>
+              </div>
+            </div>
             <AnalysisPhaseTrack phase={phase as 'uploading' | 'extracting' | 'analyzing'} />
           </div>
         ) : null}

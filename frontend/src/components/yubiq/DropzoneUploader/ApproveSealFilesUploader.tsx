@@ -203,9 +203,24 @@ export function ApproveSealFilesUploader({
       ) : (
         <div className={styles.dropzoneToolbar}>
           <button type="button" className={styles.btnGhost} onClick={pick} disabled={disabled}>
-            Añadir o sustituir
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
+              <path
+                d="M12 16V4M12 4l-4 4M12 4l4 4"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Añadir o sustituir</span>
           </button>
-          <span className={styles.metaInline}>máx. 20 MB</span>
         </div>
       )}
 

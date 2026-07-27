@@ -111,30 +111,48 @@
 }
 
 .btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   margin: 0;
-  padding: 0.25rem 0.55rem;
+  min-height: 1.7rem;
+  padding: 0.25rem 0.65rem;
+  font: inherit;
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.2;
   color: var(--fiori-shell-bg);
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 40%, var(--fiori-border-light));
-  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--fiori-shell-bg) 6%, var(--fiori-surface));
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 28%, var(--fiori-border-light));
+  border-radius: 0.35rem;
   cursor: pointer;
-  transition: background 0.12s ease;
+  white-space: nowrap;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .btnGhost:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--fiori-shell-bg) 8%, transparent);
+  background: color-mix(in srgb, var(--fiori-shell-bg) 11%, var(--fiori-surface));
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 48%, var(--fiori-border-light));
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.btnGhost:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 1px;
 }
 
 .btnGhost:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-.metaInline {
-  font-size: 0.625rem;
-  color: var(--fiori-text-secondary);
+.btnGhost svg {
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .uploadError {
