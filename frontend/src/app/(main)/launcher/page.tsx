@@ -439,7 +439,7 @@ function TileLink({
               Sube recibos, extrae los datos con IA y conserva el archivo para futuras automatizaciones.
             </p>
             <span className={styles.tileCta}>Abrir Gastos →</span>
-            <span className={`${styles.tileIcon} ${styles.tileIconAdministrativeProcesses}`} aria-hidden="true" />
+            <span className={`${styles.tileIcon} ${styles.tileIconExpenses}`} aria-hidden="true" />
           </article>
         </Link>
       );
@@ -458,7 +458,7 @@ function TileLink({
               Rellena los datos comerciales y genera el Excel oficial de pre-contabilización de software.
             </p>
             <span className={styles.tileCta}>Generar Excel →</span>
-            <span className={`${styles.tileIcon} ${styles.tileIconAdministrativeProcesses}`} aria-hidden="true" />
+            <span className={`${styles.tileIcon} ${styles.tileIconSwForms}`} aria-hidden="true" />
           </article>
         </Link>
       );

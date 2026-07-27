@@ -876,6 +876,16 @@
   content: "\e0b8";
 }
 
+/* Gastos: sap-icon://receipt */
+:global([data-theme="fiori"]) .tileIconExpenses::before {
+  content: "\e0c5";
+}
+
+/* Formularios SW: sap-icon://excel-attachment */
+:global([data-theme="fiori"]) .tileIconSwForms::before {
+  content: "\e034";
+}
+
 /* Microsoft: icono tipo documento/app en el tile de Activaciones */
 :global([data-theme="microsoft"]) .tileIcon::before {
   content: "\e026";
@@ -899,6 +909,14 @@
 
 :global([data-theme="microsoft"]) .tileIconAdministrativeProcesses::before {
   content: "\e0b8";
+}
+
+:global([data-theme="microsoft"]) .tileIconExpenses::before {
+  content: "\e0c5";
+}
+
+:global([data-theme="microsoft"]) .tileIconSwForms::before {
+  content: "\e034";
 }
 
 .tileReorder {
