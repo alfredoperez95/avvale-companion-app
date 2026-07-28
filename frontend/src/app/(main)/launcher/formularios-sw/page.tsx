@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PageBreadcrumb, PageBackLink, PageHero } from '@/components/page-hero';
 import { apiFetch, redirectToLogin } from '@/lib/api';
@@ -34,6 +34,338 @@ const newLine = (): SwLine => ({
   practica: '',
 });
 
+function RequiredMark() {
+  return (
+    <span className={styles.requiredMark} aria-hidden="true">
+      *
+    </span>
+  );
+}
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function splitTipoSw(tipoSw: string): { title: string; kind: 'license' | 'maintenance' | null } {
+  if (/maintenance/i.test(tipoSw)) {
+    const title = tipoSw.replace(/\s*[-–]?\s*maintenance.*$/i, '').trim();
+    return { title: title || tipoSw, kind: 'maintenance' };
+  }
+  if (/licen[cs]e/i.test(tipoSw)) {
+    const title = tipoSw.replace(/\s*[-–]?\s*licen[cs]e.*$/i, '').trim();
+    return { title: title || tipoSw, kind: 'license' };
+  }
+  return { title: tipoSw, kind: null };
+}
+
+function practiceTone(practica: string): string {
+  const p = practica.toUpperCase();
+  if (p.includes('SAIBORG')) return 'saiborg';
+  if (p.includes('YUBIQ')) return 'yubiq';
+  if (p.includes('GROW')) return 'grow';
+  if (p.includes('WISE')) return 'wise';
+  if (p.includes('AXAZURE')) return 'axazure';
+  if (p.includes('RUN')) return 'run';
+  return 'default';
+}
+
+function practiceShortLabel(practica: string): string {
+  const cleaned = practica.replace(/^100%\s*/i, '').trim();
+  return cleaned || practica;
+}
+
+function SwTypeCombobox({
+  value,
+  catalog,
+  disabled,
+  loading,
+  onChange,
+}: {
+  value: string;
+  catalog: CatalogItem[];
+  disabled?: boolean;
+  loading?: boolean;
+  onChange: (tipoSw: string) => void;
+}) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const listId = useId();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  const filtered = useMemo(() => {
+    const q = normalizeSearch(query);
+    if (!q) return catalog;
+    return catalog.filter(
+      (item) => normalizeSearch(item.tipoSw).includes(q) || normalizeSearch(item.practica).includes(q),
+    );
+  }, [catalog, query]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const option = document.getElementById(`${listId}-opt-${activeIndex}`);
+    option?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex, open, listId]);
+
+  useEffect(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+
+    let frame = 0;
+    const updatePosition = () => {
+      const anchor = wrapRef.current;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      const gap = 6;
+      const spaceBelow = window.innerHeight - rect.bottom - gap - 12;
+      const spaceAbove = rect.top - gap - 12;
+      const preferBelow = spaceBelow >= 180 || spaceBelow >= spaceAbove;
+      const maxHeight = Math.min(360, Math.max(180, preferBelow ? spaceBelow : spaceAbove));
+      const top = preferBelow ? rect.bottom + gap : Math.max(12, rect.top - gap - maxHeight);
+      const width = Math.min(Math.max(rect.width, 22 * 16), Math.min(window.innerWidth - 24, 34 * 16));
+      const left = Math.min(rect.left, window.innerWidth - width - 12);
+      const next = { top, left: Math.max(12, left), width, maxHeight };
+      setMenuPos((prev) => {
+        if (
+          prev &&
+          Math.abs(prev.top - next.top) < 0.5 &&
+          Math.abs(prev.left - next.left) < 0.5 &&
+          Math.abs(prev.width - next.width) < 0.5 &&
+          Math.abs(prev.maxHeight - next.maxHeight) < 0.5
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+
+    const scheduleUpdate = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(updatePosition);
+    };
+
+    const onScroll = (event: Event) => {
+      if (panelRef.current && event.target instanceof Node && panelRef.current.contains(event.target)) {
+        return;
+      }
+      scheduleUpdate();
+    };
+
+    updatePosition();
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (wrapRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+      setQuery(value);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open, value]);
+
+  const selectItem = (item: CatalogItem) => {
+    onChange(item.tipoSw);
+    setQuery(item.tipoSw);
+    setOpen(false);
+    inputRef.current?.blur();
+  };
+
+  const commitOrRevert = () => {
+    const exact = catalog.find((item) => normalizeSearch(item.tipoSw) === normalizeSearch(query));
+    if (exact) {
+      onChange(exact.tipoSw);
+      setQuery(exact.tipoSw);
+      return;
+    }
+    if (query.trim() === '') {
+      onChange('');
+      setQuery('');
+      return;
+    }
+    setQuery(value);
+  };
+
+  const list =
+    open && !loading && menuPos && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={panelRef}
+            className={styles.swTypePanel}
+            style={{
+              top: menuPos.top,
+              left: menuPos.left,
+              width: menuPos.width,
+              maxHeight: menuPos.maxHeight,
+            }}
+          >
+            <div className={styles.swTypeListMeta}>
+              <span>
+                {filtered.length === 0
+                  ? 'Sin resultados'
+                  : `${filtered.length} ${filtered.length === 1 ? 'resultado' : 'resultados'}`}
+              </span>
+              {query.trim() ? <span className={styles.swTypeListMetaQuery}>«{query.trim()}»</span> : null}
+            </div>
+            <ul id={listId} ref={listRef} className={styles.swTypeList} role="listbox" aria-label="Tipos de software">
+              {filtered.length === 0 ? (
+                <li className={styles.swTypeEmpty} role="presentation">
+                  Prueba con otro nombre de producto o una práctica (RUN, GROW, YUBIQ…).
+                </li>
+              ) : (
+                filtered.map((item, index) => {
+                  const selected = item.tipoSw === value;
+                  const active = index === activeIndex;
+                  const { title, kind } = splitTipoSw(item.tipoSw);
+                  const tone = practiceTone(item.practica);
+                  return (
+                    <li key={`${item.tipoSw}-${item.practica}-${index}`} role="presentation">
+                      <button
+                        type="button"
+                        id={`${listId}-opt-${index}`}
+                        role="option"
+                        aria-selected={selected}
+                        className={`${styles.swTypeOption} ${selected ? styles.swTypeOptionSelected : ''} ${active ? styles.swTypeOptionActive : ''}`}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onMouseEnter={() => setActiveIndex(index)}
+                        onClick={() => selectItem(item)}
+                      >
+                        <span className={styles.swTypeOptionMain}>
+                          <span className={styles.swTypeOptionName}>{title}</span>
+                          <span className={styles.swTypeOptionMeta}>
+                            {kind ? (
+                              <span
+                                className={`${styles.swTypeKindChip} ${
+                                  kind === 'license' ? styles.swTypeKindLicense : styles.swTypeKindMaintenance
+                                }`}
+                              >
+                                {kind === 'license' ? 'License' : 'Maintenance'}
+                              </span>
+                            ) : null}
+                            <span className={styles.swTypePracticeChip} data-tone={tone} title={item.practica}>
+                              {practiceShortLabel(item.practica)}
+                            </span>
+                          </span>
+                        </span>
+                        {selected ? (
+                          <span className={styles.swTypeOptionCheck} aria-hidden>
+                            ✓
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <div ref={wrapRef} className={`${styles.swTypeCombobox} ${open ? styles.swTypeComboboxOpen : ''}`}>
+      <div className={styles.swTypeInputWrap}>
+        <input
+          ref={inputRef}
+          className={`${styles.input} ${styles.swTypeInput}`}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={open && filtered[activeIndex] ? `${listId}-opt-${activeIndex}` : undefined}
+          value={query}
+          placeholder={loading ? 'Cargando catálogo…' : 'Buscar tipo de SW o práctica'}
+          required
+          disabled={disabled || loading}
+          autoComplete="off"
+          onFocus={() => {
+            if (!disabled && !loading) setOpen(true);
+          }}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+            if (event.target.value.trim() === '') onChange('');
+          }}
+          onBlur={() => {
+            window.setTimeout(() => {
+              if (
+                !wrapRef.current?.contains(document.activeElement) &&
+                !panelRef.current?.contains(document.activeElement)
+              ) {
+                commitOrRevert();
+                setOpen(false);
+              }
+            }, 120);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              setOpen(true);
+              setActiveIndex((i) => Math.min(i + 1, Math.max(filtered.length - 1, 0)));
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              setActiveIndex((i) => Math.max(i - 1, 0));
+            } else if (event.key === 'Enter' && open && filtered[activeIndex]) {
+              event.preventDefault();
+              selectItem(filtered[activeIndex]);
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              setQuery(value);
+              setOpen(false);
+            }
+          }}
+        />
+        <button
+          type="button"
+          className={styles.swTypeChevronBtn}
+          tabIndex={-1}
+          aria-label={open ? 'Cerrar listado' : 'Abrir listado'}
+          disabled={disabled || loading}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            if (disabled || loading) return;
+            setOpen((v) => !v);
+            inputRef.current?.focus();
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+            <path d="M8 11L3 6h10l-5 5z" fill="currentColor" />
+          </svg>
+        </button>
+      </div>
+      {list}
+    </div>
+  );
+}
+
 export default function SwFormsPage() {
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -46,7 +378,7 @@ export default function SwFormsPage() {
   const [codigoOferta, setCodigoOferta] = useState('');
   const [codigoMantenimiento, setCodigoMantenimiento] = useState('');
   const [comentarios, setComentarios] = useState('');
-  const [tipo, setTipo] = useState<DeploymentType>('ON_PREMISE');
+  const [tipo, setTipo] = useState<DeploymentType | ''>('');
   const [lineas, setLineas] = useState<SwLine[]>([newLine()]);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -276,8 +608,19 @@ export default function SwFormsPage() {
 
             <div className={styles.formGrid}>
               <label className={styles.field}>
-                <span className={styles.label}>Tipo</span>
-                <select className={styles.input} value={tipo} onChange={(event) => setTipo(event.target.value as DeploymentType)} required>
+                <span className={styles.label}>
+                  Tipo
+                  <RequiredMark />
+                </span>
+                <select
+                  className={styles.input}
+                  value={tipo}
+                  onChange={(event) => setTipo(event.target.value as DeploymentType | '')}
+                  required
+                >
+                  <option value="" disabled>
+                    Seleccionar…
+                  </option>
                   {DEPLOYMENT_TYPES.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -286,59 +629,10 @@ export default function SwFormsPage() {
                 </select>
               </label>
               <label className={styles.field}>
-                <span className={styles.label}>Cliente a facturar</span>
-                <input
-                  className={styles.input}
-                  value={clienteFacturar}
-                  onChange={(event) => setClienteFacturar(event.target.value)}
-                  placeholder="Ej. Avvale Spain"
-                  required
-                />
-              </label>
-              <label className={styles.field}>
-                <span className={styles.label}>Fecha Aceptación</span>
-                <input
-                  className={styles.input}
-                  type="date"
-                  value={fechaAceptacion}
-                  onChange={(event) => setFechaAceptacion(event.target.value)}
-                  required
-                />
-              </label>
-              <label className={styles.field}>
-                <span className={styles.label}>Fecha de reconocimiento</span>
-                <input
-                  className={styles.input}
-                  type="date"
-                  value={fechaReconocimiento}
-                  onChange={(event) => setFechaReconocimiento(event.target.value)}
-                  required
-                />
-              </label>
-              <label className={styles.field}>
-                <span className={styles.label}>Fecha Inicio del mantenimiento</span>
-                <input
-                  className={styles.input}
-                  type="date"
-                  value={fechaInicioMantenimiento}
-                  onChange={(event) => setFechaInicioMantenimiento(event.target.value)}
-                  required={tipo === 'ON_PREMISE'}
-                  disabled={tipo !== 'ON_PREMISE'}
-                />
-              </label>
-              <label className={styles.field}>
-                <span className={styles.label}>Fecha Fin del mantenimiento</span>
-                <input
-                  className={styles.input}
-                  type="date"
-                  value={fechaFinMantenimiento}
-                  onChange={(event) => setFechaFinMantenimiento(event.target.value)}
-                  required={tipo === 'ON_PREMISE'}
-                  disabled={tipo !== 'ON_PREMISE'}
-                />
-              </label>
-              <label className={styles.field}>
-                <span className={styles.label}>Años a reconocer</span>
+                <span className={styles.label}>
+                  Años a reconocer
+                  <RequiredMark />
+                </span>
                 <input
                   className={styles.input}
                   type="text"
@@ -349,6 +643,73 @@ export default function SwFormsPage() {
                   onChange={(event) => setAniosReconocer(sanitizeYearsInput(event.target.value))}
                   placeholder="Ej. 3"
                   required
+                />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.label}>
+                  Cliente a facturar
+                  <RequiredMark />
+                </span>
+                <input
+                  className={styles.input}
+                  value={clienteFacturar}
+                  onChange={(event) => setClienteFacturar(event.target.value)}
+                  placeholder="Ej. Avvale Spain"
+                  required
+                />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.label}>
+                  Fecha Aceptación
+                  <RequiredMark />
+                </span>
+                <input
+                  className={styles.input}
+                  type="date"
+                  value={fechaAceptacion}
+                  onChange={(event) => setFechaAceptacion(event.target.value)}
+                  required
+                />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.label}>
+                  Fecha de reconocimiento
+                  <RequiredMark />
+                </span>
+                <input
+                  className={styles.input}
+                  type="date"
+                  value={fechaReconocimiento}
+                  onChange={(event) => setFechaReconocimiento(event.target.value)}
+                  required
+                />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.label}>
+                  Fecha Inicio del mantenimiento
+                  {tipo === 'ON_PREMISE' ? <RequiredMark /> : null}
+                </span>
+                <input
+                  className={styles.input}
+                  type="date"
+                  value={fechaInicioMantenimiento}
+                  onChange={(event) => setFechaInicioMantenimiento(event.target.value)}
+                  required={tipo === 'ON_PREMISE'}
+                  disabled={tipo !== 'ON_PREMISE'}
+                />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.label}>
+                  Fecha Fin del mantenimiento
+                  {tipo === 'ON_PREMISE' ? <RequiredMark /> : null}
+                </span>
+                <input
+                  className={styles.input}
+                  type="date"
+                  value={fechaFinMantenimiento}
+                  onChange={(event) => setFechaFinMantenimiento(event.target.value)}
+                  required={tipo === 'ON_PREMISE'}
+                  disabled={tipo !== 'ON_PREMISE'}
                 />
               </label>
             </div>
@@ -374,19 +735,20 @@ export default function SwFormsPage() {
               </button>
             </div>
 
-            <datalist id="sw-types">
-              {catalog.map((item, index) => (
-                <option key={`${item.tipoSw}-${index}`} value={item.tipoSw}>
-                  {item.practica}
-                </option>
-              ))}
-            </datalist>
-
             <div className={styles.linesTable} aria-busy={catalogLoading}>
               <div className={styles.linesHead} aria-hidden>
-                <span>Tipo de SW</span>
-                <span>Precio de Venta</span>
-                <span>Coste</span>
+                <span>
+                  Tipo de SW
+                  <RequiredMark />
+                </span>
+                <span>
+                  Precio de Venta
+                  <RequiredMark />
+                </span>
+                <span>
+                  Coste
+                  <RequiredMark />
+                </span>
                 <span>Margen</span>
                 <span>Práctica</span>
                 <span />
@@ -397,19 +759,23 @@ export default function SwFormsPage() {
                 return (
                   <div key={line.id} className={styles.lineRow}>
                     <label className={styles.lineField}>
-                      <span className={styles.mobileLabel}>Tipo de SW</span>
-                      <input
-                        className={styles.input}
-                        list="sw-types"
+                      <span className={styles.mobileLabel}>
+                        Tipo de SW
+                        <RequiredMark />
+                      </span>
+                      <SwTypeCombobox
                         value={line.tipoSw}
-                        onChange={(event) => updateLine(line.id, { tipoSw: event.target.value })}
-                        placeholder={catalogLoading ? 'Cargando catálogo...' : 'Buscar tipo de SW'}
-                        required
-                        disabled={catalogLoading || generating}
+                        catalog={catalog}
+                        loading={catalogLoading}
+                        disabled={generating}
+                        onChange={(tipoSw) => updateLine(line.id, { tipoSw })}
                       />
                     </label>
                     <label className={styles.lineField}>
-                      <span className={styles.mobileLabel}>Precio de Venta</span>
+                      <span className={styles.mobileLabel}>
+                        Precio de Venta
+                        <RequiredMark />
+                      </span>
                       <span className={styles.currencyInputWrap}>
                         <input
                           className={`${styles.input} ${styles.currencyInput}`}
@@ -428,7 +794,10 @@ export default function SwFormsPage() {
                       </span>
                     </label>
                     <label className={styles.lineField}>
-                      <span className={styles.mobileLabel}>Coste</span>
+                      <span className={styles.mobileLabel}>
+                        Coste
+                        <RequiredMark />
+                      </span>
                       <span className={styles.currencyInputWrap}>
                         <input
                           className={`${styles.input} ${styles.currencyInput}`}
@@ -498,7 +867,10 @@ export default function SwFormsPage() {
 
             <div className={styles.formGrid}>
               <label className={styles.field}>
-                <span className={styles.label}>Código de oferta</span>
+                <span className={styles.label}>
+                  Código de oferta
+                  <RequiredMark />
+                </span>
                 <input
                   className={styles.input}
                   value={codigoOferta}
@@ -509,7 +881,10 @@ export default function SwFormsPage() {
               </label>
               {tipo === 'ON_PREMISE' ? (
                 <label className={styles.field}>
-                  <span className={styles.label}>Código de mantenimiento</span>
+                  <span className={styles.label}>
+                    Código de mantenimiento
+                    <RequiredMark />
+                  </span>
                   <input
                     className={styles.input}
                     value={codigoMantenimiento}
@@ -684,9 +1059,10 @@ function validateForm(values: {
   aniosReconocer: string;
   codigoOferta: string;
   codigoMantenimiento: string;
-  tipo: DeploymentType;
+  tipo: DeploymentType | '';
   lineas: SwLine[];
 }): string | null {
+  if (!values.tipo) return 'Selecciona el tipo.';
   if (!values.clienteFacturar.trim()) return 'Indica el cliente a facturar.';
   if (!values.fechaAceptacion || !values.fechaReconocimiento) {
     return 'Completa las fechas de aceptación y reconocimiento.';
