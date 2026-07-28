@@ -17,12 +17,15 @@ export type ExpenseExtraction = {
 
 type RawExpenseExtraction = {
   amount?: unknown;
+  receiptAmounts?: unknown;
   expenseType?: unknown;
   description?: unknown;
   date?: unknown;
 };
 
 const IMAGE_MEDIA_TYPES = new Set(['image/jpeg', 'image/png']);
+const MIN_USABLE_PDF_TEXT_CHARS = 40;
+const MAX_PDF_VISION_PAGES = 10;
 
 @Injectable()
 export class ExpenseAiService {
@@ -38,17 +41,7 @@ export class ExpenseAiService {
     const normalizedMime = normalizeMimeType(file.mimeType, file.fileName);
 
     if (normalizedMime === 'application/pdf') {
-      const extractedText = await this.pdf.extractTextFromPdfBuffer(file.buffer);
-      if (!extractedText.trim()) {
-        throw new BadRequestException('No se pudo leer texto del PDF. Sube una imagen del recibo o reintenta con otro archivo.');
-      }
-      const { text, modelId } = await this.anthropic.extractJson({
-        apiKey,
-        model: 'haiku',
-        prompt: `${prompt}\n\nTexto extraído del PDF:\n${extractedText.slice(0, 50_000)}`,
-        maxTokens: 1200,
-      });
-      return parseExtraction(text, modelId);
+      return this.extractFromPdf(apiKey, file.buffer, prompt);
     }
 
     const image = await toAnthropicImage(file.buffer, normalizedMime);
@@ -62,50 +55,105 @@ export class ExpenseAiService {
     });
     return parseExtraction(text, modelId);
   }
+
+  private async extractFromPdf(apiKey: string, buffer: Buffer, prompt: string): Promise<ExpenseExtraction> {
+    const extractedText = await this.pdf.extractTextFromPdfBuffer(buffer);
+    if (hasUsablePdfText(extractedText)) {
+      const { text, modelId } = await this.anthropic.extractJson({
+        apiKey,
+        model: 'haiku',
+        prompt: `${prompt}\n\nTexto extraído del PDF:\n${extractedText.slice(0, 50_000)}`,
+        maxTokens: 1200,
+      });
+      return parseExtraction(text, modelId);
+    }
+
+    const pages = await this.pdf.renderPagesAsPngBuffers(buffer, {
+      scale: 1,
+      maxPages: MAX_PDF_VISION_PAGES,
+    });
+    if (!pages.length) {
+      throw new BadRequestException(
+        'No se pudo leer texto ni renderizar páginas del PDF. Sube una imagen del recibo o reintenta con otro archivo.',
+      );
+    }
+
+    const { text, modelId } = await this.anthropic.extractJsonFromImages({
+      apiKey,
+      model: 'haiku',
+      prompt: `${prompt}\n\nEl PDF tiene ${pages.length} página(s) escaneada(s). Cada imagen es una página del documento; puede haber uno o varios tickets.`,
+      images: pages.map((page) => ({
+        imageBase64: page.buffer.toString('base64'),
+        mediaType: 'image/png' as const,
+      })),
+      maxTokens: 1600,
+    });
+    return parseExtraction(text, modelId);
+  }
 }
 
-function buildExpensePrompt(fileName: string): string {
+export function buildExpensePrompt(fileName: string): string {
   return `You are extracting fields from an expense receipt for an enterprise expense process.
 
 Return ONLY a valid JSON object with exactly these keys:
 {
   "amount": number | null,
+  "receiptAmounts": number[] | null,
   "expenseType": string | null,
   "description": string | null,
   "date": "YYYY-MM-DD" | null
 }
 
 Rules:
-- Extract only the final total amount paid. Do not extract subtotal, tax, change, or card digits.
+- The document may contain MULTIPLE receipts/tickets (several pages, or several tickets in one file).
+- For each distinct receipt, extract only its final total amount paid. Do not extract subtotal, tax/IVA, tip, change, card digits, or "total por persona".
+- Put each receipt's final total in "receiptAmounts" (one number per receipt, in document order).
+- Set "amount" to the SUM of all values in "receiptAmounts" (consolidated global total for the expense).
+- If there is only one receipt, "receiptAmounts" may be [amount] or null, and "amount" is that receipt total.
 - The expenseType MUST be exactly one of these categories: ${EXPENSE_CATEGORIES.map((c) => `"${c}"`).join(', ')}.
 - If no category is clearly supported, choose the closest category from the list.
 - The description must summarize what the attached document is for, based only on the receipt/invoice/proforma content.
+- When consolidating multiple receipts, mention how many tickets and the supplier/place when known (e.g. "4 tickets en La Cantina de Fredy's").
 - For travel documents, include the relevant traveler/guest name, service, destination/hotel/place and supplier when present.
 - Keep description concise, in Spanish, one sentence, max 180 characters.
 - Do not copy email threads, signatures, disclaimers, URLs, QR references, contact blocks, legal notices, or raw OCR noise.
 - If the document content is too unclear to describe the expense, return null for description.
-- The date must be the receipt date in YYYY-MM-DD format.
+- The date must be the receipt date in YYYY-MM-DD format. If receipts span multiple days, use the most recent date.
 - If a field cannot be read, return null for that field.
 - Do not include currency or any explanation.
 
 File name: ${fileName}`;
 }
 
-function parseExtraction(rawText: string, modelId: string): ExpenseExtraction {
+export function parseExtraction(rawText: string, modelId: string): ExpenseExtraction {
   const recoveredJson = recoverJsonObjectString(rawText);
   const parsed = safeJsonParse(recoveredJson) as RawExpenseExtraction | null;
   if (!parsed || typeof parsed !== 'object') {
     throw new BadRequestException('La IA no devolvió JSON válido');
   }
 
+  const receiptAmounts = normalizeAmountList(parsed.receiptAmounts);
+  const summedAmount =
+    receiptAmounts && receiptAmounts.length > 0
+      ? Math.round(receiptAmounts.reduce((sum, value) => sum + value, 0) * 100) / 100
+      : null;
+
   return {
-    amount: normalizeAmount(parsed.amount),
+    amount: summedAmount ?? normalizeAmount(parsed.amount),
     type: normalizeType(parsed.expenseType),
     description: normalizeDescription(parsed.description),
     date: normalizeDate(parsed.date),
     rawModelOutput: recoveredJson || rawText,
     modelId,
   };
+}
+
+export function hasUsablePdfText(text: string): boolean {
+  const cleaned = String(text ?? '')
+    .replace(/--\s*\d+\s+of\s+\d+\s*--/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned.length >= MIN_USABLE_PDF_TEXT_CHARS;
 }
 
 function normalizeAmount(value: unknown): number | null {
@@ -121,6 +169,14 @@ function normalizeAmount(value: unknown): number | null {
       : cleaned.replace(/,/g, '');
   const n = Number(normalized);
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+}
+
+function normalizeAmountList(value: unknown): number[] | null {
+  if (!Array.isArray(value)) return null;
+  const amounts = value
+    .map((item) => normalizeAmount(item))
+    .filter((item): item is number => item != null && item > 0);
+  return amounts.length > 0 ? amounts : null;
 }
 
 function normalizeType(value: unknown): ExpenseCategory | null {

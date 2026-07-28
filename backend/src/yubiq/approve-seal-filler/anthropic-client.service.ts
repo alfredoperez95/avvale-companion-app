@@ -96,6 +96,25 @@ export class AnthropicClientService {
     mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
     maxTokens?: number;
   }): Promise<{ text: string; modelId: string }> {
+    return this.extractJsonFromImages({
+      apiKey: params.apiKey,
+      model: params.model,
+      prompt: params.prompt,
+      images: [{ imageBase64: params.imageBase64, mediaType: params.mediaType }],
+      maxTokens: params.maxTokens,
+    });
+  }
+
+  async extractJsonFromImages(params: {
+    apiKey: string;
+    model: AnthropicModelChoice;
+    prompt: string;
+    images: { imageBase64: string; mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }[];
+    maxTokens?: number;
+  }): Promise<{ text: string; modelId: string }> {
+    if (!params.images.length) {
+      throw new Error('Se requiere al menos una imagen para extracción');
+    }
     let id = modelId(params.model);
     try {
       id = await this.resolveAvailableModelId(params.apiKey, params.model);
@@ -118,14 +137,14 @@ export class AnthropicClientService {
           {
             role: 'user',
             content: [
-              {
-                type: 'image',
+              ...params.images.map((image) => ({
+                type: 'image' as const,
                 source: {
-                  type: 'base64',
-                  media_type: params.mediaType,
-                  data: params.imageBase64,
+                  type: 'base64' as const,
+                  media_type: image.mediaType,
+                  data: image.imageBase64,
                 },
-              },
+              })),
               { type: 'text', text: params.prompt },
             ],
           },
