@@ -80,7 +80,7 @@ Formatos válidos para gastos: PDF, JPG/JPEG, PNG y HEIC/HEIF. Si un correo trae
 
 ## Interfaz en la app
 
-En el frontend autenticado: **Gastos → Gastos por email** (`/launcher/expenses/email`) muestra la URL del webhook para el origen actual y un resumen de requisitos.
+En el frontend autenticado, la pestaña **Gastos por email** abre un popup con la dirección del buzón (`gastos@avvalecompanion.app`) y los requisitos de envío. La documentación técnica del webhook permanece en este documento.
 
 ## Prueba local con `curl`
 

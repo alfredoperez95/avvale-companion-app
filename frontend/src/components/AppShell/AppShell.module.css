@@ -562,3 +562,66 @@
   text-decoration: none;
 }
 
+.tabButton {
+  appearance: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.helpDialogLead {
+  margin: 0 0 var(--fiori-space-3);
+  color: var(--fiori-text-secondary);
+}
+
+.helpDialogSection {
+  margin-bottom: var(--fiori-space-4);
+}
+
+.helpDialogSection:last-child {
+  margin-bottom: 0;
+}
+
+.helpDialogH3 {
+  margin: 0 0 var(--fiori-space-2);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fiori-shell-bg);
+}
+
+.helpDialogEmail {
+  margin: var(--fiori-space-2) 0 0;
+}
+
+.helpDialogEmail a {
+  display: inline-block;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.875rem;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--fiori-nav-bg) 40%, var(--fiori-surface));
+  border: 1px solid var(--fiori-border-light);
+  border-radius: 0.35rem;
+  color: var(--fiori-text);
+}
+
+.helpDialogEmail a:hover {
+  text-decoration: underline;
+}
+
+.helpDialogList {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--fiori-text);
+}
+
+.helpDialogList li + li {
+  margin-top: var(--fiori-space-2);
+}
+

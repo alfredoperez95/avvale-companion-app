@@ -7,11 +7,15 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { MainContentMotion } from '@/components/AppMotion/MainContentMotion';
 import { Footer } from '@/components/Footer/Footer';
 import { Icon, type IconName } from '@/components/Icon/Icon';
+import { InfoDialog } from '@/components/InfoDialog/InfoDialog';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { clearStoredAppearance } from '@/lib/appearance-cookie';
 import { redirectToLogin } from '@/lib/api';
 import { positionLabel } from '@/lib/user-position';
 import styles from './AppShell.module.css';
+
+/** Buzón de recepción de recibos (Make → webhook de gastos). */
+const EXPENSE_INBOX_EMAIL = 'gastos@avvalecompanion.app';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/launcher', label: 'App Launcher', icon: 'home' },
@@ -147,10 +151,11 @@ const fioriTabsKyc: {
 ];
 
 const fioriTabsExpenses: {
-  href: string;
+  href?: string;
   label: string;
   icon?: IconName;
   iconOnly?: boolean;
+  action?: 'expense-email-help';
   isActive: (pathname: string | null) => boolean;
 }[] = [
   fioriTabHome,
@@ -158,10 +163,7 @@ const fioriTabsExpenses: {
     href: '/launcher/expenses',
     label: 'Gastos',
     isActive: (p) =>
-      p != null &&
-      p.startsWith('/launcher/expenses') &&
-      !p.startsWith('/launcher/expenses/new') &&
-      !p.startsWith('/launcher/expenses/email'),
+      p != null && p.startsWith('/launcher/expenses') && !p.startsWith('/launcher/expenses/new'),
   },
   {
     href: '/launcher/expenses/new',
@@ -169,9 +171,9 @@ const fioriTabsExpenses: {
     isActive: (p) => p != null && p.startsWith('/launcher/expenses/new'),
   },
   {
-    href: '/launcher/expenses/email',
     label: 'Gastos por email',
-    isActive: (p) => p != null && p.startsWith('/launcher/expenses/email'),
+    action: 'expense-email-help',
+    isActive: () => false,
   },
 ];
 
@@ -241,6 +243,7 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
   const initials = user ? getInitials(user.name, user.lastName, user.email) : '';
   const avatarUrl = useAvatarUrl(user?.avatarPath ?? null);
   const pageHeader = getPageHeader(pathname);
+  const [expenseEmailHelpOpen, setExpenseEmailHelpOpen] = useState(false);
   const fioriTabs =
     pathname === '/profile'
       ? fioriTabsProfile
@@ -389,8 +392,22 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
                       )
                       .map((tab) => {
                         const { href, label, icon, iconOnly, isActive } = tab;
+                        const action = 'action' in tab ? tab.action : undefined;
                         const active = isActive(pathname, searchParams);
                         const tabClass = active ? `${styles.tabLink} ${styles.tabLinkActive}` : styles.tabLink;
+                        if (action === 'expense-email-help') {
+                          return (
+                            <button
+                              key="expense-email-help"
+                              type="button"
+                              className={`${tabClass} ${styles.tabButton}`}
+                              onClick={() => setExpenseEmailHelpOpen(true)}
+                            >
+                              {label}
+                            </button>
+                          );
+                        }
+                        if (!href) return null;
                         if (iconOnly && icon === 'home') {
                           return (
                             <Link key={href} href={href} className={tabClass} aria-label={label}>
@@ -412,6 +429,32 @@ export function AppShell({ children, user, theme = 'fiori' }: AppShellProps) {
                 </div>
               </>
             )}
+            <InfoDialog
+              open={expenseEmailHelpOpen}
+              title="Gastos por email"
+              onClose={() => setExpenseEmailHelpOpen(false)}
+            >
+              <p className={styles.helpDialogLead}>
+                Puedes crear gastos enviando el recibo por correo. Se procesará automáticamente y aparecerá en tu lista
+                de gastos.
+              </p>
+              <section className={styles.helpDialogSection} aria-label="Dirección de envío">
+                <h3 className={styles.helpDialogH3}>Envía el correo a</h3>
+                <p className={styles.helpDialogEmail}>
+                  <a href={`mailto:${EXPENSE_INBOX_EMAIL}`}>{EXPENSE_INBOX_EMAIL}</a>
+                </p>
+              </section>
+              <section className={styles.helpDialogSection} aria-label="Requisitos">
+                <h3 className={styles.helpDialogH3}>Requisitos</h3>
+                <ul className={styles.helpDialogList}>
+                  <li>
+                    Remitente: la <strong>misma dirección</strong> con la que inicias sesión en Avvale Companion.
+                  </li>
+                  <li>Adjunta el recibo en PDF, JPG, PNG o HEIC (un gasto por adjunto válido).</li>
+                  <li>Revisa después el gasto en la pestaña Gastos por si falta algún dato.</li>
+                </ul>
+              </section>
+            </InfoDialog>
             <div id="app-main-footer-wrap" className={styles.mainFooterWrap}>
               <main className={styles.main} id="main-content">
                 <MainContentMotion>{children}</MainContentMotion>
