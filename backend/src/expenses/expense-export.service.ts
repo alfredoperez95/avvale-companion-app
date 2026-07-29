@@ -237,7 +237,7 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
     publicBaseUrl: string,
     token: string,
   ): Promise<ExportReceipt> {
-    const fileName = `${expense.id}_${sanitizeFileName(expense.originalFileName) || 'recibo'}`;
+    const fileName = buildExportReceiptFileName(expense);
     const source = resolvePathWithinBase(this.baseDir, expense.storagePath);
     const target = path.join(fullDir, fileName);
 
@@ -316,6 +316,60 @@ function sanitizeFileName(fileName: string): string {
   return safe.length > 220 ? safe.slice(0, 220) : safe;
 }
 
+/**
+ * Nombre del recibo en el lote de export/import hacia la extensión.
+ * Debe terminar en una extensión coherente con el MIME (p. ej. PDF → .pdf) para que
+ * `url_recibo` sirva el Content-Type correcto y Expenses Import no trate el binario como imagen.
+ */
+export function buildExportReceiptFileName(expense: Pick<Expense, 'id' | 'originalFileName' | 'mimeType'>): string {
+  const expenseId = String(expense.id ?? '').trim() || 'expense';
+  const original = sanitizeFileName(expense.originalFileName);
+  const mime = String(expense.mimeType ?? '')
+    .trim()
+    .toLowerCase();
+  const originalLower = original.toLowerCase();
+  const originalExt = path.extname(originalLower).replace(/^\./, '');
+
+  const isPdf = mime === 'application/pdf' || originalExt === 'pdf';
+  if (isPdf) {
+    const stem = stripFileExtension(original).replace(/\.+$/g, '').trim() || `recibo-${expenseId}`;
+    return `${expenseId}_${stem}.pdf`;
+  }
+
+  const imageExt = imageExtensionFromMime(mime) ?? (IMAGE_EXTENSIONS.has(originalExt) ? normalizeImageExt(originalExt) : null);
+  if (imageExt) {
+    const stem = stripFileExtension(original).replace(/\.+$/g, '').trim() || `recibo-${expenseId}`;
+    return `${expenseId}_${stem}.${imageExt}`;
+  }
+
+  if (original && originalExt) {
+    return `${expenseId}_${original}`;
+  }
+
+  return `${expenseId}_${original || `recibo-${expenseId}`}`;
+}
+
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);
+
+function imageExtensionFromMime(mime: string): string | null {
+  if (mime === 'image/jpeg' || mime === 'image/jpg') return 'jpg';
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/heic') return 'heic';
+  if (mime === 'image/heif') return 'heif';
+  return null;
+}
+
+function normalizeImageExt(ext: string): string {
+  return ext === 'jpeg' ? 'jpg' : ext;
+}
+
+function stripFileExtension(fileName: string): string {
+  const ext = path.extname(fileName);
+  if (!ext) return fileName;
+  return fileName.slice(0, -ext.length);
+}
+
 function expenseIdsFromJson(raw: unknown): Set<string> {
   if (!Array.isArray(raw)) return new Set();
   return new Set(raw.filter((id): id is string => typeof id === 'string' && id.trim().length > 0));
@@ -332,6 +386,8 @@ function contentTypeForFileName(fileName: string): string {
   if (ext === '.png') return 'image/png';
   if (ext === '.pdf') return 'application/pdf';
   if (ext === '.webp') return 'image/webp';
+  if (ext === '.heic') return 'image/heic';
+  if (ext === '.heif') return 'image/heif';
   return 'application/octet-stream';
 }
 
