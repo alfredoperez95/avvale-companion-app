@@ -25,6 +25,11 @@ import {
   isExpenseCategory,
 } from './expense-categories';
 import styles from './expenses.module.css';
+import {
+  isHttpUrl,
+  normalizeExpensesImportPayload,
+  type ExpensesImportPayload,
+} from './expenses-import-payload';
 
 type Expense = {
   id: string;
@@ -50,25 +55,6 @@ type MonthGroup = {
 };
 
 type AmountSort = 'desc' | 'asc';
-
-type ExpensesImportPayload = {
-  expenses: Array<{
-    id: string;
-    fecha: string;
-    importe: number | string;
-    tipo: string;
-    descripcion: string;
-    estado: 'processed';
-    nombre_archivo: string;
-    url_recibo: string;
-    caduca_en: string;
-    paid_by_company: boolean;
-  }>;
-  meta?: {
-    source?: string;
-    batchId?: string;
-  };
-};
 
 type ExpensesImportResult =
   | { ok: true; jobId?: string; count?: number; tabId?: number }
@@ -484,7 +470,17 @@ export default function ExpensesPage() {
         throw new Error('No hay gastos procesados para enviar a Avvale Time Report.');
       }
 
-      const result = await dispatchExpensesImport(data.payload);
+      const normalizedPayload = normalizeExpensesImportPayload(data.payload, processedItems);
+      const incomplete = normalizedPayload.expenses.filter(
+        (expense) => !isHttpUrl(expense.url_recibo) || !expense.nombre_archivo.trim(),
+      );
+      if (incomplete.length > 0) {
+        throw new Error(
+          `Hay ${incomplete.length} gasto(s) sin URL o nombre de recibo válidos para la extensión. Vuelve a intentar o revisa el archivo del recibo.`,
+        );
+      }
+
+      const result = await dispatchExpensesImport(normalizedPayload);
       if (!result.ok) {
         throw new Error(result.error || 'La extensión no pudo iniciar la importación.');
       }

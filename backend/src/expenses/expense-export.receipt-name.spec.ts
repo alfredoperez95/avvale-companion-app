@@ -52,6 +52,16 @@ describe('buildExportReceiptFileName', () => {
     ).toBe('exp-5_factura.pdf');
   });
 
+  it('detects PDF mime even with charset parameters', () => {
+    expect(
+      buildExportReceiptFileName({
+        id: 'exp-8',
+        originalFileName: 'TicketFredys',
+        mimeType: 'application/pdf; charset=binary',
+      }),
+    ).toBe('exp-8_TicketFredys.pdf');
+  });
+
   it('keeps jpeg extension for image receipts', () => {
     expect(
       buildExportReceiptFileName({

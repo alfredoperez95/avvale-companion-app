@@ -94,10 +94,20 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
     }
 
     const receiptByExpenseId = new Map(prepared.receipts.map((receipt) => [receipt.expenseId, receipt]));
+    const missingReceipts = processedExpenses.filter((expense) => {
+      const receipt = receiptByExpenseId.get(expense.id);
+      return !receipt?.copied || !receipt.publicUrl || !receipt.fileName;
+    });
+    if (missingReceipts.length > 0) {
+      throw new BadRequestException(
+        `No se pudo preparar el recibo de ${missingReceipts.length} gasto(s) para enviar a Avvale Time Report. Revisa que el archivo del recibo siga disponible.`,
+      );
+    }
+
     return {
       payload: {
         expenses: processedExpenses.map((expense) => {
-          const receipt = receiptByExpenseId.get(expense.id);
+          const receipt = receiptByExpenseId.get(expense.id)!;
           return {
             id: expense.id,
             fecha: dateOnly(expense.date),
@@ -105,8 +115,8 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
             tipo: expense.type ?? '',
             descripcion: expense.description ?? '',
             estado: 'processed',
-            nombre_archivo: receipt?.copied ? receipt.fileName : '',
-            url_recibo: receipt?.publicUrl ?? '',
+            nombre_archivo: receipt.fileName,
+            url_recibo: receipt.publicUrl,
             caduca_en: prepared.expiresAt.toISOString(),
             paid_by_company: expense.paidByCompany,
           };
@@ -237,20 +247,37 @@ export class ExpenseExportService implements OnModuleInit, OnModuleDestroy {
     publicBaseUrl: string,
     token: string,
   ): Promise<ExportReceipt> {
-    const fileName = buildExportReceiptFileName(expense);
-    const source = resolvePathWithinBase(this.baseDir, expense.storagePath);
-    const target = path.join(fullDir, fileName);
+    const relativeStorage = normalizeExpenseStoragePath(expense.storagePath);
+    let detectedMime = String(expense.mimeType ?? '').trim();
+    let fileName = buildExportReceiptFileName(expense);
 
     try {
-      await fs.copyFile(source, target);
+      if (!relativeStorage) {
+        throw new Error('storagePath vacío');
+      }
+      const source = resolvePathWithinBase(this.baseDir, relativeStorage);
+      const buffer = await fs.readFile(source);
+      if (looksLikePdf(buffer)) {
+        detectedMime = 'application/pdf';
+        fileName = buildExportReceiptFileName({
+          id: expense.id,
+          originalFileName: expense.originalFileName,
+          mimeType: 'application/pdf',
+        });
+      }
+      const target = path.join(fullDir, fileName);
+      await fs.writeFile(target, buffer);
+      const publicUrl = buildExpenseExportPublicUrl(publicBaseUrl, token, fileName);
       return {
         expenseId: expense.id,
         fileName,
-        publicUrl: `${publicBaseUrl}/public/expense-exports/${token}/${encodeURIComponent(fileName)}`,
+        publicUrl,
         copied: true,
       };
     } catch (err) {
-      this.logger.warn(`No se pudo copiar recibo ${expense.id} para export: ${errorText(err)}`);
+      this.logger.warn(
+        `No se pudo copiar recibo ${expense.id} para export (mime=${detectedMime || 'n/a'}, file=${fileName}): ${errorText(err)}`,
+      );
       return {
         expenseId: expense.id,
         fileName,
@@ -330,7 +357,7 @@ export function buildExportReceiptFileName(expense: Pick<Expense, 'id' | 'origin
   const originalLower = original.toLowerCase();
   const originalExt = path.extname(originalLower).replace(/^\./, '');
 
-  const isPdf = mime === 'application/pdf' || originalExt === 'pdf';
+  const isPdf = isPdfMime(mime) || originalExt === 'pdf';
   if (isPdf) {
     const stem = stripFileExtension(original).replace(/\.+$/g, '').trim() || `recibo-${expenseId}`;
     return `${expenseId}_${stem}.pdf`;
@@ -351,12 +378,42 @@ export function buildExportReceiptFileName(expense: Pick<Expense, 'id' | 'origin
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);
 
+export function isPdfMime(mime: string): boolean {
+  const normalized = String(mime ?? '')
+    .trim()
+    .toLowerCase()
+    .split(';')[0]
+    ?.trim();
+  return normalized === 'application/pdf';
+}
+
+function looksLikePdf(buffer: Buffer): boolean {
+  return buffer.length >= 4 && buffer.subarray(0, 4).toString('latin1') === '%PDF';
+}
+
+function normalizeExpenseStoragePath(storagePath: string): string {
+  return String(storagePath ?? '')
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '');
+}
+
+function buildExpenseExportPublicUrl(publicBaseUrl: string, token: string, fileName: string): string {
+  const base = String(publicBaseUrl ?? '').trim().replace(/\/+$/, '');
+  return `${base}/public/expense-exports/${token}/${encodeURIComponent(fileName)}`;
+}
+
 function imageExtensionFromMime(mime: string): string | null {
-  if (mime === 'image/jpeg' || mime === 'image/jpg') return 'jpg';
-  if (mime === 'image/png') return 'png';
-  if (mime === 'image/webp') return 'webp';
-  if (mime === 'image/heic') return 'heic';
-  if (mime === 'image/heif') return 'heif';
+  const normalized = String(mime ?? '')
+    .trim()
+    .toLowerCase()
+    .split(';')[0]
+    ?.trim();
+  if (normalized === 'image/jpeg' || normalized === 'image/jpg') return 'jpg';
+  if (normalized === 'image/png') return 'png';
+  if (normalized === 'image/webp') return 'webp';
+  if (normalized === 'image/heic') return 'heic';
+  if (normalized === 'image/heif') return 'heif';
   return null;
 }
 
