@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, redirectToLogin } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
@@ -11,6 +11,9 @@ import {
   CalendarMonthRegular,
   CalendarRegular,
   CheckmarkRegular,
+  ChevronDownRegular,
+  ChevronLeftRegular,
+  ChevronRightRegular,
   DismissRegular,
   FilterRegular,
   MailRegular,
@@ -47,7 +50,7 @@ type Expense = {
   extractionError?: string | null;
 };
 
-type MonthGroup = {
+type ExpenseGroup = {
   key: string;
   label: string;
   total: number;
@@ -55,6 +58,7 @@ type MonthGroup = {
 };
 
 type AmountSort = 'desc' | 'asc';
+type GroupMode = 'date' | 'type';
 
 type ExpensesImportResult =
   | { ok: true; jobId?: string; count?: number; tabId?: number }
@@ -105,6 +109,10 @@ export default function ExpensesPage() {
   const [sendingKey, setSendingKey] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  /** `true` = abierto; por defecto los grupos quedan colapsados. */
+  const [monthExpandedState, setMonthExpandedState] = useState<Record<string, boolean>>({});
+  const [groupMode, setGroupMode] = useState<GroupMode>('date');
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -216,14 +224,44 @@ export default function ExpensesPage() {
     );
   }, [items, typeFilter, yearFilter, monthFilter, amountRange, hasAmountFilter]);
 
+  const monthPages = useMemo(() => listExpenseMonthPages(filteredItems), [filteredItems]);
+
+  useEffect(() => {
+    if (monthPages.length === 0) {
+      setSelectedMonthKey(null);
+      return;
+    }
+    setSelectedMonthKey((current) =>
+      current && monthPages.some((page) => page.key === current) ? current : monthPages[0].key,
+    );
+  }, [monthPages]);
+
+  const selectedMonthIndex = useMemo(() => {
+    if (!selectedMonthKey) return -1;
+    return monthPages.findIndex((page) => page.key === selectedMonthKey);
+  }, [monthPages, selectedMonthKey]);
+
+  const selectedMonthPage = selectedMonthIndex >= 0 ? monthPages[selectedMonthIndex] : null;
+  const selectedMonthTitle = selectedMonthPage
+    ? capitalizeMonthLabel(selectedMonthPage.label)
+    : null;
+
+  const monthScopedItems = useMemo(() => {
+    if (!selectedMonthKey) return [];
+    return filteredItems.filter((expense) => expenseMonthKey(expense) === selectedMonthKey);
+  }, [filteredItems, selectedMonthKey]);
+
   const groups = useMemo(
-    () => groupExpensesByMonth(filteredItems, amountSort),
-    [filteredItems, amountSort],
+    () =>
+      groupMode === 'type'
+        ? groupExpensesByType(monthScopedItems, amountSort)
+        : groupExpensesByMonth(monthScopedItems, amountSort),
+    [monthScopedItems, amountSort, groupMode],
   );
 
   const filteredTotal = useMemo(
-    () => filteredItems.reduce((sum, expense) => sum + (expense.amount ?? 0), 0),
-    [filteredItems],
+    () => monthScopedItems.reduce((sum, expense) => sum + (expense.amount ?? 0), 0),
+    [monthScopedItems],
   );
 
   const clearFilters = () => {
@@ -233,11 +271,32 @@ export default function ExpensesPage() {
     setAmountRange([amountBounds.min, amountBounds.max]);
   };
 
+  const goToMonthPage = (index: number) => {
+    const page = monthPages[index];
+    if (!page) return;
+    setSelectedMonthKey(page.key);
+    setMonthExpandedState({});
+    setEditingMonthKey(null);
+    setSelectedExpenseIds(new Set());
+    setError(null);
+    setExportMessage(null);
+  };
+
+  const changeGroupMode = (mode: GroupMode) => {
+    if (mode === groupMode) return;
+    setGroupMode(mode);
+    setMonthExpandedState({});
+    setEditingMonthKey(null);
+    setSelectedExpenseIds(new Set());
+    setError(null);
+    setExportMessage(null);
+  };
+
   const toggleAmountSort = () => {
     setAmountSort((current) => (current === 'desc' ? 'asc' : 'desc'));
   };
 
-  const selectedIdsForGroup = (group: MonthGroup) =>
+  const selectedIdsForGroup = (group: ExpenseGroup) =>
     group.items.filter((expense) => selectedExpenseIds.has(expense.id)).map((expense) => expense.id);
 
   const toggleMonthEditing = (groupKey: string) => {
@@ -250,6 +309,23 @@ export default function ExpensesPage() {
     setExportMessage(null);
   };
 
+  const isMonthExpanded = (groupKey: string) => monthExpandedState[groupKey] ?? false;
+
+  const setMonthExpanded = (groupKey: string, expanded: boolean) => {
+    setMonthExpandedState((current) => ({
+      ...current,
+      [groupKey]: expanded,
+    }));
+    if (!expanded && editingMonthKey === groupKey) {
+      setEditingMonthKey(null);
+      setSelectedExpenseIds(new Set());
+    }
+  };
+
+  const toggleMonthExpanded = (groupKey: string) => {
+    setMonthExpanded(groupKey, !isMonthExpanded(groupKey));
+  };
+
   const toggleExpenseSelection = (id: string) => {
     setSelectedExpenseIds((current) => {
       const next = new Set(current);
@@ -259,7 +335,7 @@ export default function ExpensesPage() {
     });
   };
 
-  const toggleGroupSelection = (group: MonthGroup) => {
+  const toggleGroupSelection = (group: ExpenseGroup) => {
     setSelectedExpenseIds((current) => {
       const next = new Set(current);
       const allSelected = group.items.every((expense) => next.has(expense.id));
@@ -271,7 +347,7 @@ export default function ExpensesPage() {
     });
   };
 
-  const updateSelectedLoadedStatus = async (group: MonthGroup, loaded: boolean) => {
+  const updateSelectedLoadedStatus = async (group: ExpenseGroup, loaded: boolean) => {
     const ids = selectedIdsForGroup(group);
     if (!ids.length) return;
     setBulkBusy(true);
@@ -363,7 +439,7 @@ export default function ExpensesPage() {
     }
   };
 
-  const generateMonthExport = async (group: MonthGroup) => {
+  const generateMonthExport = async (group: ExpenseGroup) => {
     const [yearPart, monthPart] = group.key.split('-');
     const year = Number(yearPart);
     const month = Number(monthPart);
@@ -413,7 +489,7 @@ export default function ExpensesPage() {
     }
   };
 
-  const sendMonthToAvvale = async (group: MonthGroup) => {
+  const sendMonthToAvvale = async (group: ExpenseGroup) => {
     const processedItems = group.items.filter((expense) => expense.status === 'processed' && !expense.loaded);
     if (!processedItems.length) {
       const hasLoadedProcessedItems = group.items.some((expense) => expense.status === 'processed' && expense.loaded);
@@ -507,7 +583,7 @@ export default function ExpensesPage() {
         <PageHero
           animateEnter={false}
           title="Gastos"
-          subtitle="Gastos guardados por mes, con recibo persistente disponible para revisión y futura automatización."
+          subtitle="Almacena tus gastos y procesalos de manera ágil, para enviarlos automáticamente a AEP."
           actions={
             <Link href="/launcher/expenses/new" className={styles.toolbarLink}>
               Nuevo gasto
@@ -537,7 +613,8 @@ export default function ExpensesPage() {
             <div className={styles.filtersHeaderAside}>
               <div className={styles.filtersStats} aria-live="polite">
                 <span className={styles.filtersStatChip}>
-                  <strong>{filteredItems.length}</strong> {filteredItems.length === 1 ? 'gasto' : 'gastos'}
+                  <strong>{monthScopedItems.length}</strong>{' '}
+                  {monthScopedItems.length === 1 ? 'gasto' : 'gastos'}
                 </span>
                 <span className={`${styles.filtersStatChip} ${styles.filtersStatChipAccent}`}>
                   Total <strong>{formatCurrency(filteredTotal)}</strong>
@@ -671,51 +748,198 @@ export default function ExpensesPage() {
         <div className={styles.stateCard}>No hay gastos que coincidan con los filtros seleccionados.</div>
       ) : null}
 
+      {!loading && filteredItems.length > 0 ? (
+        <div className={styles.groupModeBar}>
+          <div className={styles.groupModeBarStart}>
+            <span className={styles.groupModeLabel} id="expenses-group-mode-label">
+              Agrupar por
+            </span>
+            <div
+              className={styles.groupModeToggle}
+              role="group"
+              aria-labelledby="expenses-group-mode-label"
+            >
+              <button
+                type="button"
+                className={`${styles.groupModeBtn} ${groupMode === 'date' ? styles.groupModeBtnActive : ''}`}
+                aria-pressed={groupMode === 'date'}
+                onClick={() => changeGroupMode('date')}
+              >
+                <CalendarMonthRegular fontSize={16} aria-hidden />
+                Fecha
+              </button>
+              <button
+                type="button"
+                className={`${styles.groupModeBtn} ${groupMode === 'type' ? styles.groupModeBtnActive : ''}`}
+                aria-pressed={groupMode === 'type'}
+                onClick={() => changeGroupMode('type')}
+              >
+                <TagRegular fontSize={16} aria-hidden />
+                Tipología
+              </button>
+            </div>
+          </div>
+          {monthPages.length > 0 ? (
+            <nav className={styles.monthPager} aria-label="Mes a visualizar">
+              <button
+                type="button"
+                className={styles.monthPagerBtn}
+                aria-label="Mes anterior"
+                disabled={selectedMonthIndex < 0 || selectedMonthIndex >= monthPages.length - 1}
+                onClick={() => goToMonthPage(selectedMonthIndex + 1)}
+              >
+                <ChevronLeftRegular fontSize={18} aria-hidden />
+              </button>
+              <div className={styles.monthPagerMain}>
+                <span className={styles.monthPagerSelectLabel} id="expenses-month-pager-label">
+                  Mes
+                </span>
+                <MonthPagerDropdown
+                  labelId="expenses-month-pager-label"
+                  value={selectedMonthKey ?? ''}
+                  options={monthPages.map((page) => ({
+                    value: page.key,
+                    label: capitalizeMonthLabel(page.label),
+                  }))}
+                  onChange={(key) => {
+                    const nextIndex = monthPages.findIndex((page) => page.key === key);
+                    if (nextIndex >= 0) goToMonthPage(nextIndex);
+                  }}
+                />
+                <span className={styles.monthPagerMeta} aria-live="polite">
+                  {selectedMonthIndex + 1} / {monthPages.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={styles.monthPagerBtn}
+                aria-label="Mes siguiente"
+                disabled={selectedMonthIndex <= 0}
+                onClick={() => goToMonthPage(selectedMonthIndex - 1)}
+              >
+                <ChevronRightRegular fontSize={18} aria-hidden />
+              </button>
+            </nav>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!loading && filteredItems.length > 0 && selectedMonthTitle ? (
+        <div className={styles.monthContext} aria-live="polite">
+          <div className={styles.monthContextMain}>
+            <span className={styles.monthContextEyebrow}>
+              {groupMode === 'type' ? 'Tipologías del mes' : 'Gastos del mes'}
+            </span>
+            <h2 className={styles.monthContextTitle}>{selectedMonthTitle}</h2>
+            <p className={styles.monthContextSummary}>
+              Estás viendo{' '}
+              <strong>
+                {monthScopedItems.length} {monthScopedItems.length === 1 ? 'gasto' : 'gastos'}
+              </strong>
+              {groupMode === 'type' ? (
+                <>
+                  {' '}
+                  agrupados por tipología
+                </>
+              ) : null}
+              {' '}
+              · Total <strong>{formatCurrency(filteredTotal)}</strong>
+            </p>
+          </div>
+          <div className={styles.monthContextAside} aria-hidden="true">
+            <CalendarMonthRegular fontSize={28} />
+          </div>
+        </div>
+      ) : null}
+
       <div className={styles.monthsList}>
         {groups.map((group) => {
           const isEditingMonth = editingMonthKey === group.key;
+          const monthExpanded = isMonthExpanded(group.key);
           const selectedIds = selectedIdsForGroup(group);
           const selectedCount = selectedIds.length;
           const allSelected = group.items.length > 0 && selectedCount === group.items.length;
+          const groupDomKey = toGroupDomId(group.key);
+          const monthBodyId = `month-body-${groupDomKey}`;
+          const showCollapseFade = !monthExpanded && group.items.length > 3;
+          const groupTitle = groupMode === 'date' ? capitalizeMonthLabel(group.label) : group.label;
           return (
-          <section key={group.key} className={styles.monthCard} aria-labelledby={`month-${group.key}`}>
+          <section
+            key={`${groupMode}-${group.key}`}
+            className={`${styles.monthCard} ${monthExpanded ? styles.monthCardExpanded : styles.monthCardCollapsed}${
+              showCollapseFade ? ` ${styles.monthCardHasFade}` : ''
+            }`}
+            aria-labelledby={`month-${groupDomKey}`}
+          >
             <header className={styles.monthHeader}>
-              <div className={styles.monthHeaderMain}>
-                <h2 id={`month-${group.key}`} className={styles.monthTitle}>
-                  {capitalizeMonthLabel(group.label)}
-                </h2>
-                <span className={styles.monthCount}>
-                  {group.items.length} {group.items.length === 1 ? 'gasto' : 'gastos'}
+              <button
+                type="button"
+                className={styles.monthToggle}
+                aria-expanded={monthExpanded}
+                aria-controls={monthBodyId}
+                onClick={() => toggleMonthExpanded(group.key)}
+              >
+                <span className={styles.monthToggleIcon} aria-hidden>
+                  <ChevronDownRegular fontSize={18} />
                 </span>
-              </div>
+                <span className={styles.monthHeaderMain}>
+                  <span id={`month-${groupDomKey}`} className={styles.monthTitle}>
+                    {groupTitle}
+                  </span>
+                  <span className={styles.monthCount}>
+                    {group.items.length} {group.items.length === 1 ? 'gasto' : 'gastos'}
+                  </span>
+                </span>
+              </button>
               <div className={styles.monthHeaderAside}>
                 <span className={styles.monthTotalPill}>{formatCurrency(group.total)}</span>
                 <button
                   type="button"
                   className={styles.monthGenerateButton}
-                  onClick={() => toggleMonthEditing(group.key)}
+                  onClick={() => {
+                    if (!monthExpanded) {
+                      setMonthExpandedState((current) => ({ ...current, [group.key]: true }));
+                    }
+                    toggleMonthEditing(group.key);
+                  }}
                   disabled={generatingKey !== null || sendingKey !== null || bulkBusy || deleteBusy}
                 >
                   {isEditingMonth ? 'Cancelar edición' : 'Editar'}
                 </button>
-                <button
-                  type="button"
-                  className={styles.monthGenerateButton}
-                  onClick={() => void generateMonthExport(group)}
-                  disabled={generatingKey !== null || sendingKey !== null}
-                >
-                  {generatingKey === group.key ? 'Generando…' : 'Generar'}
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.monthGenerateButton} ${styles.monthSendButton}`}
-                  onClick={() => void sendMonthToAvvale(group)}
-                  disabled={generatingKey !== null || sendingKey !== null}
-                >
-                  {sendingKey === group.key ? 'Enviando…' : 'Enviar'}
-                </button>
+                {groupMode === 'date' ? (
+                  <>
+                    <button
+                      type="button"
+                      className={styles.monthGenerateButton}
+                      onClick={() => void generateMonthExport(group)}
+                      disabled={generatingKey !== null || sendingKey !== null}
+                    >
+                      {generatingKey === group.key ? 'Generando…' : 'Generar'}
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.monthGenerateButton} ${styles.monthSendButton}`}
+                      onClick={() => void sendMonthToAvvale(group)}
+                      disabled={generatingKey !== null || sendingKey !== null}
+                    >
+                      {sendingKey === group.key ? 'Enviando…' : 'Enviar'}
+                    </button>
+                  </>
+                ) : null}
               </div>
             </header>
+            <div
+              id={monthBodyId}
+              className={styles.monthBody}
+              onClick={
+                monthExpanded
+                  ? undefined
+                  : () => {
+                      setMonthExpanded(group.key, true);
+                    }
+              }
+            >
+              <div className={styles.monthBodyInner}>
             {isEditingMonth ? (
               <div className={styles.bulkEditBar}>
                 <label className={styles.bulkSelectAll}>
@@ -754,7 +978,7 @@ export default function ExpensesPage() {
                     onClick={() =>
                       setBulkDeleteTarget({
                         ids: selectedIds,
-                        label: capitalizeMonthLabel(group.label),
+                        label: groupTitle,
                       })
                     }
                     disabled={!selectedCount || bulkBusy || deleteBusy}
@@ -901,6 +1125,22 @@ export default function ExpensesPage() {
                 );
               })}
             </ul>
+              </div>
+              {showCollapseFade ? (
+                <div className={styles.monthCollapseFade}>
+                  <button
+                    type="button"
+                    className={styles.monthSeeMore}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setMonthExpanded(group.key, true);
+                    }}
+                  >
+                    Ver más
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </section>
           );
         })}
@@ -1019,8 +1259,30 @@ function sortExpenses(items: Expense[], amountSort: AmountSort): Expense[] {
   });
 }
 
-function groupExpensesByMonth(items: Expense[], amountSort: AmountSort): MonthGroup[] {
-  const map = new Map<string, MonthGroup>();
+function expenseMonthKey(expense: Expense): string {
+  const date = parseExpenseDate(expense.date) ?? new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function listExpenseMonthPages(items: Expense[]): Array<{ key: string; label: string }> {
+  const map = new Map<string, string>();
+  for (const expense of items) {
+    const date = parseExpenseDate(expense.date) ?? new Date();
+    const key = expenseMonthKey(expense);
+    if (!map.has(key)) {
+      map.set(
+        key,
+        new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(date),
+      );
+    }
+  }
+  return [...map.entries()]
+    .map(([key, label]) => ({ key, label }))
+    .sort((a, b) => (a.key < b.key ? 1 : -1));
+}
+
+function groupExpensesByMonth(items: Expense[], amountSort: AmountSort): ExpenseGroup[] {
+  const map = new Map<string, ExpenseGroup>();
   for (const expense of items) {
     const date = parseExpenseDate(expense.date) ?? new Date();
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -1031,7 +1293,7 @@ function groupExpensesByMonth(items: Expense[], amountSort: AmountSort): MonthGr
         label: new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(date),
         total: 0,
         items: [],
-      } satisfies MonthGroup);
+      } satisfies ExpenseGroup);
     existing.total += expense.amount ?? 0;
     existing.items.push(expense);
     map.set(key, existing);
@@ -1043,6 +1305,118 @@ function groupExpensesByMonth(items: Expense[], amountSort: AmountSort): MonthGr
       items: sortExpenses(group.items, amountSort),
     }))
     .sort((a, b) => (a.key < b.key ? 1 : -1));
+}
+
+function groupExpensesByType(items: Expense[], amountSort: AmountSort): ExpenseGroup[] {
+  const map = new Map<string, ExpenseGroup>();
+  for (const expense of items) {
+    const trimmedType = expense.type?.trim() ?? '';
+    const key = trimmedType || PENDING_TYPE_FILTER;
+    const existing =
+      map.get(key) ??
+      ({
+        key,
+        label: key === PENDING_TYPE_FILTER ? 'Pendiente de revisar' : key,
+        total: 0,
+        items: [],
+      } satisfies ExpenseGroup);
+    existing.total += expense.amount ?? 0;
+    existing.items.push(expense);
+    map.set(key, existing);
+  }
+
+  return [...map.values()]
+    .map((group) => ({
+      ...group,
+      items: sortExpenses(group.items, amountSort),
+    }))
+    .sort((a, b) => {
+      if (a.key === PENDING_TYPE_FILTER) return 1;
+      if (b.key === PENDING_TYPE_FILTER) return -1;
+      const totalDiff = b.total - a.total;
+      if (totalDiff !== 0) return amountSort === 'desc' ? totalDiff : -totalDiff;
+      return a.label.localeCompare(b.label, 'es', { sensitivity: 'base' });
+    });
+}
+
+function toGroupDomId(key: string): string {
+  return key.replace(/[^a-zA-Z0-9_-]+/g, '-');
+}
+
+function MonthPagerDropdown({
+  labelId,
+  value,
+  options,
+  onChange,
+}: {
+  labelId: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const listboxId = useId();
+  const selected = options.find((option) => option.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = rootRef.current;
+      if (!root || !(event.target instanceof Node)) return;
+      if (!root.contains(event.target)) setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className={styles.monthPagerDropdown} ref={rootRef}>
+      <button
+        type="button"
+        className={styles.monthPagerSelect}
+        aria-labelledby={labelId}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className={styles.monthPagerSelectValue}>{selected?.label ?? 'Seleccionar mes'}</span>
+        <span className={styles.monthPagerSelectChevron} aria-hidden="true" />
+      </button>
+      {open ? (
+        <div id={listboxId} className={styles.monthPagerMenu} role="listbox" aria-labelledby={labelId}>
+          {options.map((option) => {
+            const isSelected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`${styles.monthPagerOption} ${
+                  isSelected ? styles.monthPagerOptionSelected : ''
+                }`}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  setOpen(false);
+                  if (!isSelected) onChange(option.value);
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function parseExpenseDate(value: string | null): Date | null {

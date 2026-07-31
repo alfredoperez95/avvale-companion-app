@@ -151,6 +151,333 @@
     0 14px 34px rgb(15 23 42 / 6%);
 }
 
+.monthPager {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+  min-height: 2.85rem;
+  padding: 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 12%, var(--fiori-border-light));
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 78%), transparent 72%),
+    color-mix(in srgb, var(--fiori-shell-bg) 4%, var(--fiori-surface));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 72%),
+    0 1px 2px rgb(15 23 42 / 4%),
+    0 10px 24px rgb(15 23 42 / 5%);
+}
+
+.monthPagerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fiori-shell-bg);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.monthPagerBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--fiori-shell-bg) 9%, var(--fiori-surface));
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 12%, transparent);
+}
+
+.monthPagerBtn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.monthPagerBtn:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 1px;
+}
+
+.monthPagerMain {
+  display: grid;
+  grid-template-columns: auto minmax(9.5rem, 12.5rem) auto;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0 0.35rem;
+}
+
+.monthPagerSelectLabel {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fiori-text-secondary);
+}
+
+.monthPagerDropdown {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+}
+
+.monthPagerSelect {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 14%, var(--fiori-border-light));
+  border-radius: 999px;
+  background: rgb(255 255 255 / 92%);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--fiori-text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 80%);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.monthPagerSelect:hover,
+.monthPagerSelect[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 30%, var(--fiori-border-light));
+  background: var(--fiori-surface);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 84%),
+    0 2px 8px rgb(15 23 42 / 6%);
+}
+
+.monthPagerSelect:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 1px;
+}
+
+.monthPagerSelectValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fiori-shell-bg);
+  font-size: 0.9375rem;
+}
+
+.monthPagerSelectChevron {
+  flex: 0 0 auto;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  opacity: 0.7;
+  transition: transform 0.15s ease;
+}
+
+.monthPagerSelect[aria-expanded='true'] .monthPagerSelectChevron {
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+
+.monthPagerMenu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: max(100%, 12rem);
+  max-height: 16rem;
+  overflow: auto;
+  padding: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 14%, var(--fiori-border-light));
+  border-radius: 0.85rem;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 88%), transparent 2.5rem),
+    var(--fiori-surface);
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 5%),
+    0 18px 36px rgb(15 23 42 / 12%);
+  transform: translateX(-50%);
+}
+
+.monthPagerOption {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--fiori-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.monthPagerOption:hover,
+.monthPagerOption:focus-visible {
+  background: color-mix(in srgb, var(--fiori-shell-bg) 8%, var(--fiori-surface));
+  outline: none;
+}
+
+.monthPagerOptionSelected {
+  color: var(--fiori-shell-bg);
+  background: color-mix(in srgb, var(--fiori-shell-bg) 10%, var(--fiori-surface));
+}
+
+.monthPagerMeta {
+  font-size: 0.75rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--fiori-text-secondary);
+  white-space: nowrap;
+}
+
+@media (max-width: 52rem) {
+  .monthPager {
+    width: 100%;
+    justify-content: space-between;
+    border-radius: 1rem;
+    padding: 0.45rem 0.5rem;
+  }
+
+  .monthPagerMain {
+    flex: 1 1 auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .monthPagerMenu {
+    left: 0;
+    right: 0;
+    width: auto;
+    transform: none;
+  }
+
+  .groupModeBar {
+    align-items: stretch;
+  }
+
+  .groupModeBarStart {
+    width: 100%;
+  }
+}
+
+.groupModeBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fiori-space-3);
+  margin: 0 0 var(--fiori-space-4);
+}
+
+.groupModeBarStart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fiori-space-3);
+  min-width: 0;
+}
+
+.groupModeLabel {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--fiori-text-secondary);
+}
+
+.monthContext {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fiori-space-4);
+  margin: 0 0 var(--fiori-space-4);
+  padding: var(--fiori-space-4) var(--fiori-space-5);
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 14%, var(--fiori-border-light));
+  border-radius: 1rem;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--fiori-shell-bg) 10%, var(--fiori-surface)) 0%,
+      var(--fiori-surface) 55%,
+      color-mix(in srgb, #38bdf8 6%, var(--fiori-surface)) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 72%),
+    0 1px 2px rgb(15 23 42 / 4%),
+    0 12px 28px rgb(15 23 42 / 5%);
+}
+
+.monthContextMain {
+  min-width: 0;
+}
+
+.monthContextEyebrow {
+  display: inline-block;
+  margin-bottom: 0.2rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fiori-shell-bg);
+}
+
+.monthContextTitle {
+  margin: 0;
+  font-size: clamp(1.35rem, 1.1rem + 1vw, 1.75rem);
+  font-weight: 780;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--fiori-text);
+}
+
+.monthContextSummary {
+  margin: 0.35rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--fiori-text-secondary);
+}
+
+.monthContextSummary strong {
+  color: var(--fiori-text);
+  font-weight: 700;
+}
+
+.monthContextAside {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fiori-shell-bg) 10%, var(--fiori-surface));
+  color: var(--fiori-shell-bg);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%);
+}
+
+@media (max-width: 40rem) {
+  .monthContext {
+    padding: var(--fiori-space-4);
+  }
+
+  .monthContextAside {
+    display: none;
+  }
+}
+
 .filtersCard {
   margin-bottom: var(--fiori-space-5);
   padding: 0;
@@ -744,6 +1071,54 @@
   gap: var(--fiori-space-5);
 }
 
+.groupModeToggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 10%, var(--fiori-border-light));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fiori-shell-bg) 4%, var(--fiori-surface));
+}
+
+.groupModeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0 0.85rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--fiori-text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.groupModeBtn:hover {
+  color: var(--fiori-text);
+  background: color-mix(in srgb, var(--fiori-surface) 80%, transparent);
+}
+
+.groupModeBtnActive {
+  color: var(--fiori-shell-bg);
+  background: var(--fiori-surface);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--fiori-shell-bg) 12%, var(--fiori-border-light)),
+    0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.groupModeBtn:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}
+
 .monthCard {
   overflow: hidden;
   border-color: color-mix(in srgb, var(--fiori-shell-bg) 8%, var(--fiori-border-light));
@@ -751,6 +1126,10 @@
   box-shadow:
     0 1px 2px rgb(15 23 42 / 4%),
     0 18px 42px rgb(15 23 42 / 6%);
+}
+
+.monthCardCollapsed {
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 6%, var(--fiori-border-light));
 }
 
 .monthHeader {
@@ -768,6 +1147,61 @@
   );
 }
 
+.monthToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fiori-space-2);
+  min-width: 0;
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0.2rem 0.35rem 0.2rem 0.15rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.monthToggle:hover {
+  background: rgb(255 255 255 / 42%);
+  border-color: color-mix(in srgb, var(--fiori-shell-bg) 8%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 55%);
+}
+
+.monthToggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--fiori-shell-bg) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.monthToggleIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 58%);
+  border: 1px solid color-mix(in srgb, var(--fiori-shell-bg) 12%, var(--fiori-border-light));
+  color: var(--fiori-shell-bg);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 72%);
+  transition: transform 0.22s ease, background-color 0.18s ease;
+}
+
+.monthCardCollapsed .monthToggleIcon {
+  transform: rotate(-90deg);
+}
+
+.monthCardExpanded .monthToggleIcon {
+  transform: rotate(0deg);
+}
+
 .monthHeaderMain {
   display: flex;
   flex-wrap: wrap;
@@ -782,6 +1216,95 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--fiori-space-2);
+  flex-shrink: 0;
+}
+
+.monthBody {
+  position: relative;
+}
+
+.monthCardCollapsed .monthBody {
+  cursor: pointer;
+}
+
+.monthCardCollapsed .monthBody:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: -2px;
+}
+
+.monthBodyInner {
+  overflow: hidden;
+  max-height: min(240rem, 10000px);
+  transition: max-height 0.34s ease;
+}
+
+.monthCardCollapsed .monthBodyInner {
+  max-height: 13.75rem;
+  pointer-events: none;
+}
+
+.monthCardCollapsed .expenseTableHead {
+  display: none;
+}
+
+.monthCollapseFade {
+  display: none;
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 2;
+  height: 5.25rem;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0.65rem;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0%) 0%,
+    color-mix(in srgb, var(--fiori-surface) 35%, transparent) 28%,
+    color-mix(in srgb, var(--fiori-surface) 78%, transparent) 62%,
+    var(--fiori-surface) 100%
+  );
+}
+
+.monthCardCollapsed.monthCardHasFade .monthCollapseFade {
+  display: flex;
+}
+
+.monthSeeMore {
+  pointer-events: auto;
+  appearance: none;
+  margin: 0;
+  padding: 0.35rem 0.85rem;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fiori-surface) 88%, transparent);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--fiori-shell-bg);
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--fiori-shell-bg) 12%, var(--fiori-border-light)),
+    0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.monthSeeMore:hover {
+  background: var(--fiori-surface);
+  color: color-mix(in srgb, var(--fiori-shell-bg) 88%, #000);
+}
+
+.monthSeeMore:focus-visible {
+  outline: 2px solid var(--fiori-shell-bg);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .monthBodyInner,
+  .monthToggleIcon {
+    transition: none;
+  }
 }
 
 @media (max-width: 42rem) {
@@ -791,6 +1314,7 @@
     padding: var(--fiori-space-4);
   }
 
+  .monthToggle,
   .monthHeaderMain,
   .monthHeaderAside {
     width: 100%;
@@ -810,6 +1334,10 @@
 
   .monthGenerateButton {
     width: 100%;
+  }
+
+  .monthCardCollapsed .monthBodyInner {
+    max-height: 16.5rem;
   }
 }
 

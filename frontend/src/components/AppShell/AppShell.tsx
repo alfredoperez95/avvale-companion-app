@@ -15,7 +15,7 @@ import { positionLabel } from '@/lib/user-position';
 import styles from './AppShell.module.css';
 
 /** Buzón de recepción de recibos (Make → webhook de gastos). */
-const EXPENSE_INBOX_EMAIL = 'gastos@avvalecompanion.app';
+const EXPENSE_INBOX_EMAIL = 'expenses@avvalecompanion.app';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/launcher', label: 'App Launcher', icon: 'home' },
