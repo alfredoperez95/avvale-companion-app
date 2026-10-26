@@ -465,19 +465,19 @@ model Activation {
   status           ActivationStatus @default(DRAFT)
   recipientTo      String           @map("recipient_to") @db.Text
   recipientCc      String?          @map("recipient_cc") @db.Text
-  subject          String
-  projectName      String           @map("project_name")
-  client           String?          @map("client")
-  offerCode        String           @map("offer_code")
-  projectAmount    String?          @map("project_amount")
+  subject          String           @db.Text
+  projectName      String           @map("project_name") @db.Text
+  client           String?          @map("client") @db.Text
+  offerCode        String           @map("offer_code") @db.Text
+  projectAmount    String?          @map("project_amount") @db.Text
   projectType      ProjectType?     @map("project_type")
-  hubspotUrl       String?          @map("hubspot_url")
+  hubspotUrl       String?          @map("hubspot_url") @db.Text
   pfe              ActivationPfe?   @map("pfe")
   pedido           ActivationPedido? @map("pedido")
   yubiqAsUrl       String?          @map("yubiq_as_url") @db.Text
-  yubiqAsId        String?          @map("yubiq_as_id")
-  projectJpName    String?          @map("project_jp_name")
-  projectJpEmail   String?          @map("project_jp_email")
+  yubiqAsId        String?          @map("yubiq_as_id") @db.Text
+  projectJpName    String?          @map("project_jp_name") @db.Text
+  projectJpEmail   String?          @map("project_jp_email") @db.Text
   projectJpSource  String?          @map("project_jp_source")
   body             String?          @map("body") @db.Text
   attachmentUrls   String?          @map("attachment_urls") @db.Text
