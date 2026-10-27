@@ -31,3 +31,9 @@ backend/uploads/
 # Exportes locales de contactos (datos sensibles)
 backend/cc-contacts-export.tsv
 backend/cc-contacts-emails-only.txt
+
+# Dumps / backups de BD (nunca en el repo; contienen hashes y PII)
+backups/*.sql
+backups/*.sql.gz
+backups/*.dump
+*.sql.gz
